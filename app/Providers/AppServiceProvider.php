@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Providers\Socialite\SocialiteIdentityProvider;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Socialite\Contracts\Factory;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $socialite = $this->app->make(Factory::class);
+        $socialite->extend('identity', function () use ($socialite) {
+            $config = config('services.identity');
+
+            return $socialite->buildProvider(SocialiteIdentityProvider::class, $config);
+        });
     }
 }
