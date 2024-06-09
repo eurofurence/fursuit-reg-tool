@@ -18,6 +18,11 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
-        "primevue": "^3.52.0"
+        "dayjs": "^1.11.11",
+        "laravel-precognition-vue-inertia": "^0.5.5",
+        "pica": "^9.0.1",
+        "primeicons": "^7.0.0",
+        "primevue": "^3.52.0",
+        "vue-advanced-cropper": "^2.8.8"
     }
 }

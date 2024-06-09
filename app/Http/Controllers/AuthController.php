@@ -27,12 +27,17 @@ class AuthController extends Controller
 
     public function loginCallback()
     {
-        $user = Socialite::driver('identity')->user();
+        try {
+            $user = Socialite::driver('identity')->user();
+        } catch (\Exception $e) {
+            return redirect()->route('auth.login');
+        }
         $user = User::updateOrCreate([
             'remote_id' => $user->getId(),
         ], [
             'remote_id' => $user->getId(),
             'name' => $user->getName(),
+            'email' => $user->getEmail(),
             'avatar' => $user->getAvatar(),
             'is_admin' => in_array('N9OY0K8OJVXR1P7L', $user->user['groups'], true),
         ]);
@@ -44,7 +49,7 @@ class AuthController extends Controller
     {
         return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout');
     }
-    
+
     // Frontchannel Logout
     public function logoutCallback()
     {

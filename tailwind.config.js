@@ -3,6 +3,7 @@ import forms from '@tailwindcss/forms';
 
 /** @type {import('tailwindcss').Config} */
 export default {
+    darkMode: 'class',
     content: [
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
         './storage/framework/views/*.php',
@@ -13,11 +14,8 @@ export default {
 
     theme: {
         extend: {
-            fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
-            },
             colors: {
-                primary: 'rgb(var(--primary))',
+                'primary': 'rgb(var(--primary))',
                 'primary-inverse': 'rgb(var(--primary-inverse))',
                 'primary-hover': 'rgb(var(--primary-hover))',
                 'primary-active-color': 'rgb(var(--primary-active-color))',
@@ -50,7 +48,14 @@ export default {
                 'surface-800': 'rgb(var(--surface-800))',
                 'surface-900': 'rgb(var(--surface-900))',
                 'surface-950': 'rgb(var(--surface-950))'
-            }
+            },
+            fontFamily: {
+                main: ['Century Gothic', ...defaultTheme.fontFamily.sans],
+                logo: ['Iris UPC', ...defaultTheme.fontFamily.sans],
+            },
+            screens: {
+                'xs': '370px',
+            },
         },
     },
 

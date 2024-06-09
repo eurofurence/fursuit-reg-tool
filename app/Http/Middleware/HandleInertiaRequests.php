@@ -34,6 +34,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // Get event that did not end yet and is the next one
+            'event' => \App\Models\Event::where('ends_at', '>', now())->orderBy('starts_at')->first(),
         ];
     }
 }
