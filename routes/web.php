@@ -7,6 +7,8 @@ use Inertia\Inertia;
 
 
 Route::get('/', \App\Http\Controllers\WelcomeController::class)->name('welcome');
+Route::redirect('/auth-login', '/auth/login')->name('login');
+Route::redirect('/auth-done', '/')->name('dashboard');
 
 Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(function() {
 Route::prefix('/auth')->name('auth.')->group(function () {

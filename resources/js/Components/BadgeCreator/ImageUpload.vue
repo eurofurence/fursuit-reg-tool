@@ -6,14 +6,13 @@ import 'vue-advanced-cropper/dist/style.css';
 import pica from 'pica';
 import Button from 'primevue/button';
 
-
 const image = reactive({
     src: null,
     type: null,
 });
 
 const croppedImage = ref(null);
-const coordinates = ref(null);
+const rawBlob = ref(null);
 const picaInstance = pica();
 
 const emits = defineEmits(['updateImage'])
@@ -30,6 +29,7 @@ const onSelectFile = (event) => {
         }
         // 2. Create the blob link to the file to optimize performance:
         image.src = URL.createObjectURL(files[0]);
+        image.type = files[0].type;
     }
 }
 
@@ -43,8 +43,8 @@ const onChangeCrop = (event) => {
                 // Free up memory
                 URL.revokeObjectURL(croppedImage.value);
             }
+            rawBlob.value = blob;
             croppedImage.value = URL.createObjectURL(blob);
-            console.log('Cropped Image:', croppedImage.value);
         })
         .catch(error => {
             console.error('Error converting canvas to blob:', error);
@@ -53,12 +53,15 @@ const onChangeCrop = (event) => {
 
 </script>
 <template>
-    <FileUpload mode="basic" accept="image/*" :auto="false" :maxFileSize="1000000" @select="onSelectFile"
-                v-if="!image.src"/>
+        <FileUpload mode="basic" accept="image/*" :auto="false" class="w-full" :maxFileSize="1000000"
+                    @select="onSelectFile"
+                    choose-label="Choose Image"
+                    v-if="!image.src"/>
     <Cropper
         v-if="image.src"
         :src="image.src"
         :type="image.type"
+        class="mb-4"
         :stencil-props="{
 		aspectRatio: 3/4,
 		movable: true,
@@ -67,8 +70,24 @@ const onChangeCrop = (event) => {
         @change="onChangeCrop"
     />
 
-    <div>
-        <Button label="Upload" icon="pi pi-upload" class="w-full" @click="emits('updateImage',croppedImage)"/>
+    <!-- Rules -->
+    <div class="text-sm mt-2 my-4">
+        <p class="max-w-xs">All photos will be manually reviewed before printing. Kindly follow the rules to ensure your photo does not get rejected.</p>
+        <ul class="list-disc pl-4 mt-2">
+            <li>Only submit photos of fursuits in your possession.</li>
+            <li>No humans in the photos.</li>
+            <li>No explicit content.</li>
+            <li>No drawings or illustrations.</li>
+            <li>No AI-generated images.</li>
+        </ul>
+    </div>
+
+    <div v-if="image.src">
+        <Button label="Upload" icon="pi pi-upload" class="w-full" @click="emits('updateImage',{
+            croppedImage: croppedImage,
+            type: image.type,
+            blob: rawBlob,
+        })"/>
     </div>
 </template>
 

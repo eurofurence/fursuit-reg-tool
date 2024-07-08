@@ -32,7 +32,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user()?->load('badges'),
             ],
             // Get event that did not end yet and is the next one
             'event' => \App\Models\Event::where('ends_at', '>', now())->orderBy('starts_at')->first(),

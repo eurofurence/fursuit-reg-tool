@@ -15,7 +15,9 @@ class Badge extends Model
 
     protected $guarded = [];
     protected $casts = [
-        'status' => BadgeStatusState::class
+        'status' => BadgeStatusState::class,
+        'extra_copy' => 'boolean',
+        'dual_side_print' => 'boolean',
     ];
 
     public function fursuit(): BelongsTo

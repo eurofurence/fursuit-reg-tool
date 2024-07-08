@@ -3,6 +3,8 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Badge\Badge;
+use App\Models\Fursuit\Fursuit;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -45,6 +47,16 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function badges()
+    {
+        return $this->hasManyThrough(Badge::class, Fursuit::class);
+    }
+
+    public function fursuits()
+    {
+        return $this->hasMany(Fursuit::class);
     }
 
     public function canAccessPanel(Panel $panel): bool

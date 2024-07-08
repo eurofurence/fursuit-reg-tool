@@ -1,6 +1,6 @@
 <script setup>
 
-import {Head, usePage} from "@inertiajs/vue3";
+import {Head, router, usePage} from "@inertiajs/vue3";
 import Button from 'primevue/button';
 import dayjs from "dayjs";
 import {Link} from "@inertiajs/vue3";
@@ -44,7 +44,7 @@ const messages = computed(() => {
             hero_subtitle: "With any valid convention ticket, you can preorder your first preorder fursuit badge for free. Any additional fursuit badges can be ordered for just 2 € per badge.",
             message: {
                 type: 'info',
-                text: "Please note that you can claim your free fursuit badge only until " + dayjs('2022-08-15').format('MMMM D, YYYY')
+                text: "Please note that you can claim your free fursuit badge only until " + dayjs(usePage().props.event.preorder_ends_at).format('MMMM D, YYYY HH:mm')
             },
             showButtons: true
         };
@@ -56,7 +56,7 @@ const messages = computed(() => {
     <Head>
         <title>Claim Your Fursuit Badge and Join the Fun!</title>
         <meta head-key="description" name="description"
-              content="Get your personalized fursuit badge at Eurofurence! Enjoy one free badge with registration, order extras for just 2 € each, and join our exciting Catch-Em-All game. Celebrate your fursuit and connect with fellow fursuiters."/>
+              content="Get your personalized fursuit badge at Eurofurence! Enjoy one free badge with registration and join our exciting Catch-Em-All game. Celebrate your fursuit and connect with fellow fursuiters."/>
     </Head>
     <div class="mb-6 lg:pt-8">
         <div
@@ -65,12 +65,24 @@ const messages = computed(() => {
                 <h1 class="font-main text-2xl md:text-5xl font-semibold drop-shadow-lg mb-4">{{ messages.hero_title }}</h1>
                 <p class="max-w-screen-sm text-lg">{{ messages.hero_subtitle }}</p>
             </div>
-            <div class="flex flex-col md:flex-row gap-3 text-white w-full" v-if="messages.showButtons">
-                <!-- Action Select -->
-                <Button icon="pi pi-id-card" class="w-full" label="Claim your first free Fursuit Badge!"/>
-                <!-- Buy Additional Fursuit Badges -->
-                <Button icon="pi pi-id-card" severity="warning" class="w-full"
-                        label="Buy Additional Fursuit Badges"/>
+            <div v-if="messages.showButtons" class="w-full">
+                <div class="flex flex-col md:flex-row gap-3 text-white w-full"
+                     v-if="usePage().props.auth.user !== null">
+                    <!-- Action Select -->
+                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" class="w-full" v-if="usePage().props.auth.user.badges.length === 0" label="Claim your first free Fursuit Badge!"/>
+                    <!-- Buy Additional Fursuit Badges -->
+                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" severity="warning" v-if="usePage().props.auth.user.badges.length > 0" class="w-full"
+                            label="Buy Additional Fursuit Badges"/>
+                    <!-- Manage Badges -->
+                    <Button @click="router.visit(route('badges.index'))"  icon="pi pi-id-card" class="w-full" v-if="usePage().props.auth.user.badges.length > 0" label="Review Ordered Badges"/>
+                </div>
+                <!-- Login -->
+                <div class="w-full"
+                     v-else>
+                    <Link method="POST" :href="route('auth.login.redirect')" class="w-full">
+                        <Button icon="pi pi-id-card" class="w-full" label="Login with Eurofurence Identity"/>
+                    </Link>
+                </div>
             </div>
         </div>
     </div>
@@ -79,7 +91,8 @@ const messages = computed(() => {
         <Message
             v-if="messages.message"
             severity="info"
-                 :closable="false">Please note that you can claim your free fursuit badge only until {{ dayjs() }}
+            :closable="false">
+            {{ messages.message.text }}
         </Message>
         <!-- End Countdown -->
         <h1 class="text-2xl font-semibold font-main">The Eurofurence Fursuit Badge</h1>

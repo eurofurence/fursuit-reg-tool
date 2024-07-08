@@ -8,7 +8,7 @@ import Dropdown from "primevue/dropdown";
 import Dialog from 'primevue/dialog';
 import {useForm} from 'laravel-precognition-vue-inertia'
 import InputSwitch from 'primevue/inputswitch';
-import {computed, reactive, ref} from "vue";
+import {computed, onMounted, reactive, ref} from "vue";
 import Button from 'primevue/button';
 import ImageUpload from "@/Components/BadgeCreator/ImageUpload.vue";
 import Panel from 'primevue/panel';
@@ -21,23 +21,28 @@ defineOptions({
 })
 
 const props = defineProps({
-    species: Array
+    species: Array,
+    badge: Object
 })
 
 const imageModalOpen = ref(false)
 const previewImage = ref(null);
 
 const form = useForm('post', route('badges.store'), {
-    species: null,
-    name: null,
+    species: props.badge.fursuit.species.name,
+    name: props.badge.fursuit.name,
     image: null,
-    catchEmAll: true,
-    publish: false,
+    catchEmAll: props.badge.fursuit.catch_em_all,
+    publish: props.badge.fursuit.published,
     tos: false,
     upgrades: {
-        doubleSided: false,
-        spareCopy: false
+        doubleSided: props.badge.dual_side_print,
+        spareCopy: props.badge.extra_copy
     }
+})
+
+onMounted(() => {
+    previewImage.value = props.badge.fursuit.image_url;
 })
 
 function submit() {

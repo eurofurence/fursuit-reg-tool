@@ -18,4 +18,9 @@ class Event extends Model
             'preorder_ends_at' => 'datetime',
         ];
     }
+
+    public static function getActiveEvent(): Event|null
+    {
+        return self::where('ends_at', '>', now())->orderBy('starts_at')->first();
+    }
 }
