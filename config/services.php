@@ -40,6 +40,10 @@ return [
         'client_id' => env('IDENTITY_CLIENT_ID'),
         'client_secret' => env('IDENTITY_CLIENT_SECRET'),
         'redirect' => env('IDENTITY_CALLBACK_URL'),
-    ]
+    ],
+
+    'attsrv' => [
+        'url' => env('ATTSRV_URL'),
+    ],
 
 ];

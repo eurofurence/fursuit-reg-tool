@@ -10,6 +10,6 @@ class Pending extends FursuitStatusState
 
     public function color(): string
     {
-        // TODO: Implement color() method.
+        return 'warning';
     }
 }

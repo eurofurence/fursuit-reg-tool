@@ -21,7 +21,8 @@ defineOptions({
 })
 
 const props = defineProps({
-    species: Array
+    species: Array,
+    isFree: Boolean
 })
 
 const imageModalOpen = ref(false)
@@ -55,7 +56,7 @@ function imageUpdatedEvent(image) {
 
 const basePrice = computed(() => {
     let price = 0;
-    if (usePage().props.auth.user.badges.length > 0) {
+    if (props.isFree === false) {
         price += 2;
     }
     return price;

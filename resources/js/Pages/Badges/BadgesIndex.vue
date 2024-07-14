@@ -4,6 +4,8 @@ import {Head, router} from "@inertiajs/vue3";
 import Layout from "@/Layouts/Layout.vue";
 import BadgeListItem from "@/Components/BadgeListItem.vue";
 import Button from "primevue/button"
+import Message from "primevue/message"
+import PaymentInfoWidget from "@/Components/PaymentInfoWidget.vue";
 
 defineOptions({
     layout: Layout
@@ -22,11 +24,13 @@ const props = defineProps({
                 Here you can manage your fursuit badges.
             </p>
         </div>
+        <PaymentInfoWidget />
         <div class="flex justify-end">
             <Button
                 @click="router.visit(route('badges.create'))"
                 size="small"
                 icon="pi pi-plus"
+                class="w-full sm:w-auto"
                 label="Order another Badge"
             ></Button>
         </div>

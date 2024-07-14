@@ -7,6 +7,7 @@ import {Link} from "@inertiajs/vue3";
 import Message from 'primevue/message';
 import {computed} from "vue";
 import Layout from "@/Layouts/Layout.vue";
+import PaymentInfoWidget from "@/Components/PaymentInfoWidget.vue";
 
 defineOptions({
     layout: Layout
@@ -87,6 +88,13 @@ const messages = computed(() => {
         </div>
     </div>
     <div class="px-6 xl:px-0">
+        <!-- Flash Message -->
+        <Message
+            v-if="usePage().props.flash.message"
+            severity="error"
+            :closable="true">
+            {{ usePage().props.flash.message }}
+        </Message>
         <!-- Countdown for End of Preorder -->
         <Message
             v-if="messages.message"
@@ -95,6 +103,7 @@ const messages = computed(() => {
             {{ messages.message.text }}
         </Message>
         <!-- End Countdown -->
+        <PaymentInfoWidget />
         <h1 class="text-2xl font-semibold font-main">The Eurofurence Fursuit Badge</h1>
         <p class="mb-4">At Eurofurence, over 40% of our attendees are fursuiters, making us one of the top furry conventions with the highest number of costumers. Seeing so many furry critters roaming around is incredibly heartwarming, and we want to thank each and every one of you for returning and making the experience magical for everyone.</p>
         <p class="mb-4">Eurofurence offers every registered fursuiter one free personal fursuit badge. Bringing more than one fursuit? No problem! You can get a badge for each of them for just 2 € per additional badge. These badges are a fantastic way to show off your fursuit and make it easier for others to recognize you.</p>

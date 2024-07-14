@@ -33,6 +33,10 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user()?->load('badges'),
+                'balance' => $request->user()?->balanceInt,
+            ],
+            'flash' => [
+                'message' => fn() => $request->session()->get('message'),
             ],
             // Get event that did not end yet and is the next one
             'event' => \App\Models\Event::where('ends_at', '>', now())->orderBy('starts_at')->first(),

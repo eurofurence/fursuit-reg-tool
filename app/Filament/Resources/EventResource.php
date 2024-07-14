@@ -10,6 +10,7 @@ use Filament\Forms\Components\Group;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -33,8 +34,12 @@ class EventResource extends Resource
                     Forms\Components\DatePicker::make('ends_at')
                         ->required(),
                 ])->columns()->columnSpanFull()->label('Event Dates'),
-                Forms\Components\DateTimePicker::make('preorder_ends_at')
-                    ->required()->columnSpanFull(),
+                Group::make([
+                    Forms\Components\DateTimePicker::make('preorder_ends_at')
+                        ->required(),
+                    Forms\Components\DateTimePicker::make('order_ends_at')
+                        ->required(),
+                ])->columns()->columnSpanFull()->label('Closing Dates'),
             ]);
     }
 
@@ -47,15 +52,19 @@ class EventResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('starts_at')
                     ->date()
-                    ->description(fn (Event $record) => $record->starts_at->diffForHumans())
+                    ->description(fn (Event $record) => $record->starts_at?->diffForHumans())
                     ->sortable(),
                 Tables\Columns\TextColumn::make('ends_at')
                     ->date()
-                    ->description(fn (Event $record) => $record->ends_at->diffForHumans())
+                    ->description(fn (Event $record) => $record->ends_at?->diffForHumans())
                     ->sortable(),
                 Tables\Columns\TextColumn::make('preorder_ends_at')
                     ->dateTime('d.m.Y H:i')
-                    ->description(fn (Event $record) => $record->preorder_ends_at->diffForHumans())
+                    ->description(fn (Event $record) => $record->preorder_ends_at?->diffForHumans())
+                    ->sortable(),
+                TextColumn::make('order_ends_at')
+                    ->dateTime('d.m.Y H:i')
+                    ->description(fn (Event $record) => $record->order_ends_at?->diffForHumans())
                     ->sortable(),
             ])
             ->filters([

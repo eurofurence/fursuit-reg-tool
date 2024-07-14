@@ -2,6 +2,7 @@
 import {Link, usePage} from '@inertiajs/vue3';
 import dayjs from "dayjs";
 import Button from "primevue/button";
+import {formatEuroFromCents} from "../helpers.js";
 const page = usePage().props;
 </script>
 
@@ -26,6 +27,12 @@ const page = usePage().props;
                         </div>
                     </div>
                     <div class="flex items-center justify-end ml-auto pr-2">
+                        <div>
+                            <!-- Balance -->
+                            <div class="text-sm sm:text-base">
+                                <span v-if="page.auth.user" class="font-semibold">{{ formatEuroFromCents(usePage().props.auth.balance) }}</span>
+                            </div>
+                        </div>
                         <Link :href="route('auth.logout')" method="POST" class="text-white" v-if="usePage().props.auth.user">
                             <Button title="Logout" class="text-white" text size="large" icon="pi pi-sign-out"
                                     aria-label="Submit"/>

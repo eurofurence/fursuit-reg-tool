@@ -10,6 +10,6 @@ class Rejected extends FursuitStatusState
 
     public function color(): string
     {
-        // TODO: Implement color() method.
+        return 'danger';
     }
 }

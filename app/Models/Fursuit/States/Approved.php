@@ -10,6 +10,6 @@ class Approved extends FursuitStatusState
 
     public function color(): string
     {
-        // TODO: Implement color() method.
+        return 'success';
     }
 }

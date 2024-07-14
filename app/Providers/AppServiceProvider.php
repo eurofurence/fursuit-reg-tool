@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Providers\Socialite\SocialiteIdentityProvider;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Socialite\Contracts\Factory;
 
@@ -26,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
             $config = config('services.identity');
 
             return $socialite->buildProvider(SocialiteIdentityProvider::class, $config);
+        });
+        Http::macro('attsrv', function () {
+            return Http::acceptJson()
+                ->baseUrl(config('services.attsrv.url'));
         });
     }
 }

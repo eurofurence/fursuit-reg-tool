@@ -3,6 +3,7 @@
 namespace App\Models\Fursuit;
 
 use App\Models\Badge\Badge;
+use App\Models\Event;
 use App\Models\Fursuit\States\FursuitStatusState;
 use App\Models\Species;
 use App\Models\User;
@@ -33,6 +34,11 @@ class Fursuit extends Model
     public function badges()
     {
         return $this->hasMany(Badge::class);
+    }
+
+    public function event()
+    {
+        return $this->belongsTo(Event::class);
     }
 
     public function species(): BelongsTo

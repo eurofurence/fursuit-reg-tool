@@ -9,6 +9,8 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import PrimeVue from 'primevue/config';
 import Lara from "../js/presets/lara";
 import Tooltip from 'primevue/tooltip';
+import ConfirmationService from 'primevue/confirmationservice';
+
 
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -28,6 +30,7 @@ createInertiaApp({
                 unstyled: true,
                 pt: Lara                            //apply preset
             })
+            .use(ConfirmationService)
             .directive('tooltip', Tooltip)
             .mount(el);
     },

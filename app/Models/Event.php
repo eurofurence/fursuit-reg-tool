@@ -16,6 +16,7 @@ class Event extends Model
             'starts_at' => 'date',
             'ends_at' => 'date',
             'preorder_ends_at' => 'datetime',
+            'order_ends_at' => 'datetime',
         ];
     }
 
