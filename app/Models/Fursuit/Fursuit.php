@@ -11,11 +11,13 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\ModelStates\HasStates;
 
 class Fursuit extends Model
 {
-    use HasStates;
+    use HasStates, LogsActivity;
     protected $guarded = [];
 
     protected $casts = [
@@ -53,5 +55,12 @@ class Fursuit extends Model
                 return Storage::temporaryUrl($this->image, now()->addMinutes(5));
             },
         );
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'image', 'species_id']);
+        // Chain fluent methods for configuration options
     }
 }

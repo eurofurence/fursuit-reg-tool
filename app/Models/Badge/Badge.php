@@ -11,11 +11,13 @@ use Bavix\Wallet\Traits\HasWalletFloat;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\ModelStates\HasStates;
 
 class Badge extends Model implements ProductInterface
 {
-    use HasStates, SoftDeletes, HasWalletFloat;
+    use HasStates, SoftDeletes, HasWalletFloat, LogsActivity;
 
     protected $guarded = [];
     protected $casts = [
@@ -63,5 +65,11 @@ class Badge extends Model implements ProductInterface
         return [
             'picked_up_at' => 'datetime',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['*']);
     }
 }

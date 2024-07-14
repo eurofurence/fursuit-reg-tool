@@ -9,6 +9,8 @@ use App\Models\Event;
 use App\Models\Fursuit\States\Pending;
 use App\Models\Species;
 use App\Models\User;
+use App\Notifications\BadgeCreatedNotification;
+use App\Notifications\FursuitApprovedNotification;
 use App\Services\BadgeCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +39,7 @@ class BadgeController extends Controller
     public function store(BadgeCreateRequest $request)
     {
         $request->user()->can('create', Badge::class);
-        DB::transaction(function () use ($request) {
+        $badge = DB::transaction(function () use ($request) {
             // Lock Wallet Balance
             $request->user()->balanceInt;
             // Lock user for update
@@ -106,8 +108,11 @@ class BadgeController extends Controller
                 $clone->save();
                 $request->user()->forcePay($clone->fresh());
             }
+            return $badge;
         });
 
+        // send notification for new fursuit
+        $badge->fursuit->user->notify(new BadgeCreatedNotification($badge));
 
         return redirect()->route('badges.index');
     }
@@ -125,7 +130,7 @@ class BadgeController extends Controller
 
     public function update(BadgeUpdateRequest $request, Badge $badge)
     {
-        DB::transaction(function () use ($request, $badge) {
+        $badge = DB::transaction(function () use ($request, $badge) {
             $request->user()->can('update', $badge);
             // Lock Wallet Balance
             $request->user()->balanceInt;
@@ -135,7 +140,6 @@ class BadgeController extends Controller
             $validated = $request->validated();
             $fursuit = $badge->fursuit;
             $fursuit->fill([
-                'status' => Pending::$name,
                 'species_id' => Species::firstOrCreate([
                     'name' => $validated['species'],
                 ], [
@@ -149,6 +153,10 @@ class BadgeController extends Controller
             if ($request->hasFile('image')) {
                 Storage::delete($fursuit->image);
                 $fursuit->image = $request->file('image')->store('fursuits');
+            }
+            // if species_id, name or image changed, status goes back to pending review
+            if ($fursuit->isDirty(['species_id', 'name', 'image'])) {
+                $fursuit->status = Pending::$name;
             }
             $fursuit->save();
             /**
@@ -176,6 +184,7 @@ class BadgeController extends Controller
             Badge::where('extra_copy_of', $badge->id)->update([
                 'dual_side_print' => $validated['upgrades']['doubleSided'],
             ]);
+            return $badge;
         });
         return redirect()->route('badges.index');
     }

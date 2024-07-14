@@ -9,11 +9,9 @@ use Illuminate\Notifications\Notification;
 
 class BadgeCreatedNotification extends Notification
 {
-    public Badge $badge;
 
-    public function __construct(public Fursuit $fursuit)
+    public function __construct(public Badge $badge)
     {
-        $this->badge = $this->fursuit->badges()->whereNull('extra_copy_of')->first();
     }
 
     public function via($notifiable): array

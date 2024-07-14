@@ -25,5 +25,5 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
 });
 
 Route::get('/preview', function () {
-    \App\Models\User::first()->notifyNow(new \App\Notifications\FursuitRejectedNotification(\App\Models\Fursuit\Fursuit::whereHas('badges')->first(),"test"));
+    \App\Models\User::first()->notifyNow(new \App\Notifications\FursuitApprovedNotification(\App\Models\Fursuit\Fursuit::whereHas('badges')->first()));
 });

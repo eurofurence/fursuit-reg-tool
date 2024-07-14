@@ -11,7 +11,7 @@ class FursuitApprovedNotification extends Notification
 {
     private Badge $badge;
 
-    public function __construct(public Fursuit $fursuit,public string $reason)
+    public function __construct(public Fursuit $fursuit)
     {
         $this->badge = $this->fursuit->badges()->whereNull('extra_copy_of')->first();
     }
@@ -29,6 +29,10 @@ class FursuitApprovedNotification extends Notification
             ->line('We will print the badge and have it ready for you at the convention.')
             ->lineIf($this->badge->total > 0, 'We will ask you to pay the Badge fee when you pickup the Badge.')
             ->lineIf($this->badge->total > 0, 'We accept Cash (Preferred), Credit Card and EC Card. Please note that we do not accept American Express.')
+            ->line('To make changes or cancel the badge (possible until we print it), please click the button below.')
+            ->action('Edit Badge', route('badges.edit', [
+                'badge' => $this->badge->id,
+            ]))
             ->line('Please do not reply to this email. If you have any questions, please contact us at conops@eurofurence.org');
     }
 
