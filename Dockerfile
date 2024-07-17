@@ -5,10 +5,10 @@ ENV COMPOSER_MEMORY_LIMIT=-1
 ######################################################
 # Step 1 | Install Dependencies
 ######################################################
-COPY .github/docker/install-php-extensions /usr/local/bin/
+# Download  install-php-extension
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 
 RUN apk update \
-    && chmod +x /usr/local/bin/install-php-extensions \
     && apk add --no-cache curl git unzip openssl tar ca-certificates \
     && install-php-extensions gd bcmath pdo_mysql zip intl opcache pcntl redis swoole @composer \
     && rm -rf /var/cache/apk/*
@@ -33,11 +33,11 @@ FROM base as local
 ######################################################
 FROM base as vite-vendor-build
 WORKDIR /app
-RUN COMPOSER_ALLOW_SUPERUSER=1 | rm composer.lock composer.json && composer require tightenco/ziggy:^1.0 --ignore-platform-reqs
+RUN COMPOSER_ALLOW_SUPERUSER=1 | rm composer.lock composer.json && composer require tightenco/ziggy:^2 --ignore-platform-reqs
 ######################################################
 # NodeJS Stage
 ######################################################
-FROM node:20-buster as vite
+FROM node:20-alpine as vite
 WORKDIR /app
 COPY package.json package-lock.json tailwind.config.js vite.config.js postcss.config.js ./
 RUN npm install
@@ -50,10 +50,8 @@ RUN npm run build
 FROM base as production
 COPY --from=vite /app/public/build ./public/build
 COPY . /app/
-RUN composer install --no-dev --optimize-autoloader \
+RUN composer install --no-dev --optimize-autoloader --no-cache \
     && chmod 777 -R bootstrap storage \
     && rm -rf .env bootstrap/cache/*.php auth.json \
-    && chown -R www-data:www-data /app \
-    && rm -rf ~/.composer  \
-    && php artisan matice:generate
+    && chown -R www-data:www-data /app
 CMD sh -c "php artisan octane:start --host=0.0.0.0 --port=80"
