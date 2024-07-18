@@ -16,6 +16,7 @@
         "laravel/socialite": "^5.14",
         "laravel/tinker": "^2.9",
         "league/flysystem-aws-s3-v3": "^3.0",
+        "sentry/sentry-laravel": "^4.7",
         "spatie/laravel-activitylog": "^4.8",
         "spatie/laravel-model-states": "^2.7",
         "tightenco/ziggy": "^2.0"
