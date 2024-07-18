@@ -12,7 +12,7 @@ class WelcomeController extends Controller
         // Get next event by ends_at
         $event = \App\Models\Event::getActiveEvent();
         return Inertia::render('Welcome', [
-            'showState' => $event->state,
+            'showState' => $event?->state ?? \App\Enum\EventStateEnum::CLOSED->value,
         ]);
     }
 }
