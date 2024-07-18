@@ -12,7 +12,7 @@ class EventEndedMiddleware
         // Check if there is an event that did not end yet
         $event = \App\Models\Event::where('ends_at', '>', now())->orderBy('starts_at')->first();
         if (!$event) {
-            return redirect()->route('event_ended');
+            return redirect()->route('welcome');
         }
         return $next($request);
     }
