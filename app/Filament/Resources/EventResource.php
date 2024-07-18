@@ -35,6 +35,7 @@ class EventResource extends Resource
                         ->required(),
                 ])->columns()->columnSpanFull()->label('Event Dates'),
                 Group::make([
+                    Forms\Components\DateTimePicker::make('preorder_starts_at')->required(),
                     Forms\Components\DateTimePicker::make('preorder_ends_at')
                         ->required(),
                     Forms\Components\DateTimePicker::make('order_ends_at')
@@ -57,6 +58,10 @@ class EventResource extends Resource
                 Tables\Columns\TextColumn::make('ends_at')
                     ->date()
                     ->description(fn (Event $record) => $record->ends_at?->diffForHumans())
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('preorder_starts_at')
+                    ->dateTime('d.m.Y H:i')
+                    ->description(fn (Event $record) => $record->preorder_ends_at?->diffForHumans())
                     ->sortable(),
                 Tables\Columns\TextColumn::make('preorder_ends_at')
                     ->dateTime('d.m.Y H:i')

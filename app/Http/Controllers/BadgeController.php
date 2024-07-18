@@ -210,6 +210,10 @@ class BadgeController extends Controller
             $request->user()->refund($badge);
             $badge->delete();
         });
+        // if user has no badges left redirect to welcome
+        if ($request->user()->badges()->count() === 0) {
+            return redirect()->route('welcome');
+        }
         return redirect()->route('badges.index');
     }
 }

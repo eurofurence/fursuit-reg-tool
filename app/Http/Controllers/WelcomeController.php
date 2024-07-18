@@ -8,6 +8,11 @@ class WelcomeController extends Controller
 {
     public function __invoke()
     {
-        return Inertia::render('Welcome');
+        // States => closed, coutdown, preorder, late => closed
+        // Get next event by ends_at
+        $event = \App\Models\Event::getActiveEvent();
+        return Inertia::render('Welcome', [
+            'showState' => $event->state,
+        ]);
     }
 }

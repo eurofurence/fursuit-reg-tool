@@ -259,9 +259,12 @@ const total = computed(() => {
                             </div>
                             <!-- Options -->
                             <div v-if="latePrice > 0"
-                                 class="flex justify-between border-b border-dotted border-gray-900">
-                                <span>Late Fee</span>
-                                <span>{{ latePrice }},00 €</span>
+                                 class="border-b border-dotted border-gray-900">
+                                <div class="flex justify-between ">
+                                    <span>Late Fee</span>
+                                    <span>{{ latePrice }},00 €</span>
+                                </div>
+                                <small>Orders placed after the Preorder Deadline will be charged a late fee.</small>
                             </div>
                             <div v-if="form.upgrades.doubleSided"
                                  class="flex justify-between border-b border-dotted border-gray-900">

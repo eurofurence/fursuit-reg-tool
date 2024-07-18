@@ -10,8 +10,13 @@ import PrimeVue from 'primevue/config';
 import Lara from "../js/presets/lara";
 import Tooltip from 'primevue/tooltip';
 import ConfirmationService from 'primevue/confirmationservice';
-
-
+import advancedFormat from 'dayjs/plugin/advancedFormat';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import dayjs from "dayjs";
+dayjs.extend(advancedFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

@@ -13,6 +13,10 @@ defineOptions({
     layout: Layout
 })
 
+const props = defineProps({
+    showState: String,
+});
+
 const preorderPeriodEnded = computed(() => {
     return dayjs().isAfter(dayjs('2022-08-15'));
 });
@@ -22,33 +26,46 @@ const eventEnded = computed(() => {
 });
 
 const messages = computed(() => {
-    if (eventEnded.value === true) {
-        return {
-            hero_title: "Come back next year!",
-            hero_subtitle: "The event has ended, but we will start preorders for next year's Eurofurence soon. Please check back later for more information",
-            message: null,
-            showButtons: false
-        };
-    } else if (preorderPeriodEnded === true) {
-        return {
-            hero_title: "It's not too late!",
-            hero_subtitle: "The preorder period has ended. Any fursuit badge orders placed now will include a late printing fee of 2 €.",
-            message: {
-                type: "warn",
-                text: "The preorder period has ended. Any fursuit badge orders placed now will include a late printing fee of 2 €."
-            },
-            showButtons: true
-        };
-    } else {
-        return {
-            hero_title: "Claim your Badge today!",
-            hero_subtitle: "With any valid convention ticket, you can preorder your first preorder fursuit badge for free. Any additional fursuit badges can be ordered for just 2 € per badge.",
-            message: {
-                type: 'info',
-                text: "Please note that you can claim your free fursuit badge only until " + dayjs(usePage().props.event.preorder_ends_at).format('MMMM D, YYYY HH:mm')
-            },
-            showButtons: true
-        };
+    switch (props.showState) {
+        case "countdown": {
+            return {
+                hero_title: "Preorders open soon!",
+                hero_subtitle: "We open pre-orders "+dayjs(usePage().props.event.preorder_starts_at).format('Do MMMM YYYY HH:mm z')+".",
+                message: {
+                    type: 'info',
+                    text: "Please note that you can claim your free fursuit badge only until " + dayjs(usePage().props.event.preorder_ends_at).format('MMMM D, YYYY HH:mm')
+                },
+                showButtons: false
+            };
+        }
+        case "preorder": {
+            return {
+                hero_title: "Claim your Badge today!",
+                hero_subtitle: "With any valid convention ticket, you can preorder your first preorder fursuit badge for free. Any additional fursuit badges can be ordered for just 2 € per badge.",
+                message: {
+                    type: 'info',
+                    text: "Please note that you can claim your free fursuit badge only until " + dayjs(usePage().props.event.preorder_ends_at).format('MMMM D, YYYY HH:mm')
+                },
+                showButtons: true
+            };
+        }
+        case "late":
+            return {
+                hero_title: "It's not too late!",
+                hero_subtitle: "The preorder period has ended. Any fursuit badge orders placed now will include a late printing fee of 2 €.",
+                message: {
+                    type: "warn",
+                    text: "The preorder period has ended. Any fursuit badge orders placed now will include a late printing fee of 2 €."
+                },
+                showButtons: true
+            };
+        default:
+            return {
+                hero_title: "Come back next year!",
+                hero_subtitle: "The event has ended, but we will start preorders for next year's Eurofurence soon. Please check back later for more information",
+                message: null,
+                showButtons: false
+            };
     }
 });
 </script>
@@ -70,7 +87,9 @@ const messages = computed(() => {
                 <div class="flex flex-col md:flex-row gap-3 text-white w-full"
                      v-if="usePage().props.auth.user !== null">
                     <!-- Action Select -->
-                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" class="w-full" v-if="usePage().props.auth.user.badges.length === 0" label="Claim your first free Fursuit Badge!"/>
+                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" class="w-full" v-if="usePage().props.auth.user.badges.length === 0 && showState === 'preorder'" label="Claim your first free Fursuit Badge!"/>
+                    <!-- Claim Additional Fursuit Badges -->
+                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" class="w-full" v-else-if="usePage().props.auth.user.badges.length === 0">Get your first Fursuit Badge!</Button>
                     <!-- Buy Additional Fursuit Badges -->
                     <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" severity="warning" v-if="usePage().props.auth.user.badges.length > 0" class="w-full"
                             label="Buy Additional Fursuit Badges"/>
