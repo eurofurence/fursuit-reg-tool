@@ -211,6 +211,10 @@ class BadgeController extends Controller
             // Refund Badge
             $request->user()->refund($badge);
             $badge->delete();
+            // Delete Fursuit if no badges left
+            if ($badge->fursuit->badges()->count() === 0) {
+                $badge->fursuit->delete();
+            }
         });
         // if user has no badges left redirect to welcome
         if ($request->user()->badges()->count() === 0) {

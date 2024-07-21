@@ -56,13 +56,16 @@ class CreateOrUpdateEventForStateCommand extends Command
         if ($event) {
             $event->update([
                 'starts_at' => $startsAt,
+                'ends_at' => now()->addDays(30),
                 'preorder_starts_at' => $preorderStartsAt,
                 'preorder_ends_at' => $preorderEndsAt,
                 'order_ends_at' => $orderEndsAt,
             ]);
         } else {
             Event::create([
+                'name' => 'Test Event',
                 'starts_at' => $startsAt,
+                'ends_at' => now()->addDays(30),
                 'preorder_starts_at' => $preorderStartsAt,
                 'preorder_ends_at' => $preorderEndsAt,
                 'order_ends_at' => $orderEndsAt,

@@ -6,7 +6,7 @@ const props = defineProps({
     badge: Object
 });
 
-function getStatusName(status) {
+function getFursuitStatusName(status) {
     switch (status) {
         case 'pending':
             return 'Pending Review';
@@ -17,7 +17,7 @@ function getStatusName(status) {
     }
 }
 
-function getSeverity(status) {
+function getFursuitSeverity(status) {
     switch (status) {
         case 'pending':
             return 'warning';
@@ -28,7 +28,7 @@ function getSeverity(status) {
     }
 }
 
-function getTooltipText(status) {
+function getFursuitTooltipText(status) {
     switch (status) {
         case 'pending':
             return 'This badge is pending review. We will notify you once it has been approved or rejected.';
@@ -38,6 +38,46 @@ function getTooltipText(status) {
             return 'This badge has been rejected, we have emailed you the reason.';
     }
 }
+
+function getBadgeStatusName(status) {
+    switch (status) {
+        case 'pending':
+            return 'Pending Printing';
+        case 'printed':
+            return 'Printed';
+        case 'ready_for_pickup':
+            return 'Ready for Pickup';
+        case 'picked_up':
+            return 'Picked Up';
+    }
+}
+
+function getBadgeSeverity(status) {
+    switch (status) {
+        case 'pending':
+            return 'warning';
+        case 'printed':
+            return 'info';
+        case 'ready_for_pickup':
+            return 'success';
+        case 'picked_up':
+            return 'success';
+    }
+}
+
+function getBadgeTooltipText(status) {
+    switch (status) {
+        case 'pending':
+            return 'This badge is pending printing. We will notify you once it is ready for pickup.';
+        case 'printed':
+            return 'This badge has been printed. No further changes can be made.';
+        case 'ready_for_pickup':
+            return 'This badge is ready for pickup.';
+        case 'picked_up':
+            return 'This badge has been picked up.';
+    }
+}
+
 </script>
 
 <template>
@@ -50,7 +90,18 @@ function getTooltipText(status) {
                 <h2 class="text-lg font-semibold font-main">{{ badge.fursuit.name }}</h2>
                 <p>{{ badge.fursuit.species.name }}</p>
                 <div class="py-1">
-                    <Tag v-tooltip.bottom="getTooltipText(badge.fursuit.status)" :severity="getSeverity(badge.fursuit.status)" :value="getStatusName(badge.fursuit.status)"/>
+                    <Tag
+                        v-if="badge.status === 'pending'"
+                        v-tooltip.bottom="getFursuitTooltipText(badge.fursuit.status)"
+                        :severity="getFursuitSeverity(badge.fursuit.status)"
+                        :value="getFursuitStatusName(badge.fursuit.status)"
+                    />
+                    <Tag
+                        v-if="badge.fursuit.status === 'approved' && badge.status !== 'pending'"
+                        v-tooltip.bottom="getBadgeTooltipText(badge.status)"
+                        :severity="getBadgeSeverity(badge.status)"
+                        :value="getBadgeStatusName(badge.status)"
+                    />
                 </div>
             </div>
             <div v-if="badge.extra_copy" class="flex flex-col justify-center px-4 pb-1 md:p-4 gap-2">
