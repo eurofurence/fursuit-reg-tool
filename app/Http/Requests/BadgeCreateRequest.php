@@ -16,7 +16,7 @@ class BadgeCreateRequest extends FormRequest
                 'image',
                 'mimes:jpeg,jpg,png',
                 'dimensions:min_width=240,min_height=320',
-                'max:2048'
+                'max:8192'
             ],
             'catchEmAll' =>  ['required','boolean'],
             'publish' =>  ['required','boolean'],
