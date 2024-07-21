@@ -8,6 +8,7 @@
         "php": "^8.2",
         "bavix/laravel-wallet": "^11.1",
         "filament/filament": "^3.2",
+        "flowframe/laravel-trend": "^0.2.0",
         "inertiajs/inertia-laravel": "^1.0",
         "laravel/framework": "^11.9",
         "laravel/horizon": "^5.25",

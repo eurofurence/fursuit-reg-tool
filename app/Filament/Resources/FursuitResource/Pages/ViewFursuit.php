@@ -13,10 +13,13 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Set;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ViewFursuit extends ViewRecord
 {
     protected static string $resource = FursuitResource::class;
+
+    public $defaultAction = 'Claim';
 
     protected function getHeaderActions(): array
     {
@@ -31,14 +34,36 @@ class ViewFursuit extends ViewRecord
             'The species of the fursuit is not appropriate.',
         ];
         return [
-            //Actions\EditAction::make(),
+            Actions\Action::make('Claim')
+                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Approved::$name, auth()->user()) && !$record->isClaimedBySelf(auth()->user()))
+                ->color('primary')
+                ->action(function (Fursuit $record) {
+                    if($record->isClaimed() && $record->isClaimedBySelf(auth()->user()) === false) {
+                        return $this->toNextFursuit($record);
+                    }
+                    $record->claim(auth()->user());
+                    $record->refresh();
+                }),
+            // Unclaim if self
+            Actions\Action::make('Unclaim')
+                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Approved::$name, auth()->user()) && $record->isClaimedBySelf(auth()->user()))
+                ->color('danger')
+                ->action(function (Fursuit $record) {
+                    $record->unclaim(auth()->user());
+                    $record->refresh();
+                }),
             Actions\Action::make('Approve')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
-                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Approved::class, auth()->user()))
+                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Approved::class, auth()->user()) && $record->isClaimedBySelf(auth()->user()))
                 ->action(function (Fursuit $record) {
                     if($record === null) {
+                        return;
+                    }
+                    // Check Claim
+                    if($record->isClaimed() === false) {
+                        Log::error('Fursuit is not claimed, but user tried to approve it.', ['fursuit' => $record]);
                         return;
                     }
                     $record->status->transitionTo(Approved::class, auth()->user());
@@ -62,8 +87,13 @@ class ViewFursuit extends ViewRecord
                         ->label('Reason Sent to the User!')
                         ->required(),
                 ])
-                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Rejected::class, auth()->user(), ""))
+                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Rejected::class, auth()->user(), "") && $record->isClaimedBySelf(auth()->user()))
                 ->action(function (Fursuit $record, array $data) {
+                    // Check Claim
+                    if($record->isClaimed() === false) {
+                        Log::error('Fursuit is not claimed, but user tried to reject it.', ['fursuit' => $record]);
+                        return;
+                    }
                     $record->status->transitionTo(Rejected::class, auth()->user(), $data['custom_reason']);
                     $record->save();
                     $nextFursuit = Fursuit::where('status', 'pending')->first();
@@ -77,14 +107,30 @@ class ViewFursuit extends ViewRecord
                 ->icon('heroicon-o-arrow-right')
                 ->color('primary')
                 ->action(function (Fursuit $record) {
-                    $nextFursuit = Fursuit::where('status', 'pending')
-                        ->where('id', '!=', $record->id)
-                        ->first();
-                    if ($nextFursuit) {
-                        return redirect()->route('filament.admin.resources.fursuits.view', $nextFursuit);
-                    }
-                    return redirect()->route('filament.admin.resources.fursuits.index');
+                    return $this->toNextFursuit($record);
                 }),
         ];
+    }
+
+    private function toNextFursuit(Fursuit $record)
+    {
+        // Try three times to find a next unclaimed fursuit and then exit to index
+        $tries = 0;
+        $maxTries = 3;
+        $excludedIds = [$record->id];
+        do {
+            $nextFursuit = Fursuit::where('status', 'pending')
+                ->whereNotIn('id', $excludedIds)
+                ->first();
+            if ($nextFursuit) {
+                $excludedIds[] = $nextFursuit->id;
+            }
+            $tries++;
+        } while ($nextFursuit && $nextFursuit->isClaimed() && $tries < $maxTries);
+
+        if ($nextFursuit) {
+            return redirect()->route('filament.admin.resources.fursuits.view', $nextFursuit);
+        }
+        return redirect()->route('filament.admin.resources.fursuits.index');
     }
 }

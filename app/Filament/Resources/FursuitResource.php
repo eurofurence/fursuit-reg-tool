@@ -146,6 +146,14 @@ class FursuitResource extends Resource
                 Tables\Filters\SelectFilter::make('event_id')
                     ->relationship('event', 'name')
                     ->default(Event::getActiveEvent()?->id),
+                // Status Filter
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                    ])
+                ->default('pending'),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -156,7 +164,7 @@ class FursuitResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\ActivitiesRelationManager::class
         ];
     }
 

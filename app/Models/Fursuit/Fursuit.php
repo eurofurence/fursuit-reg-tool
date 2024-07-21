@@ -20,6 +20,7 @@ use Spatie\ModelStates\HasStates;
 class Fursuit extends Model
 {
     use HasStates, LogsActivity, HasFactory, SoftDeletes;
+
     protected $guarded = [];
 
     protected $casts = [
@@ -59,10 +60,56 @@ class Fursuit extends Model
         );
     }
 
+    private function getClaimCacheKey(int $userId): string
+    {
+        return 'user:'.$userId.':fursuit:'.$this->id.':claim';
+    }
+
+    public function claim(User $user): bool
+    {
+        $cacheKey = $this->getClaimCacheKey($user->id);
+
+        if (cache()->has($cacheKey)) {
+            return false;
+        }
+
+        cache()->put($cacheKey, $this->id, now()->addMinutes(5));
+
+        return true;
+    }
+
+    public function unclaim(): bool
+    {
+        $cacheKey = $this->getClaimCacheKey(auth()->id());
+
+        if (!cache()->has($cacheKey)) {
+            return false;
+        }
+
+        cache()->forget($cacheKey);
+
+        return true;
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logOnly(['name', 'image', 'species_id']);
         // Chain fluent methods for configuration options
+    }
+
+    public function isNotClaimed(): bool
+    {
+        return !cache()->has($this->getClaimCacheKey(auth()->id()));
+    }
+
+    public function isClaimed()
+    {
+        return cache()->has($this->getClaimCacheKey(auth()->id()));
+    }
+
+    public function isClaimedBySelf(User $user)
+    {
+        return cache()->has($this->getClaimCacheKey($user->id));
     }
 }
