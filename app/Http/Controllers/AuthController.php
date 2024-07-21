@@ -57,6 +57,7 @@ class AuthController extends Controller
             'is_admin' => in_array('N9OY0K8OJVXR1P7L', $socialLiteUser->user['groups'], true),
         ]);
 
+        $user->wallet->balance;
 
         $statusResponse = \Illuminate\Support\Facades\Http::attsrv()
             ->withToken($socialLiteUser->token)

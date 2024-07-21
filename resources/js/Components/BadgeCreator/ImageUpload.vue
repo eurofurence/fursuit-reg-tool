@@ -101,11 +101,12 @@ function confirmImage() {
     <div class="text-sm mt-2 my-4">
         <p class="max-w-xs">All photos will be manually reviewed before printing. Kindly follow the rules to ensure your photo does not get rejected.</p>
         <ul class="list-disc pl-4 mt-2">
-            <li>Only submit photos of your fursuit.</li>
-            <li>No humans in the photos.</li>
-            <li>No explicit content.</li>
-            <li>No drawings or illustrations.</li>
-            <li>No AI-generated images.</li>
+            <li>No Digital Art</li>
+            <li>No Human Faces</li>
+            <li>No Animals</li>
+            <li>No AI-Generated Content</li>
+            <li>No NSFW Content</li>
+            <li>Only Submit Photos of Your Fursuit</li>
         </ul>
         <div class="mt-2 ">
             <h3 class="font-semibold">Fursuit Badges for Puppets</h3>
