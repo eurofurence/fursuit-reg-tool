@@ -108,7 +108,7 @@ const total = computed(() => {
                     <div class="w-48 mx-auto shrink-0">
                         <div class="block md:flex gap-6 justify-center mb-1">
                             <div v-if="!previewImage" @click="imageModalOpen = true"
-                                 class="bg-primary-950 h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 flex items-center justify-center cursor-pointer">
+                                 class="bg-primary-600 h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 flex items-center justify-center cursor-pointer">
                                 <div class="text-primary-100 text-center text-sm px-4">
                                     Click/Tap here to upload a photo of your fursuit
                                 </div>
