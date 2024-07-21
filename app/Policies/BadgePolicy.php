@@ -2,9 +2,12 @@
 
 namespace App\Policies;
 
+use App\Enum\EventStateEnum;
 use App\Models\Badge\Badge;
+use App\Models\Badge\States\Pending;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Routing\Route;
 
 class BadgePolicy
 {
@@ -12,12 +15,12 @@ class BadgePolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->is_admin;
+        return $user->is_admin && request()->routeIs('filament.*');
     }
 
     public function view(User $user, Badge $badge): bool
     {
-        if ($user->is_admin) {
+        if ($user->is_admin && request()->routeIs('filament.*')) {
             return true;
         }
         return $user->id === $badge->fursuit->user_id;
@@ -30,11 +33,17 @@ class BadgePolicy
         if ($event === null) {
             return false;
         }
-        if($event->order_ends_at !== null) {
-            if($event->order_ends_at->isPast()) {
-                return false;
-            }
+
+        // Admin can override
+        if ($user->is_admin && request()->routeIs('filament.*')) {
+            return true;
         }
+
+        // Safety check if in CLOSED OR LATE return false
+        if ($event->state === \App\Enum\EventStateEnum::CLOSED || $event->state === \App\Enum\EventStateEnum::COUNTDOWN) {
+            return false;
+        }
+
         return true;
     }
 
@@ -45,32 +54,16 @@ class BadgePolicy
         if ($badge->extra_copy_of !== null) {
             return false;
         }
-        // Admin can do everything
-        if ($user->is_admin) {
-            return true;
-        }
-        // Cannot edit when no active event
-        if ($event === null) {
-            return false;
-        }
-        // Cannot edit a badge that has already been printed
-        if ($badge->printed_at !== null) {
-            return false;
-        }
-        // Safety check
-        if($event->order_ends_at !== null) {
-            if($event->order_ends_at->isPast()) {
-                return false;
-            }
-        }
-        return $user->id === $badge->fursuit->user_id;
+        return $this->delete($user, $badge);
     }
 
     public function delete(User $user, Badge $badge): bool
     {
         $event = \App\Models\Event::getActiveEvent();
+        // Admin can do everything IN FILAMENT
+
         // Admin can do everything
-        if ($user->is_admin) {
+        if ($user->is_admin && request()->routeIs('filament.*')) {
             return true;
         }
         // Cannot edit when no active event
@@ -78,25 +71,25 @@ class BadgePolicy
             return false;
         }
         // Cannot edit a badge that has already been printed
-        if ($badge->printed_at !== null) {
+        if ((string) $badge->status !== Pending::$name) {
             return false;
         }
-        // Safety check
-        if($event->order_ends_at !== null) {
-            if($event->order_ends_at->isPast()) {
-                return false;
-            }
+
+        // Safety check if in CLOSED OR LATE return false
+        if ($event->state === \App\Enum\EventStateEnum::CLOSED || $event->state === \App\Enum\EventStateEnum::COUNTDOWN) {
+            return false;
         }
+
         return $user->id === $badge->fursuit->user_id;
     }
 
     public function restore(User $user, Badge $badge): bool
     {
-        return $user->is_admin;
+        return $user->is_admin && request()->routeIs('filament.*');
     }
 
     public function forceDelete(User $user, Badge $badge): bool
     {
-        return $user->is_admin;
+        return $user->is_admin && request()->routeIs('filament.*');
     }
 }

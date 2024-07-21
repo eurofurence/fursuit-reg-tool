@@ -27,6 +27,7 @@ const props = defineProps({
 
 const imageModalOpen = ref(false)
 const previewImage = ref(null);
+const imageSource = reactive({});
 
 const form = useForm('post', route('badges.store'), {
     species: null,
@@ -87,7 +88,7 @@ const total = computed(() => {
             :style="{ width: '25rem' }">
         <span
             class="text-surface-600 dark:text-surface-0/70 block mb-5">Please upload a picture, you can crop the image after you uploaded it.</span>
-        <ImageUpload @update-image="imageUpdatedEvent"></ImageUpload>
+        <ImageUpload @update-image="imageUpdatedEvent" @update-source="args => imageSource = args" :image-source="imageSource"></ImageUpload>
     </Dialog>
     <!-- Fursuit Creator -->
     <div class="pt-8 px-6 xl:px-0">
@@ -124,7 +125,7 @@ const total = computed(() => {
                         <div class="text-center text-xs text-gray-500">
                             <div>Only jpg/png</div>
                             <div>Min 240x340px</div>
-                            <div>Max 2MB (after crop)</div>
+                            <div>Max 8 MB</div>
                         </div>
                         <InputError :error="form.errors.image"></InputError>
                     </div>

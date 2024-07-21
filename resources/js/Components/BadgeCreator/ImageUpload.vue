@@ -5,20 +5,27 @@ import {Cropper} from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css';
 import pica from 'pica';
 import Button from 'primevue/button';
+import InlineMessage from "primevue/inlinemessage";
 
-const image = reactive({
-    src: null,
-    type: null,
+const props = defineProps({
+    imageSource: {
+        type: Object,
+        default: {
+            src: null,
+            type: null,
+        }
+    }
 });
+
+const image = reactive(props.imageSource);
 
 const croppedImage = ref(null);
 const rawBlob = ref(null);
 const picaInstance = pica();
 
-const emits = defineEmits(['updateImage'])
+const emits = defineEmits(['updateImage', 'updateSource'])
 
 const onSelectFile = (event) => {
-    console.log(event);
     // Reference to the DOM input element
     const {files} = event;
     // Ensure that you have a file before attempting to read it
@@ -30,12 +37,24 @@ const onSelectFile = (event) => {
         // 2. Create the blob link to the file to optimize performance:
         image.src = URL.createObjectURL(files[0]);
         image.type = files[0].type;
+        emits('updateSource', {
+            src: image.src,
+            type: image.type
+        });
     }
 }
 
 const onChangeCrop = (event) => {
     const {coordinates, canvas} = event;
-    coordinates.value = coordinates;
+    // Save coordinates to img
+    image.coordinates = {
+        left: coordinates.left,
+        top: coordinates.top,
+    };
+    image.size = {
+        width: coordinates.width,
+        height: coordinates.height,
+    };
     // Resize using pica
     picaInstance.toBlob(canvas, image.type)
         .then(blob => {
@@ -51,17 +70,25 @@ const onChangeCrop = (event) => {
         });
 }
 
+function confirmImage() {
+    emits('updateImage',{
+        croppedImage: croppedImage.value,
+        type: image.type,
+        blob: rawBlob.value,
+    });
+    emits('updateSource', image);
+}
+
 </script>
 <template>
-        <FileUpload mode="basic" accept="image/*" :auto="false" class="w-full" :maxFileSize="1000000"
-                    @select="onSelectFile"
-                    choose-label="Choose Image"
-                    v-if="!image.src"/>
+
     <Cropper
         v-if="image.src"
         :src="image.src"
         :type="image.type"
         class="mb-4"
+        :default-position="image.coordinates"
+        :default-size="image.size"
         :stencil-props="{
 		aspectRatio: 3/4,
 		movable: true,
@@ -74,20 +101,32 @@ const onChangeCrop = (event) => {
     <div class="text-sm mt-2 my-4">
         <p class="max-w-xs">All photos will be manually reviewed before printing. Kindly follow the rules to ensure your photo does not get rejected.</p>
         <ul class="list-disc pl-4 mt-2">
-            <li>Only submit photos of fursuits in your possession.</li>
+            <li>Only submit photos of your fursuit.</li>
             <li>No humans in the photos.</li>
             <li>No explicit content.</li>
             <li>No drawings or illustrations.</li>
             <li>No AI-generated images.</li>
         </ul>
+        <div class="mt-2 ">
+            <h3 class="font-semibold">Fursuit Badges for Puppets</h3>
+            <p class="text-xs">We will happily issue badges for puppets and pets. Although they will not able to partake in the Catch-Em-All. Please unselect the Catch-Em-All in that case.</p>
+        </div>
     </div>
 
-    <div v-if="image.src">
-        <Button label="Upload" icon="pi pi-upload" class="w-full" @click="emits('updateImage',{
-            croppedImage: croppedImage,
-            type: image.type,
-            blob: rawBlob,
-        })"/>
+    <div :class="{'grid grid-cols-2 gap-3': image.src}">
+        <div v-if="image.src" class="w-full">
+            <Button severity="success" label="Confirm" icon="pi pi-check" class="w-full" @click="confirmImage()"/>
+        </div>
+
+        <FileUpload mode="basic" accept="image/*" :auto="false" class="w-full" :maxFileSize="8000000"
+                    @select="onSelectFile"
+                    v-if="!image.src"
+                    choose-label="Choose Image">
+        </FileUpload>
+
+        <div v-if="image.src" class="w-full">
+            <Button severity="danger" label="Cancel" icon="pi pi-times" class="w-full" @click="image.src = null"/>
+        </div>
     </div>
 </template>
 

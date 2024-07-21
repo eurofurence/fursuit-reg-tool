@@ -24,12 +24,13 @@ class BadgeController extends Controller
     {
         return Inertia::render('Badges/BadgesIndex', [
             'badges' => auth()->user()->badges()->with('fursuit.species')->get(),
+            'canCreate' => Gate::allows('create', Badge::class),
         ]);
     }
 
     public function create(Request $request)
     {
-        $request->user()->can('create', Badge::class);
+        Gate::authorize('create', Badge::class);
         return Inertia::render('Badges/BadgesCreate', [
             'species' => Species::has('fursuits', count: 5)->orWhere('checked', true)->get('name'),
             'isFree' => auth()->user()->badges()->where('is_free_badge', true)->doesntExist(),
@@ -38,7 +39,7 @@ class BadgeController extends Controller
 
     public function store(BadgeCreateRequest $request)
     {
-        $request->user()->can('create', Badge::class);
+        Gate::authorize('create', Badge::class);
         $badge = DB::transaction(function () use ($request) {
             // Lock Wallet Balance
             $request->user()->balanceInt;
@@ -130,6 +131,7 @@ class BadgeController extends Controller
 
     public function update(BadgeUpdateRequest $request, Badge $badge)
     {
+        Gate::authorize('update', $badge);
         $badge = DB::transaction(function () use ($request, $badge) {
             $request->user()->can('update', $badge);
             // Lock Wallet Balance

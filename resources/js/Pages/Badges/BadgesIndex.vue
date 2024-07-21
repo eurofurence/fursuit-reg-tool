@@ -11,7 +11,8 @@ defineOptions({
     layout: Layout
 })
 const props = defineProps({
-    badges: Array
+    badges: Array,
+    canCreate: Boolean
 });
 </script>
 
@@ -29,6 +30,7 @@ const props = defineProps({
             <Button
                 @click="router.visit(route('badges.create'))"
                 size="small"
+                v-if="canCreate"
                 icon="pi pi-plus"
                 class="w-full sm:w-auto"
                 label="Order another Badge"

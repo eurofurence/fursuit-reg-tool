@@ -44,6 +44,7 @@ const props = defineProps({
 
 const imageModalOpen = ref(false)
 const previewImage = ref(null);
+const imageSource = reactive({});
 
 const form = useForm('post', route('badges.update',{badge: props.badge.id}), {
     _method: 'put',
@@ -115,7 +116,7 @@ function openImageModal() {
             :style="{ width: '25rem' }">
         <span
             class="text-surface-600 dark:text-surface-0/70 block mb-5">Please upload a picture, you can crop the image after you uploaded it.</span>
-        <ImageUpload @update-image="imageUpdatedEvent"></ImageUpload>
+        <ImageUpload @update-image="imageUpdatedEvent" @update-source="args => imageSource = args" :image-source="imageSource"></ImageUpload>
     </Dialog>
     <!-- Delete Modal -->
     <Dialog v-model:visible="deleteModalOpen" :dismissableMask="false" modal header="Delete Badge"

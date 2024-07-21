@@ -8,6 +8,7 @@ use App\Models\Fursuit\States\FursuitStatusState;
 use Bavix\Wallet\Interfaces\Customer;
 use Bavix\Wallet\Interfaces\ProductInterface;
 use Bavix\Wallet\Traits\HasWalletFloat;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -17,7 +18,7 @@ use Spatie\ModelStates\HasStates;
 
 class Badge extends Model implements ProductInterface
 {
-    use HasStates, SoftDeletes, HasWalletFloat, LogsActivity;
+    use HasStates, SoftDeletes, HasWalletFloat, LogsActivity, HasFactory;
 
     protected $guarded = [];
     protected $casts = [
