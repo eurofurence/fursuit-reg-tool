@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\AlphaNumSpaceRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class BadgeCreateRequest extends FormRequest
@@ -9,8 +10,8 @@ class BadgeCreateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'species' =>  ['required','string'],
-            'name' =>  ['required','string','max:32'],
+            'species' =>  ['required','string','max:32', new AlphaNumSpaceRule()],
+            'name' =>  ['required','string','max:32', new AlphaNumSpaceRule()],
             'image' =>  [
                 'required',
                 'image',
