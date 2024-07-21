@@ -24,11 +24,11 @@ class ViewFursuit extends ViewRecord
     protected function getHeaderActions(): array
     {
         $errorOptions = [
-            'The submission shows a fursuit that is not owned by your or was created without the owners permission.',
             'The submission shows a human. We can only accept badges created for fursuits.',
             'The submission is explicit and does not follow our guidelines.',
             'The submission is of low quality and does not meet our guidelines.',
             'The submission is a not a photo. We only accept photos, we do not accept illustrations or other digital art as fursuit images.',
+            'The submission shows an animal. We do not allow images of real animals, only fursuits.',
             'The submission is AI generated and does not show a real fursuit.',
             'The name of the fursuit is not appropriate.',
             'The species of the fursuit is not appropriate.',
