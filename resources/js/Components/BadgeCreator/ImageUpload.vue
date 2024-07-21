@@ -106,12 +106,8 @@ function confirmImage() {
             <li>No Animals</li>
             <li>No AI-Generated Content</li>
             <li>No NSFW Content</li>
-            <li>Only Submit Photos of Your Fursuit</li>
+            <li>We reserve the right to reject any submission.</li>
         </ul>
-        <div class="mt-2 ">
-            <h3 class="font-semibold">Fursuit Badges for Puppets</h3>
-            <p class="text-xs">We will happily issue badges for puppets and pets. Although they will not able to partake in the Catch-Em-All. Please unselect the Catch-Em-All in that case.</p>
-        </div>
     </div>
 
     <div :class="{'grid grid-cols-2 gap-3': image.src}">
