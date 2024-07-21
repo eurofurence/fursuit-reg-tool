@@ -100,13 +100,13 @@ function confirmImage() {
     <!-- Rules -->
     <div class="text-sm mt-2 my-4">
         <p class="max-w-xs">All photos will be manually reviewed before printing. Kindly follow the rules to ensure your photo does not get rejected.</p>
+        <p class="max-w-xs">We reserve the right to reject submissions for the following reasons, but not limited to:</p>
         <ul class="list-disc pl-4 mt-2">
             <li>No Digital Art</li>
             <li>No Human Faces</li>
             <li>No Animals</li>
             <li>No AI-Generated Content</li>
             <li>No NSFW Content</li>
-            <li>We reserve the right to reject any submission.</li>
         </ul>
     </div>
 
