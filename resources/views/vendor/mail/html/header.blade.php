@@ -48,7 +48,7 @@
                                             <a href="{{ $url }}">
                                                 <img
                                                     alt="Eurofurence Fursuit Badge Logo" height="auto"
-                                                    src="http://localhost/img/caspar_fursuitbadge_transparent_cropped.png"
+                                                    src="{{ asset('/img/caspar_fursuitbadge_transparent_cropped.png') }}"
                                                     style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;"
                                                     width="200"
                                                 />
