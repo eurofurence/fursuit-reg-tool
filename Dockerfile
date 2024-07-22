@@ -22,12 +22,6 @@ USER www-data
 ######################################################
 COPY .github/docker/php/opcache.ini $PHP_INI_DIR/conf.d/opcache.ini
 COPY .github/docker/php/php.ini $PHP_INI_DIR/conf.d/php.ini
-
-######################################################
-# Step 6 | Configure Credentials & Hosts for external Git (optional)
-######################################################
-COPY composer.json composer.lock /app/
-RUN composer install --no-dev --no-scripts --no-autoloader
 ######################################################
 # Local Stage
 ######################################################
@@ -37,7 +31,7 @@ FROM base as local
 ######################################################
 FROM base as vite-vendor-build
 WORKDIR /app
-RUN COMPOSER_ALLOW_SUPERUSER=1 | rm composer.lock composer.json && composer require tightenco/ziggy:^2 --ignore-platform-reqs
+RUN COMPOSER_ALLOW_SUPERUSER=1 | composer require tightenco/ziggy:^2 --ignore-platform-reqs
 ######################################################
 # NodeJS Stage
 ######################################################
