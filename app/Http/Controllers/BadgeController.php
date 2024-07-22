@@ -120,7 +120,7 @@ class BadgeController extends Controller
 
     public function edit(Badge $badge, Request $request)
     {
-        Gate::authorize('update', $badge);
+        Gate::authorize('view', $badge);
         return Inertia::render('Badges/BadgesEdit', [
             'canEdit' => $request->user()->can('update', $badge),
             'canDelete' => $request->user()->can('delete', $badge),
