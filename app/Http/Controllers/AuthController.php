@@ -55,6 +55,7 @@ class AuthController extends Controller
             'email' => $socialLiteUser->getEmail(),
             'avatar' => $socialLiteUser->getAvatar(),
             'is_admin' => in_array('N9OY0K8OJVXR1P7L', $socialLiteUser->user['groups'], true),
+            'attendee_id' => $regId,
         ]);
 
         $user->wallet->balance;
