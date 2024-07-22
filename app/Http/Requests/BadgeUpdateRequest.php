@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\AlphaNumSpaceRule;
+use App\Rules\AllowedPritingCharactersRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class BadgeUpdateRequest extends FormRequest
@@ -10,8 +10,8 @@ class BadgeUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'species' =>  ['required','string','max:32', new AlphaNumSpaceRule()],
-            'name' =>  ['required','string','max:32', new AlphaNumSpaceRule()],
+            'species' =>  ['required','string','max:32', new AllowedPritingCharactersRule()],
+            'name' =>  ['required','string','max:32', new AllowedPritingCharactersRule()],
             'image' =>  [
                 'nullable',
                 'image',
