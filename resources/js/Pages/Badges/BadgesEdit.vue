@@ -265,7 +265,7 @@ function openImageModal() {
                 <div class="">
                     <div class="mb-8 ">
                         <h2 class="text-lg font-semibold">Upgrades</h2>
-                        <p>Get a spare copy or get an exclusive double printed badge!</p>
+                        <p>Get a double printed badge!</p>
                     </div>
                     <div class="space-y-3">
                         <div class="flex flex-col md:flex-row gap-8 w-full">
