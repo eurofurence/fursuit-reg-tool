@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7-labs
 FROM php:8.3-alpine as base
 WORKDIR /app
 
@@ -12,6 +13,9 @@ RUN apk update \
     && apk add --no-cache curl git unzip openssl tar ca-certificates \
     && install-php-extensions gd bcmath pdo_mysql zip intl opcache pcntl redis swoole @composer \
     && rm -rf /var/cache/apk/*
+
+RUN chown -R www-data:www-data /app
+USER www-data
 
 ######################################################
 # Copy Configuration
@@ -40,7 +44,7 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 | rm composer.lock composer.json && composer requ
 FROM node:20-alpine as vite
 WORKDIR /app
 COPY package.json package-lock.json tailwind.config.js vite.config.js postcss.config.js ./
-RUN npm install
+RUN npm ci
 COPY ./resources /app/resources
 COPY --from=vite-vendor-build /app/vendor/tightenco/ziggy /app/vendor/tightenco/ziggy
 RUN npm run build
@@ -48,10 +52,11 @@ RUN npm run build
 # Production Stage
 ######################################################
 FROM base as production
-COPY --from=vite /app/public/build ./public/build
-COPY . /app/
-RUN composer install --no-dev --optimize-autoloader --no-cache \
-    && chmod 777 -R bootstrap storage \
-    && rm -rf .env bootstrap/cache/*.php auth.json \
-    && chown -R www-data:www-data /app
+COPY --chown=www-data:www-data composer.json composer.lock /app/
+RUN composer install --no-dev --optimize-autoloader --no-cache --no-scripts
+COPY --chown=www-data:www-data --exclude=bootstrap/cache/*.php ./bootstrap/ /app/
+COPY --chown=www-data:www-data storage /app/
+COPY --chown=www-data:www-data . /app/
+RUN composer dump-autoload --optimize
+COPY --from=vite --chown=www-data:www-data /app/public/build ./public/
 CMD sh -c "php artisan octane:start --host=0.0.0.0 --port=80"
