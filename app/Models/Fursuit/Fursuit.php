@@ -60,27 +60,27 @@ class Fursuit extends Model
         );
     }
 
-    private function getClaimCacheKey(int $userId): string
+    private function getClaimCacheKey(): string
     {
-        return 'user:'.$userId.':fursuit:'.$this->id.':claim';
+        return 'fursuit:'.$this->id.':claim';
     }
 
     public function claim(User $user): bool
     {
-        $cacheKey = $this->getClaimCacheKey($user->id);
+        $cacheKey = $this->getClaimCacheKey();
 
         if (cache()->has($cacheKey)) {
             return false;
         }
 
-        cache()->put($cacheKey, $this->id, now()->addMinutes(5));
+        cache()->put($cacheKey, auth()->user()->id, now()->addMinutes(5));
 
         return true;
     }
 
     public function unclaim(): bool
     {
-        $cacheKey = $this->getClaimCacheKey(auth()->id());
+        $cacheKey = $this->getClaimCacheKey();
 
         if (!cache()->has($cacheKey)) {
             return false;
@@ -100,16 +100,16 @@ class Fursuit extends Model
 
     public function isNotClaimed(): bool
     {
-        return !cache()->has($this->getClaimCacheKey(auth()->id()));
+        return !cache()->has($this->getClaimCacheKey());
     }
 
     public function isClaimed()
     {
-        return cache()->has($this->getClaimCacheKey(auth()->id()));
+        return cache()->has($this->getClaimCacheKey());
     }
 
     public function isClaimedBySelf(User $user)
     {
-        return cache()->has($this->getClaimCacheKey($user->id));
+        return (int) cache()->get($this->getClaimCacheKey()) == $user->id;
     }
 }
