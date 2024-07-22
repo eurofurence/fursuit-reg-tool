@@ -54,8 +54,6 @@ RUN npm run build
 FROM base as production
 COPY --chown=www-data:www-data composer.json composer.lock /app/
 RUN composer install --no-dev --optimize-autoloader --no-cache --no-scripts
-COPY --chown=www-data:www-data --exclude=bootstrap/cache/*.php ./bootstrap/ /app/
-COPY --chown=www-data:www-data storage /app/
 COPY --chown=www-data:www-data . /app/
 RUN composer dump-autoload --optimize
 COPY --from=vite --chown=www-data:www-data /app/public/build ./public/
