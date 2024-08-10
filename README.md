@@ -1,11 +1,17 @@
 # Fursuit Registration Tool
 
+This tool is using Laravel 11 with inertia.js (Vue).
+
 ## Contributing
 
 #### Prerequisites
 - PHP `>=8.3`
 - Composer
 - Docker (+ Compose plugin)
+
+### Windows
+
+- tbd.
 
 ### OSX / Linux Setup
 1. Rename `.env.example` to `.env`
@@ -22,6 +28,10 @@
 4. Install Node dependencies
     ```sh
     npm install
+    ```
+4. Install Node dependencies
+    ```sh
+    npm run build
     ```
 5. Start sailing
     ```sh
