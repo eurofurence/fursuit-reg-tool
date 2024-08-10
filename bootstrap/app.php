@@ -10,14 +10,18 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function() {
+            \Illuminate\Support\Facades\Route::middleware(['auth:machine','auth:machine-user'])
+                ->prefix('pos/')
+                ->name('pos.')
+                ->group(base_path('routes/pos.php'));
+        }
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
-
-        //
     })
     ->withExceptions(function (Exceptions $exceptions) {
         Integration::handles($exceptions);
