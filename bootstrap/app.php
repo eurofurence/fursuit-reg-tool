@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->prefix('pos/')
                 ->name('pos.')
                 ->group(base_path('routes/pos.php'));
+            \Illuminate\Support\Facades\Route::prefix('pos/auth/')
+                ->name('pos.auth.')
+                ->group(base_path('routes/pos-auth.php'));
         }
     )
     ->withMiddleware(function (Middleware $middleware) {
