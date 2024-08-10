@@ -28,7 +28,7 @@ Route::post('/login', [\App\Http\Controllers\POS\Auth\MachineUserAuthController:
  * PUT AUTHENTICATED ROUTES BELOW
  */
 Route::middleware(['auth:machine','auth:machine-user'])->group(function () {
-    Route::get('/', [\App\Http\Controllers\POS\DashboardController::class, 'index'])->name('dashboard');
+
 
 
 
