@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\POS\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 
 class MachineUserAuthController extends Controller
 {
@@ -11,7 +12,11 @@ class MachineUserAuthController extends Controller
      */
     public function login()
     {
-
+        // DEV Login as first user in machine-user guard
+        $user = User::first();
+        auth()->guard('machine-user')->login($user);
+        // Redirect to POS
+        return redirect()->route('pos.dashboard');
     }
 
     /**
