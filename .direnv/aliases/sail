@@ -1,0 +1,2 @@
+#!/usr/bin/env bash -e
+sh $([ -f sail ] && echo sail || echo vendor/bin/sail)
