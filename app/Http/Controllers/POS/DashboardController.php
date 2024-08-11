@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request)
+    public function __invoke()
     {
         return Inertia::render('POS/Dashboard');
     }
