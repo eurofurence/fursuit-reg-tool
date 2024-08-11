@@ -15,11 +15,10 @@ class MachineLoginController extends Controller
         $data = $request->validate([
             'machine_id' => 'required|integer',
         ]);
-        $machine = Machine::findOrFail($data['machine_id']);
-        // Login permanently
-        Auth::guard('machine')->login($machine,true);
 
-        // Redirect to user login
+        $machine = Machine::findOrFail($data['machine_id']);
+        Auth::guard('machine')->login($machine, true);
+
         return Redirect::route('pos.auth.user.login');
     }
 }

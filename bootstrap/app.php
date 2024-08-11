@@ -14,9 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Support\Facades\Route::middleware(['auth:machine','auth:machine-user'])
                 ->prefix('pos/')
                 ->name('pos.')
+                ->middleware('web')
                 ->group(base_path('routes/pos.php'));
             \Illuminate\Support\Facades\Route::prefix('pos/auth/')
                 ->name('pos.auth.')
+                ->middleware('web')
                 ->group(base_path('routes/pos-auth.php'));
         }
     )
