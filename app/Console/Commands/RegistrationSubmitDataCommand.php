@@ -36,9 +36,10 @@ class RegistrationSubmitDataCommand extends Command
                     'AUTH' => config('services.attsrv.cookies.AUTH'),
                     'JWT' => config('services.attsrv.cookies.JWT'),
                 ],config('services.attsrv.cookies.domain'))
+                ->throw()
                 ->get('/attendees/'.$user->attendee_id.'/additional-info/fursuitbadge');
-
-            dd($response->json());
+            // Return info
+            dump($response->json());
         });
     }
 }
