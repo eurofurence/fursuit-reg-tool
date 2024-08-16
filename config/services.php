@@ -44,6 +44,12 @@ return [
 
     'attsrv' => [
         'url' => env('ATTSRV_URL'),
+        /** I HATE THIS I HATE THIS I HATE THIS */
+        'cookies' => [
+            'AUTH' => env('ATTSRV_AUTH_COOKIE'),
+            'JWT' => env('ATTSRV_JWT_COOKIE'),
+            'domain' => env('ATTSRV_COOKIE_DOMAIN'),
+        ],
     ],
 
 ];
