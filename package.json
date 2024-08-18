@@ -22,6 +22,8 @@
         "laravel-precognition-vue-inertia": "^0.5.5",
         "pica": "^9.0.1",
         "primeicons": "^7.0.0",
+        "simple-keyboard": "^3.7.83",
+        "sjcl": "^1.0.8",
         "primevue": "^3.52.0",
         "vue-advanced-cropper": "^2.8.8"
     }
