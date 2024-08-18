@@ -3,35 +3,57 @@
 namespace App\Http\Controllers\POS\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\UserLoginRequest;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
+use Inertia\Inertia;
 
 class MachineUserAuthController extends Controller
 {
-    /**
-     * Login of new user
-     */
-    public function login()
+    public function selectUser()
     {
-        $user = User::first();
-        // Get session
-        auth()->guard('machine-user')->login($user);
+        return Inertia::render('POS/Auth/SelectUser', [
+            'users' => User::where('is_cashier', true)->get(),
+        ]);
+    }
+
+    public function showLogin(User $user)
+    {
+        $salt = bin2hex(random_bytes(32));
+        session(['user_login_salt' => $salt]);
+        return Inertia::render('POS/Auth/EnterPinCode', [
+            'salt' => $salt,
+            'user' => $user->only(['id', 'name'])
+        ]);
+    }
+
+    public function submitLogin(User $user, Request $request)
+    {
+        $data = $request->validate([
+            'code' => 'required|string',
+        ]);
+
+        // Load salt
+        $salt = session('user_login_salt');
+        if (!hash_equals(hash('sha256', $user->pin_code.$salt), $data['code'])) {
+            return redirect()->back()->withErrors(['code' => 'Invalid code']);
+        }
+
+        // Clear salt
+        session()->forget('user_login_salt');
+
+        // Authenticate user
+        Auth::guard('machine-user')->login($user);
+
+        // To Dashboard
         return redirect()->route('pos.dashboard');
     }
 
-    /**
-     * Switch User - In cases where you switch between users but keep the old users "logged in" state
-     */
-    public function switch()
-    {
-
-    }
-
-    /**
-     * Hard Logout - Will logout a user and force pin re-entry
-     */
     public function logout()
     {
-
+        Auth::guard('machine-user')->logout();
+        return redirect()->route('pos.auth.user.select');
     }
 }

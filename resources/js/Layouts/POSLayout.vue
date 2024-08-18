@@ -7,7 +7,7 @@ import { ref } from "vue";
 
 const userMenu = ref();
 const userMenuItems = ref([
-    { label: 'Logout', icon: 'pi pi-sign-out', route: route('auth.logout'), method: 'POST' },
+    { label: 'Logout', icon: 'pi pi-sign-out', route: route('pos.auth.user.logout'), method: 'POST' },
     { label: 'Switch User', icon: 'pi pi-user', route: '', method: 'POST' },
 ]);
 
