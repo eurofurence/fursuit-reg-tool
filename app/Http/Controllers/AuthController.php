@@ -38,14 +38,13 @@ class AuthController extends Controller
         $attendeeListResponse = \Illuminate\Support\Facades\Http::attsrv()
             ->withToken($socialLiteUser->token)
             ->get('/attendees')
-            ->throw();
-        $regId = $attendeeListResponse->json()['ids'][0] ?? null;
+            ->json();
 
-        // If $regId is null then the user is not registered
-        if ($regId === null) {
-            return redirect()->route('dashboard')->with('message',
+        if (isset($attendeeListResponse['ids'][0]) === false) {
+            return redirect()->route('welcome')->with('message',
                 'Please register for the Convention first before trying to obtain a fursuit badge.');
         }
+        $regId = $attendeeListResponse['ids'][0];
 
         $user = User::updateOrCreate([
             'remote_id' => $socialLiteUser->getId(),
