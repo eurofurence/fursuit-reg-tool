@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import { Head, Link } from "@inertiajs/vue3";
-import Layout from "@/Layouts/POSLayout.vue";
+import POSLayout from "@/Layouts/POSLayout.vue";
 import DashboardButton from "@/Components/POS/DashboardButton.vue";
 
 defineOptions({
-    layout: Layout
+    layout: POSLayout,
 });
 </script>
 
