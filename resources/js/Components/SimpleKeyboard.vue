@@ -31,11 +31,9 @@ onMounted(() => {
 const emit = defineEmits(["onChange", "onKeyPress"]);
 
 function onChange(input) {
-    console.log(input);
     emit("onChange", input);
 }
 function onKeyPress(button) {
-    console.log("Button pressed", button);
     emit("onKeyPress", button);
 }
 
