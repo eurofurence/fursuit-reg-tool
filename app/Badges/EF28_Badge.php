@@ -41,7 +41,7 @@ class EF28_Badge
         return response($image_data, 200)->header('Content-Type', 'image/png');
     }
 
-    public function addFirstLayer(Box $size)
+    private function addFirstLayer(Box $size)
     {
         // Hintergrund hinzufügen
         $image = $this->imagine->open(resource_path('badges/ef28/images/first_layer_bg.png'));
@@ -49,7 +49,7 @@ class EF28_Badge
         return $image;
     }
 
-    public function addSecondLayer(ImageInterface $badge, Box $size)
+    private function addSecondLayer(ImageInterface $badge, Box $size)
     {
         // Lade das Overlay-Bild, in dem Grün ersetzt werden soll
         $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/second_layer_green_screen.png'));
@@ -87,7 +87,7 @@ class EF28_Badge
         $badge->paste($overlayImage, new Point(0, 0));
     }
 
-    public function addThirdLayer(ImageInterface $badge, Box $size)
+    private function addThirdLayer(ImageInterface $badge, Box $size)
     {
         // Lade das Overlay-Bild, in dem Grün ersetzt werden soll
         $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/third_layer_overlay.png'));
@@ -98,7 +98,7 @@ class EF28_Badge
         $badge->paste($overlayImage, new Point(0, 0));
     }
 
-    public function addFourthLayer()
+    private function addFourthLayer()
     {
 
     }
