@@ -39,6 +39,7 @@ class AuthController extends Controller
             ->withToken($socialLiteUser->token)
             ->get('/attendees')
             ->throw();
+
         $regId = $attendeeListResponse->json()['ids'][0] ?? null;
 
         // If $regId is null then the user is not registered

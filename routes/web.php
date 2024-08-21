@@ -1,9 +1,13 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Badges\EF28_Badge;
+use App\Models\Badge\Badge;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Foundation\Application;
+use App\Http\Controllers\ProfileController;
+use App\Models\Fursuit\Fursuit;
+use App\Services\BadgeGeneratorBaseService;
 
 
 Route::get('/', \App\Http\Controllers\WelcomeController::class)->name('welcome');
@@ -22,4 +26,8 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
     Route::middleware('auth')->group(function () {
         Route::resource('badges', \App\Http\Controllers\BadgeController::class);
     });
+});
+
+Route::get('gen_test', function () {
+    return (new EF28_Badge)->getImage(Fursuit::where('id', '=', 1)->first());
 });
