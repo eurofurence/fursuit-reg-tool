@@ -12,7 +12,7 @@ defineOptions({
 
 const props = defineProps({
     badges: Array,
-    attendee: Object
+    attendee: Object,
 });
 </script>
 

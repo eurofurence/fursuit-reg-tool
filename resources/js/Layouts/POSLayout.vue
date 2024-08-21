@@ -17,15 +17,16 @@ const toggleUserMenu = (event) => {
 };
 
 const props = defineProps({
-    attendee: Object || undefined
+    attendee: Object || undefined, // from backend
+    // layoutBack: String || undefined
 });
 </script>
 
 <template>
     <div class="min-h-screen lg:h-screen w-full flex flex-col bg-gray-200">
         <div class="p-4 flex flex-row items-center">
+            <Button v-if="layoutBack" icon="pi pi-arrow-left" class="p-button-rounded p-button-text" label="Back" onclick="history.back();return false;" />
             <Badge class="select-none" v-if="attendee" :value="attendee.name + ' #' + attendee.attendee_id" size="large" severity="success"></Badge>
-            <!-- <Button icon="pi pi-bars" class="p-button-rounded p-button-text" /> -->
             <div class="flex-grow text-center text-slate-500 font-semibold text-lg">
                 <DigitalClock />
             </div>
