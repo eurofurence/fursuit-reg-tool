@@ -28,8 +28,9 @@ class AttendeeController extends Controller
     public function attendeeShow(string $attendeeId, Request $request):  Response
     {
         $user = User::where('attendee_id', $attendeeId)->first();
-        print_r($user);
-
-        return Inertia::render('POS/Attendee/Show', ['attendee' => $user]);
+        return Inertia::render('POS/Attendee/Show', [
+            'attendee' => $user,
+            'badges' => $user->badges()->select('fursuit_id', 'printed_at', 'total', 'picked_up_at', 'badges.updated_at' )->get()
+        ]);
     }
 }
