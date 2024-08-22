@@ -4,11 +4,15 @@ namespace App\Badges\Bases;
 
 use Imagine\Gd\Font;
 use Imagine\Gd\Imagine;
+use Imagine\Image\Point;
 use App\Models\Badge\Badge;
 use Imagine\Image\Palette\RGB;
+use Imagine\Image\ImageInterface;
+use Imagine\Image\PointInterface;
 use Imagine\Image\Palette\Color\ColorInterface;
 
-class BadgeBase_V1 {
+class BadgeBase_V1
+{
     protected ColorInterface $text_color;
     protected Badge $badge;
     protected Imagine $imagine;
@@ -20,23 +24,34 @@ class BadgeBase_V1 {
     protected string $font_path = '';
     protected string $file_format = 'png';
 
-    public function init() {
+    public function init()
+    {
         $this->imagine = new Imagine;
 
         $new_text_color = new RGB();
         $this->text_color = $new_text_color->color($this->font_color);
     }
 
+
     /**
-     * The function `getFont` returns a new `Font` object with a specified size and text color.
+     * This PHP function returns a Font object with a specified size and font path, using a default font path if none is
+     * provided.
      *
-     * @param int size The `size` parameter in the `getFont` function is an integer value that represents the font size to
-     * be used when creating a new `Font` object.
+     * @param int size The `size` parameter in the `getFont` function is an integer that represents the font size to be
+     * used for the Font object. It specifies the size of the font in points.
+     * @param string font_path The `font_path` parameter in the `getFont` function is a string that represents the path to the
+     * font file. It is optional and can be provided when calling the function. If a `font_path` is provided, the function
+     * will create a `Font` object using the specified font file
      *
-     * @return Font A new `Font` object is being returned with the specified font path, size, and text color.
+     * @return Font A Font object is being returned. The Font object is created with the specified size, font path (if
+     * provided), and text color.
      */
-    public function getFont(int $size): Font
+    public function getFont(int $size, ?string $font_path = null): Font
     {
+        if (!empty($font_path)) {
+            return new Font(resource_path($font_path), $size, $this->text_color);
+        }
+
         return new Font(resource_path($this->font_path), $size, $this->text_color);
     }
 
@@ -65,7 +80,8 @@ class BadgeBase_V1 {
      *
      * @return string The method `getFileFormat()` is returning the constant `FILE_FORMAT` as a string.
      */
-    public function getFileFormat(): string {
+    public function getFileFormat(): string
+    {
         return $this->file_format;
     }
 
@@ -87,4 +103,3 @@ class BadgeBase_V1 {
         return implode($spacer, str_split($text)) . str_repeat($spacer, $spacing - 1);
     }
 }
-
