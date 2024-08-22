@@ -13,7 +13,7 @@ class BadgeBase_V1 {
     protected Badge $badge;
     protected Imagine $imagine;
 
-    //Standart Werte
+    // Standart Werte
     protected int $height_px = 638;
     protected int $width_px = 1013;
     protected string $font_color = '#FFFFFF';

@@ -30,7 +30,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
 
     public function getImage(Badge $badge): Response
     {
-        //Pflicht Verweis
+        // Pflicht Verweis
         $this->badge = $badge;
 
         $size = new Box($this->width_px, $this->height_px);
@@ -61,7 +61,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         // Lade das Overlay-Bild, in dem Grün ersetzt werden soll
         $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/second_layer_green_screen.png'));
 
-        //Auf Badge Größe anpassen
+        // Auf Badge Größe anpassen
         $overlayImage->resize($size);
 
         // Lade das Bild, das als Ersatz für Grün verwendet werden soll
@@ -135,10 +135,10 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         // Lade das Overlay-Bild, in dem Grün ersetzt werden soll
         $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/fifth_layer_catch_em_all.png'));
 
-        //Auf Badge Größe anpassen
+        // Auf Badge Größe anpassen
         $overlayImage->resize($size);
 
-        //Textposition
+        // Textposition
         $position = new Point($this->height_px - 440, $this->width_px - 123);
 
         // Zum Badge hinzufügen
