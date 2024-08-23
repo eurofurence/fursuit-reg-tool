@@ -1,10 +1,10 @@
 <script setup>
 import POSLayout from "@/Layouts/POSLayout.vue";
 
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
+import BadgesTable from "@/Components/POS/Attendee/BadgesTable.vue";
+import FursuitTable from "@/Components/POS/Attendee/FursuitTable.vue";
 
 defineOptions({
     layout: POSLayout,
@@ -12,28 +12,28 @@ defineOptions({
 
 const props = defineProps({
     badges: Array,
+    fursuits: Array,
     attendee: Object,
 });
+
+// const badges = [
+//     {
+//         'updated_at': new Date(),
+//         'fursuit_id': 1,
+//
+//
+//     }
+// ]
 </script>
 
 <template>
     <div class="p-8">
         <TabView>
             <TabPanel header="Badges">
-                <DataTable :value="badges" scrollable scrollHeight="400px" tableStyle="min-width: 50rem">
-                    <Column field="updated_at" header="Date"></Column>
-                    <Column field="fursuit_id" header="Fursuit"></Column>
-                    <Column field="printed_at" header="Print"></Column>
-                    <Column field="total" header="Paid"></Column>
-                    <Column field="picked_up_at" header="Pickup Location"></Column>
-                    <Column header="Actions"></Column>
-                </DataTable>
+              <BadgesTable :badges="badges" :attendee="attendee" />
             </TabPanel>
             <TabPanel header="Fursuit">
-                <p class="m-0">
-                    Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim
-                    ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Consectetur, adipisci velit, sed quia non numquam eius modi.
-                </p>
+               <FursuitTable :fursuits="fursuits" :attendee="attendee" />
             </TabPanel>
             <TabPanel header="Transactions">
                 <p class="m-0">
