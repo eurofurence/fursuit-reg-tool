@@ -6,7 +6,6 @@ use App\Models\Badge\Badge;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
-use App\Models\Fursuit\Fursuit;
 
 
 Route::get('/', \App\Http\Controllers\WelcomeController::class)->name('welcome');
@@ -27,6 +26,6 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
     });
 });
 
-Route::get('gen_test', function () {
-    return (new EF28_Badge)->getImage(Badge::where('id', '=', 1)->first());
+Route::get('gen_test/{id}', function ($id) {
+    return (new EF28_Badge)->getImage(Badge::where('id', $id)->first());
 });

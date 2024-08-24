@@ -27,14 +27,14 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $this->height_px = 638;
         $this->width_px = 1013;
         $this->font_color = '#FFFFFF';
-        $this->font_path = 'badges/ef28/fonts/upcib.ttf';
+        $this->font_path = 'badges/ef28/fonts/HEMIHEAD.TTF';
         $this->file_format = 'png';
     }
 
     public function getImage(Badge $badge): Response
     {
         // Pflicht Verweis
-        $this->badge = $badge->with(['fursuit', 'fursuit.species'])->first();
+        $this->badge = $badge;
 
         $size = new Box($this->width_px, $this->height_px);
 
@@ -54,7 +54,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
     private function addFirstLayer(Box $size)
     {
         // Hintergrund hinzufügen
-        $image = $this->imagine->open(resource_path('badges/ef28/images/first_layer_bg.png'));
+        $image = $this->imagine->open(resource_path('badges/ef28/images/first_layer_bg_purple.png'));
         $image->resize($size);
         return $image;
     }
@@ -147,13 +147,24 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
 
         $position_species = new Point(
             $this->width_px - 321 - 160, // X-Position (angepasst für die Breite der Textbox)
-            $this->height_px - 67 - 213 // Y-Position
+            $this->height_px - 67 - 215 // Y-Position
         );
 
         $position_name = new Point(
             $this->width_px - 321 - 160, // X-Position (angepasst für die Breite der Textbox)
-            $this->height_px - 67 - 340 // Y-Position
+            $this->height_px - 67 - 341 // Y-Position
         );
+
+        $position_name_label = new Point(
+            $this->width_px - 321 - 260, // X-Position (angepasst für die Breite der Textbox)
+            $this->height_px - 67 - 348 // Y-Position
+        );
+
+        $position_species_label = new Point(
+            $this->width_px - 321 - 275, // X-Position (angepasst für die Breite der Textbox)
+            $this->height_px - 67 - 222 // Y-Position
+        );
+
 
         // TextField-Objekte erstellen und Text auf das Bild zeichnen
         new TextField(
@@ -173,28 +184,56 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         new TextField(
             $text_species,
             321, // Breite des Textfeldes
-            77, // Höhe des Textfeldes
-            10, // Minimale Schriftgröße
+            90, // Höhe des Textfeldes
+            15, // Minimale Schriftgröße
             50, // Start-Schriftgröße
             $font_path,
             $font_color,
             $badge_object,
             $position_species,
-            TextAlignment::CENTER, // Zentrierte Ausrichtung
+            TextAlignment::LEFT, // Zentrierte Ausrichtung
             2 // Maximale Anzahl von Zeilen
         );
 
         new TextField(
             $text_name,
             321, // Breite des Textfeldes
-            77, // Höhe des Textfeldes
-            10, // Minimale Schriftgröße
+            90, // Höhe des Textfeldes
+            15, // Minimale Schriftgröße
             50, // Start-Schriftgröße
             $font_path,
             $font_color,
             $badge_object,
             $position_name,
-            TextAlignment::CENTER, // Zentrierte Ausrichtung
+            TextAlignment::LEFT, // Zentrierte Ausrichtung
+            2 // Maximale Anzahl von Zeilen
+        );
+
+        new TextField(
+            'Name:',
+            321, // Breite des Textfeldes
+            90, // Höhe des Textfeldes
+            15, // Minimale Schriftgröße
+            25, // Start-Schriftgröße
+            $font_path,
+            $font_color,
+            $badge_object,
+            $position_name_label,
+            TextAlignment::LEFT, // Zentrierte Ausrichtung
+            2 // Maximale Anzahl von Zeilen
+        );
+
+        new TextField(
+            'Species:',
+            321, // Breite des Textfeldes
+            90, // Höhe des Textfeldes
+            15, // Minimale Schriftgröße
+            22, // Start-Schriftgröße
+            $font_path,
+            $font_color,
+            $badge_object,
+            $position_species_label,
+            TextAlignment::LEFT, // Zentrierte Ausrichtung
             2 // Maximale Anzahl von Zeilen
         );
 
