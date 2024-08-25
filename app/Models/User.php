@@ -36,7 +36,6 @@ class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat,
      * @var array<int, string>
      */
     protected $hidden = [
-        'password',
         'remember_token',
         'token',
         'token_expires_at',
@@ -50,20 +49,8 @@ class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat,
         'refresh_token_expires_at' => 'datetime',
         'token' => 'encrypted',
         'token_expires_at' => 'datetime',
+        'attendee_id' => 'integer',
     ];
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
 
     public function badges()
     {
