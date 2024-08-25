@@ -17,3 +17,5 @@ vendor
 Dockerfile
 docker-compose.yml
 phpunit.xml
+.envrc
+.direnv/*

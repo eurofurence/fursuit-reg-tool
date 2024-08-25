@@ -15,4 +15,10 @@ class WelcomeController extends Controller
             'showState' => $event?->state ?? \App\Enum\EventStateEnum::CLOSED->value,
         ]);
     }
+
+    // TODO remove this
+    public function test()
+    {
+        return Inertia::render('POS/Dashboard');
+    }
 }
