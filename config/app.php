@@ -123,4 +123,15 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Fursuit Catch Code Length
+    |--------------------------------------------------------------------------
+    |
+    | Length of characters and digits the code of fursuits for the catch em all feature
+    | Printed on the ordered fursuit badges
+    |
+    */
+
+    'fursuit_catch_code_length' => env('FURSUIT_CATCH_CODE_LENGTH', 5),
 ];
