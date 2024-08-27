@@ -135,9 +135,11 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         // Schriftarten und Farbdefinitionen
         $font_path = resource_path($this->font_path); // Pfad zur Schriftartdatei
 
-        // Farbpalette erstellen
+        // Farbpalette erstellen - Textfarbe
         $palette = new RGB();
         $font_color = $palette->color($this->font_color);
+        // Farbpalette erstellen - Rahmen
+        $border_color = $palette->color("#9579aa");
 
         // Position der Texte im Bild
         $position_attendee_id = new Point(
@@ -165,6 +167,10 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
             $this->height_px - 67 - 222 // Y-Position
         );
 
+        $position_fursuit_badge = new Point(
+            $this->width_px - 321 - 230, // X-Position (angepasst für die Breite der Textbox)
+            $this->height_px - 67 - 475 // Y-Position
+        );
 
         // TextField-Objekte erstellen und Text auf das Bild zeichnen
         new TextField(
@@ -178,7 +184,9 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
             $badge_object,
             $position_attendee_id,
             TextAlignment::RIGHT, // Rechtsbündige Ausrichtung
-            1 // Maximale Anzahl von Zeilen
+            1, // Maximale Anzahl von Zeilen
+            textStrokeThickness: 1,
+            textStrokeColor: $border_color
         );
 
         new TextField(
@@ -192,7 +200,9 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
             $badge_object,
             $position_species,
             TextAlignment::LEFT, // Zentrierte Ausrichtung
-            2 // Maximale Anzahl von Zeilen
+            2, // Maximale Anzahl von Zeilen
+            textStrokeThickness: 1,
+            textStrokeColor: $border_color
         );
 
         new TextField(
@@ -206,7 +216,9 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
             $badge_object,
             $position_name,
             TextAlignment::LEFT, // Zentrierte Ausrichtung
-            2 // Maximale Anzahl von Zeilen
+            2, // Maximale Anzahl von Zeilen
+            textStrokeThickness: 1,
+            textStrokeColor: $border_color
         );
 
         new TextField(
@@ -220,7 +232,9 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
             $badge_object,
             $position_name_label,
             TextAlignment::LEFT, // Zentrierte Ausrichtung
-            2 // Maximale Anzahl von Zeilen
+            2, // Maximale Anzahl von Zeilen
+            textStrokeThickness: 1,
+            textStrokeColor: $border_color
         );
 
         new TextField(
@@ -234,7 +248,25 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
             $badge_object,
             $position_species_label,
             TextAlignment::LEFT, // Zentrierte Ausrichtung
-            2 // Maximale Anzahl von Zeilen
+            2, // Maximale Anzahl von Zeilen
+            textStrokeThickness: 1,
+            textStrokeColor: $border_color
+        );
+
+        new TextField(
+            'Fursuit Badge',
+            500, // Breite des Textfeldes
+            90, // Höhe des Textfeldes
+            15, // Minimale Schriftgröße
+            55, // Start-Schriftgröße
+            $font_path,
+            $font_color,
+            $badge_object,
+            $position_fursuit_badge,
+            TextAlignment::CENTER, // Zentrierte Ausrichtung
+            2, // Maximale Anzahl von Zeilen
+            textStrokeThickness: 1,
+            textStrokeColor: $border_color
         );
 
         // Der Text wird automatisch gezeichnet, wenn das TextField-Objekt erstellt wird.
@@ -251,10 +283,31 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $overlayImage->resize($size);
 
         // Textposition
-        $position = new Point($this->width_px - 435, $this->height_px - 150);
+        $position = new Point($this->width_px - 540, $this->height_px - 165);
+
+        // Farbpalette erstellen - Textfarbe
+        $palette = new RGB();
+        $font_color = $palette->color($this->font_color);
+        // Farbpalette erstellen - Rahmen
+        $border_color = $palette->color("#9579aa");
 
         // Zum Badge hinzufügen
         $badge_object->paste($overlayImage, new Point(0, 0));
-        $badge_object->draw()->text($this->addLetterSpacing(strtoupper($this->badge->fursuit->catch_em_all_code), 2), $this->getFont(65, 'badges/ef28/fonts/upcib.ttf'), $position);
+
+        new TextField(
+            $this->addLetterSpacing(strtoupper($this->badge->fursuit->catch_em_all_code), 2),
+            500, // Breite des Textfeldes
+            90, // Höhe des Textfeldes
+            15, // Minimale Schriftgröße
+            65, // Start-Schriftgröße
+            resource_path('badges/ef28/fonts/upcib.ttf'),
+            $font_color,
+            $badge_object,
+            $position,
+            TextAlignment::CENTER, // Zentrierte Ausrichtung
+            2, // Maximale Anzahl von Zeilen
+            textStrokeThickness: 1,
+            textStrokeColor: $border_color
+        );
     }
 }
