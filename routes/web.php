@@ -25,7 +25,3 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
         Route::resource('badges', \App\Http\Controllers\BadgeController::class);
     });
 });
-
-Route::get('gen_test/{id}', function ($id) {
-    return (new EF28_Badge)->getImage(Badge::where('id', $id)->first());
-});
