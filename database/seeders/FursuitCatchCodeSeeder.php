@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Models\Badge\Badge;
+use App\Models\Event;
+use App\Models\FCEA\UserFursuitCatch;
 use App\Models\Fursuit\Fursuit;
-use App\Models\Fursuit\FursuitCatchCode;
 use Illuminate\Database\Seeder;
 
 class FursuitCatchCodeSeeder extends Seeder

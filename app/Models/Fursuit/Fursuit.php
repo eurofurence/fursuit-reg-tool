@@ -4,6 +4,7 @@ namespace App\Models\Fursuit;
 
 use App\Models\Badge\Badge;
 use App\Models\Event;
+use App\Models\FCEA\UserFursuitCatch;
 use App\Models\Fursuit\States\FursuitStatusState;
 use App\Models\Species;
 use App\Models\User;
@@ -111,6 +112,11 @@ class Fursuit extends Model
     public function isClaimedBySelf(User $user)
     {
         return (int) cache()->get($this->getClaimCacheKey()) == $user->id;
+    }
+
+    public function catchedByUsers()
+    {
+        return $this->hasMany(UserFursuitCatch::class);
     }
 
     public static function booted()

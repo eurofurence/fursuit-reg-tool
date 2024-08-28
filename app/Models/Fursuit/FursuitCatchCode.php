@@ -14,7 +14,7 @@ class FursuitCatchCode
     {
         do {
             $identifier = strtoupper(Str::password(
-                $length = config("app.fursuit_catch_code_length"), // by default 5
+                $length = config("fcea.fursuit_catch_code_length"), // by default 5
                 $letters = true,
                 $numbers = true,
                 $symbols = false,
