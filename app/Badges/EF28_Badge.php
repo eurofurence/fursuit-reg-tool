@@ -43,7 +43,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $this->addThirdLayer($badge_objekt, $size);
         $this->addFourthLayer($badge_objekt);
 
-        if ($this->badge->fursuit->catch_em_all == true) {
+        if ($this->badge->fursuit->catch_em_all == true && !empty($this->badge->fursuit->catch_em_all_code)) {
             $this->addFifthLayer($badge_objekt, $size);
         }
 
@@ -143,8 +143,8 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
 
         // Position der Texte im Bild
         $position_attendee_id = new Point(
-            $this->width_px - 355, // X-Position (angepasst)
-            0 // Y-Position
+            $this->width_px - 120, // X-Position (angepasst)
+            2 // Y-Position
         );
 
         $position_species = new Point(
@@ -178,12 +178,12 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
             321, // Breite des Textfeldes
             67, // Höhe des Textfeldes
             16, // Minimale Schriftgröße
-            25, // Start-Schriftgröße
+            35, // Start-Schriftgröße
             $font_path,
             $font_color,
             $badge_object,
             $position_attendee_id,
-            TextAlignment::RIGHT, // Rechtsbündige Ausrichtung
+            TextAlignment::LEFT, // Rechtsbündige Ausrichtung
             1, // Maximale Anzahl von Zeilen
             textStrokeThickness: 1,
             textStrokeColor: $border_color
