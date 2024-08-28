@@ -10,6 +10,7 @@ use App\Models\FCEA\UserFursuitCatchesUserRanking;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -20,6 +21,9 @@ class DashboardController extends Controller
     }
     public function catch(UserCatchRequest $request)
     {
+        if ($second = $this->IsLimited(Auth::id()))
+            return 'You may try again in '.$second.' seconds.';
+
         $catch_code = $request->validated("catch_code");
         $logEntry = new UserCatchLog();
         $logEntry->user_id = Auth::id();
@@ -77,7 +81,7 @@ class DashboardController extends Controller
         // Clean Ranking
         UserFursuitCatchesUserRanking::truncate();
 
-        // Iterate all users to build Ranking (players with same score have same ranking)
+        // Iterate all users to build Ranking
         foreach ($catchersOrdered as $catcher) {
             // Increase Rank when Score updates (players get same rank with same score)
             if ($current['score'] > $catcher->fursuits_catched_count) {
@@ -95,5 +99,15 @@ class DashboardController extends Controller
             $rankingEntry->save();
             $current['count']++;
         }
+    }
+
+    protected function IsLimited(int $identifier, string $action = 'fursuit_catch') : int
+    {
+        $rateLimiterKey = $action.':'.$identifier;
+        if (RateLimiter::tooManyAttempts($rateLimiterKey, $perMinute = config("fcea.fursuit_catch_attempts_per_minute")))
+            return RateLimiter::availableIn($rateLimiterKey);
+
+        RateLimiter::increment($rateLimiterKey);
+        return 0;
     }
 }
