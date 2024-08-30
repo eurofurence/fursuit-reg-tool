@@ -10,6 +10,7 @@ return new class extends Migration {
     {
         Schema::create('user_catch_logs', function (Blueprint $table) {
             $table->id();
+            $table->foreignIdFor(Event::class)->constrained()->cascadeOnDelete();
             $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
             $table->string('catch_code', 255);
             $table->boolean('is_successful');

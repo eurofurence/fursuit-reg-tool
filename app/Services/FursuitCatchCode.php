@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Fursuit;
+namespace App\Services;
 
 use Illuminate\Support\Str;
 

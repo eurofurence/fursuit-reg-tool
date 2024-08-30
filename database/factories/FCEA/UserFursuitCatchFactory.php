@@ -3,7 +3,7 @@
 
 namespace Database\Factories\FCEA;
 
-use App\Models\FCEA\UserFursuitCatch;
+use App\Models\FCEA\UserCatch;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 
 class UserFursuitCatchFactory extends Factory
 {
-    protected $model = UserFursuitCatch::class;
+    protected $model = UserCatch::class;
 
     public function definition(): array
     {

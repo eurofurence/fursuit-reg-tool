@@ -6,12 +6,12 @@ use App\Models\Species;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Fursuit\Fursuit
- * Builds a array with relevant data from fursuits
+/** @mixin \App\Models\FCEA\UserCatchUserRanking
+ * Builds a array with relevant data from user_catch_user_rankings
  * Filters out unnecessary details
- * withCount("badges"), with("species") and with("user") are recommended to save database load
+ * withCount("user"), with("fursuit") and with("species") are recommended to save database load
  * */
-class FursuitResource extends JsonResource
+class UserCatchUserRankingResource extends JsonResource
 {
     public function toArray(Request $request): array
     {

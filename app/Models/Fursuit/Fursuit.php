@@ -4,10 +4,11 @@ namespace App\Models\Fursuit;
 
 use App\Models\Badge\Badge;
 use App\Models\Event;
-use App\Models\FCEA\UserFursuitCatch;
+use App\Models\FCEA\UserCatch;
 use App\Models\Fursuit\States\FursuitStatusState;
 use App\Models\Species;
 use App\Models\User;
+use App\Services\FursuitCatchCode;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -116,7 +117,7 @@ class Fursuit extends Model
 
     public function catchedByUsers()
     {
-        return $this->hasMany(UserFursuitCatch::class);
+        return $this->hasMany(UserCatch::class);
     }
 
     public static function booted()

@@ -33,8 +33,8 @@ class UserCatchLog extends Model
     }
 
     // True means tryGetFursuit() will give an result. False means tryGetFursuit() will give null.
-    public function FursuitExist() : bool
+    public function fursuitExist() : bool
     {
-        return $this->TryGetFursuit() != null;
+        return $this->tryGetFursuit() != null;
     }
 }

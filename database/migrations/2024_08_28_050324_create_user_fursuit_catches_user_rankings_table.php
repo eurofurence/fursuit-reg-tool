@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('user_fursuit_catches_user_rankings', function (Blueprint $table) {
+        Schema::create('user_catch_user_rankings', function (Blueprint $table) {
             $table->integer('rank');
             $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
             $table->integer('catches');
@@ -19,6 +19,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('user_fursuit_catches_user_rankings');
+        Schema::dropIfExists('user_catch_user_rankings');
     }
 };

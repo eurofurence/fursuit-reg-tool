@@ -4,7 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Badge\Badge;
-use App\Models\FCEA\UserFursuitCatch;
+use App\Models\FCEA\UserCatch;
 use App\Models\Fursuit\Fursuit;
 use Bavix\Wallet\Interfaces\Customer;
 use Bavix\Wallet\Interfaces\Wallet;
@@ -65,7 +65,7 @@ class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat,
 
     public function fursuitsCatched()
     {
-        return $this->hasMany(UserFursuitCatch::class);
+        return $this->hasMany(UserCatch::class);
     }
 
     public function canAccessPanel(Panel $panel): bool

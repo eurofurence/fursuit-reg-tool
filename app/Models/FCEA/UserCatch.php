@@ -11,7 +11,7 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 // Model for the actual unique catches. Will be used to calculate statistics
-class UserFursuitCatch extends Model
+class UserCatch extends Model
 {
     use LogsActivity, HasFactory;
     public function user(): BelongsTo

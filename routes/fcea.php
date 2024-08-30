@@ -7,4 +7,4 @@ use Illuminate\Support\Facades\Route;
  */
 
 Route::get('/', [\App\Http\Controllers\FCEA\DashboardController::class, 'index'])->middleware('auth')->name('dashboard');
-Route::post('/',[\App\Http\Controllers\FCEA\DashboardController::class,'catch'])->middleware('auth')->name('dashboard.catch');
+Route::post('/',[\App\Http\Controllers\FCEA\DashboardController::class, 'catch'])->middleware('auth')->name('dashboard.catch');
