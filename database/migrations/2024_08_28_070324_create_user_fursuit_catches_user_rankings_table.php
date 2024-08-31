@@ -9,11 +9,13 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('user_catch_user_rankings', function (Blueprint $table) {
+            $table->id();
             $table->integer('rank');
-            $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
-            $table->integer('catches');
-            $table->integer('catches_till_next');
-            $table->integer('users_behind');
+            $table->foreignIdFor(User::class)->unique()->constrained()->cascadeOnDelete();
+            $table->integer('score');
+            $table->integer('score_till_next');
+            $table->integer('others_behind');
+            $table->timestamp('score_reached_at')->nullable();
         });
     }
 

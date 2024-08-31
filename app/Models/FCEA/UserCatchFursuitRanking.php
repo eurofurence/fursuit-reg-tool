@@ -2,17 +2,17 @@
 
 namespace App\Models\FCEA;
 
-use App\Models\User;
+use App\Models\Fursuit\Fursuit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class UserCatchUserRanking extends Model
+class userCatchFursuitRanking extends Model
 {
     public $timestamps = false;
 
-    public function user(): BelongsTo
+    public function fursuit(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Fursuit::class);
     }
 
     protected function casts(): array

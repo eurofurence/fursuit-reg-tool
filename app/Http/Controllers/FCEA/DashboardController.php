@@ -5,6 +5,7 @@ namespace App\Http\Controllers\FCEA;
 use App\Enum\EventStateEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserCatchRequest;
+use App\Models\FCEA\userCatchFursuitRanking;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\FCEA\UserCatch;
 use App\Models\FCEA\UserCatchUserRanking;
@@ -68,26 +69,27 @@ class DashboardController extends Controller
         $userCatch->user_id = Auth::id();
         $userCatch->fursuit_id = $logEntry->tryGetFursuit()->id;
         $userCatch->save();
-        //$this->RefreshUserRanking();
+        $this->RefreshUserRanking();
         return Inertia::render('FCEA/Dashboard');
     }
 
+    // Function to build User Ranking. Truncated Table and iterates all users. Similar to the Fursuit Ranking
     public function RefreshUserRanking() {
-        $catchersOrdered = User::query()
+        $usersOrdered = User::query()
             ->withCount("fursuitsCatched")
             ->withMax("fursuitsCatched","created_at")
             ->orderByDesc("fursuits_catched_count")
             ->orderBy("fursuits_catched_max_created_at")
             ->get();
 
-        // How many users do we have in totel (Users with 0 score are counted too)
-        $maxCount = $catchersOrdered->count();
+        // How many users do we have in total (Users with 0 score are counted too)
+        $maxCount = $usersOrdered->count();
 
-        // Save required informations for iteration
+        // Save required information for iteration
         $current = array(
             'count' => 1,
             'rank' => 1,
-            'score' => $catchersOrdered->first()->fursuits_catched_count
+            'score' => $usersOrdered->first()->fursuits_catched_count
         );
 
         // Need to have stats of previous Rank
@@ -97,27 +99,73 @@ class DashboardController extends Controller
         UserCatchUserRanking::truncate();
 
         // Iterate all users to build Ranking
-        foreach ($catchersOrdered as $catcher) {
+        foreach ($usersOrdered as $user) {
             // Increase Rank when Score updates (players get same rank with same score)
-            if ($current['score'] > $catcher->fursuits_catched_count) {
+            if ($current['score'] > $user->fursuits_catched_count) {
                 $previous = $current;
                 $current['rank']++;
-                $current['score'] = $catcher->fursuits_catched_count;
+                $current['score'] = $user->fursuits_catched_count;
             }
 
             $userRanking = new UserCatchUserRanking();
-            $userRanking->user_id = $catcher->id;
+            $userRanking->user_id = $user->id;
             $userRanking->rank = $current['rank'];
-            $userRanking->catches = $catcher->fursuits_catched_count;
-            $userRanking->catches_till_next = $previous['score'] - $current['score'];
-            $userRanking->users_behind = $maxCount - $previous['count'];
-            $userRanking->newest_catch_at = $catcher->fursuits_catched_max_created_at;
+            $userRanking->score = $user->fursuits_catched_count;
+            $userRanking->score_till_next = $previous['score'] - $current['score'];
+            $userRanking->others_behind = $maxCount - $previous['count'];
+            $userRanking->score_reached_at = $user->fursuits_catched_max_created_at;
             $userRanking->save();
             $current['count']++;
         }
     }
 
-    // Small function to limit users interaction by id. By default 20 Catches per minute.
+    // Function to build Fursuit Ranking. Truncated Table and iterates all fursuits. Similar to the User Ranking
+    public function RefreshFursuitRanking() {
+        $fursuitsOrdered = Fursuit::query()
+            ->withCount("catchedByUsers")
+            ->withMax("catchedByUsers","created_at")
+            ->orderByDesc("catched_by_users_count")
+            ->orderBy("catched_by_users_max_created_at")
+            ->get();
+
+        // How many users do we have in total (Users with 0 score are counted too)
+        $maxCount = $fursuitsOrdered->count();
+
+        // Save required information for iteration
+        $current = array(
+            'count' => 1,
+            'rank' => 1,
+            'score' => $fursuitsOrdered->first()->catched_by_users_count
+        );
+
+        // Need to have stats of previous Rank
+        $previous = $current;
+
+        // Clean Ranking
+        UserCatchFursuitRanking::truncate();
+
+        // Iterate all users to build Ranking
+        foreach ($fursuitsOrdered as $fursuit) {
+            // Increase Rank when Score updates (players get same rank with same score)
+            if ($current['score'] > $fursuit->catched_by_users_count) {
+                $previous = $current;
+                $current['rank']++;
+                $current['score'] = $fursuit->catched_by_users_count;
+            }
+
+            $fursuitRanking = new UserCatchFursuitRanking();
+            $fursuitRanking->fursuit_id = $fursuit->id;
+            $fursuitRanking->rank = $current['rank'];
+            $fursuitRanking->score = $fursuit->catched_by_users_count;
+            $fursuitRanking->score_till_next = $previous['score'] - $current['score'];
+            $fursuitRanking->others_behind = $maxCount - $previous['count'];
+            $fursuitRanking->score_reached_at = $fursuit->catched_by_users_max_created_at;
+            $fursuitRanking->save();
+            $current['count']++;
+        }
+    }
+
+    // Small function to limit users interaction by id. By default, 20 Catches per minute.
     // User ID and Action can be modified on call, Limit per minute is set on config
     // If successful, return is 0 otherwise return is the remaining seconds until next attempt is allowed.
     protected function IsLimited(int $identifier, string $action = 'fursuit_catch') : int
