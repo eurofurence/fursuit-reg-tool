@@ -9,6 +9,7 @@ use App\Http\Controllers\ProfileController;
 
 
 Route::get('/', \App\Http\Controllers\WelcomeController::class)->name('welcome');
+Route::get('/test', [\App\Http\Controllers\WelcomeController::class, 'test'])->name('test');
 Route::redirect('/auth-login', '/auth/login')->name('login');
 Route::redirect('/auth-done', '/')->name('dashboard');
 

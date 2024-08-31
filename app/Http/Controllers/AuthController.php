@@ -42,11 +42,11 @@ class AuthController extends Controller
 
         $regId = $attendeeListResponse->json()['ids'][0] ?? null;
 
-        // If $regId is null then the user is not registered
-        if ($regId === null) {
-            return redirect()->route('dashboard')->with('message',
+        if (isset($attendeeListResponse['ids'][0]) === false) {
+            return redirect()->route('welcome')->with('message',
                 'Please register for the Convention first before trying to obtain a fursuit badge.');
         }
+        $regId = $attendeeListResponse['ids'][0];
 
         $user = User::updateOrCreate([
             'remote_id' => $socialLiteUser->getId(),
@@ -78,7 +78,7 @@ class AuthController extends Controller
         );
 
         Auth::login($user);
-        return redirect()->route('dashboard');
+        return redirect()->route('pos.dashboard');
     }
 
     public function logout()
