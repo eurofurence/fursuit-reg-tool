@@ -38,7 +38,7 @@ class AuthController extends Controller
         $attendeeListResponse = \Illuminate\Support\Facades\Http::attsrv()
             ->withToken($socialLiteUser->token)
             ->get('/attendees')
-            ->throw();
+            ->json();
 
         $regId = $attendeeListResponse->json()['ids'][0] ?? null;
 
