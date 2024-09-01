@@ -5,13 +5,13 @@ namespace App\Http\Controllers\FCEA;
 use App\Enum\EventStateEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserCatchRequest;
-use App\Models\FCEA\userCatchFursuitRanking;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\FCEA\UserCatch;
-use App\Models\FCEA\UserCatchUserRanking;
+use App\Models\FCEA\UserCatchRanking;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 
@@ -19,7 +19,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $fursuit = UserCatchUserRanking::query()->with("user")->get();
+        $fursuit = UserCatchRanking::query()->with("user")->get();
         return Inertia::render('FCEA/Dashboard', [
             'tempVar1' => 1,
             'tempVar2' => 4,
@@ -29,6 +29,8 @@ class DashboardController extends Controller
     }
     public function catch(UserCatchRequest $request)
     {
+        $this->RefreshUserRanking();
+        $this->RefreshFursuitRanking();
         $event = \App\Models\Event::getActiveEvent();
         if (!$event)
             return "error"; // TODO
@@ -69,7 +71,6 @@ class DashboardController extends Controller
         $userCatch->user_id = Auth::id();
         $userCatch->fursuit_id = $logEntry->tryGetFursuit()->id;
         $userCatch->save();
-        $this->RefreshUserRanking();
         return Inertia::render('FCEA/Dashboard');
     }
 
@@ -95,8 +96,10 @@ class DashboardController extends Controller
         // Need to have stats of previous Rank
         $previous = $current;
 
+        DB::beginTransaction();
+
         // Clean Ranking
-        UserCatchUserRanking::truncate();
+        UserCatchRanking::where('user_id', '<>', null)->delete();
 
         // Iterate all users to build Ranking
         foreach ($usersOrdered as $user) {
@@ -107,7 +110,8 @@ class DashboardController extends Controller
                 $current['score'] = $user->fursuits_catched_count;
             }
 
-            $userRanking = new UserCatchUserRanking();
+            $userRanking = new UserCatchRanking();
+            $userRanking->id = $current['count'];
             $userRanking->user_id = $user->id;
             $userRanking->rank = $current['rank'];
             $userRanking->score = $user->fursuits_catched_count;
@@ -117,6 +121,8 @@ class DashboardController extends Controller
             $userRanking->save();
             $current['count']++;
         }
+
+        DB::commit();
     }
 
     // Function to build Fursuit Ranking. Truncated Table and iterates all fursuits. Similar to the User Ranking
@@ -141,10 +147,12 @@ class DashboardController extends Controller
         // Need to have stats of previous Rank
         $previous = $current;
 
-        // Clean Ranking
-        UserCatchFursuitRanking::truncate();
+        DB::beginTransaction();
 
-        // Iterate all users to build Ranking
+        // Clean Ranking
+        UserCatchRanking::where('fursuit_id', '<>', null)->delete();
+
+        // Iterate all fursuits to build Ranking
         foreach ($fursuitsOrdered as $fursuit) {
             // Increase Rank when Score updates (players get same rank with same score)
             if ($current['score'] > $fursuit->catched_by_users_count) {
@@ -153,7 +161,8 @@ class DashboardController extends Controller
                 $current['score'] = $fursuit->catched_by_users_count;
             }
 
-            $fursuitRanking = new UserCatchFursuitRanking();
+            $fursuitRanking = new UserCatchRanking();
+            $fursuitRanking->id = $current['count'];
             $fursuitRanking->fursuit_id = $fursuit->id;
             $fursuitRanking->rank = $current['rank'];
             $fursuitRanking->score = $fursuit->catched_by_users_count;
@@ -163,6 +172,8 @@ class DashboardController extends Controller
             $fursuitRanking->save();
             $current['count']++;
         }
+
+        DB::commit();
     }
 
     // Small function to limit users interaction by id. By default, 20 Catches per minute.
