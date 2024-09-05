@@ -46,7 +46,7 @@ class FursuitController extends Controller
         if ($status != 'any')
             $query->where("status", '=', $status);
 
-        // returns the results paginated and filteres by FursuitCollection
+        // returns the results paginated and filtered by FursuitCollection
         return new FursuitCollection($query->paginate($this->pageSize));
     }
 }

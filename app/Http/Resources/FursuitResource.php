@@ -17,7 +17,7 @@ class FursuitResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            "reg_id" => (int) $this->user->attendee_id,
+            "reg_id" => $this->user->attendee_id,
             'status' => $this->status,
             'name' => $this->name,
             'published' => $this->published,

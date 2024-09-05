@@ -4,9 +4,11 @@ namespace App\Models\Fursuit;
 
 use App\Models\Badge\Badge;
 use App\Models\Event;
+use App\Models\FCEA\UserCatch;
 use App\Models\Fursuit\States\FursuitStatusState;
 use App\Models\Species;
 use App\Models\User;
+use App\Services\FursuitCatchCode;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -111,5 +113,22 @@ class Fursuit extends Model
     public function isClaimedBySelf(User $user)
     {
         return (int) cache()->get($this->getClaimCacheKey()) == $user->id;
+    }
+
+    public function catchedByUsers()
+    {
+        return $this->hasMany(UserCatch::class);
+    }
+
+    public static function booted()
+    {
+        static::saving(function (Fursuit $fursuit) {
+            // Only generate if required and not existing
+            if (!$fursuit->catch_em_all || $fursuit->catch_code <> null)
+                return;
+
+            // Generate an unique Catch Code before saving the fursuit
+            $fursuit->catch_code = (new FursuitCatchCode(Fursuit::class, 'catch_code'))->generate();
+        });
     }
 }

@@ -13,7 +13,7 @@ const buttons = [
     { label: "Cash Register", route: '#', icon: 'pi pi-euro' },
     { label: "Logout", route: '#', icon: 'pi pi-wallet' },
 ];
-</script>sd
+</script>
 
 <template>
     <Head>

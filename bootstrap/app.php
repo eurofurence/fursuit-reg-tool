@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function() {
+            \Illuminate\Support\Facades\Route::prefix('fcea/')
+                ->name('fcea.')
+                ->middleware('web')
+                ->group(base_path('routes/fcea.php'));
             \Illuminate\Support\Facades\Route::middleware(['auth:machine','auth:machine-user'])
                 ->prefix('pos/')
                 ->name('pos.')
