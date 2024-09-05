@@ -28,8 +28,8 @@ class DashboardController extends Controller
     }
     public function catch(UserCatchRequest $request)
     {
-        $this->RefreshUserRanking();
-        $this->RefreshFursuitRanking();
+        $this->refreshUserRanking();
+        $this->refreshFursuitRanking();
         $event = \App\Models\Event::getActiveEvent();
         if (!$event)
             return "No Active Event"; // TODO
@@ -45,7 +45,7 @@ class DashboardController extends Controller
         $logEntry->is_successful = false;
         $logEntry->already_caught = false;
 
-        if (!$logEntry->FursuitExist())
+        if (!$logEntry->fursuitExist())
         {
             $logEntry->save();
             return Inertia::render('FCEA/Dashboard');
@@ -74,7 +74,7 @@ class DashboardController extends Controller
     }
 
     // Function to build User Ranking. Truncated Table and iterates all users. Similar to the Fursuit Ranking
-    public function RefreshUserRanking() {
+    public function refreshUserRanking() {
         $usersOrdered = User::query()
             ->withCount("fursuitsCatched")
             ->withMax("fursuitsCatched","created_at")
@@ -125,7 +125,7 @@ class DashboardController extends Controller
     }
 
     // Function to build Fursuit Ranking. Truncated Table and iterates all fursuits. Similar to the User Ranking
-    public function RefreshFursuitRanking() {
+    public function refreshFursuitRanking() {
         $fursuitsOrdered = Fursuit::query()
             ->withCount("catchedByUsers")
             ->withMax("catchedByUsers","created_at")
