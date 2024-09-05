@@ -40,7 +40,7 @@ class AuthController extends Controller
             ->get('/attendees')
             ->json();
 
-        $regId = $attendeeListResponse->json()['ids'][0] ?? null;
+        $regId = $attendeeListResponse['ids'][0] ?? null;
 
         if (isset($attendeeListResponse['ids'][0]) === false) {
             return redirect()->route('welcome')->with('message',
