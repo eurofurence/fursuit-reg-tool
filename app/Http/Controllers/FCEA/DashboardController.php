@@ -19,12 +19,11 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $fursuit = UserCatchRanking::query()->with("user")->get();
+        $myUserInfo = UserCatchRanking::getInfoOfUser(Auth::id());
+        $userRanking = UserCatchRanking::queryUserRanking()->get();
         return Inertia::render('FCEA/Dashboard', [
-            'tempVar1' => 1,
-            'tempVar2' => 4,
-            'tempVar3' => "trololol",
-            'tempVar4' => $fursuit,
+            'myUserInfo' => $myUserInfo,
+            'userRanking' => $userRanking,
         ]);
     }
     public function catch(UserCatchRequest $request)
@@ -33,7 +32,7 @@ class DashboardController extends Controller
         $this->RefreshFursuitRanking();
         $event = \App\Models\Event::getActiveEvent();
         if (!$event)
-            return "error"; // TODO
+            return "No Active Event"; // TODO
 
         if ($second = $this->IsLimited(Auth::id()))
             return 'You may try again in '.$second.' seconds.';
@@ -99,7 +98,7 @@ class DashboardController extends Controller
         DB::beginTransaction();
 
         // Clean Ranking
-        UserCatchRanking::where('user_id', '<>', null)->delete();
+        UserCatchRanking::deleteUserRanking();
 
         // Iterate all users to build Ranking
         foreach ($usersOrdered as $user) {
@@ -150,7 +149,7 @@ class DashboardController extends Controller
         DB::beginTransaction();
 
         // Clean Ranking
-        UserCatchRanking::where('fursuit_id', '<>', null)->delete();
+        UserCatchRanking::deleteFursuitRanking();
 
         // Iterate all fursuits to build Ranking
         foreach ($fursuitsOrdered as $fursuit) {

@@ -9,10 +9,8 @@ const form = useForm('post', route('fcea.dashboard.catch'), {
 })
 const props = defineProps(
     {
-        tempVar1: Number,
-        tempVar2: Number,
-        tempVar3: String,
-        tempVar4: Object
+        myUserInfo: Object,
+        userRanking: Object,
     }
 )
 
@@ -29,13 +27,9 @@ function submit() {
             <h3>Fursuit Catch Em All</h3>
         </div>
         <div class="card-body">
-            <h4 class="text-center">Var1 #{{ tempVar1 }}</h4>
-            <h4 class="text-center">Var2 #{{ tempVar2 }}</h4>
-            <h4 class="text-center">Var3 #{{ tempVar3 }}</h4>
-            <h4 class="text-center">Fursuit #{{ tempVar4[0]['user_id'] }}</h4>
-            <h4 class="text-center">Place #{{ place }}</h4>
-            <p class="text-center"><small>{{ toNextPlace }} more to advance to the next place</small></p>
-            <p class="text-center"><small>{{ behindYou }} behind you</small></p>
+            <h4 class="text-center">Place #{{ myUserInfo.rank }} with {{ myUserInfo.score }} catches</h4>
+            <p class="text-center" v-if="myUserInfo.score_till_next ==! 0"><small>{{ myUserInfo.score_till_next }} more to advance to the next place</small></p>
+            <p class="text-center"><small>{{ myUserInfo.others_behind }} behind you</small></p>
 
             <div class="text-center">
                  <input type="text" class="form-control mb-2" v-model="form.catch_code" placeholder="Enter Code" />
