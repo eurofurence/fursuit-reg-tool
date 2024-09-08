@@ -14,22 +14,64 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
+use function Sodium\add;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $myUserInfo = UserCatchRanking::getInfoOfUser(Auth::id());
-        $userRanking = UserCatchRanking::queryUserRanking()->get();
+        $rankingSize = 10;
+        $myUserInfo = UserCatchRanking::getInfoOfUser(Auth::id()); // Getting own Rank, may be null if user is new
+
+        if (!$myUserInfo) { // User not in ranking
+            $this->refreshRanking();  // refresh it.
+            $myUserInfo = UserCatchRanking::getInfoOfUser(Auth::id()); // should not be new anymore
+        }
+
+        $ownRankingRange = [$myUserInfo->rank - ($rankingSize / 2), $myUserInfo->rank + ($rankingSize / 2)];
+
+        $topUserRanking = UserCatchRanking::queryUserRanking()
+            ->whereBetween('rank', [1, $rankingSize]) // Top X Ranking
+            ->orderBy('id') // already ordered by rank/score_reached_at
+            ->limit($rankingSize);
+
+        $userRanking = UserCatchRanking::queryUserRanking()
+            ->whereBetween('rank',  $ownRankingRange) // Ranking around own position - Be aware that you need to add separator to the ranking frontend if there is a jump in the ranking
+            ->orderBy('id')  // already ordered by rank/score_reached_at
+            ->limit($rankingSize)
+            ->union($topUserRanking)
+            ->distinct() // remove duplicates
+            ->orderBy('id') // Last time order to merge union select
+            ->get();
+
+        $lastID = $userRanking->first()->id;
+        // Iterate manually to find jumps in id (every id is used at least once) always starting with 1
+        foreach ($userRanking as $ranking) {
+            // Check if we incremented by more than one (jump)
+            if ($lastID + 1 < $ranking->rank) {
+                $newItem = new UserCatchRanking();
+                $newItem->id = $lastID + 1; // Use this rank for correct sorting
+                $newItem->user = new User();
+                $newItem->user->name = "...";
+                $userRanking->add($newItem); // Adding a fake item to indicate separators
+            }
+
+            $lastID = $ranking->id;
+        }
+
+        // Should not change the order as it was ordered by id to begin with
+        $userRanking = $userRanking->sortBy('id')->values();
+
+        $myFursuits = $myUserInfo->user->fursuits;
+
         return Inertia::render('FCEA/Dashboard', [
             'myUserInfo' => $myUserInfo,
             'userRanking' => $userRanking,
+            'myFursuits' => $myFursuits,
         ]);
     }
     public function catch(UserCatchRequest $request)
     {
-        $this->refreshUserRanking();
-        $this->refreshFursuitRanking();
         $event = \App\Models\Event::getActiveEvent();
         if (!$event)
             return "No Active Event"; // TODO
@@ -48,7 +90,7 @@ class DashboardController extends Controller
         if (!$logEntry->fursuitExist())
         {
             $logEntry->save();
-            return Inertia::render('FCEA/Dashboard');
+            return "Invalid Code";
         }
 
         $logEntry->already_caught =
@@ -59,7 +101,7 @@ class DashboardController extends Controller
         if ($logEntry->already_caught)
         {
             $logEntry->save();
-            return Inertia::render('FCEA/Dashboard');
+            return "Fursuit already caught";
         }
 
         $logEntry->is_successful = true;
@@ -70,7 +112,13 @@ class DashboardController extends Controller
         $userCatch->user_id = Auth::id();
         $userCatch->fursuit_id = $logEntry->tryGetFursuit()->id;
         $userCatch->save();
+        $this->refreshRanking();
         return Inertia::render('FCEA/Dashboard');
+    }
+
+    public function refreshRanking() {
+        $this->refreshUserRanking();
+        $this->refreshFursuitRanking();
     }
 
     // Function to build User Ranking. Truncated Table and iterates all users. Similar to the Fursuit Ranking

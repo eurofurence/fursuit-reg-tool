@@ -34,11 +34,11 @@ class UserCatchRanking extends Model
         return $this->fursuit_id <> null;
     }
 
-    static public function getInfoOfUser(int $userId): UserCatchRanking
+    static public function getInfoOfUser(int $userId): UserCatchRanking|null
     {
-        return UserCatchRanking::where('user_id', '=', $userId)->with("user")->first();
+        return UserCatchRanking::where('user_id', '=', $userId)->with("user")->with("fursuit")->first();
     }
-    static public function getInfoOfFursuit(int $fursuitId): UserCatchRanking
+    static public function getInfoOfFursuit(int $fursuitId): UserCatchRanking|null
     {
         return UserCatchRanking::where('fursuit_id', '=', $fursuitId)->with("fursuit")->first();
     }

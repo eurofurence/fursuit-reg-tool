@@ -2,6 +2,7 @@
 import {Link, Head, usePage} from '@inertiajs/vue3'
 import {useForm} from 'laravel-precognition-vue-inertia'
 import Button from 'primevue/button';
+import DashboardButton from "@/Components/POS/DashboardButton.vue";
 
 
 const form = useForm('post', route('fcea.dashboard.catch'), {
@@ -39,10 +40,7 @@ function submit() {
             <div class="mt-4">
                 <h5>Top Catchers</h5>
                 <ul class="list-group">
-                    <li class="list-group-item">Top 1: {{ topCatchers[0] }}</li>
-                    <li class="list-group-item">Top 2...10: {{ topCatchers[1] }}</li>
-                    <li class="list-group-item">...</li>
-                    <li class="list-group-item">Top 704: {{ topCatchers[2] }}</li>
+                    <li class="list-group-item" v-for="i in userRanking"><p v-if="i.user_id == myUserInfo.user_id">[YOU]</p> Top {{i.rank}}: {{i.user.name}} [{{i.score}}]</li>
                 </ul>
             </div>
 
