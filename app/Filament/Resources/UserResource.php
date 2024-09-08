@@ -38,6 +38,8 @@ class UserResource extends Resource
                     ->columnSpanFull(),
                 Forms\Components\Toggle::make('is_reviewer')
                     ->required(),
+                Forms\Components\Toggle::make('is_admin')
+                    ->required(),
             ]);
     }
 
