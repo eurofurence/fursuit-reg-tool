@@ -19,7 +19,7 @@ class AttendeeController extends Controller
 
     public function lookupSubmit(Request $request): RedirectResponse
     {
-        $user = User::where('attendee_id', $request->get('attendeeId'))->first()->exists();
+        $user = User::where('attendee_id', $request->get('attendeeId'))->first()?->exists();
         if (!$user) return redirect()->back()->withErrors(['attendeeId' => 'Could not find attendee']);
 
         else return redirect()->route('pos.attendee.show', ['attendeeId' => $request->get('attendeeId')]);
