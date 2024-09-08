@@ -16,10 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->name('fcea.')
                 ->middleware('web')
                 ->group(base_path('routes/fcea.php'));
-            \Illuminate\Support\Facades\Route::middleware(['auth:machine','auth:machine-user'])
+            \Illuminate\Support\Facades\Route::middleware(['auth:machine','auth:machine-user','web'])
                 ->prefix('pos/')
                 ->name('pos.')
-                ->middleware('web')
                 ->group(base_path('routes/pos.php'));
             \Illuminate\Support\Facades\Route::prefix('pos/auth/')
                 ->name('pos.auth.')

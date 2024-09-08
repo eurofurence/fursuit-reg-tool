@@ -19,6 +19,6 @@ class MachineLoginController extends Controller
         $machine = Machine::findOrFail($data['machine_id']);
         Auth::guard('machine')->login($machine, true);
 
-        return Redirect::route('pos.auth.user.login');
+        return Redirect::route('pos.auth.user.select');
     }
 }

@@ -11,8 +11,6 @@ class DashboardController extends Controller
 {
     public function __invoke()
     {
-        print_r(Auth::guard('machine-user')->user()); // returns App\Models\User
-
         return Inertia::render('POS/Dashboard');
     }
 }
