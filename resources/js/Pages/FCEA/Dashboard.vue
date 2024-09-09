@@ -12,6 +12,8 @@ const props = defineProps(
     {
         myUserInfo: Object,
         userRanking: Object,
+        myFursuitInfos: Object,
+        fursuitRanking: Object,
     }
 )
 
@@ -40,15 +42,14 @@ function submit() {
             <div class="mt-4">
                 <h5>Top Catchers</h5>
                 <ul class="list-group">
-                    <li class="list-group-item" v-for="i in userRanking"><p v-if="i.user_id == myUserInfo.user_id">[YOU]</p> Top {{i.rank}}: {{i.user.name}} [{{i.score}}]</li>
+                    <li class="list-group-item" v-for="i in userRanking"><p v-if="i.user_id == myUserInfo.user_id">[YOU]</p> Top {{i.id}} - {{i.rank}}: {{i.user.name}} [{{i.score}}]</li>
                 </ul>
             </div>
 
             <div class="mt-4">
                 <h5>Top Fursuiters</h5>
                 <ul class="list-group">
-                    <li class="list-group-item">Top 1: {{ topFursuiters[0] }}</li>
-                    <li class="list-group-item">Top 2...10: {{ topFursuiters[1] }}</li>
+                    <li class="list-group-item" v-for="i in fursuitRanking">Top {{i.id}} - {{i.rank}}: {{i.fursuit.name??'error'}} [{{i.score}}]</li>
                 </ul>
             </div>
         </div>

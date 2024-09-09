@@ -127,7 +127,7 @@ class Fursuit extends Model
             if (!$fursuit->catch_em_all || $fursuit->catch_code <> null)
                 return;
 
-            // Generate an unique Catch Code before saving the fursuit
+            // Generate a unique Catch Code before saving the fursuit
             $fursuit->catch_code = (new FursuitCatchCode(Fursuit::class, 'catch_code'))->generate();
         });
     }

@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
 
-class UserFursuitCatchFactory extends Factory
+class UserCatchFactory extends Factory
 {
     protected $model = UserCatch::class;
 
