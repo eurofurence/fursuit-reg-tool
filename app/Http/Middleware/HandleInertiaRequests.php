@@ -31,15 +31,26 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            'auth' => [
-                'user' => $request->user()?->load('badges'),
-                'balance' => $request->user()?->balanceInt,
-            ],
+            'auth' => $this->getAuthContent($request),
             'flash' => [
                 'message' => fn() => $request->session()->get('message'),
             ],
             // Get event that did not end yet and is the next one
             'event' => \App\Models\Event::where('ends_at', '>', now())->orderBy('starts_at')->first(),
+        ];
+    }
+
+    private function getAuthContent(Request $request): array
+    {
+        if($request->routeIs('pos.*')) {
+            return [
+                'user' => $request->user('machine-user')?->only(['id', 'name','is_admin']),
+                'machine' => $request->user('machine'),
+            ];
+        }
+        return [
+            'user' => $request->user()?->load('badges'),
+            'balance' => $request->user()?->balanceInt,
         ];
     }
 }

@@ -11,7 +11,7 @@ defineProps({
     badges: Array
 })
 
-const emit = defineEmits(['update:selectedBadges']);
+const emit = defineEmits(['update:selectedBadges', 'printBadge']);
 
 const selectedBadges = ref();
 
@@ -39,7 +39,7 @@ watchEffect(() => {
         <Column field="status" header="Paid"></Column>
         <Column header="Actions">
             <template #body="slotProps">
-                <Button size="small">Print</Button>
+                <Button size="small" @click="emit('printBadge', slotProps.data.id)">Print</Button>
             </template>
         </Column>
     </DataTable>

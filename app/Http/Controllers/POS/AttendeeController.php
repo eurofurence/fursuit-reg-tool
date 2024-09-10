@@ -25,7 +25,7 @@ class AttendeeController extends Controller
         else return redirect()->route('pos.attendee.show', ['attendeeId' => $request->get('attendeeId')]);
     }
 
-    public function attendeeShow(string $attendeeId, Request $request):  Response
+    public function show(string $attendeeId, Request $request):  Response
     {
         $user = User::where('attendee_id', $attendeeId)->first();
         $badges = $user->badges()->with('fursuit.species')->get();

@@ -11,7 +11,7 @@ use Imagine\Image\PointInterface;
 interface BadgeInterface
 {
     public function init();
-    public function getImage(Badge $badge): Response;
+    public function getPdf(Badge $badge): string;
     public function getFont(int $size, ?string $font_path = null): Font;
     public function getHeight(): int;
     public function getWidth(): int;

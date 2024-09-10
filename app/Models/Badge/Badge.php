@@ -2,9 +2,9 @@
 
 namespace App\Models\Badge;
 
+use App\Domain\Printing\Models\PrintJobs;
 use App\Models\Badge\States\BadgeStatusState;
 use App\Models\Fursuit\Fursuit;
-use App\Models\Fursuit\States\FursuitStatusState;
 use Bavix\Wallet\Interfaces\Customer;
 use Bavix\Wallet\Interfaces\ProductInterface;
 use Bavix\Wallet\Traits\HasWalletFloat;
@@ -34,6 +34,11 @@ class Badge extends Model implements ProductInterface
     public function fursuit(): BelongsTo
     {
         return $this->belongsTo(Fursuit::class);
+    }
+
+    public function printJobs()
+    {
+        return $this->morphMany(PrintJobs::class, 'printable');
     }
 
     public function getAmountProduct(Customer $customer): int|string

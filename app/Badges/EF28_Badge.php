@@ -14,6 +14,7 @@ use App\Badges\Components\TextField;
 use Illuminate\Support\Facades\Storage;
 use App\Badges\Components\TextAlignment;
 use Imagine\Image\Palette\Color\ColorInterface;
+use Mpdf\Mpdf;
 
 #Documentation: https://imagine.readthedocs.io/en/stable/
 
@@ -24,14 +25,14 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $this->init();
 
         // Standard Werte überschreiben
-        $this->height_px = 638;
-        $this->width_px = 1013;
+        $this->height_px = 648;
+        $this->width_px = 1024;
         $this->font_color = '#FFFFFF';
         $this->font_path = 'badges/ef28/fonts/HEMIHEAD.TTF';
         $this->file_format = 'png';
     }
 
-    public function getImage(Badge $badge): Response
+    public function getPng(Badge $badge): string
     {
         // Pflicht Verweis
         $this->badge = $badge;
@@ -47,8 +48,30 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
             $this->addFifthLayer($badge_objekt, $size);
         }
 
-        $image_data = $badge_objekt->get($this->file_format);
-        return response($image_data, 200)->header('Content-Type', 'image/png');
+        return $badge_objekt->get($this->file_format);
+    }
+
+    public function getPdf(Badge $badge): string
+    {
+        // Convert Image blob to PDF using mPDF
+        $options = [
+            'mode' => 'utf-8',
+            'format' => [86.7, 54.86],
+            'margin_left' => 0,
+            'margin_right' => 0,
+            'margin_top' => 0,
+            'margin_bottom' => 0,
+        ];
+        $mpdf = new Mpdf($options);
+        $mpdf->img_dpi = 300;
+        $mpdf->dpi = 300;
+        $mpdf->imageVars['badgeImage'] = $this->getPng($badge);
+        // Add Page 1
+        $mpdf->AddPageByArray($options);
+        $mpdf->Image('var:badgeImage',0,0, $options['format'][0], $options['format'][1],'png','', true, false);
+        $mpdf->AddPageByArray($options);
+        $mpdf->Image('var:badgeImage',0,0, $options['format'][0], $options['format'][1],'png','', true, false);
+        return $mpdf->Output($badge->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     }
 
     private function addFirstLayer(Box $size)
