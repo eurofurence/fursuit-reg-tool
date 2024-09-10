@@ -19,6 +19,10 @@
             pkgs.php83
             pkgs.php83Packages.composer
           ];
+
+          shellHook = ''
+            alias sail='sh $([ -f sail ] && echo sail || echo vendor/bin/sail)'
+          '';
         };
       }
     );
