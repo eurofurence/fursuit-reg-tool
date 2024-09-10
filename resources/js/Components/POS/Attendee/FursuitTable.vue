@@ -10,8 +10,6 @@ defineProps({
     attendee: Object,
     fursuits: Array
 })
-
-const selectedBadges = ref();
 </script>
 
 <template>
@@ -26,11 +24,6 @@ const selectedBadges = ref();
         <Column field="catch_em_all" header="Catch em all">
             <template #body="slotProps">
                 <Checkbox :modelValue="slotProps.data.catch_em_all" :binary="true" />
-            </template>
-        </Column>
-        <Column header="Actions">
-            <template #body="slotProps">
-
             </template>
         </Column>
     </DataTable>

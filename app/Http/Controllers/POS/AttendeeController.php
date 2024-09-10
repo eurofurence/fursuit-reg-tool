@@ -30,9 +30,9 @@ class AttendeeController extends Controller
         $user = User::where('attendee_id', $attendeeId)->first();
         $badges = $user->badges()->with('fursuit.species')->get();
         return Inertia::render('POS/Attendee/Show', [
-            'attendee' => $user,
+            'attendee' => $user->load('wallet'),
             //'badges' => $user->badges()->select('fursuit_id', 'printed_at', 'total', 'picked_up_at', 'badges.updated_at' )->get()
-            'badges' => $badges,
+            'badges' => $badges->load('wallet'),
             'fursuits' => $badges->map(function ($badge) {
                 return $badge->fursuit;
             })->unique('fursuit'),

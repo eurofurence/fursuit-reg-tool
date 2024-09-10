@@ -16,6 +16,7 @@ abstract class BadgeStatusState extends State
             ->default(Pending::class)
             ->allowTransition(Pending::class, Printed::class, PendingToPrintedTransition::class)
             ->allowTransition(Printed::class, ReadyForPickup::class)
+            ->allowTransition(PickedUp::class, ReadyForPickup::class) // Incase of pos user error we can revert the status
             ->allowTransition(ReadyForPickup::class, PickedUp::class);
     }
 }

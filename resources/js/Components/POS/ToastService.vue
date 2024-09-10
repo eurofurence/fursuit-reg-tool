@@ -18,10 +18,10 @@ watch(() => usePage().props.flash, () => {
 function checkToast() {
     const page = usePage();
     if (page.props.flash.success) {
-        toast.add({severity: 'success', summary: page.props.flash.success, life: 3000});
+        toast.add({severity: 'success', summary: 'Success', detail: page.props.flash.success, life: 1000});
     }
     if (page.props.flash.error) {
-        toast.add({severity: 'error', summary: page.props.flash.error, life: 3000});
+        toast.add({severity: 'error', summary: 'Error', detail: page.props.flash.error, life: 1000});
     }
 }
 </script>
