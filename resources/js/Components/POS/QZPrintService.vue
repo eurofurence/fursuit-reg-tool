@@ -34,7 +34,9 @@ onMounted(function() {
     });
 
     if(page.props.auth.machine.should_discover_printers) {
-        startQZPrint()
+        startQZPrint();
+        // start pollng for print jobs
+        pollPrintJobs();
     }
 })
 
@@ -53,9 +55,42 @@ function startQZPrint() {
     }
 }
 
+function pollPrintJobs() {
+    setInterval(() => {
+        http.get(route('pos.printers.jobs'),{},{
+            onSuccess(printJobs) {
+                printJobs.data.forEach((job) => {
+                    console.log("job", job);
+                    http.post(route('pos.printers.jobs.printed', {job: job.id}), {}, {
+                        onSuccess() {
+                            var printerOptions = (job.type === 'badge') ? {
+                                colorType: 'color',
+                                size: job.paper.mm,
+                                units: 'mm',
+                                duplex: job.duplex,
+                            } : {
+                                colorType: 'grayscale'
+                            };
+                            var config = qz.configs.create(job.printer, printerOptions);
+                            var data = [{
+                                type: 'pixel',
+                                format: 'pdf',
+                                flavor: 'file',
+                                data: job.file
+                            }];
+                            qz.print(config, data).catch((err) => {
+                                console.error(err);
+                            });
+                        }
+                    });
+                });
+            }
+        })
+    },5000)
+}
+
 function findPrinters() {
     qz.printers.details().then((printers) => {
-        console.log(printers);
         http.post(route('pos.printers.store'), {printers: printers});
     }).catch((err) => {
         console.error(err);

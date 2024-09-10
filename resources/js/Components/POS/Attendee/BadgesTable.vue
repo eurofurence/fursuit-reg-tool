@@ -33,7 +33,7 @@ watchEffect(() => {
         <Column field="fursuit.name" header="Fursuit"></Column>
         <Column field="printed_at" header="Print">
             <template #body="slotProps">
-                {{ slotProps.data.printed_at || 'not yet' }}
+                {{ dayjs(slotProps.data.printed_at).format('DD.MM.YY') || 'not yet' }}
             </template>
         </Column>
         <Column field="status" header="Paid"></Column>

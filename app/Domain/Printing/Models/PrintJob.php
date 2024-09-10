@@ -6,7 +6,7 @@ use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use Illuminate\Database\Eloquent\Model;
 
-class PrintJobs extends Model
+class PrintJob extends Model
 {
     protected $guarded = [];
     public function printable()

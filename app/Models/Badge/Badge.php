@@ -2,7 +2,7 @@
 
 namespace App\Models\Badge;
 
-use App\Domain\Printing\Models\PrintJobs;
+use App\Domain\Printing\Models\PrintJob;
 use App\Models\Badge\States\BadgeStatusState;
 use App\Models\Fursuit\Fursuit;
 use Bavix\Wallet\Interfaces\Customer;
@@ -38,7 +38,7 @@ class Badge extends Model implements ProductInterface
 
     public function printJobs()
     {
-        return $this->morphMany(PrintJobs::class, 'printable');
+        return $this->morphMany(PrintJob::class, 'printable');
     }
 
     public function getAmountProduct(Customer $customer): int|string

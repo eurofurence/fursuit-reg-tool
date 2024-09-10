@@ -32,7 +32,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $this->file_format = 'png';
     }
 
-    public function getPng(Badge $badge): string
+    public function getPng(Badge $badge, bool $flip = false): string
     {
         // Pflicht Verweis
         $this->badge = $badge;
@@ -46,6 +46,11 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
 
         if ($this->badge->fursuit->catch_em_all == true && !empty($this->badge->fursuit->catch_em_all_code)) {
             $this->addFifthLayer($badge_objekt, $size);
+        }
+
+        // Bild um 180 Grad drehen
+        if ($flip) {
+            $badge_objekt->rotate(180);
         }
 
         return $badge_objekt->get($this->file_format);
@@ -65,12 +70,13 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $mpdf = new Mpdf($options);
         $mpdf->img_dpi = 300;
         $mpdf->dpi = 300;
-        $mpdf->imageVars['badgeImage'] = $this->getPng($badge);
+        $mpdf->imageVars['badgeImageFront'] = $this->getPng($badge, 0);
+        $mpdf->imageVars['badgeImageBack'] = $this->getPng($badge, 1);
         // Add Page 1
         $mpdf->AddPageByArray($options);
-        $mpdf->Image('var:badgeImage',0,0, $options['format'][0], $options['format'][1],'png','', true, false);
+        $mpdf->Image('var:badgeImageFront',0,0, $options['format'][0], $options['format'][1],'png','', true, false);
         $mpdf->AddPageByArray($options);
-        $mpdf->Image('var:badgeImage',0,0, $options['format'][0], $options['format'][1],'png','', true, false);
+        $mpdf->Image('var:badgeImageBack',0,0, $options['format'][0], $options['format'][1],'png','', true, false);
         return $mpdf->Output($badge->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     }
 

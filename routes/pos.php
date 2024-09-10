@@ -19,3 +19,5 @@ Route::post('/badges/{badge}/print', \App\Http\Controllers\POS\Printing\PrintBad
 Route::get('/qz/sign', [QzCertController::class,'sign'])->name('qz.sign');
 Route::get('/qz/cert', [QzCertController::class,'cert'])->name('qz.cert');
 Route::post('/printers/store',[\App\Http\Controllers\POS\Printing\PrinterController::class,'store'])->name('printers.store');
+Route::get('/printers/jobs',[\App\Http\Controllers\POS\Printing\PrinterController::class, 'jobIndex'])->name('printers.jobs');
+Route::post('/printers/jobs/{job}/printed',[\App\Http\Controllers\POS\Printing\PrinterController::class, 'jobPrinted'])->name('printers.jobs.printed');
