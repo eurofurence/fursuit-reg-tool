@@ -4,11 +4,8 @@ namespace App\Badges\Bases;
 
 use Imagine\Gd\Font;
 use Imagine\Gd\Imagine;
-use Imagine\Image\Point;
 use App\Models\Badge\Badge;
 use Imagine\Image\Palette\RGB;
-use Imagine\Image\ImageInterface;
-use Imagine\Image\PointInterface;
 use Imagine\Image\Palette\Color\ColorInterface;
 
 class BadgeBase_V1

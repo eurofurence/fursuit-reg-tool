@@ -2,11 +2,8 @@
 
 use App\Http\Controllers\WelcomeController;
 use Inertia\Inertia;
-use App\Badges\EF28_Badge;
-use App\Models\Badge\Badge;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
-
 
 Route::get('/', WelcomeController::class)->name('welcome');
 Route::redirect('/auth-login', '/auth/login')->name('login');
