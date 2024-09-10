@@ -67,7 +67,7 @@ function handoutBadges() {
         />
         <ConfirmModal
             :title="((selectedBadges.length === 0) ? badgesReadyForHandout : (Math.min(selectedBadges.length, badgesReadyForHandout))) + ' Badges marked for Handout'"
-            message="This will try to mark bades for handout. Are you sure?"
+            message="This will try to mark badges for handout. Are you sure?"
             :show="showHandoutConfirmModal"
             @confirm="bulkHandout()"
             @cancel="showHandoutConfirmModal = false"
