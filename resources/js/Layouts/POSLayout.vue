@@ -3,6 +3,7 @@ import Button from "primevue/button";
 import Menu from "primevue/menu";
 import { Link } from "@inertiajs/vue3";
 import DigitalClock from "@/Components/POS/DigitalClock.vue";
+import Badge from "primevue/badge";
 import { ref } from "vue";
 
 const userMenu = ref();
@@ -14,12 +15,18 @@ const userMenuItems = ref([
 const toggleUserMenu = (event) => {
     userMenu.value.toggle(event);
 };
+
+const props = defineProps({
+    attendee: Object || undefined, // from backend
+    // layoutBack: String || undefined
+});
 </script>
 
 <template>
     <div class="min-h-screen lg:h-screen w-full flex flex-col bg-gray-200">
         <div class="p-4 flex flex-row items-center">
-            <!-- <Button icon="pi pi-bars" class="p-button-rounded p-button-text" /> -->
+            <Button v-if="layoutBack" icon="pi pi-arrow-left" class="p-button-rounded p-button-text" label="Back" onclick="history.back();return false;" />
+            <Badge class="select-none" v-if="attendee" :value="attendee.name + ' #' + attendee.attendee_id" size="large" severity="success"></Badge>
             <div class="flex-grow text-center text-slate-500 font-semibold text-lg">
                 <DigitalClock />
             </div>

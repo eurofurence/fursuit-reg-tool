@@ -55,7 +55,6 @@ class AuthController extends Controller
             'name' => $socialLiteUser->getName(),
             'email' => $socialLiteUser->getEmail(),
             'avatar' => $socialLiteUser->getAvatar(),
-            'is_admin' => in_array('N9OY0K8OJVXR1P7L', $socialLiteUser->user['groups'], true),
             'attendee_id' => $regId,
         ]);
 
@@ -78,7 +77,7 @@ class AuthController extends Controller
         );
 
         Auth::login($user);
-        return redirect()->route('pos.dashboard');
+        return redirect()->route('dashboard');
     }
 
     public function logout()

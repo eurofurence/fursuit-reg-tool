@@ -11,6 +11,10 @@ defineOptions({
     layout: POSLayout,
 });
 
+const props = defineProps({
+    layoutBack: '/pos'
+});
+
 const form = useForm('POST', route('pos.attendee.lookup.submit'), {
     attendeeId: ''
 });
