@@ -34,6 +34,6 @@ class PrintBadgeController extends Controller
             'file' => $filePath,
         ]);
         // return back
-        return redirect()->back()->with('message', 'Badge has been added to the print queue');
+        return redirect()->back()->with('success', 'Badge has been added to the print queue');
     }
 }

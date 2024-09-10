@@ -5,6 +5,7 @@ import DataTable from "primevue/datatable";
 import Button from "primevue/button";
 import dayjs from "dayjs";
 import {ref, watchEffect} from "vue";
+import Checkbox from "primevue/checkbox";
 
 defineProps({
     attendee: Object,
@@ -36,10 +37,15 @@ watchEffect(() => {
                 {{ dayjs(slotProps.data.printed_at).format('DD.MM.YY') || 'not yet' }}
             </template>
         </Column>
+        <Column field="dual_side_print" header="Duplex">
+            <template #body="slotProps">
+                <Checkbox :modelValue="slotProps.data.dual_side_print" :binary="true" />
+            </template>
+        </Column>
         <Column field="status" header="Paid"></Column>
         <Column header="Actions">
             <template #body="slotProps">
-                <Button size="small" @click="emit('printBadge', slotProps.data.id)">Print</Button>
+                <Button size="large" @click="emit('printBadge', slotProps.data.id)">Print</Button>
             </template>
         </Column>
     </DataTable>

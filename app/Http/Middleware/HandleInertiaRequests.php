@@ -34,6 +34,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => $this->getAuthContent($request),
             'flash' => [
                 'message' => fn() => $request->session()->get('message'),
+                'success' => fn() => $request->session()->get('success'),
+                'error' => fn() => $request->session()->get('error'),
             ],
             // Get event that did not end yet and is the next one
             'event' => \App\Models\Event::where('ends_at', '>', now())->orderBy('starts_at')->first(),
