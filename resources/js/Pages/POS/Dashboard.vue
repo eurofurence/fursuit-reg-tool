@@ -10,7 +10,7 @@ defineOptions({
 const buttons = [
     { label: "Lookup Attendee", route: route('pos.attendee.lookup'), icon: 'pi pi-id-card' },
     { label: "Badge List", route: '#', icon: 'pi pi-database' },
-    { label: "Cash Register", route: '#', icon: 'pi pi-euro' },
+    { label: "Park Tickets", route: '#', icon: 'pi pi-euro' },
     { label: "Logout", route: '#', icon: 'pi pi-wallet' },
 ];
 </script>
