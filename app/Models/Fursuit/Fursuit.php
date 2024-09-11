@@ -119,16 +119,3 @@ class Fursuit extends Model
     {
         return $this->hasMany(UserCatch::class);
     }
-
-    public static function booted()
-    {
-        static::saving(function (Fursuit $fursuit) {
-            // Only generate if required and not existing
-            if (!$fursuit->catch_em_all || $fursuit->catch_code <> null)
-                return;
-
-            // Generate a unique Catch Code before saving the fursuit
-            $fursuit->catch_code = (new FursuitCatchCode(Fursuit::class, 'catch_code'))->generate();
-        });
-    }
-}

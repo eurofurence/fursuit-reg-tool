@@ -5,6 +5,8 @@ import { Link } from "@inertiajs/vue3";
 import DigitalClock from "@/Components/POS/DigitalClock.vue";
 import Badge from "primevue/badge";
 import { ref } from "vue";
+import QZPrintService from "@/Components/POS/QZPrintService.vue";
+import ToastService from "@/Components/POS/ToastService.vue";
 
 const userMenu = ref();
 const userMenuItems = ref([
@@ -23,6 +25,9 @@ const props = defineProps({
 </script>
 
 <template>
+    <ToastService/>
+    <!-- Keep this, responsible for printing! -->
+    <QZPrintService/>
     <div class="min-h-screen lg:h-screen w-full flex flex-col bg-gray-200">
         <div class="p-4 flex flex-row items-center">
             <Button v-if="layoutBack" icon="pi pi-arrow-left" class="p-button-rounded p-button-text" label="Back" onclick="history.back();return false;" />

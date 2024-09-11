@@ -6,6 +6,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "ext-openssl": "*",
         "bavix/laravel-wallet": "^11.1",
         "filament/filament": "^3.2",
         "flowframe/laravel-trend": "^0.2.0",
@@ -18,6 +19,7 @@
         "laravel/socialite": "^5.14",
         "laravel/tinker": "^2.9",
         "league/flysystem-aws-s3-v3": "^3.0",
+        "mpdf/mpdf": "^8.2",
         "sentry/sentry-laravel": "^4.7",
         "spatie/laravel-activitylog": "^4.8",
         "spatie/laravel-model-states": "^2.7",

@@ -10,7 +10,6 @@
         "@tailwindcss/forms": "^0.5.3",
         "@vitejs/plugin-vue": "^5.0.0",
         "autoprefixer": "^10.4.12",
-        "axios": "^1.6.4",
         "laravel-vite-plugin": "^1.0",
         "postcss": "^8.4.31",
         "tailwindcss": "^3.2.1",
@@ -18,13 +17,16 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
+        "chokidar": "^3.6.0",
         "dayjs": "^1.11.11",
+        "formjs-vue2": "^1.4.0",
         "laravel-precognition-vue-inertia": "^0.5.5",
         "pica": "^9.0.1",
         "primeicons": "^7.0.0",
+        "primevue": "^3.52.0",
+        "qz-tray": "^2.2.4",
         "simple-keyboard": "^3.7.83",
         "sjcl": "^1.0.8",
-        "primevue": "^3.52.0",
         "vue-advanced-cropper": "^2.8.8"
     }
 }

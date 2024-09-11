@@ -29,6 +29,16 @@ class MachineResource extends Resource
                     ->required()
                     ->columnSpanFull()
                     ->maxLength(255),
+                Forms\Components\Select::make('receipt_printer_id')
+                    ->label('Receipt Printer')
+                    ->relationship('receiptPrinter', 'name')
+                    ->columnSpanFull(),
+                Forms\Components\Select::make('badge_printer_id')
+                    ->label('Badge Printer')
+                    ->relationship('badgePrinter', 'name')
+                    ->columnSpanFull(),
+                Forms\Components\Checkbox::make('should_discover_printers')
+                    ->columnSpanFull(),
             ]);
     }
 
