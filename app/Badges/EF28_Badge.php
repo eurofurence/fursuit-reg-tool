@@ -75,8 +75,10 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         // Add Page 1
         $mpdf->AddPageByArray($options);
         $mpdf->Image('var:badgeImageFront', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
-        $mpdf->AddPageByArray($options);
-        $mpdf->Image('var:badgeImageBack', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
+        if ($badge->dual_side_print) {
+            $mpdf->AddPageByArray($options);
+            $mpdf->Image('var:badgeImageBack', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
+        }
         return $mpdf->Output($badge->id . '.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     }
 
