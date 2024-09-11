@@ -112,10 +112,11 @@ class Fursuit extends Model
 
     public function isClaimedBySelf(User $user)
     {
-        return (int) cache()->get($this->getClaimCacheKey()) == $user->id;
+        return (int)cache()->get($this->getClaimCacheKey()) == $user->id;
     }
 
     public function catchedByUsers()
     {
         return $this->hasMany(UserCatch::class);
     }
+}
