@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '20'
-      - run: npm ci
+      - run: npm install --force
       - run: npm run build
       - name: Generate key
         run: php artisan key:generate
