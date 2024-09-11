@@ -30,7 +30,6 @@ class PrintBadgeJob implements ShouldQueue
         $filePath = 'badges/' . $this->badge->id . '.pdf';
         Storage::put($filePath, $pdfContent);
         $currentMachine = $this->machine;
-        // Mark badge as printed if not printed
         // Create PrintJob
         $this->badge->printJobs()->create([
             'printer_id' => $currentMachine->badge_printer_id,

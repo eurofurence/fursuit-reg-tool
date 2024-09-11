@@ -43,7 +43,7 @@ function changeHandout(badgeId, undo) {
 <template>
     <DataTable dataKey="id" v-model:selection="selectedBadges" :value="badges" scrollable scrollHeight="400px" class="-m-5" tableStyle="min-width: 50rem">
         <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-        <Column field="id" header="ID"></Column>
+        <Column field="custom_id" header="ID"></Column>
         <Column field="fursuit.name" header="Fursuit"></Column>
         <Column field="printed_at" header="Print">
             <template #body="slotProps">

@@ -157,7 +157,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
     private function addFourthLayer(ImageInterface $badge_object)
     {
         // Texts
-        $text_attendee_id = 5000 . '-' . $this->badge->custom_id;
+        $text_attendee_id = $this->badge->custom_id;
         $text_name = $this->badge->fursuit->name;
         $text_species = $this->badge->fursuit->species->name;
 
