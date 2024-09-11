@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Fursuit\Fursuit;
+use App\Services\FursuitCatchCode;
 
 class FursuitObserver
 {
@@ -27,7 +28,7 @@ class FursuitObserver
         // Random upprecase 5 letter string that does not already exist, loop until it does not exist
         do {
             // NO 0 or O for readability
-            $catch_code = strtoupper(substr(str_shuffle(str_repeat('ABCDEFGHIJKLMNPQRSTUVWXYZ123456789', 5)), 0, 5));
+            $catch_code = (new FursuitCatchCode(Fursuit::class, 'catch_code'))->generate();
         } while (Fursuit::where('catch_code', $catch_code)->exists());
         return $catch_code;
     }

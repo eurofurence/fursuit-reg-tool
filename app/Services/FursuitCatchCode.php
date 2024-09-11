@@ -13,12 +13,7 @@ class FursuitCatchCode
     public function generate(): string
     {
         do {
-            $identifier = strtoupper(Str::password(
-                $length = config("fcea.fursuit_catch_code_length"), // by default 5
-                $letters = true,
-                $numbers = true,
-                $symbols = false,
-                $spaces = false));
+            $identifier = strtoupper(substr(str_shuffle(str_repeat('ABCDEFGHIJKLMNPQRSTUVWXYZ123456789', 5)), 0, config("fcea.fursuit_catch_code_length",5)));
         } while ($this->model::where($this->column, $identifier)->exists());
 
         return $identifier;
