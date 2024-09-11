@@ -6,7 +6,6 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "ext-imagick": "*",
         "ext-openssl": "*",
         "bavix/laravel-wallet": "^11.1",
         "filament/filament": "^3.2",
