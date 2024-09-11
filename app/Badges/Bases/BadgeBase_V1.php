@@ -4,11 +4,8 @@ namespace App\Badges\Bases;
 
 use Imagine\Gd\Font;
 use Imagine\Gd\Imagine;
-use Imagine\Image\Point;
 use App\Models\Badge\Badge;
 use Imagine\Image\Palette\RGB;
-use Imagine\Image\ImageInterface;
-use Imagine\Image\PointInterface;
 use Imagine\Image\Palette\Color\ColorInterface;
 
 class BadgeBase_V1
@@ -18,15 +15,15 @@ class BadgeBase_V1
     protected Imagine $imagine;
 
     // Standart Werte
-    protected int $height_px = 638;
-    protected int $width_px = 1013;
+    protected int $height_px = 648;
+    protected int $width_px = 1024;
     protected string $font_color = '#FFFFFF';
     protected string $font_path = '';
     protected string $file_format = 'png';
 
     public function init()
     {
-        $this->imagine = new Imagine;
+        $this->imagine = new Imagine();
 
         $new_text_color = new RGB();
         $this->text_color = $new_text_color->color($this->font_color);

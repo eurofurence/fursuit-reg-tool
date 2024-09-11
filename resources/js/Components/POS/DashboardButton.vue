@@ -6,6 +6,10 @@ const props = defineProps({
         type: String,
         required: true
     },
+    subtitle: {
+        type: String,
+        default: ''
+    },
     route: {
         type: String,
         default: ''
@@ -18,7 +22,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <Link :href="route">
+    <component :is="(route) ? Link : 'div'" :href="route">
         <div class="
         h-full
         px-10
@@ -28,8 +32,6 @@ const props = defineProps({
         shadow
         border-gray-400
         text-black
-        font-semibold
-        text-xl
         cursor-pointer
         select-none
         relative
@@ -39,7 +41,10 @@ const props = defineProps({
         overflow-hidden
 ">
             <span class="absolute  opacity-10 left-5 text-[4rem] -bottom-4 lg:-bottom-10 lg:text-[9rem]" :class="icon"></span>
-            {{ label }}
+            <div>
+                <div class="font-semibold text-xl">{{ label }}</div>
+                <div v-if="subtitle">{{ subtitle }}</div>
+            </div>
         </div>
-    </Link>
+    </component>
 </template>

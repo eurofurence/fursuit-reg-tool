@@ -31,6 +31,11 @@ class MachineUserAuthController extends Controller
 
     public function submitLogin(User $user, Request $request)
     {
+        // check if user is cashier
+        if (!$user->is_cashier) {
+            return redirect()->back()->withErrors(['code' => 'User is not a cashier']);
+        }
+
         $data = $request->validate([
             'code' => 'required|string',
         ]);

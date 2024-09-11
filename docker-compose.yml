@@ -12,6 +12,7 @@ services:
             - '${APP_PORT:-80}:80'
             - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
         environment:
+            SUPERVISOR_PHP_COMMAND: "/usr/bin/php -d variables_order=EGPCS /var/www/html/artisan octane:start --server=swoole --watch --host=0.0.0.0 --port=80"
             WWWUSER: '${WWWUSER}'
             LARAVEL_SAIL: 1
             XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
@@ -25,6 +26,17 @@ services:
             - mysql
             - redis
             - mailpit
+    ngrok:
+        image: 'ngrok/ngrok:alpine'
+        environment:
+            NGROK_AUTHTOKEN: '${NGROK_AUTHTOKEN}'
+        command: 'http laravel.test:80 --domain=${NGROK_DOMAIN}'
+        ports:
+            - '4040:4040'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
     mysql:
         image: 'mysql/mysql-server:8.0'
         ports:

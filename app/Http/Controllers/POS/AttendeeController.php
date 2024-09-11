@@ -19,20 +19,20 @@ class AttendeeController extends Controller
 
     public function lookupSubmit(Request $request): RedirectResponse
     {
-        $user = User::where('attendee_id', $request->get('attendeeId'))->first()->exists();
+        $user = User::where('attendee_id', $request->get('attendeeId'))->first()?->exists();
         if (!$user) return redirect()->back()->withErrors(['attendeeId' => 'Could not find attendee']);
 
         else return redirect()->route('pos.attendee.show', ['attendeeId' => $request->get('attendeeId')]);
     }
 
-    public function attendeeShow(string $attendeeId, Request $request):  Response
+    public function show(string $attendeeId, Request $request):  Response
     {
         $user = User::where('attendee_id', $attendeeId)->first();
         $badges = $user->badges()->with('fursuit.species')->get();
         return Inertia::render('POS/Attendee/Show', [
-            'attendee' => $user,
+            'attendee' => $user->load('wallet'),
             //'badges' => $user->badges()->select('fursuit_id', 'printed_at', 'total', 'picked_up_at', 'badges.updated_at' )->get()
-            'badges' => $badges,
+            'badges' => $badges->load('wallet'),
             'fursuits' => $badges->map(function ($badge) {
                 return $badge->fursuit;
             })->unique('fursuit'),

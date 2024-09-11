@@ -14,6 +14,7 @@ import advancedFormat from 'dayjs/plugin/advancedFormat';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import dayjs from "dayjs";
+import ToastService from 'primevue/toastservice';
 dayjs.extend(advancedFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -35,6 +36,7 @@ createInertiaApp({
                 unstyled: true,
                 pt: Lara                            //apply preset
             })
+            .use(ToastService)
             .use(ConfirmationService)
             .directive('tooltip', Tooltip)
             .mount(el);
