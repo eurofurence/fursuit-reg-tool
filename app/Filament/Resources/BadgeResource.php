@@ -107,7 +107,9 @@ class BadgeResource extends Resource
                 Tables\Actions\BulkAction::make('printBadgeBulk')
                     ->label('Print Badge')
                     ->requiresConfirmation()
-                    ->action(fn(Collection $records) => $records->each(fn(Badge $record, $index) => static::printBadge($record,$index))),
+                    ->action(function (Collection $records) {
+                        return $records->reverse()->each(fn(Badge $record, $index) => static::printBadge($record, $index));
+                    }),
             ])
             ->selectCurrentPageOnly()
             ->paginationPageOptions([10, 25, 50, 100])
@@ -120,7 +122,7 @@ class BadgeResource extends Resource
             $badge->status->transitionTo(Printed::class);
         }
         // Add delay for mass printing so they are generated in order
-        PrintBadgeJob::dispatch($badge, Machine::first())->delay(now()->addSeconds($mass * 5));
+        PrintBadgeJob::dispatch($badge, Machine::first())->delay(now()->addSeconds($mass * 15));
         return $badge;
     }
 
