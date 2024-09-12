@@ -45,7 +45,7 @@ class UserCatchRanking extends Model
     }
     static public function getInfoOfFursuits(array $fursuitIDs): Collection
     {
-        return UserCatchRanking::whereBetween('fursuit_id', $fursuitIDs)->with("fursuit")->get();
+        return UserCatchRanking::whereIn('fursuit_id', $fursuitIDs)->with("fursuit")->get();
     }
 
     static public function deleteUserRanking(): void

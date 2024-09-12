@@ -88,17 +88,18 @@ class DashboardController extends Controller
         $userCatch->user_id = Auth::id();
         $userCatch->fursuit_id = $logEntry->tryGetFursuit()->id;
         $userCatch->save();
-        $this->refreshRanking();
+        self::refreshRanking();
+
         return Inertia::render('FCEA/Dashboard');
     }
 
-    public function refreshRanking() {
-        $this->refreshUserRanking();
-        $this->refreshFursuitRanking();
+    public static function refreshRanking() {
+        self::refreshUserRanking();
+        self::refreshFursuitRanking();
     }
 
     // Function to build User Ranking. Truncated Table and iterates all users. Similar to the Fursuit Ranking
-    public function refreshUserRanking() {
+    public static function refreshUserRanking() {
         $usersOrdered = User::query()
             ->withCount("fursuitsCatched")
             ->withMax("fursuitsCatched","created_at")
@@ -149,7 +150,7 @@ class DashboardController extends Controller
     }
 
     // Function to build Fursuit Ranking. Truncated Table and iterates all fursuits. Similar to the User Ranking
-    public function refreshFursuitRanking() {
+    public static function refreshFursuitRanking() {
         $fursuitsOrdered = Fursuit::query()
             ->withCount("catchedByUsers")
             ->withMax("catchedByUsers","created_at")
