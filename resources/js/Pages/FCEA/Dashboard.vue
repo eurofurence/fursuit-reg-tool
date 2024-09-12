@@ -1,24 +1,36 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3'
+import {Head, useForm, usePage} from '@inertiajs/vue3'
 import Layout from "@/Layouts/Layout.vue";
 import Button from "primevue/button"
 import BottomNavigation from "@/Components/BottomNavigation.vue";
+import Message from "primevue/message";
+import FlashMessages from "@/Components/FlashMessages.vue";
 
 defineOptions({ layout: Layout })
 
 const form = useForm({ catch_code: '' })
 
-const props = defineProps<{ myUserInfo: object, userRanking: object }>()
+const props = defineProps<{
+    myUserInfo: object,
+    userRanking: object,
+    flash: object,
+    caughtFursuit?: object | null
+}>()
+
+const page = usePage()
 
 const submit = () => form.post(route('fcea.dashboard.catch'))
 
 </script>
 <template>
     <Head title="Fursuits — Catch'em all!" />
+
+    <FlashMessages :flash="flash" />
     <div class="card mt-5" style="width: 18rem; margin: auto;">
         <div class="card-header text-center">
             <h3>Fursuit Catch Em All</h3>
         </div>
+
         <div class="card-body">
             <h4 class="text-center">Place #{{ myUserInfo.rank }} with {{ myUserInfo.score }} catches</h4>
             <p class="text-center" v-if="myUserInfo.score_till_next ==! 0"><small>{{ myUserInfo.score_till_next }} more to advance to the next place</small></p>
