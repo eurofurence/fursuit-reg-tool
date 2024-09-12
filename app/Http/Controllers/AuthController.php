@@ -42,11 +42,11 @@ class AuthController extends Controller
 
         $regId = $attendeeListResponse['ids'][0] ?? null;
 
-        if (isset($attendeeListResponse['ids'][0]) === false) {
+        /*if (isset($attendeeListResponse['ids'][0]) === false) {
             return redirect()->route('welcome')->with('message',
                 'Please register for the Convention first before trying to obtain a fursuit badge.');
-        }
-        $regId = $attendeeListResponse['ids'][0];
+        }*/
+        //$regId = $attendeeListResponse['ids'][0];
 
         $user = User::updateOrCreate([
             'remote_id' => $socialLiteUser->getId(),
@@ -60,7 +60,7 @@ class AuthController extends Controller
 
         $user->wallet->balance;
 
-        $statusResponse = \Illuminate\Support\Facades\Http::attsrv()
+        /*$statusResponse = \Illuminate\Support\Facades\Http::attsrv()
             ->withToken($socialLiteUser->token)
             ->get('/attendees/'.$regId.'/status');
 
@@ -68,7 +68,7 @@ class AuthController extends Controller
         if (in_array($statusResponse->json()['status'], ['paid', 'checked in'])) {
             $user->valid_registration = true;
             $user->save();
-        }
+        }*/
 
         (new TokenRefreshService($user))->save(
             accessToken: $socialLiteUser->token,
