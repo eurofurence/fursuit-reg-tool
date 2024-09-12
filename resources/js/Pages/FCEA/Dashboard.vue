@@ -14,6 +14,7 @@ const props = defineProps(
         userRanking: Object,
         myFursuitInfos: Object,
         fursuitRanking: Object,
+        myFursuitInfoCatchedTotal: Number,
     }
 )
 
@@ -45,6 +46,11 @@ function submit() {
                     <li class="list-group-item" v-for="i in userRanking"><p v-if="i.user_id == myUserInfo.user_id">[YOU]</p> Top {{i.id}} - {{i.rank}}: {{i.user.name}} [{{i.score}}]</li>
                 </ul>
             </div>
+
+            <h4 class="text-center">Place #{{ myFursuitInfos[0].rank }} with {{ myFursuitInfos[0].score }} times being catched</h4>
+            <p class="text-center" v-if="myFursuitInfos[0].score_till_next ==! 0"><small>{{ myFursuitInfos[0].score_till_next }} more to advance to the next place</small></p>
+            <p class="text-center"><small>{{ myFursuitInfos[0].others_behind }} behind you</small></p>
+            <p class="text-center"><small>You were been {{ myFursuitInfoCatchedTotal }} catched between all fursuits</small></p>
 
             <div class="mt-4">
                 <h5>Top Fursuiters</h5>

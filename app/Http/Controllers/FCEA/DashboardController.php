@@ -30,11 +30,14 @@ class DashboardController extends Controller
         $myFursuitInfos = $this->getMyFursuitInfos($myUserInfo);
         $fursuitRanking = $this->getFursuitRanking($myFursuitInfos, $rankingSize);
 
+        $myFursuitInfoCatchedTotal = $myFursuitInfos->sum(function ($entry) { return $entry->score; });
+
         return Inertia::render('FCEA/Dashboard', [
             'myUserInfo' => $myUserInfo,
             'userRanking' => $userRanking,
             'myFursuitInfos' => $myFursuitInfos,
             'fursuitRanking' => $fursuitRanking,
+            'myFursuitInfoCatchedTotal' => $myFursuitInfoCatchedTotal, // How many times the user got catched on all fursuits summed up
         ]);
     }
     public function catch(UserCatchRequest $request)
@@ -58,6 +61,12 @@ class DashboardController extends Controller
         {
             $logEntry->save();
             return "Invalid Code";
+        }
+
+        if (Auth::id() == $logEntry->tryGetFursuit()->user_id)
+        {
+            $logEntry->save();
+            return "You can't catch yourself";
         }
 
         $logEntry->already_caught =
