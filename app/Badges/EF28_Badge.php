@@ -75,8 +75,10 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         // Add Page 1
         $mpdf->AddPageByArray($options);
         $mpdf->Image('var:badgeImageFront', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
-        $mpdf->AddPageByArray($options);
-        $mpdf->Image('var:badgeImageBack', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
+        if ($badge->dual_side_print) {
+            $mpdf->AddPageByArray($options);
+            $mpdf->Image('var:badgeImageBack', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
+        }
         return $mpdf->Output($badge->id . '.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     }
 
@@ -173,27 +175,27 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         // Position of the texts in the image
         $position_attendee_id = new Point(
             $this->width_px - 129, // X-Position (adapted)
-            42 // Y-Position
+            38 // Y-Position
         );
 
         $position_species = new Point(
             $this->width_px - 321 - 160, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 222 // Y-Position
+            $this->height_px - 67 - 213 // Y-Position
         );
 
         $position_name = new Point(
             $this->width_px - 321 - 160, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 348 // Y-Position
+            $this->height_px - 67 - 339 // Y-Position
         );
 
         $position_name_label = new Point(
             $this->width_px - 321 - 260, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 357 // Y-Position
+            $this->height_px - 67 - 361 // Y-Position
         );
 
         $position_species_label = new Point(
             $this->width_px - 321 - 275, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 230 // Y-Position
+            $this->height_px - 67 - 232 // Y-Position
         );
 
         $position_fursuit_badge = new Point(
@@ -221,7 +223,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         new TextField(
             $text_species,
             321, // Width of the text field
-            90, // Height of the text field
+            60, // Height of the text field
             15, // Minimum font size
             50, // Start font size
             $font_path,
@@ -237,7 +239,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         new TextField(
             $text_name,
             321, // Width of the text field
-            90, // Height of the text field
+            60, // Height of the text field
             15, // Minimum font size
             50, // Start font size
             $font_path,
@@ -312,7 +314,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $overlayImage->resize($size);
 
         // Textposition
-        $position = new Point($this->width_px - 552, $this->height_px - 173);
+        $position = new Point($this->width_px - 558, $this->height_px - 182);
 
         // Create color palette - Text color
         $palette = new RGB();
@@ -324,11 +326,11 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $badge_object->paste($overlayImage, new Point(0, 0));
 
         new TextField(
-            $this->addLetterSpacing(strtoupper($this->badge->fursuit->catch_code), 2),
+            $this->addLetterSpacing(strtoupper($this->badge->fursuit->catch_code), 1),
             500, // Width of the text field
             90, // Height of the text field
             15, // Minimum font size
-            65, // Start font size
+            60, // Start font size
             resource_path('badges/ef28/fonts/upcib.ttf'),
             $font_color,
             $badge_object,

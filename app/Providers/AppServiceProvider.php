@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Badge\Badge;
+use App\Models\Fursuit\Fursuit;
 use App\Providers\Socialite\SocialiteIdentityProvider;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
@@ -23,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Fursuit::observe(\App\Observers\FursuitObserver::class);
+        Badge::observe(\App\Observers\BadgeObserver::class);
         $socialite = $this->app->make(Factory::class);
         $socialite->extend('identity', function () use ($socialite) {
             $config = config('services.identity');
