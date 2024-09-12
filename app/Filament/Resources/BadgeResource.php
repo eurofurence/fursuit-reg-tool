@@ -85,6 +85,9 @@ class BadgeResource extends Resource
                         }));
                     })
                     ->label('Fursuit Status'),
+                // Duplex Bool Filter
+                Tables\Filters\TernaryFilter::make('dual_side_print')
+                    ->label('Double Sided'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -104,19 +107,20 @@ class BadgeResource extends Resource
                 Tables\Actions\BulkAction::make('printBadgeBulk')
                     ->label('Print Badge')
                     ->requiresConfirmation()
-                    ->action(fn(Collection $records) => $records->each(fn(Badge $record) => static::printBadge($record))),
+                    ->action(fn(Collection $records) => $records->each(fn(Badge $record, $index) => static::printBadge($record,$index))),
             ])
             ->selectCurrentPageOnly()
             ->paginationPageOptions([10, 25, 50, 100])
             ->defaultSort('fursuit.user.attendee_id', 'asc');
     }
 
-    public static function printBadge(Badge $badge)
+    public static function printBadge(Badge $badge,$mass = 0): Badge
     {
         if ($badge->status !== Printed::class && $badge->status->canTransitionTo(Printed::class)) {
             $badge->status->transitionTo(Printed::class);
         }
-        PrintBadgeJob::dispatch($badge, Machine::first());
+        // Add delay for mass printing so they are generated in order
+        PrintBadgeJob::dispatch($badge, Machine::first())->delay(now()->addSeconds($mass * 5));
         return $badge;
     }
 
