@@ -2,13 +2,9 @@
 
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
-import Checkbox from "primevue/checkbox";
 import dayjs from "dayjs";
-import {ref} from "vue";
-import Avatar from "primevue/avatar";
 
 defineProps({
-    attendee: Object,
     transactions: Array
 })
 </script>
@@ -20,7 +16,6 @@ defineProps({
                 {{ (slotProps.data.created_at) ? dayjs(slotProps.data.created_at).format('DD.MM.YY HH:mm') : '-' }}
             </template>
         </Column>
-        <Column field="meta.title" header="Title" />
         <Column field="meta.description" header="Description" />
         <Column field="amount" header="Amount">
             <template #body="slotProps">
