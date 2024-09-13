@@ -14,6 +14,10 @@ const props = defineProps({
         type: String,
         default: ''
     },
+    method: {
+        type: String,
+        default: 'GET'
+    },
     icon: {
         type: String,
         default: ''
@@ -22,7 +26,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <component :is="(route) ? Link : 'div'" :href="route">
+    <component :is="(route) ? Link : 'div'" :href="route" :method="method">
         <div class="
         h-full
         px-10
