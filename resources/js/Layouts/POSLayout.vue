@@ -23,7 +23,7 @@ const toggleUserMenu = (event) => {
 
 const props = defineProps({
     attendee: Object || undefined, // from backend
-    // layoutBack: String || undefined
+    backToRoute: String || undefined
 });
 </script>
 
@@ -33,8 +33,10 @@ const props = defineProps({
     <QZPrintService/>
     <div class="min-h-screen lg:h-screen w-full flex flex-col bg-gray-200">
         <div class="p-4 flex flex-row items-center">
-            <Button v-if="layoutBack" icon="pi pi-arrow-left" class="p-button-rounded p-button-text" label="Back" onclick="history.back();return false;" />
-            <Badge class="select-none" v-if="attendee" :value="attendee.name + ' #' + attendee.attendee_id" size="large" severity="success"></Badge>
+            <Link :href="route(backToRoute)" v-if="backToRoute">
+                <Button icon="pi pi-arrow-left" class="p-button-rounded p-button-text" label="Back" />
+            </Link>
+            <!-- <Badge class="select-none" v-if="attendee" :value="attendee.name + ' #' + attendee.attendee_id" size="large" severity="success"></Badge> -->
             <div class="flex-grow text-center text-slate-500 font-semibold text-lg">
                 <DigitalClock />
             </div>
