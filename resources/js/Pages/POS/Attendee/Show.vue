@@ -80,12 +80,15 @@ function handoutBadges() {
     <div class="grid grid-cols-1 gap-4 p-4">
         <div>
             <div class="bg-white p-4 mb-4 rounded-lg shadow">
-                <h1 class="text-2xl font-bold">{{ attendee.name }} # {{ attendee.attendee_id }}</h1>
+                <h1 class="text-2xl font-bold">
+                    <!-- <span class="text-gray-500">Attendee</span>  -->
+                    {{ attendee.name }}<span class="text-gray-400">#</span>{{ attendee.attendee_id }}
+                </h1>
             </div>
             <div class="grid grid-cols-3 gap-4">
                 <DashboardButton label="Pay" :subtitle="formatEuroFromCents(attendee.wallet.balance *-1) +' Unpaid'" icon="pi pi-money-bill" route="#"></DashboardButton>
                 <DashboardButton label="Handout" :subtitle="badgesReadyForHandout + ' to handout'" icon="pi pi-th-large" @click="showHandoutConfirmModal = true"></DashboardButton>
-                <DashboardButton label="Cancel" icon="pi pi-wallet" :route="route('pos.dashboard')"></DashboardButton>
+                <DashboardButton label="Cancel" icon="pi pi-arrow-circle-left" :route="route('pos.dashboard')"></DashboardButton>
             </div>
         </div>
         <div class="py-3 rounded-lg bg-white">
