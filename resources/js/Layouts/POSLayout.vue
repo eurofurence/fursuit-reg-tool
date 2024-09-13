@@ -4,9 +4,13 @@ import Menu from "primevue/menu";
 import { Link } from "@inertiajs/vue3";
 import DigitalClock from "@/Components/POS/DigitalClock.vue";
 import Badge from "primevue/badge";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import QZPrintService from "@/Components/POS/QZPrintService.vue";
 import ToastService from "@/Components/POS/ToastService.vue";
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const cashier = computed(() => page.props.auth.user);
 
 const userMenu = ref();
 const userMenuItems = ref([
@@ -35,7 +39,7 @@ const props = defineProps({
             <div class="flex-grow text-center text-slate-500 font-semibold text-lg">
                 <DigitalClock />
             </div>
-            <Button type="button" icon="pi pi-user" @click="toggleUserMenu" aria-haspopup="true" aria-controls="overlay_menu" label="User X" />
+            <Button type="button" icon="pi pi-user" @click="toggleUserMenu" aria-haspopup="true" aria-controls="overlay_menu" :label="cashier.name" />
             <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true">
                 <template #item="{ item, props }">
                     <Link :href="item.route" :method="item.method" v-ripple>
