@@ -10,6 +10,7 @@ import {formatEuroFromCents} from "../../..//helpers.js";
 import ConfirmModal from "@/Components/POS/ConfirmModal.vue";
 import {useToast} from "primevue/usetoast";
 import {useForm} from "laravel-precognition-vue-inertia";
+import Tag from 'primevue/tag';
 const toast = useToast();
 
 defineProps({
@@ -55,7 +56,14 @@ function changeHandout(badgeId, undo) {
                 <Checkbox :modelValue="slotProps.data.dual_side_print" :binary="true" />
             </template>
         </Column>
-        <Column field="status" header="Status"></Column>
+        <Column field="status" header="Status">
+            <template #body="slotProps">
+                <Tag severity="info" v-if="slotProps.data.status === 'pending'" value="Pending" />
+                <Tag severity="success" v-else-if="slotProps.data.status === 'picked_up'" value="Picked up" />
+                <Tag severity="warning" v-else-if="slotProps.data.status === 'ready_for_pickup'" value="Ready for Pickup" />
+                <Tag v-else :value="slotProps.data.status" />
+            </template>
+        </Column>
         <Column field="wallet.balance" header="Price">
             <template #body="slotProps">
                 {{ formatEuroFromCents(slotProps.data.total) }}

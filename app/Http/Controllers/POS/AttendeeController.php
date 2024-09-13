@@ -15,7 +15,9 @@ class AttendeeController extends Controller
 {
     public function lookupForm(): Response
     {
-        return Inertia::render('POS/Attendee/Lookup');
+        return Inertia::render('POS/Attendee/Lookup', [
+            'backToRoute' => 'pos.dashboard'
+        ]);
     }
 
     public function lookupSubmit(Request $request): RedirectResponse
