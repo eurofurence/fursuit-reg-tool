@@ -14,8 +14,7 @@ const cashier = computed(() => page.props.auth.user);
 
 const userMenu = ref();
 const userMenuItems = ref([
-    { label: 'Logout', icon: 'pi pi-sign-out', route: route('pos.auth.user.logout'), method: 'POST' },
-    { label: 'Switch User', icon: 'pi pi-user', route: '', method: 'POST' },
+    { label: 'Switch User', icon: 'pi pi-user', route: route('pos.auth.user.logout'), method: 'POST' },
 ]);
 
 const toggleUserMenu = (event) => {
