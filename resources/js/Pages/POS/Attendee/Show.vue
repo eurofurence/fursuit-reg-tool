@@ -67,7 +67,7 @@ function handoutBadges() {
         />
         <ConfirmModal
             :title="((selectedBadges.length === 0) ? badgesReadyForHandout : (Math.min(selectedBadges.length, badgesReadyForHandout))) + ' Badges marked for Handout'"
-            message="This will try to mark bades for handout. Are you sure?"
+            message="This will try to mark badges for handout. Are you sure?"
             :show="showHandoutConfirmModal"
             @confirm="bulkHandout()"
             @cancel="showHandoutConfirmModal = false"
@@ -79,7 +79,7 @@ function handoutBadges() {
                 <h1 class="text-2xl font-bold">{{ attendee.name }} # {{ attendee.attendee_id }}</h1>
             </div>
             <div class="grid grid-cols-3 gap-4">
-                <DashboardButton label="Pay" :subtitle="formatEuroFromCents(attendee.wallet.balance *-1) +' Unpaid'" icon="pi pi-money-bill" route="#"></DashboardButton>
+                <DashboardButton label="Pay" :subtitle="formatEuroFromCents(attendee.wallet.balance *-1) +' Unpaid'" icon="pi pi-money-bill" route="/checkout"></DashboardButton>
                 <DashboardButton label="Handout" :subtitle="badgesReadyForHandout + ' to handout'" icon="pi pi-th-large" @click="showHandoutConfirmModal = true"></DashboardButton>
                 <DashboardButton label="Cancel" icon="pi pi-wallet" :route="route('pos.dashboard')"></DashboardButton>
             </div>
