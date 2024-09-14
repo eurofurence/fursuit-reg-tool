@@ -4,6 +4,7 @@ import POSLayout from "@/Layouts/POSLayout.vue";
 import Button from 'primevue/button';
 import Cash from "@/Components/POS/Checkout/Cash.vue";
 import SimpleKeyboard from "@/Components/SimpleKeyboard.vue";
+import {formatEuroFromCents} from "@/helpers.js";
 
 defineOptions({
     layout: POSLayout,
@@ -14,7 +15,7 @@ let givenBills = ref([]);
 let currentChange = ref([]);
 
 const props = defineProps({
-    positions: Array,
+    checkout: Object,
     total: Number,
 });
 
@@ -47,27 +48,7 @@ const keyboardOptions = {
     theme: "hg-theme-default hg-layout-numeric numeric-theme"
 };
 
-// todo: remove
-const demoPositions = [
-    {
-        id: 0,
-        checkout_id: 69,
-        name: 'Luna',
-        description: 'Fursuit Badge',
-        subtotal: 0.89,
-        tax: 0.19,
-        total: 1
-    },
-    {
-        id: 1,
-        checkout_id: 70,
-        name: 'Fenya',
-        description: 'Fursuit Badge',
-        subtotal: 2.53,
-        tax: 0.47,
-        total: 3
-    },
-];
+const positions = props.checkout.items;
 
 function denomToValue(denom) {
     return Number(denom.replace(/[^\d]/g, '')) / (denom.endsWith('¢') ? 100 : 1);
@@ -154,14 +135,17 @@ function keyPress(event) {
             <div class="flex flex-col grow p-4 gap-4 h-[100%]">
                 <div class="flex flex-col grow">
                     <span class="text-2xl">Positions:</span>
-                    <!-- todo: remove:   vvvvvvvvvvvvvvvv -->
-                    <div v-if="positions || demoPositions" class="flex flex-col">
-                        <!-- todo: remove: v..........vvvvvvvvvvvvvvvvv -->
-                        <div v-for="pos in (positions || demoPositions)" :key="pos" class="flex p-2 rounded-lg gap-2 items-center">
-                            <span><strong class="bg-white rounded-lg p-1">#{{pos.id}}</strong></span>
+                    <div v-if="positions" class="flex flex-col">
+                        <div v-for="pos in (positions)" :key="pos" class="flex p-2 rounded-lg gap-2 items-center">
+                            <span><strong class="bg-white rounded-lg p-1">#{{pos.payable_id}}</strong></span>
                             <div class="flex bg-gray-200 grow justify-between p-1 rounded-lg">
-                                <span><strong>{{ pos.name }}</strong> {{ pos.description }}</span>
-                                <span class="ml-[auto]"><strong>{{ pos.total }}€</strong> ({{ pos.subtotal }}€ gross)</span>
+                                <div>
+                                    <strong>{{ pos.name }}</strong>
+                                    <ul>
+                                        <li v-for="item in pos.description" :key="item">{{ item }}</li>
+                                    </ul>
+                                </div>
+                                <span class="ml-[auto]"><strong>{{ formatEuroFromCents(pos.total) }}</strong></span>
                             </div>
                         </div>
                     </div>
@@ -171,9 +155,13 @@ function keyPress(event) {
                 </div>
                 <!-- todo: implement -->
                 <div>
+                    <div class="text-1xl text-gray-600 border-b-gray-400 flex justify-between items-end border-b-2 border-dotted border-black pb-2 mb-2">
+                        <div>Tax</div>
+                        <div>{{ formatEuroFromCents(checkout.tax) }}</div>
+                    </div>
                     <div class="text-2xl flex justify-between items-end border-b-2 border-double border-black pb-2">
                         <div>Total</div>
-                        <div>{{ total || 4 }}€</div>
+                        <div>{{ formatEuroFromCents(checkout.total) }}</div>
                     </div>
                 </div>
                 <div class="flex rounded-lg bg-cyan-200 p-3 shrink">card status here</div>
