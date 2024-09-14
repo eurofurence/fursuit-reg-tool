@@ -32,11 +32,11 @@ const keyboardOptions = {
             "200€ 100€ 50€",
             "20€ 10€ 5€",
             // coins
-            "2€ 1€ 50¢",
+            "2€ 1€",
             // literal dog water
-            "20¢ 10¢ 5¢",
-            "{reset} 2¢ 1¢",
-            "{enter}"
+            // "20¢ 10¢ 5¢",
+            "{reset} {enter}",
+
         ]
     },
     display: {
@@ -114,12 +114,11 @@ function keyPress(event) {
 </script>
 
 <template>
-    <div class="grid grid-cols-2 gap-4 p-8">
+    <div class="grid grid-cols-2 gap-4 px-4 pb-4 h-full">
         <!-- cash -->
-        <div class="grid grid-rows-2 gap-4">
-            <div class="flex flex-col gap-4 text-xl">
-                <div class="flex rounded-lg bg-orange-200 p-3 shrink">Amount Due: {{ total || 4 }}€</div>
-                <div class="flex flex-col flex-wrap gap-1 text-xl">
+        <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-4 ">
+                <div class="flex flex-col flex-wrap gap-1 ">
                     <span class="flex rounded-lg bg-blue-200 p-3 shrink">Given: {{ given }}€ total</span>
                     <div class="flex flex-row gap-1 flex-wrap overflow-hidden">
                         <div v-for="b in givenBills" :key="b">
@@ -127,7 +126,7 @@ function keyPress(event) {
                         </div>
                     </div>
                 </div>
-                <div class="flex flex-col gap-1 text-xl" v-if="currentChange.length > 0">
+                <div class="flex flex-col gap-1 " v-if="currentChange.length > 0">
                     <span class="flex rounded-lg bg-amber-200 p-3 shrink">Change:</span>
                     <div class="flex flex-wrap gap-4">
                         <div class="grid grid-cols-[auto_1fr] gap-4 items-center" v-for="c in currentChange" :key="c">
@@ -139,14 +138,16 @@ function keyPress(event) {
                     </div>
                 </div>
                 <!-- default value of 2 for testing, todo: remove...   this bit here: vvvv -->
-                <div class="flex rounded-lg bg-red-300 p-3" v-else-if="given < (total || 4)">
-                    <span class="text-xl"><strong>!</strong> Insufficient amount</span>
+                <div class="hidden flex rounded-lg bg-red-300 p-3" v-else-if="given < (total || 4)">
+                    <span class=""><strong>!</strong> Insufficient amount</span>
                 </div>
                 <div class="flex rounded-lg bg-teal-200 p-3" v-else>
-                    <span class="text-xl"><strong>✓</strong> Exact change!</span>
+                    <span class=""><strong>✓</strong> Exact change!</span>
                 </div>
             </div>
-            <SimpleKeyboard @onKeyPress="keyPress" :options="keyboardOptions" />
+            <div class="flex-1 flex items-end">
+                <SimpleKeyboard @onKeyPress="keyPress" :options="keyboardOptions" />
+            </div>
         </div>
         <!-- card & status -->
         <div class="bg-white border-gray-400 rounded-lg text-black">
@@ -169,6 +170,12 @@ function keyPress(event) {
                     </div>
                 </div>
                 <!-- todo: implement -->
+                <div>
+                    <div class="text-2xl flex justify-between items-end border-b-2 border-double border-black pb-2">
+                        <div>Total</div>
+                        <div>{{ total || 4 }}€</div>
+                    </div>
+                </div>
                 <div class="flex rounded-lg bg-cyan-200 p-3 shrink">card status here</div>
                 <div class="flex justify-between gap-4 shrink">
                     <Button label="Cancel Transaction" @click="cancel" class="grow"></Button>

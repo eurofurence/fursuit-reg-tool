@@ -12,6 +12,7 @@ import {computed, ref, watch, watchEffect} from "vue";
 import ConfirmModal from "@/Components/POS/ConfirmModal.vue";
 import {useForm} from "laravel-precognition-vue-inertia";
 import {formatEuroFromCents} from "@/helpers.js";
+import {router} from "@inertiajs/vue3";
 
 defineOptions({
     layout: POSLayout,
@@ -58,6 +59,13 @@ function handoutBadges() {
     showHandoutConfirmModal.value = false;
 }
 
+function startPayment() {
+    router.post(route('pos.checkout.store', {
+        user_id: props.attendee.id,
+        badge_ids: selectedBadges.value.map(badge => badge.id)
+    }));
+}
+
 </script>
 
 <template>
@@ -86,7 +94,7 @@ function handoutBadges() {
                 </h1>
             </div>
             <div class="grid grid-cols-3 gap-4">
-                <DashboardButton label="Pay" :subtitle="formatEuroFromCents(attendee.wallet.balance *-1) +' Unpaid'" icon="pi pi-money-bill" route="/checkout"></DashboardButton>
+                <DashboardButton label="Pay" :subtitle="formatEuroFromCents(attendee.wallet.balance *-1) +' Unpaid'" icon="pi pi-money-bill" @click="startPayment()"></DashboardButton>
                 <DashboardButton label="Handout" :subtitle="badgesReadyForHandout + ' to handout'" icon="pi pi-th-large" @click="showHandoutConfirmModal = true"></DashboardButton>
                 <DashboardButton label="Cancel" icon="pi pi-arrow-circle-left" :route="route('pos.dashboard')"></DashboardButton>
             </div>

@@ -40,9 +40,9 @@ const props = defineProps({
         duration-200
         overflow-hidden
 ">
-            <span class="absolute  opacity-10 left-5 text-[4rem] -bottom-4 lg:-bottom-10 lg:text-[9rem]" :class="icon"></span>
+            <span class="absolute  opacity-10 left-5 text-[4rem] -bottom-4 lg:-bottom-7 lg:text-[7rem]" :class="icon"></span>
             <div>
-                <div class="font-semibold text-xl">{{ label }}</div>
+                <div class="font-semibold ">{{ label }}</div>
                 <div v-if="subtitle">{{ subtitle }}</div>
             </div>
         </div>

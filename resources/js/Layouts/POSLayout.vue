@@ -57,3 +57,8 @@ const props = defineProps({
         </div>
     </div>
 </template>
+<style>
+html {
+    font-size:25px;
+}
+</style>
