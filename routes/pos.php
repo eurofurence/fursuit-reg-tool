@@ -13,6 +13,9 @@ Route::prefix('/attendees')->name('attendee.')->group(function () {
     Route::post('/lookup', [\App\Http\Controllers\POS\AttendeeController::class, 'lookupSubmit'])->name('lookup.submit');
     Route::get('/show/{attendeeId}', [\App\Http\Controllers\POS\AttendeeController::class, 'show'])->name('show');
 });
+
+Route::get('/badges', [\App\Http\Controllers\POS\BadgeController::class, 'list'])->name('badges.list');
+
 // Print Badge
 Route::post('/badges/{badge}/print', \App\Http\Controllers\POS\Printing\PrintBadgeController::class)->name('badges.print');
 // QZ Tray

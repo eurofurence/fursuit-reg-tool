@@ -7,10 +7,19 @@ use App\Models\Badge\Badge;
 use App\Models\Badge\States\PickedUp;
 use App\Models\Badge\States\ReadyForPickup;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use function Symfony\Component\String\b;
 
 class BadgeController extends Controller
 {
+    public function list() {
+
+        return Inertia::render('POS/Badge/List', [
+            'badges' => Badge::with('fursuit.user')->get()->all(),
+            'backToRoute' => 'pos.dashboard',
+        ]);
+    }
+
     public function handoutBulk(Request $request)
     {
         $someError = false;
