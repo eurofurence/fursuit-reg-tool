@@ -43,6 +43,14 @@ This tool is using Laravel 11 with inertia.js (Vue).
     ```
 7. Open `http://localhost:80` in your browser
 
+## Troubleshooting
+
+### REPL
+You can open a repl session with Tinker, calling:
+```sh
+./vendor/bin/sail artisan tinker
+```
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

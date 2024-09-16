@@ -40,6 +40,13 @@ class UserResource extends Resource
                     ->required(),
                 Forms\Components\Toggle::make('is_admin')
                     ->required(),
+                Forms\Components\Toggle::make('is_cashier')
+                    ->required(),
+                // pin_code 6 digits
+                Forms\Components\TextInput::make('pin_code')
+                    ->minLength(6)
+                    ->maxLength(6),
+
             ]);
     }
 

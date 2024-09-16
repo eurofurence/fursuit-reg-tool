@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
+use function Sodium\add;
 
 class DashboardController extends Controller
 {
@@ -104,6 +105,11 @@ class DashboardController extends Controller
     public static function refreshRanking() {
         self::refreshUserRanking();
         self::refreshFursuitRanking();
+    }
+
+    public function refreshRanking() {
+        $this->refreshUserRanking();
+        $this->refreshFursuitRanking();
     }
 
     // Function to build User Ranking. Truncated Table and iterates all users. Similar to the Fursuit Ranking

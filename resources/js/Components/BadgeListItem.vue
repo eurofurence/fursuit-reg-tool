@@ -60,6 +60,8 @@ function getBadgeSeverity(status) {
             return 'info';
         case 'ready_for_pickup':
             return 'success';
+        case 'unpaid':
+            return 'error';
         case 'picked_up':
             return 'success';
     }

@@ -14,9 +14,16 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function() {
             \Illuminate\Support\Facades\Route::prefix('fcea/')
                 ->name('fcea.')
-                ->middleware('web')
+                ->middleware([
+                    'web',
+                    'catch-auth:web'
+                ])
                 ->group(base_path('routes/fcea.php'));
-            \Illuminate\Support\Facades\Route::middleware(['auth:machine','auth:machine-user','web'])
+            \Illuminate\Support\Facades\Route::middleware([
+                'pos-auth:machine',
+                'pos-auth:machine-user',
+                'web',\App\Http\Middleware\InactivityLogoutMiddleware::class
+            ])
                 ->prefix('pos/')
                 ->name('pos.')
                 ->group(base_path('routes/pos.php'));
@@ -30,6 +37,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+        ]);
+        $middleware->alias([
+            'pos-auth' => \App\Http\Middleware\PosAuthMiddleware::class,
+            'catch-auth' => \App\Http\Middleware\CatchEmAllAuthMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
