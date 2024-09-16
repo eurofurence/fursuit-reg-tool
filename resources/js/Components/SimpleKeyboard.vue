@@ -44,5 +44,12 @@ watch(() => props.input, (input) => {
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
+<style>
+.hg-theme-default.hg-layout-numeric .hg-button {
+    align-items:center;
+    display:flex;
+    height:5rem;
+    justify-content:center;
+    width:33.3%;
+}
 </style>

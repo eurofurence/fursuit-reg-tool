@@ -104,116 +104,65 @@ class TextField
      * @return ImageInterface The image with the drawn text.
      */
     protected function drawTextInBox(ImageInterface $image, PointInterface $position): ImageInterface
-    {
-        $fontSize = $this->startFontSize;  // Startet mit der anfänglichen Schriftgröße
-        $lines = [];                       // Array zum Speichern der Zeilen des Textes
-        $palette = new RGB();              // Erzeuge eine RGB-Palette
+{
+    $fontSize = $this->startFontSize;  // Startet mit der anfänglichen Schriftgröße
+    $palette = new RGB();              // Erzeuge eine RGB-Palette
 
-        do {
-            // Wenn der Text ein zusammenhängender String ohne Leerzeichen ist, füge das gesamte Wort in die Zeile ein
-            if (strpos($this->text, ' ') === false) {
-                $lines = [$this->text];
-                $font = new Font($this->font_path, $fontSize, $this->font_color);
-                $textBox = $font->box($this->text);
-
-                // Überprüft, ob der gesamte String in die Breite passt
-                if ($textBox->getWidth() > $this->width) {
-                    $fontSize--;  // Reduziert die Schriftgröße, wenn der Text nicht passt
-                } else {
-                    break;  // Passt, keine weiteren Änderungen erforderlich
-                }
-            } else {
-                // Teilt den Text in Wörter auf
-                $words = explode(' ', $this->text);
-                $lines = [];
-                $currentLine = '';
-
-                // Erstelle die Font-Instanz für die aktuelle Schleife
-                $font = new Font($this->font_path, $fontSize, $this->font_color);
-
-                // Verarbeitet jedes Wort und fügt es zur aktuellen Zeile hinzu
-                foreach ($words as $word) {
-                    $testLine = $currentLine . ($currentLine ? ' ' : '') . $word;
-                    $textBox = $font->box($testLine);
-
-                    // Überprüft, ob die aktuelle Zeile in die Breite passt
-                    if ($textBox->getWidth() > $this->width) {
-                        if (!empty($currentLine)) {
-                            $lines[] = $currentLine;
-                        }
-                        $currentLine = $word;
-                    } else {
-                        $currentLine = $testLine;
-                    }
-                }
-                $lines[] = $currentLine;
-
-                // Überprüft, ob die Anzahl der Zeilen die maximale Anzahl überschreitet
-                if (count($lines) > $this->maxRows) {
-                    $fontSize--;  // Reduziert die Schriftgröße, wenn zu viele Zeilen vorhanden sind
-                } else {
-                    break;
-                }
-            }
-        } while ($fontSize >= $this->minFontSize);
-
-        // Erstelle die Font-Instanz mit finaler Schriftgröße
+    do {
+        // Berechne die Box-Größe mit der aktuellen Schriftgröße
         $font = new Font($this->font_path, $fontSize, $this->font_color);
+        $textBox = $font->box($this->text);
 
-        // Berechnet die vertikale Startposition, um den Text zentriert zu platzieren
-        $y = $position->getY() + ($this->height - (count($lines) * $fontSize)) / 2;
-
-        // Zeichne Hintergrundfarbe und Rahmen, wenn angegeben
-        $drawer = $image->draw();
-        if ($this->backgroundColor || $this->borderColor) {
-            $box = new Box($this->width, $this->height);
-            $boxEnd = new Point($position->getX() + $this->width, $position->getY() + $this->height);
-
-            if ($this->backgroundColor) {
-                // Erzeuge ein Rechteck mit der Hintergrundfarbe
-                $drawer->rectangle($position, $boxEnd, $this->backgroundColor, true);
-            }
-
-            if ($this->borderThickness > 0 && $this->borderColor) {
-                // Zeichne den Rahmen
-                $drawer->rectangle($position, $boxEnd, $this->borderColor, false, $this->borderThickness);
-            }
+        // Überprüft, ob der Text in die Box passt
+        if ($textBox->getWidth() > $this->width || $textBox->getHeight() > $this->height) {
+            $fontSize--;  // Reduziert die Schriftgröße, wenn der Text zu groß ist
+        } else {
+            break;  // Passt, keine weiteren Änderungen erforderlich
         }
+    } while ($fontSize >= $this->minFontSize);
 
-        // Zeichnet jede Zeile auf das Bild
-        foreach ($lines as $line) {
-            // Berechnet die X-Position basierend auf der Ausrichtung
-            $textBox = $font->box($line);
+    // Berechne die vertikale Position, um den Text zentriert zu platzieren
+    $y = $position->getY() + ($this->height - $textBox->getHeight()) / 2;
+    // Berechne die horizontale Position basierend auf der Ausrichtung (zentriert, links oder rechts)
+    $x = $this->calculateXPosition($textBox->getWidth(), $position);
 
-            switch ($this->alignment) {
-                case TextAlignment::CENTER:
-                    $x = $position->getX() + ($this->width - $textBox->getWidth()) / 2;
-                    break;
-                case TextAlignment::RIGHT:
-                    $x = $position->getX() + ($this->width - $textBox->getWidth());
-                    break;
-                case TextAlignment::LEFT:
-                default:
-                    $x = $position->getX(); // Linksbündig
-                    break;
-            }
-
-            // Zeichnet den Textumriss, falls angegeben
-            if ($this->textStrokeColor && $this->textStrokeThickness > 0) {
-                for ($offsetX = -$this->textStrokeThickness; $offsetX <= $this->textStrokeThickness; $offsetX++) {
-                    for ($offsetY = -$this->textStrokeThickness; $offsetY <= $this->textStrokeThickness; $offsetY++) {
-                        if ($offsetX !== 0 || $offsetY !== 0) {
-                            $image->draw()->text($line, new Font($this->font_path, $fontSize, $this->textStrokeColor), new Point($x + $offsetX, $y + $offsetY));
-                        }
-                    }
+    // Zeichnet den Textumriss, falls angegeben
+    if ($this->textStrokeColor && $this->textStrokeThickness > 0) {
+        for ($offsetX = -$this->textStrokeThickness; $offsetX <= $this->textStrokeThickness; $offsetX++) {
+            for ($offsetY = -$this->textStrokeThickness; $offsetY <= $this->textStrokeThickness; $offsetY++) {
+                if ($offsetX !== 0 || $offsetY !== 0) {
+                    $image->draw()->text(
+                        $this->text,
+                        new Font($this->font_path, $fontSize, $this->textStrokeColor),
+                        new Point($x + $offsetX, $y + $offsetY)
+                    );
                 }
             }
-
-            // Zeichnet den Text auf das Bild an der berechneten Position
-            $image->draw()->text($line, $font, new Point($x, $y));
-            $y += $fontSize;  // Verschiebt die Y-Position für die nächste Zeile nach unten
         }
-
-        return $image;
     }
+
+    // Zeichnet den Text auf das Bild an der berechneten Position
+    $image->draw()->text($this->text, $font, new Point($x, $y));
+
+    return $image;
+}
+
+
+
+/**
+ * Berechnet die X-Position des Textes basierend auf der Ausrichtung.
+ */
+private function calculateXPosition(int $textWidth, PointInterface $position): int
+{
+    switch ($this->alignment) {
+        case TextAlignment::CENTER:
+            return $position->getX() + ($this->width - $textWidth) / 2;
+        case TextAlignment::RIGHT:
+            return $position->getX() + ($this->width - $textWidth);
+        case TextAlignment::LEFT:
+        default:
+            return $position->getX(); // Linksbündig
+    }
+}
+
 }
