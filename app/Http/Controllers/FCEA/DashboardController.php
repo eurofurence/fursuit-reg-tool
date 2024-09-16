@@ -40,10 +40,31 @@ class DashboardController extends Controller
         }
 
         return Inertia::render('FCEA/Dashboard', [
-            'myUserInfo' => $myUserInfo,
-            'userRanking' => $userRanking,
+            'myUserInfo' => [
+                'id' => $myUserInfo->id,
+                'rank' => $myUserInfo->rank,
+                'score' => $myUserInfo->score,
+                'score_till_next' => $myUserInfo->score_till_next,
+                'others_behind' => $myUserInfo->others_behind,
+            ],
+            'userRanking' => $userRanking
+                ->filter(fn($e) => $e->score > 0)
+            ->map(function ($entry) {
+                return [
+                    'id' => $entry->id,
+                    'rank' => $entry->rank,
+                    'score' => $entry->score,
+                    'score_till_next' => $entry->score_till_next,
+                    'others_behind' => $entry->others_behind,
+                    'user' => [
+                        'name' => $entry->user->name,
+                    ],
+                ];
+            }),
             'myFursuitInfos' => $myFursuitInfos,
-            'fursuitRanking' => $fursuitRanking,
+            'fursuitRanking' => $fursuitRanking->map(fn($entry) => [
+                'name' => $entry->fursuit->name,
+            ]),
             'myFursuitInfoCatchedTotal' => $myFursuitInfoCatchedTotal, // How many times the user got catched on all fursuits summed up
             'caughtFursuit' => $caughtFursuit
         ]);
@@ -105,11 +126,6 @@ class DashboardController extends Controller
     public static function refreshRanking() {
         self::refreshUserRanking();
         self::refreshFursuitRanking();
-    }
-
-    public function refreshRanking() {
-        $this->refreshUserRanking();
-        $this->refreshFursuitRanking();
     }
 
     // Function to build User Ranking. Truncated Table and iterates all users. Similar to the Fursuit Ranking

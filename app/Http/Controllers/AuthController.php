@@ -14,7 +14,8 @@ class AuthController extends Controller
 {
     public function show()
     {
-        return Inertia::render('Auth/Login');
+        return $this->login();
+        //return Inertia::render('Auth/Login');
     }
 
     public function login()
@@ -42,11 +43,10 @@ class AuthController extends Controller
 
         $regId = $attendeeListResponse['ids'][0] ?? null;
 
-        /*if (isset($attendeeListResponse['ids'][0]) === false) {
+        if (isset($attendeeListResponse['ids'][0]) === false) {
             return redirect()->route('welcome')->with('message',
                 'Please register for the Convention first before trying to obtain a fursuit badge.');
-        }*/
-        //$regId = $attendeeListResponse['ids'][0];
+        }
 
         $user = User::updateOrCreate([
             'remote_id' => $socialLiteUser->getId(),
@@ -60,7 +60,7 @@ class AuthController extends Controller
 
         $user->wallet->balance;
 
-        /*$statusResponse = \Illuminate\Support\Facades\Http::attsrv()
+        $statusResponse = \Illuminate\Support\Facades\Http::attsrv()
             ->withToken($socialLiteUser->token)
             ->get('/attendees/'.$regId.'/status');
 
@@ -68,7 +68,7 @@ class AuthController extends Controller
         if (in_array($statusResponse->json()['status'], ['paid', 'checked in'])) {
             $user->valid_registration = true;
             $user->save();
-        }*/
+        }
 
         (new TokenRefreshService($user))->save(
             accessToken: $socialLiteUser->token,
@@ -76,7 +76,11 @@ class AuthController extends Controller
             expiresIn: 3500
         );
 
-        Auth::login($user);
+        Auth::login($user, true);
+        if(Session::exists('catch-em-all-redirect')) {
+            Session::forget('catch-em-all-redirect');
+            return redirect()->route('fcea.dashboard');
+        }
         return redirect()->route('dashboard');
     }
 

@@ -22,3 +22,5 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
         Route::resource('badges', \App\Http\Controllers\BadgeController::class);
     });
 });
+
+Route::permanentRedirect('/catch-em-all', '/fcea/');
