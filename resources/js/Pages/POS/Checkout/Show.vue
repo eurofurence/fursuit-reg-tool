@@ -64,7 +64,7 @@ watchEffect(() => {
                 if (props.transaction.status !== 'PENDING') {
                     clearInterval(cardPaymentCheckInterval.value);
                 }
-            }, 1500);
+            }, 3000);
         }
         if (props.transaction.status !== 'PENDING') {
             clearInterval(cardPaymentCheckInterval.value);
