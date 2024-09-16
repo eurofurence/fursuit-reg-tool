@@ -10,26 +10,38 @@ use App\Models\FCEA\UserCatch;
 use App\Models\FCEA\UserCatchRanking;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
+use function Sodium\add;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $myUserInfo = UserCatchRanking::getInfoOfUser(Auth::id());
-        $userRanking = UserCatchRanking::queryUserRanking()->get();
+        $rankingSize = 10;
+
+        // --------------------------------- Getting User Ranking Data ---------------------------------
+        $myUserInfo = $this->getMyUserInfo();
+        $userRanking = $this->getUserRanking($myUserInfo, $rankingSize);
+        // --------------------------------- Getting Fursuit Ranking Data ---------------------------------
+        $myFursuitInfos = $this->getMyFursuitInfos($myUserInfo);
+        $fursuitRanking = $this->getFursuitRanking($myFursuitInfos, $rankingSize);
+
+        $myFursuitInfoCatchedTotal = $myFursuitInfos->sum(function ($entry) { return $entry->score; });
+
         return Inertia::render('FCEA/Dashboard', [
             'myUserInfo' => $myUserInfo,
             'userRanking' => $userRanking,
+            'myFursuitInfos' => $myFursuitInfos,
+            'fursuitRanking' => $fursuitRanking,
+            'myFursuitInfoCatchedTotal' => $myFursuitInfoCatchedTotal, // How many times the user got catched on all fursuits summed up
         ]);
     }
     public function catch(UserCatchRequest $request)
     {
-        $this->refreshUserRanking();
-        $this->refreshFursuitRanking();
         $event = \App\Models\Event::getActiveEvent();
         if (!$event)
             return "No Active Event"; // TODO
@@ -48,7 +60,13 @@ class DashboardController extends Controller
         if (!$logEntry->fursuitExist())
         {
             $logEntry->save();
-            return Inertia::render('FCEA/Dashboard');
+            return "Invalid Code";
+        }
+
+        if (Auth::id() == $logEntry->tryGetFursuit()->user_id)
+        {
+            $logEntry->save();
+            return "You can't catch yourself";
         }
 
         $logEntry->already_caught =
@@ -59,7 +77,7 @@ class DashboardController extends Controller
         if ($logEntry->already_caught)
         {
             $logEntry->save();
-            return Inertia::render('FCEA/Dashboard');
+            return "Fursuit already caught";
         }
 
         $logEntry->is_successful = true;
@@ -70,7 +88,13 @@ class DashboardController extends Controller
         $userCatch->user_id = Auth::id();
         $userCatch->fursuit_id = $logEntry->tryGetFursuit()->id;
         $userCatch->save();
+        $this->refreshRanking();
         return Inertia::render('FCEA/Dashboard');
+    }
+
+    public function refreshRanking() {
+        $this->refreshUserRanking();
+        $this->refreshFursuitRanking();
     }
 
     // Function to build User Ranking. Truncated Table and iterates all users. Similar to the Fursuit Ranking
@@ -186,5 +210,93 @@ class DashboardController extends Controller
 
         RateLimiter::increment($rateLimiterKey);
         return 0;
+    }
+
+    private function getMyUserInfo() : UserCatchRanking
+    {
+        $myUserInfo = UserCatchRanking::getInfoOfUser(Auth::id()); // Getting own Rank, may be null if user is new
+
+        if (!$myUserInfo) { // User not in ranking
+            $this->refreshRanking();  // refresh it.
+            $myUserInfo = UserCatchRanking::getInfoOfUser(Auth::id()); // should not be new anymore
+        }
+
+        return $myUserInfo;
+    }
+
+    private function getUserRanking(UserCatchRanking $myUserInfo, int $rankingSize)
+    {
+        $topRanking = UserCatchRanking::queryUserRanking()
+            ->whereBetween('id', [1, $rankingSize]) // Top X Ranking
+            ->orderBy('id') // already ordered by rank/score_reached_at
+            ->limit($rankingSize);
+
+        $ownIdRange = [$myUserInfo->id - ($rankingSize / 2), $myUserInfo->id + ($rankingSize / 2)];
+
+        $ranking = UserCatchRanking::queryUserRanking()
+            ->whereBetween('id',  $ownIdRange) // Ranking around own position - Be aware that you need to add separator to the ranking frontend if there is a jump in the ranking
+            ->orderBy('id')  // already ordered by rank/score_reached_at
+            ->limit($rankingSize)
+            ->union($topRanking)
+            ->distinct() // remove duplicates
+            ->orderBy('id'); // Last time order to merge union select
+
+        // Add Separators when its jumping
+        return $this->AddPlaceholderOnJump($ranking->get());
+    }
+
+    private function getMyFursuitInfos(UserCatchRanking $myUserInfo) : Collection
+    {
+        $myFursuitIDs = $myUserInfo->user->fursuits->pluck('id')->toArray();  // Get all own Fursuit IDs
+        return UserCatchRanking::getInfoOfFursuits($myFursuitIDs); // Get Ranking info of my fursuits
+    }
+
+    private function getFursuitRanking(Collection $myFursuitInfos, int $rankingSize) : Collection
+    {
+        $topRanking = UserCatchRanking::queryFursuitRanking()
+            ->whereBetween('id', [1, $rankingSize]) // Top X Ranking
+            ->orderBy('id') // already ordered by rank/score_reached_at
+            ->limit($rankingSize);
+
+        $ranking = $topRanking;
+
+        foreach ($myFursuitInfos as $myFursuitInfo) {
+            $ownIdRange = [$myFursuitInfo->id - ($rankingSize / 2), $myFursuitInfo->id + ($rankingSize / 2)];
+
+            $ranking = UserCatchRanking::queryFursuitRanking()
+                ->whereBetween('id', $ownIdRange) // Ranking around own position - Be aware that you need to add separator to the ranking frontend if there is a jump in the ranking
+                ->orderBy('id')  // already ordered by rank/score_reached_at
+                ->limit($rankingSize)
+                ->union($ranking)
+                ->distinct() // remove duplicates
+                ->orderBy('id'); // Last time order to merge union select
+        }
+
+        // Add Separators when its jumping
+        return $this->AddPlaceholderOnJump($ranking->get());
+    }
+
+    private function AddPlaceholderOnJump(Collection $userRanking) : Collection
+    {
+        $lastID = $userRanking->first()->id;
+        // Iterate manually to find jumps in id (every id is used at least once) always starting with 1
+        foreach ($userRanking as $ranking) {
+            // Check if we incremented by more than one (jump)
+            if ($lastID + 1 < $ranking->id) {
+                $newItem = new UserCatchRanking();
+                $newItem->id = $lastID + 1; // Use this rank for correct sorting
+                $newItem->user = new User(); // Consider keeping user/fursuit null for performance
+                $newItem->user->name = "...";
+                $newItem->fursuit = new Fursuit();
+                $newItem->fursuit->name = "...";
+                $newItem->fursuit->image="filler"; // Crashes if this is null
+                $userRanking->add($newItem); // Adding a fake item to indicate separators
+            }
+
+            $lastID = $ranking->id;
+        }
+
+        // Should not change the order as it was ordered by id to begin with
+        return $userRanking->sortBy('id')->values();
     }
 }

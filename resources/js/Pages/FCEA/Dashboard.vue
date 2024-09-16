@@ -2,6 +2,7 @@
 import {Link, Head, usePage} from '@inertiajs/vue3'
 import {useForm} from 'laravel-precognition-vue-inertia'
 import Button from 'primevue/button';
+import DashboardButton from "@/Components/POS/DashboardButton.vue";
 
 
 const form = useForm('post', route('fcea.dashboard.catch'), {
@@ -11,6 +12,9 @@ const props = defineProps(
     {
         myUserInfo: Object,
         userRanking: Object,
+        myFursuitInfos: Object,
+        fursuitRanking: Object,
+        myFursuitInfoCatchedTotal: Number,
     }
 )
 
@@ -39,18 +43,19 @@ function submit() {
             <div class="mt-4">
                 <h5>Top Catchers</h5>
                 <ul class="list-group">
-                    <li class="list-group-item">Top 1: {{ topCatchers[0] }}</li>
-                    <li class="list-group-item">Top 2...10: {{ topCatchers[1] }}</li>
-                    <li class="list-group-item">...</li>
-                    <li class="list-group-item">Top 704: {{ topCatchers[2] }}</li>
+                    <li class="list-group-item" v-for="i in userRanking"><p v-if="i.user_id == myUserInfo.user_id">[YOU]</p> Top {{i.id}} - {{i.rank}}: {{i.user.name}} [{{i.score}}]</li>
                 </ul>
             </div>
+
+            <h4 class="text-center">Place #{{ myFursuitInfos[0].rank }} with {{ myFursuitInfos[0].score }} times being catched</h4>
+            <p class="text-center" v-if="myFursuitInfos[0].score_till_next ==! 0"><small>{{ myFursuitInfos[0].score_till_next }} more to advance to the next place</small></p>
+            <p class="text-center"><small>{{ myFursuitInfos[0].others_behind }} behind you</small></p>
+            <p class="text-center"><small>You were been {{ myFursuitInfoCatchedTotal }} catched between all fursuits</small></p>
 
             <div class="mt-4">
                 <h5>Top Fursuiters</h5>
                 <ul class="list-group">
-                    <li class="list-group-item">Top 1: {{ topFursuiters[0] }}</li>
-                    <li class="list-group-item">Top 2...10: {{ topFursuiters[1] }}</li>
+                    <li class="list-group-item" v-for="i in fursuitRanking">Top {{i.id}} - {{i.rank}}: {{i.fursuit.name??'error'}} [{{i.score}}]</li>
                 </ul>
             </div>
         </div>

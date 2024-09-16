@@ -4,6 +4,7 @@ namespace App\Models\FCEA;
 
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,13 +35,17 @@ class UserCatchRanking extends Model
         return $this->fursuit_id <> null;
     }
 
-    static public function getInfoOfUser(int $userId): UserCatchRanking
+    static public function getInfoOfUser(int $userId): UserCatchRanking|null
     {
-        return UserCatchRanking::where('user_id', '=', $userId)->with("user")->first();
+        return UserCatchRanking::where('user_id', '=', $userId)->with("user")->with("fursuit")->first();
     }
-    static public function getInfoOfFursuit(int $fursuitId): UserCatchRanking
+    static public function getInfoOfFursuit(int $fursuitID): UserCatchRanking|null
     {
-        return UserCatchRanking::where('fursuit_id', '=', $fursuitId)->with("fursuit")->first();
+        return UserCatchRanking::where('fursuit_id', '=', $fursuitID)->with("fursuit")->first();
+    }
+    static public function getInfoOfFursuits(array $fursuitIDs): Collection
+    {
+        return UserCatchRanking::whereBetween('fursuit_id', $fursuitIDs)->with("fursuit")->get();
     }
 
     static public function deleteUserRanking(): void
@@ -52,11 +57,11 @@ class UserCatchRanking extends Model
         UserCatchRanking::where('fursuit_id', '<>', null)->delete();
     }
 
-    static public function queryUserRanking(): \LaravelIdea\Helper\App\Models\FCEA\_IH_UserCatchRanking_QB|Builder
+    static public function queryUserRanking(): Builder
     {
         return UserCatchRanking::where('user_id', '<>', null)->with("user");
     }
-    static public function queryFursuitRanking(): \LaravelIdea\Helper\App\Models\FCEA\_IH_UserCatchRanking_QB|Builder
+    static public function queryFursuitRanking(): Builder
     {
         return UserCatchRanking::where('fursuit_id', '<>', null)->with("fursuit");
     }
