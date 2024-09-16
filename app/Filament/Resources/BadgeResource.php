@@ -61,10 +61,16 @@ class BadgeResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('custom_id')
+                    ->sortable()
+                    ->searchable()
+                    ->label('Fursuit'),
                 Tables\Columns\TextColumn::make('fursuit.user.attendee_id')
                     ->sortable()
+                    ->searchable()
                     ->label('Fursuit'),
                 Tables\Columns\TextColumn::make('fursuit.name')
+                    ->searchable()
                     ->label('Fursuit'),
                 Tables\Columns\TextColumn::make('status')->badge()->colors([
                     Pending::$name => 'default',
@@ -77,14 +83,6 @@ class BadgeResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options(BadgeStatusState::getStateMapping()->keys()->mapWithKeys(fn($key) => [ucfirst($key) => $key]))
                     ->label('Badge Status'),
-                Tables\Filters\SelectFilter::make('fursuit_status')
-                    ->options(FursuitStatusState::getStateMapping()->keys()->mapWithKeys(fn($key) => [$key => ucfirst($key)]))
-                    ->query(function (Builder $query, array $data) {
-                        $query->when($data, fn($query, $data) => $query->whereHas('fursuit', function (Builder $query) use ($data) {
-                            $query->where('status', $data);
-                        }));
-                    })
-                    ->label('Fursuit Status'),
                 // Duplex Bool Filter
                 Tables\Filters\TernaryFilter::make('dual_side_print')
                     ->label('Double Sided'),

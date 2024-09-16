@@ -49,13 +49,14 @@ class BadgePolicy
 
     public function update(User $user, Badge $badge): bool
     {
+        // Admin can override
+        if ($user->is_admin && request()->routeIs('filament.*', 'livewire.*')) {
+            return true;
+        }
+
         // Copies cannot be edited
         if ($badge->extra_copy_of !== null) {
             return false;
-        }
-        // Admin can override
-        if ($user->is_admin && request()->routeIs('filament.*')) {
-            return true;
         }
 
         $event = \App\Models\Event::getActiveEvent();
