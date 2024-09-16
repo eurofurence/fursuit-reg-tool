@@ -31,6 +31,14 @@ class ToFinished extends Transition
                 }
             });
 
+            // if cash deposit money to cash register
+            if ($this->checkout->payment_method === 'cash') {
+                $this->checkout->machine->wallet->deposit($this->checkout->total);
+            }
+
+            // add money to user wallet to zero out his balance
+            $this->checkout->user->wallet->deposit($this->checkout->total);
+
             activity()
                 ->performedOn($this->checkout)
                 ->causedBy(auth('machine-user')->user())

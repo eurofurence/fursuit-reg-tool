@@ -4,6 +4,7 @@ namespace App\Http\Controllers\POS;
 
 use App\Domain\Checkout\Models\Checkout\Checkout;
 use App\Http\Controllers\Controller;
+use App\Models\Fursuit\States\Rejected;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,11 @@ class AttendeeController extends Controller
     public function show(string $attendeeId, Request $request):  Response
     {
         $user = User::where('attendee_id', $attendeeId)->first();
-        $badges = $user->badges()->with('fursuit.species')->get();
+        $badges = $user->badges()
+            ->whereHas('fursuit', function ($query) {
+                $query->where('status','!=',Rejected::$name);
+            })
+            ->with('fursuit.species')->get();
 
         return Inertia::render('POS/Attendee/Show', [
             'attendee' => $user->load('wallet'),

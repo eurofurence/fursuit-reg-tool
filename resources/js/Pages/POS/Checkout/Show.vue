@@ -223,8 +223,8 @@ function receiptForm(via) {
                 </div>
                 <Message :closable="false" :severity="getSeverityFromTransactionStatus(transaction.status)" v-if="transaction">{{ transaction.status }}</Message>
                 <div class="flex justify-between gap-4 shrink">
-                    <Button :disabled="transaction && transaction.status === 'SUCCESSFUL'" severity="contrast" label="Cancel Transaction" @click="cancel" class="grow"></Button>
-                    <Button :disabled="transaction && transaction.status !== 'FAILED'" :loading="startCardPaymentForm.processing" label="Pay With Card" @click="startCardPayment" class="grow"></Button>
+                    <Button :disabled="checkout.status === 'FINISHED' || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))" severity="contrast" label="Cancel Transaction" @click="cancel" class="grow"></Button>
+                    <Button :disabled="checkout.status === 'FINISHED' || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))" :loading="startCardPaymentForm.processing" label="Pay With Card" @click="startCardPayment" class="grow"></Button>
                 </div>
             </div>
         </div>

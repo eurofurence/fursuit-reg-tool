@@ -64,10 +64,21 @@ class CheckoutController extends Controller
             $data['badge_ids'] = Badge::whereHas('fursuit.user', function ($query) use ($data) {
                 $query->where('id', $data['user_id']);
             })->where('status', 'unpaid')->pluck('id')->toArray();
+        } else {
+
+            $data['badge_ids'] = Badge::whereHas('fursuit.user', function ($query) use ($data) {
+                $query->where('id', $data['user_id']);
+            })->where('status', 'unpaid')
+                ->whereIn('id', $data['badge_ids'])
+                ->pluck('id')->toArray();
         }
 
-        $checkout = DB::transaction(function () use ($data) {
-            $badges = Badge::whereIn('id', $data['badge_ids'])->get();
+        $badges = Badge::whereIn('id', $data['badge_ids'])->get();
+        if ($badges->isEmpty()) {
+            return redirect()->back()->with(['error' => 'No badges found']);
+        }
+
+        $checkout = DB::transaction(function () use ($badges, $data) {
             $total = $badges->sum('total');
             $subtotal = $badges->sum('subtotal');
             $tax = $badges->sum('tax');

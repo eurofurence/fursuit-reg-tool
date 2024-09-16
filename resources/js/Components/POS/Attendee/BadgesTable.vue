@@ -46,6 +46,7 @@ function changeHandout(badgeId, undo) {
         <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
         <Column field="custom_id" header="ID"></Column>
         <Column field="fursuit.name" header="Fursuit"></Column>
+        <Column field="fursuit.status" header="Fursuit Status"></Column>
         <Column field="printed_at" header="Print">
             <template #body="slotProps">
                 {{ (slotProps.data.printed_at) ? dayjs(slotProps.data.printed_at).format('DD.MM.YY') : '-' }}
