@@ -18,7 +18,7 @@ onMounted(function() {
         }
     });
     qz.security.setCertificatePromise(function (resolve, reject) {
-        fetch(route('pos.qz.cert'), {cache: 'no-store', headers: {'Content-Type': 'text/plain'}})
+        fetch(route('pos.auth.qz.cert'), {cache: 'no-store', headers: {'Content-Type': 'text/plain'}})
             .then(function (data) {
                 data.ok ? resolve(data.text()) : reject(data.text());
             });
@@ -26,7 +26,7 @@ onMounted(function() {
     qz.security.setSignatureAlgorithm("SHA512"); // Since 2.1
     qz.security.setSignaturePromise(function (toSign) {
         return function (resolve, reject) {
-            fetch("/pos/qz/sign?request=" + toSign, {cache: 'no-store', headers: {'Content-Type': 'text/plain'}})
+            fetch("/pos/auth/qz/sign?request=" + toSign, {cache: 'no-store', headers: {'Content-Type': 'text/plain'}})
                 .then(function (data) {
                     data.ok ? resolve(data.text()) : reject(data.text());
                 });
@@ -57,11 +57,11 @@ function startQZPrint() {
 
 function pollPrintJobs() {
     setInterval(() => {
-        http.get(route('pos.printers.jobs'),{},{
+        http.get(route('pos.auth.printers.jobs'),{},{
             onSuccess(printJobs) {
                 printJobs.data.forEach((job) => {
                     console.log("job", job);
-                    http.post(route('pos.printers.jobs.printed', {job: job.id}), {}, {
+                    http.post(route('pos.auth.printers.jobs.printed', {job: job.id}), {}, {
                         onSuccess() {
                             var printerOptions = (job.type === 'badge') ? {
                                 colorType: 'color',
@@ -98,7 +98,7 @@ function pollPrintJobs() {
 
 function findPrinters() {
     qz.printers.details().then((printers) => {
-        http.post(route('pos.printers.store'), {printers: printers});
+        http.post(route('pos.auth.printers.store'), {printers: printers});
     }).catch((err) => {
         console.error(err);
     });
