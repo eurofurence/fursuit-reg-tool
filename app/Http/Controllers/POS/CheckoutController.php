@@ -185,6 +185,7 @@ class CheckoutController extends Controller
             $response = Http::sumup()->get("/v0.1/me/transactions", [
                 "foreign_transaction_id" => $checkout->payment_method_remote_id,
             ]);
+            dd($response->json());
             $transactionData = $response->json();
             if (isset($transactionData['error_code']) && $transactionData['error_code'] === 'NOT_FOUND') {
                 sleep(2);
