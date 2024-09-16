@@ -135,9 +135,9 @@ class CheckoutController extends Controller
         $uuid = Str::uuid();
         $response = Http::sumup()->post("/v0.1/merchants/" . config('services.sumup.merchant_code') . "/readers/" . $reader->remote_id . '/checkout', [
             'affiliate' => [
-                'app_id' => 'fs-badges-keys',
+                'app_id' => config('services.sumup.app_id'),
                 'foreign_transaction_id' => $uuid,
-                'key' => 'sup_afk_c5kbqXVfx6UecTeVbnBOs3TJsmxnIBwg',
+                'key' => config('services.sumup.affiliate_key'),
             ],
             'description' => 'Fursuit Badges Payment',
             'card_type' => 'debit',
