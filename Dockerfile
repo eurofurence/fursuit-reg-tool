@@ -40,6 +40,7 @@ WORKDIR /app
 COPY package.json package-lock.json tailwind.config.js vite.config.js postcss.config.js ./
 RUN npm install --force
 COPY ./resources /app/resources
+COPY ./.env.build /app/.env
 COPY --from=vite-vendor-build /app/vendor/tightenco/ziggy /app/vendor/tightenco/ziggy
 RUN npm run build
 ######################################################
