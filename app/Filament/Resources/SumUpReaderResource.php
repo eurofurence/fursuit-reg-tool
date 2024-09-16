@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\SumUpReadersResource\Pages;
-use App\Filament\Resources\SumUpReadersResource\RelationManagers;
+use App\Filament\Resources\SumUpReaderResource\Pages;
+use App\Filament\Resources\SumUpReaderResource\RelationManagers;
 use App\Models\SumUpReader;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -21,7 +21,6 @@ class SumUpReaderResource extends Resource
 
     public static function form(Form $form): Form
     {
-        // name, remote_id (readonly), paring_code
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
@@ -51,7 +50,6 @@ class SumUpReaderResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -60,10 +58,19 @@ class SumUpReaderResource extends Resource
             ]);
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ManageSumUpReader::route('/'),
+            'index' => Pages\ListSumUpReaders::route('/'),
+            'create' => Pages\CreateSumUpReader::route('/create'),
+            'edit' => Pages\EditSumUpReader::route('/{record}/edit'),
         ];
     }
 }
