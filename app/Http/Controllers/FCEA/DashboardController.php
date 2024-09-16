@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\FCEA;
 
-use App\Enum\EventStateEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserCatchRequest;
 use App\Models\FCEA\UserCatchLog;
@@ -32,22 +31,32 @@ class DashboardController extends Controller
 
         $myFursuitInfoCatchedTotal = $myFursuitInfos->sum(function ($entry) { return $entry->score; });
 
+        $caughtFursuit = null;
+
+        if (session()->has('caught_fursuit'))
+        {
+            $caughtFursuitId = session()->get('caught_fursuit');
+            $caughtFursuit = Fursuit::find($caughtFursuitId);
+        }
+
         return Inertia::render('FCEA/Dashboard', [
             'myUserInfo' => $myUserInfo,
             'userRanking' => $userRanking,
             'myFursuitInfos' => $myFursuitInfos,
             'fursuitRanking' => $fursuitRanking,
             'myFursuitInfoCatchedTotal' => $myFursuitInfoCatchedTotal, // How many times the user got catched on all fursuits summed up
+            'caughtFursuit' => $caughtFursuit
         ]);
     }
+
     public function catch(UserCatchRequest $request)
     {
         $event = \App\Models\Event::getActiveEvent();
         if (!$event)
-            return "No Active Event"; // TODO
+            return to_route('fcea.dashboard')->with('error', 'No Active Event');
 
         if ($second = $this->IsLimited(Auth::id()))
-            return 'You may try again in '.$second.' seconds.';
+            return to_route('fcea.dashboard')->with('error', 'You may try again in '.$second.' seconds.');
 
         $catch_code = strtoupper($request->validated("catch_code"));
         $logEntry = new UserCatchLog();
@@ -60,13 +69,13 @@ class DashboardController extends Controller
         if (!$logEntry->fursuitExist())
         {
             $logEntry->save();
-            return "Invalid Code";
+            return to_route('fcea.dashboard')->with('error', 'Invalid Code');
         }
 
         if (Auth::id() == $logEntry->tryGetFursuit()->user_id)
         {
             $logEntry->save();
-            return "You can't catch yourself";
+            return to_route('fcea.dashboard')->with('error', "You can't catch yourself");
         }
 
         $logEntry->already_caught =
@@ -77,7 +86,7 @@ class DashboardController extends Controller
         if ($logEntry->already_caught)
         {
             $logEntry->save();
-            return "Fursuit already caught";
+            return to_route('fcea.dashboard')->with('error', "Fursuit already caught"); // TODO: separate UI for this case
         }
 
         $logEntry->is_successful = true;
@@ -88,8 +97,14 @@ class DashboardController extends Controller
         $userCatch->user_id = Auth::id();
         $userCatch->fursuit_id = $logEntry->tryGetFursuit()->id;
         $userCatch->save();
-        $this->refreshRanking();
-        return Inertia::render('FCEA/Dashboard');
+        self::refreshRanking();
+
+        return to_route('fcea.dashboard')->with('caught_fursuit', $logEntry->tryGetFursuit()->id);
+    }
+
+    public static function refreshRanking() {
+        self::refreshUserRanking();
+        self::refreshFursuitRanking();
     }
 
     public function refreshRanking() {
@@ -98,7 +113,7 @@ class DashboardController extends Controller
     }
 
     // Function to build User Ranking. Truncated Table and iterates all users. Similar to the Fursuit Ranking
-    public function refreshUserRanking() {
+    public static function refreshUserRanking() {
         $usersOrdered = User::query()
             ->withCount("fursuitsCatched")
             ->withMax("fursuitsCatched","created_at")
@@ -149,7 +164,7 @@ class DashboardController extends Controller
     }
 
     // Function to build Fursuit Ranking. Truncated Table and iterates all fursuits. Similar to the User Ranking
-    public function refreshFursuitRanking() {
+    public static function refreshFursuitRanking() {
         $fursuitsOrdered = Fursuit::query()
             ->withCount("catchedByUsers")
             ->withMax("catchedByUsers","created_at")

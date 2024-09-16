@@ -1,35 +1,36 @@
-<script setup>
-import {Link, Head, usePage} from '@inertiajs/vue3'
-import {useForm} from 'laravel-precognition-vue-inertia'
-import Button from 'primevue/button';
-import DashboardButton from "@/Components/POS/DashboardButton.vue";
+<script setup lang="ts">
+import {Head, useForm, usePage} from '@inertiajs/vue3'
+import Layout from "@/Layouts/Layout.vue";
+import Button from "primevue/button"
+import BottomNavigation from "@/Components/BottomNavigation.vue";
+import Message from "primevue/message";
+import FlashMessages from "@/Components/FlashMessages.vue";
 
+defineOptions({ layout: Layout })
 
-const form = useForm('post', route('fcea.dashboard.catch'), {
-    catch_code: ""
-})
-const props = defineProps(
-    {
-        myUserInfo: Object,
-        userRanking: Object,
-        myFursuitInfos: Object,
-        fursuitRanking: Object,
-        myFursuitInfoCatchedTotal: Number,
-    }
-)
+const form = useForm({ catch_code: '' })
 
-function submit() {
-    form.submit();
-}
+const props = defineProps<{
+    myUserInfo: object,
+    userRanking: object,
+    flash: object,
+    caughtFursuit?: object | null
+}>()
+
+const page = usePage()
+
+const submit = () => form.post(route('fcea.dashboard.catch'))
+
 </script>
 <template>
-    <Head>
-        <title>POS - Dashboard</title>
-    </Head>
+    <Head title="Fursuits — Catch'em all!" />
+
+    <FlashMessages :flash="flash" />
     <div class="card mt-5" style="width: 18rem; margin: auto;">
         <div class="card-header text-center">
             <h3>Fursuit Catch Em All</h3>
         </div>
+
         <div class="card-body">
             <h4 class="text-center">Place #{{ myUserInfo.rank }} with {{ myUserInfo.score }} catches</h4>
             <p class="text-center" v-if="myUserInfo.score_till_next ==! 0"><small>{{ myUserInfo.score_till_next }} more to advance to the next place</small></p>
@@ -37,45 +38,20 @@ function submit() {
 
             <div class="text-center">
                  <input type="text" class="form-control mb-2" v-model="form.catch_code" placeholder="Enter Code" />
-                <Button class="btn btn-primary" @click="submit()">Submit ></Button>
+                <div v-if="form.hasErrors">Invalid catch code</div>
+                <Button class="btn btn-primary" @click="submit">Submit ></Button>
             </div>
 
             <div class="mt-4">
                 <h5>Top Catchers</h5>
                 <ul class="list-group">
-                    <li class="list-group-item" v-for="i in userRanking"><p v-if="i.user_id == myUserInfo.user_id">[YOU]</p> Top {{i.id}} - {{i.rank}}: {{i.user.name}} [{{i.score}}]</li>
+                    <li class="list-group-item" v-for="i in userRanking"><p v-if="i.user_id == myUserInfo.user_id">[YOU]</p> Top {{i.rank}}: {{i.user.name}} [{{i.score}}]</li>
                 </ul>
             </div>
-
-            <h4 class="text-center">Place #{{ myFursuitInfos[0].rank }} with {{ myFursuitInfos[0].score }} times being catched</h4>
-            <p class="text-center" v-if="myFursuitInfos[0].score_till_next ==! 0"><small>{{ myFursuitInfos[0].score_till_next }} more to advance to the next place</small></p>
-            <p class="text-center"><small>{{ myFursuitInfos[0].others_behind }} behind you</small></p>
-            <p class="text-center"><small>You were been {{ myFursuitInfoCatchedTotal }} catched between all fursuits</small></p>
-
-            <div class="mt-4">
-                <h5>Top Fursuiters</h5>
-                <ul class="list-group">
-                    <li class="list-group-item" v-for="i in fursuitRanking">Top {{i.id}} - {{i.rank}}: {{i.fursuit.name??'error'}} [{{i.score}}]</li>
-                </ul>
-            </div>
+            <Teleport defer to="#bottom_nav_teleport"><BottomNavigation class="md:hidden" /></Teleport>
         </div>
     </div>
 </template>
-
-<script>
-export default {
-    data() {
-        return {
-            place: 705,
-            toNextPlace: 4,
-            behindYou: 232,
-            code: '',
-            topCatchers: [999, 421, 4, 8],
-            topFursuiters: [999, 421, 1],
-        };
-    }
-};
-</script>
 
 <style scoped>
 .card {

@@ -18,7 +18,7 @@ class BalentySeeder extends Seeder
     {
         Artisan::call("event:state preorder");
         $event =  Event::first();
-        Badge::factory(30)->recycle($event)->create();
+//        Badge::factory(30)->recycle($event)->create();
         UserCatch::factory(30)->recycle($event)->create();
     }
 }
