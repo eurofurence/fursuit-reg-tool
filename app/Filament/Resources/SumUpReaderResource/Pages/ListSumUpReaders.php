@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Filament\Resources\SumUpReadersResource\Pages;
+namespace App\Filament\Resources\SumUpReaderResource\Pages;
 
 use App\Filament\Resources\SumUpReaderResource;
 use Filament\Actions;
-use Filament\Resources\Pages\ManageRecords;
+use Filament\Resources\Pages\ListRecords;
 
-class ManageSumUpReader extends ManageRecords
+class ListSumUpReaders extends ListRecords
 {
     protected static string $resource = SumUpReaderResource::class;
 
