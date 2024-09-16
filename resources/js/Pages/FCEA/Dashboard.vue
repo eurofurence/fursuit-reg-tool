@@ -89,7 +89,7 @@ const submit = () => form.post(route('fcea.dashboard.catch'))
             </table>
             <p class="text-center py-4" v-else>Be the first person to catch a fursuiter!</p>
             <div class="px-4 py-4 font-bold bg-blue-200 text-xl text-center">How does this work?</div>
-            <div class="space-y-2 px-4 py-4 text-sm">
+            <div class="space-y-2 px-4 py-4 text-sm max-w-sm mx-auto">
                 <p>Some fursuiters at Eurofurence may have a unique 5-digit code located on the bottom right of their Fursuit Badge. These codes are your key to participating in the "Catch 'Em All" game.</p>
 
                 <p><strong>Objective:</strong></p>
