@@ -32,7 +32,7 @@ const props = defineProps({
     <!-- Keep this, responsible for printing! -->
     <QZPrintService/>
     <div class="min-h-screen lg:h-screen w-full flex flex-col bg-gray-200">
-        <div class="p-4 flex flex-row items-center">
+        <div class="p-4 flex flex-row items-center" v-if="page.props.auth.user">
             <Link :href="route(backToRoute)" v-if="backToRoute">
                 <Button icon="pi pi-arrow-left" class="p-button-rounded p-button-text" label="Back" />
             </Link>
