@@ -14,7 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function() {
             \Illuminate\Support\Facades\Route::prefix('fcea/')
                 ->name('fcea.')
-                ->middleware('web')
+                ->middleware([
+                    'web',
+                    'catch-auth:web'
+                ])
                 ->group(base_path('routes/fcea.php'));
             \Illuminate\Support\Facades\Route::middleware([
                 'pos-auth:machine',
@@ -37,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'pos-auth' => \App\Http\Middleware\PosAuthMiddleware::class,
+            'catch-auth' => \App\Http\Middleware\CatchEmAllAuthMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
