@@ -44,7 +44,6 @@ class UserResource extends Resource
                     ->required(),
                 // pin_code 6 digits
                 Forms\Components\TextInput::make('pin_code')
-                    ->required()
                     ->minLength(6)
                     ->maxLength(6),
 
