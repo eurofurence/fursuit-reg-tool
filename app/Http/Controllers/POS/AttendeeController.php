@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\POS;
 
+use App\Domain\Checkout\Models\Checkout\Checkout;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Checkout\Checkout;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Inertia\Response;
 
 class AttendeeController extends Controller

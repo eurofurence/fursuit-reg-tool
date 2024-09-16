@@ -52,4 +52,19 @@ return [
         ],
     ],
 
+    'fiskaly' => [
+        'url' => 'https://kassensichv-middleware.fiskaly.com/api/v2/',
+        'api_key' => env('FISKALY_API_KEY'),
+        'api_secret' => env('FISKALY_API_SECRET'),
+        'tss_id' => env('FISKALY_TSS_ID'),
+        'puk' => env('FISKALY_ADMIN_PUK'),
+    ],
+
+    'sumup' => [
+        'url' => 'https://api.sumup.com/',
+        'api_key' => env('SUMUP_API_KEY'),
+        'api_secret' => env('SUMUP_API_SECRET'),
+        'merchant_code' => env('SUMUP_MERCHANT_CODE'),
+    ],
+
 ];

@@ -69,8 +69,15 @@ function pollPrintJobs() {
                                 units: 'mm',
                                 duplex: job.duplex,
                             } : {
-                                colorType: 'grayscale'
+                                colorType: 'grayscale',
+                                size: [
+                                    80,
+                                ],
+                                rasterize: true,
+                                units: 'mm',
+                                scaleContent: false,
                             };
+                            console.log(printerOptions);
                             var config = qz.configs.create(job.printer, printerOptions);
                             var data = [{
                                 type: 'pixel',

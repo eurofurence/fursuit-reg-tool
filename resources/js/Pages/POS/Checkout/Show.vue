@@ -1,10 +1,13 @@
 <script setup>
-import {ref} from "vue";
+import {onMounted, ref, watchEffect} from "vue";
 import POSLayout from "@/Layouts/POSLayout.vue";
 import Button from 'primevue/button';
 import Cash from "@/Components/POS/Checkout/Cash.vue";
 import SimpleKeyboard from "@/Components/SimpleKeyboard.vue";
 import {formatEuroFromCents} from "@/helpers.js";
+import {useForm} from "laravel-precognition-vue-inertia";
+import Message from 'primevue/message'
+import {router} from "@inertiajs/vue3";
 
 defineOptions({
     layout: POSLayout,
@@ -16,7 +19,7 @@ let currentChange = ref([]);
 
 const props = defineProps({
     checkout: Object,
-    total: Number,
+    transaction: Object,
 });
 
 const denominations = [
@@ -50,6 +53,25 @@ const keyboardOptions = {
 
 const positions = props.checkout.items;
 
+const cardPaymentCheckInterval = ref(null);
+
+watchEffect(() => {
+    if (props.transaction) {
+        if(props.transaction.status === 'PENDING' && !cardPaymentCheckInterval.value) {
+            cardPaymentCheckInterval.value = setInterval(() => {
+                console.log('checking transaction status');
+                router.reload({only: ['transaction', 'checkout']});
+                if (props.transaction.status !== 'PENDING') {
+                    clearInterval(cardPaymentCheckInterval.value);
+                }
+            }, 1500);
+        }
+        if (props.transaction.status !== 'PENDING') {
+            clearInterval(cardPaymentCheckInterval.value);
+        }
+    }
+});
+
 function denomToValue(denom) {
     return Number(denom.replace(/[^\d]/g, '')) / (denom.endsWith('¢') ? 100 : 1);
 }
@@ -80,16 +102,46 @@ function keyPress(event) {
     if (event === "{reset}") {
         clear();
     } else if (event === "{enter}") {
-        // pay with cash logic here
-        // todo: implement
+        if (given.value < (props.checkout.total / 100)) {
+            console.log('Insufficient amount');
+            return;
+        }
+        useForm('POST', route('pos.checkout.payWithCash', {'checkout': props.checkout.id}), {amount: given.value}).submit();
     } else {
         const eventVal = denomToValue(event);
         givenBills.value.push(event)
         given.value = Math.round((given.value + eventVal) * 100) / 100;;
         // default value of 4 for testing
         // todo: remove...                           vvvv ...this bit here
-        currentChange.value = calcChange(props.total || 4, given.value);
+        currentChange.value = calcChange(props.checkout.total / 100, given.value);
     }
+}
+
+function cancel() {
+    useForm('DELETE', route('pos.checkout.destroy', {'checkout': props.checkout.id}),{}).submit();
+}
+
+const startCardPaymentForm = useForm('POST', route('pos.checkout.startCardPayment', {'checkout': props.checkout.id}),{})
+
+function startCardPayment() {
+    startCardPaymentForm.submit();
+}
+
+function getSeverityFromTransactionStatus(status) {
+    switch (status) {
+        case 'FAILED':
+            return 'error';
+        case 'PENDING':
+            return 'warn';
+        case 'SUCCESS':
+            return 'success';
+        default:
+            return 'info';
+    }
+}
+
+function receiptForm(via) {
+    useForm('POST',route('pos.checkout.receipt.'+via, {'checkout': props.checkout.id}),{}).submit();
 }
 
 </script>
@@ -118,30 +170,35 @@ function keyPress(event) {
                     </div>
                     </div>
                 </div>
-                <!-- default value of 2 for testing, todo: remove...   this bit here: vvvv -->
-                <div class="hidden flex rounded-lg bg-red-300 p-3" v-else-if="given < (total || 4)">
+                <div class="flex rounded-lg bg-red-300 p-3" v-else-if="given < (checkout.total / 100)">
                     <span class=""><strong>!</strong> Insufficient amount</span>
                 </div>
                 <div class="flex rounded-lg bg-teal-200 p-3" v-else>
                     <span class=""><strong>✓</strong> Exact change!</span>
                 </div>
             </div>
-            <div class="flex-1 flex items-end">
+            <div v-if="checkout.status !== 'FINISHED' && !(transaction && transaction.status === 'PENDING') && !startCardPaymentForm.processing" class="flex-1 flex items-end">
                 <SimpleKeyboard @onKeyPress="keyPress" :options="keyboardOptions" />
+            </div>
+            <div class="flex-1 flex items-end w-full" v-if="checkout.status === 'FINISHED'">
+                <div class="flex gap-2 w-full pb-4">
+                <Button severity="contrast" size="large" icon="pi pi-at" label="E-Mail" @click="receiptForm('email')" class="grow h-32" />
+                <Button severity="contrast" size="large" icon="pi pi-receipt" label="Print" @click="receiptForm('print')" class="grow h-32" />
+                </div>
             </div>
         </div>
         <!-- card & status -->
         <div class="bg-white border-gray-400 rounded-lg text-black">
-            <div class="flex flex-col grow p-4 gap-4 h-[100%]">
+            <div class="flex flex-col grow p-4 gap-1 h-[100%]">
                 <div class="flex flex-col grow">
-                    <span class="text-2xl">Positions:</span>
-                    <div v-if="positions" class="flex flex-col">
-                        <div v-for="pos in (positions)" :key="pos" class="flex p-2 rounded-lg gap-2 items-center">
-                            <span><strong class="bg-white rounded-lg p-1">#{{pos.payable_id}}</strong></span>
-                            <div class="flex bg-gray-200 grow justify-between p-1 rounded-lg">
+                    <span class="text-lg">Positions:</span>
+                    <div v-if="positions" class="flex flex-col divide-gray-600 divide-y">
+                        <div v-for="pos in (positions)" :key="pos" class="flex gap-2 items-center">
+                            <span><strong class=" rounded-lg p-1">#{{pos.payable_id}}</strong></span>
+                            <div class="flex grow justify-between p-1 rounded-lg">
                                 <div>
                                     <strong>{{ pos.name }}</strong>
-                                    <ul>
+                                    <ul class="text-sm">
                                         <li v-for="item in pos.description" :key="item">{{ item }}</li>
                                     </ul>
                                 </div>
@@ -164,10 +221,10 @@ function keyPress(event) {
                         <div>{{ formatEuroFromCents(checkout.total) }}</div>
                     </div>
                 </div>
-                <div class="flex rounded-lg bg-cyan-200 p-3 shrink">card status here</div>
+                <Message :closable="false" :severity="getSeverityFromTransactionStatus(transaction.status)" v-if="transaction">{{ transaction.status }}</Message>
                 <div class="flex justify-between gap-4 shrink">
-                    <Button label="Cancel Transaction" @click="cancel" class="grow"></Button>
-                    <Button label="Pay With Card" @click="cancel" class="grow"></Button>
+                    <Button :disabled="transaction && transaction.status === 'SUCCESSFUL'" severity="contrast" label="Cancel Transaction" @click="cancel" class="grow"></Button>
+                    <Button :disabled="transaction && transaction.status !== 'FAILED'" :loading="startCardPaymentForm.processing" label="Pay With Card" @click="startCardPayment" class="grow"></Button>
                 </div>
             </div>
         </div>

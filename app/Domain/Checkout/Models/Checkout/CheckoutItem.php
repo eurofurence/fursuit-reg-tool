@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Checkout;
+namespace App\Domain\Checkout\Models\Checkout;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,5 +18,10 @@ class CheckoutItem extends Model
     public function checkout()
     {
         return $this->belongsTo(Checkout::class);
+    }
+
+    public function payable()
+    {
+        return $this->morphTo();
     }
 }

@@ -26,3 +26,8 @@ Route::post('/badges/{badge}/handout', [\App\Http\Controllers\POS\BadgeControlle
 Route::post('/badges/{badge}/handout/undo', [\App\Http\Controllers\POS\BadgeController::class, 'handoutUndo'])->name('badges.handout.undo');
 Route::post('/badges/handout/bulk', [\App\Http\Controllers\POS\BadgeController::class, 'handoutBulk'])->name('badges.handout.bulk');
 Route::resource('checkout', \App\Http\Controllers\POS\CheckoutController::class);
+Route::post('/checkout/{checkout}/startCardPayment', [\App\Http\Controllers\POS\CheckoutController::class, 'startCardPayment'])->name('checkout.startCardPayment');
+Route::post('/checkout/{checkout}/payWithCash', [\App\Http\Controllers\POS\CheckoutController::class, 'payWithCash'])->name('checkout.payWithCash');
+Route::get('/checkout/{checkout}/receipt', [\App\Http\Controllers\ReceiptController::class,'show'])->name('checkout.receipt');
+Route::post('/checkout/{checkout}/receipt/print', [\App\Http\Controllers\ReceiptController::class,'printReceipt'])->name('checkout.receipt.print');
+Route::post('/checkout/{checkout}/receipt/email', [\App\Http\Controllers\ReceiptController::class,'sendEmail'])->name('checkout.receipt.email');

@@ -34,4 +34,22 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
     {
         return $this->hasMany(Printer::class);
     }
+
+    // checkouts
+    public function checkouts()
+    {
+        return $this->hasMany(\App\Domain\Checkout\Models\Checkout\Checkout::class);
+    }
+
+    // tse client
+    public function tseClient()
+    {
+        return $this->belongsTo(\App\Domain\Checkout\Models\TseClient::class);
+    }
+
+    // sumupReader
+    public function sumupReader()
+    {
+        return $this->belongsTo(SumUpReader::class);
+    }
 }

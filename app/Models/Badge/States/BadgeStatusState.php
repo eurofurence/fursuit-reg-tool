@@ -2,6 +2,7 @@
 
 namespace App\Models\Badge\States;
 
+use App\Models\Badge\States\Transitions\ToCancelled;
 use App\Models\Badge\States\Transitions\ToPrinted;
 use Spatie\ModelStates\State;
 

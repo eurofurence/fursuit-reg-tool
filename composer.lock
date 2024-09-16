@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2b6217b38f6ca32dfc5134011eafb52e",
+    "content-hash": "473f9393c1480ed346d149485b6af560",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -71,6 +71,46 @@
                 "source": "https://github.com/AnourValar/eloquent-serialize/tree/1.2.24"
             },
             "time": "2024-09-08T15:57:08+00:00"
+        },
+        {
+            "name": "apirone/php-qr-code",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Apirone/php-qr-code.git",
+                "reference": "cfd206723e25c047ea3c182e09b0f987935c17f0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Apirone/php-qr-code/zipball/cfd206723e25c047ea3c182e09b0f987935c17f0",
+                "reference": "cfd206723e25c047ea3c182e09b0f987935c17f0",
+                "shasum": ""
+            },
+            "require": {
+                "ext-gd": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Apirone\\Lib\\PhpQRCode\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alex Zaytseff",
+                    "email": "alex.zaytseff@gmail.com"
+                }
+            ],
+            "description": "Generate QR-codes from a single PHP file.",
+            "homepage": "https://github.com/apirone/php-qr-code/",
+            "support": {
+                "source": "https://github.com/Apirone/php-qr-code/tree/1.0.0"
+            },
+            "time": "2024-01-19T07:36:49+00:00"
         },
         {
             "name": "aws/aws-crt-php",
