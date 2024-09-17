@@ -42,9 +42,7 @@ class AttendeeController extends Controller
             //'badges' => $user->badges()->select('fursuit_id', 'printed_at', 'total', 'picked_up_at', 'badges.updated_at' )->get()
             'badges' => $badges->load('wallet'),
             'transactions' => $user->wallet->transactions()->where('amount', '<', 0)->orWhere('amount', '>', 0)->limit(50)->get(),
-            'fursuits' => $badges->map(function ($badge) {
-                return $badge->fursuit;
-            }),
+            'fursuits' => $user->fursuits()->with('species')->get(),
             'checkouts' => Checkout::whereBelongsTo($user)->with('items')->get()->all(),
         ]);
     }
