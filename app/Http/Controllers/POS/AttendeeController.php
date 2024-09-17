@@ -44,7 +44,7 @@ class AttendeeController extends Controller
             'transactions' => $user->wallet->transactions()->where('amount', '<', 0)->orWhere('amount', '>', 0)->limit(50)->get(),
             'fursuits' => $badges->map(function ($badge) {
                 return $badge->fursuit;
-            })->unique('fursuit'),
+            }),
             'checkouts' => Checkout::whereBelongsTo($user)->with('items')->get()->all(),
         ]);
     }
