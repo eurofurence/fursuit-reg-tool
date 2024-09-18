@@ -7,13 +7,18 @@ use Illuminate\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 
+use Bavix\Wallet\Interfaces\Wallet;
+use Bavix\Wallet\Interfaces\WalletFloat;
+use Bavix\Wallet\Traits\HasWalletFloat;
+
 /**
  * Machine describes a pos system
  */
 
 class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatable
 {
-    use Authenticatable, Authorizable;
+    use Authenticatable, Authorizable, HasWalletFloat;
+
     public $timestamps = false;
     protected $guarded = [];
 
@@ -33,5 +38,23 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
     public function printers()
     {
         return $this->hasMany(Printer::class);
+    }
+
+    // checkouts
+    public function checkouts()
+    {
+        return $this->hasMany(\App\Domain\Checkout\Models\Checkout\Checkout::class);
+    }
+
+    // tse client
+    public function tseClient()
+    {
+        return $this->belongsTo(\App\Domain\Checkout\Models\TseClient::class);
+    }
+
+    // sumupReader
+    public function sumupReader()
+    {
+        return $this->belongsTo(SumUpReader::class);
     }
 }

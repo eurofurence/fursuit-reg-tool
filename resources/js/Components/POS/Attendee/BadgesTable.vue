@@ -10,6 +10,7 @@ import {formatEuroFromCents} from "../../..//helpers.js";
 import ConfirmModal from "@/Components/POS/ConfirmModal.vue";
 import {useToast} from "primevue/usetoast";
 import {useForm} from "laravel-precognition-vue-inertia";
+import Tag from 'primevue/tag';
 const toast = useToast();
 
 defineProps({
@@ -41,10 +42,11 @@ function changeHandout(badgeId, undo) {
 </script>
 
 <template>
-    <DataTable dataKey="id" v-model:selection="selectedBadges" :value="badges" scrollable scrollHeight="400px" class="-m-5" tableStyle="min-width: 50rem">
+    <DataTable dataKey="id" v-model:selection="selectedBadges" :value="badges" class="-m-5" tableStyle="min-width: 50rem">
         <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
         <Column field="custom_id" header="ID"></Column>
         <Column field="fursuit.name" header="Fursuit"></Column>
+        <Column field="fursuit.status" header="Fursuit Status"></Column>
         <Column field="printed_at" header="Print">
             <template #body="slotProps">
                 {{ (slotProps.data.printed_at) ? dayjs(slotProps.data.printed_at).format('DD.MM.YY') : '-' }}
@@ -55,7 +57,15 @@ function changeHandout(badgeId, undo) {
                 <Checkbox :modelValue="slotProps.data.dual_side_print" :binary="true" />
             </template>
         </Column>
-        <Column field="status" header="Status"></Column>
+        <Column field="status" header="Status">
+            <template #body="slotProps">
+                <Tag severity="info"    v-if="slotProps.data.status === 'pending'" value="Pending" />
+                <Tag severity="success" v-else-if="slotProps.data.status === 'picked_up'" value="Picked up" />
+                <Tag severity="warning" v-else-if="slotProps.data.status === 'ready_for_pickup'" value="Ready for Pickup" />
+                <Tag severity="danger"  v-else-if="slotProps.data.status === 'unpaid'" value="Unpaid" />
+                <Tag v-else :value="slotProps.data.status" />
+            </template>
+        </Column>
         <Column field="wallet.balance" header="Price">
             <template #body="slotProps">
                 {{ formatEuroFromCents(slotProps.data.total) }}

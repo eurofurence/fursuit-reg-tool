@@ -7,6 +7,11 @@ import sjcl from 'sjcl';
 import Message from 'primevue/message';
 import Button from "primevue/button";
 import {router} from "@inertiajs/vue3";
+import POSLayout from "@/Layouts/POSLayout.vue";
+
+defineOptions({
+    layout: POSLayout,
+});
 
 const props = defineProps({
     salt: {

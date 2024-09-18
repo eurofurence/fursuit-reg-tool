@@ -20,6 +20,7 @@ defineProps({
             </template>
         </Column>
         <Column field="name" header="Name" />
+        <Column field="status" header="Status" />
         <Column field="species.name" header="Species" />
         <Column field="catch_em_all" header="Catch em all">
             <template #body="slotProps">

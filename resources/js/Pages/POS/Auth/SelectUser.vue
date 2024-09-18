@@ -7,11 +7,16 @@ import Card from 'primevue/card';
 import Button from 'primevue/button';
 import {useForm} from "laravel-precognition-vue-inertia";
 import {router} from "@inertiajs/vue3";
+import POSLayout from "@/Layouts/POSLayout.vue";
 
 const props = defineProps({
     users: {
         type: Array
     }
+});
+
+defineOptions({
+    layout: POSLayout,
 });
 
 function selectUser(userId) {

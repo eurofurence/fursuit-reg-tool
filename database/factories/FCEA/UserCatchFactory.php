@@ -3,6 +3,7 @@
 
 namespace Database\Factories\FCEA;
 
+use App\Models\Event;
 use App\Models\FCEA\UserCatch;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
@@ -21,6 +22,7 @@ class UserCatchFactory extends Factory
 
             'user_id' => User::factory(),
             'fursuit_id' => Fursuit::factory(),
+            'event_id' => Event::factory(),
         ];
     }
 }

@@ -28,15 +28,15 @@ class BadgePolicy
 
     public function create(User $user): bool
     {
+        // Admin can override
+        if ($user->is_admin && request()->routeIs('filament.*')) {
+            return true;
+        }
+
         // Do not allow ordering badges if there is no active event
         $event = \App\Models\Event::getActiveEvent();
         if ($event === null) {
             return false;
-        }
-
-        // Admin can override
-        if ($user->is_admin && request()->routeIs('filament.*')) {
-            return true;
         }
 
         // Safety check if in CLOSED OR LATE return false
@@ -49,11 +49,17 @@ class BadgePolicy
 
     public function update(User $user, Badge $badge): bool
     {
-        $event = \App\Models\Event::getActiveEvent();
+        // Admin can override
+        if ($user->is_admin && request()->routeIs('filament.*', 'livewire.*')) {
+            return true;
+        }
+
         // Copies cannot be edited
         if ($badge->extra_copy_of !== null) {
             return false;
         }
+
+        $event = \App\Models\Event::getActiveEvent();
         return $this->delete($user, $badge);
     }
 

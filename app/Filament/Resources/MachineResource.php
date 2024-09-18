@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Http;
 
 class MachineResource extends Resource
 {
@@ -36,6 +37,16 @@ class MachineResource extends Resource
                 Forms\Components\Select::make('badge_printer_id')
                     ->label('Badge Printer')
                     ->relationship('badgePrinter', 'name')
+                    ->columnSpanFull(),
+                // TSE Client
+                Forms\Components\Select::make('tse_client_id')
+                    ->label('TSE Client')
+                    ->relationship('tseClient', 'remote_id')
+                    ->columnSpanFull(),
+                // SumUp Reader
+                Forms\Components\Select::make('sumup_reader_id')
+                    ->label('SumUp Reader')
+                    ->relationship('sumupReader', 'remote_id')
                     ->columnSpanFull(),
                 Forms\Components\Checkbox::make('should_discover_printers')
                     ->columnSpanFull(),

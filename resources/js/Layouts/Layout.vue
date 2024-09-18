@@ -55,6 +55,7 @@ const page = usePage().props;
                     </div>
                 </div>
             </div>
+            <div id="bottom_nav_teleport"></div>
         </div>
     </div>
 </template>

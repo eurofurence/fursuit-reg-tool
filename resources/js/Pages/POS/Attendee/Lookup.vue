@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+<script setup>
 import { Head, Link } from "@inertiajs/vue3";
 import POSLayout from "@/Layouts/POSLayout.vue";
 import InputText from "primevue/inputtext";
@@ -9,10 +9,6 @@ import Message from "primevue/message";
 
 defineOptions({
     layout: POSLayout,
-});
-
-const props = defineProps({
-    layoutBack: '/pos'
 });
 
 const form = useForm('POST', route('pos.attendee.lookup.submit'), {

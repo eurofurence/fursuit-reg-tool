@@ -178,7 +178,7 @@ class BadgeController extends Controller
             $badge->total = round($total);
             $badge->subtotal = round($total / 1.19);
             $badge->tax = round($badge->total - $badge->subtotal);
-            $badge->save();
+            $badge->saveQuietly();
             // Difference needs to be paid
             if ($previousTotal !== $total) {
                 $request->user()->forcePay($badge);
