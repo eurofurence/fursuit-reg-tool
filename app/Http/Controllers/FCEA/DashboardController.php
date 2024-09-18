@@ -63,7 +63,7 @@ class DashboardController extends Controller
             }),
             'myFursuitInfos' => $myFursuitInfos,
             'fursuitRanking' => $fursuitRanking->map(fn($entry) => [
-                'name' => $entry->fursuit->name,
+                'name' => $entry->fursuit?->name,
             ]),
             'myFursuitInfoCatchedTotal' => $myFursuitInfoCatchedTotal, // How many times the user got catched on all fursuits summed up
             'caughtFursuit' => $caughtFursuit
