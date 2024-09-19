@@ -37,10 +37,10 @@ class PrintBadgeJob implements ShouldQueue
         $filePath = 'badges/' . $this->badge->id . '.pdf';
         Storage::put($filePath, $pdfContent);
         // Printer to send job to
-        $sendTo = Printer::where('is_active')
+        $sendTo = Printer::where('is_active', true)
             ->where('type', 'badge')
-            ->where('is_double', $this->badge->dual_side_print)
-            ->first();
+            ->where('is_double', (bool) $this->badge->dual_side_print)
+            ->firstOrFail();
         // Create PrintJob
         $this->badge->printJobs()->create([
             'printer_id' => $sendTo->id,
