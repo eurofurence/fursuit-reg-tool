@@ -40,7 +40,7 @@ class PrinterResource extends Resource
                     ->required()
                     ->columnSpanFull(),
                 Forms\Components\Select::make('default_paper_size')
-                    ->options(fn (Printer $record) => collect($record->paper_sizes)->pluck('name', 'name'))
+                    ->options(fn(Printer $record) => collect($record->paper_sizes)->pluck('name', 'name'))
                     ->columnSpanFull(),
                 // Json paper_sizes only view
                 Forms\Components\Textarea::make('paper_sizes')
@@ -50,6 +50,10 @@ class PrinterResource extends Resource
                     })
                     ->default('{}')
                     ->rows(10)
+                    ->columnSpanFull(),
+                Forms\Components\Checkbox::make('is_active')
+                    ->columnSpanFull(),
+                Forms\Components\Checkbox::make('is_double')
                     ->columnSpanFull(),
             ]);
     }

@@ -120,7 +120,7 @@ class BadgeResource extends Resource
             $badge->status->transitionTo(Printed::class);
         }
         // Add delay for mass printing so they are generated in order
-        PrintBadgeJob::dispatch($badge, Machine::first())->delay(now()->addSeconds($mass * 15));
+        PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($mass * 15));
         return $badge;
     }
 
