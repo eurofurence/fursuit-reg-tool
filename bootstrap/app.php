@@ -31,6 +31,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->name('pos.auth.')
                 ->middleware('web')
                 ->group(base_path('routes/pos-auth.php'));
+            \Illuminate\Support\Facades\Route::prefix('gallery')
+                ->name('gallery.')
+                ->middleware('web')
+                ->group(base_path('routes/gallery.php'));
         }
     )
     ->withMiddleware(function (Middleware $middleware) {
