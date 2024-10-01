@@ -309,6 +309,11 @@ class DashboardController extends Controller
 
     private function AddPlaceholderOnJump(Collection $userRanking) : Collection
     {
+        // No need to add separators if there is no data
+        if ($userRanking->isEmpty()) {
+            return $userRanking;
+        }
+
         $lastID = $userRanking->first()->id;
         // Iterate manually to find jumps in id (every id is used at least once) always starting with 1
         foreach ($userRanking as $ranking) {
