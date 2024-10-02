@@ -36,13 +36,20 @@ interface Fursuit {
     scoring: number,
 }
 
+
 defineOptions({layout: Layout})
 
 const props = defineProps({
     fursuit: Array<Fursuit>,
+    ranking: Array<String>,
     site: Number,
     maxSite: Number,
+    suiteAmount: Number,
+    search: String,
 })
+
+// TODO: Remove
+console.log(props.ranking)
 
 const imageViewIsOpen = ref<boolean>(false)
 const viewFursuit = ref<Fursuit>(null)
@@ -64,13 +71,46 @@ function openImageInNewTab() {
         window.open(viewFursuit.value.image, '_blank')
     }
 }
+
+function search() {
+    const search = document.getElementById("searchbar") as HTMLInputElement
+    router.visit(route('gallery.site', {site: 1}), {
+        method: 'get',
+        data: {
+            s: search.value || "",
+        }
+    })
+}
+
+function goToPage(page: number) {
+    router.visit(route('gallery.site', {site: page}), {
+        method: 'get',
+        data: {
+            s: props.search,
+        }
+    })
+}
 </script>
 
 <template>
     <Head title="Gallery"/>
-    <div class="py-16">
-        <div class="text-xl">Gallery</div>
+    <div class="py-16 flex justify-between items-center flex-wrap">
+        <div class="md:w-1/4 w-screen text-center md:text-lef md:border md:rounded-lg py-2">
+            <p class="text-lg font-semibold">Total Fursuits: {{ props.suiteAmount }}</p>
+        </div>
+        <form @submit="e => {
+                e.preventDefault();
+                search()
+            }"
+              class="flex items-center space-x-4 md:w-7/12 w-screen md:justify-end justify-center">
+            <input id="searchbar" type="text" placeholder="Search..." class="border rounded-lg p-2 w-3/4"
+                   :value="props.search"
+            />
+            <button @click="toggleMenu" class="bg-blue-500 text-white p-2 rounded-lg">Sorting</button>
+        </form>
     </div>
+    <div class="text-center text-4xl font-bold w-full h-full"
+         v-if="props.fursuit === null || props.fursuit.length === 0">No results found :/</div>
     <!-- Gallery -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 justify-center">
         <GalleryItem
@@ -106,8 +146,9 @@ function openImageInNewTab() {
     <Pagination
         :site="props.site"
         :maxSite="props.maxSite"
-        :routeForwards="() => {router.visit(route('gallery.site', { site: props.site + 1 }));}"
-        :routeBackwards="() => {router.visit(route('gallery.site', { site: props.site - 1 }));}"
+        :routeForwards="() => {goToPage(props.site + 1);}"
+        :routeBackwards="() => {goToPage(props.site - 1);}"
+        v-if="!(props.fursuit === null || props.fursuit.length === 0)"
     />
 </template>
 

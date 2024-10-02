@@ -6,7 +6,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <div class="bg-white shadow-lg rounded-lg overflow-hidden container transition-all">
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden container transition-all mx-auto">
         <img
             class="w-full h-full object-cover object-center select-none"
             :src="fursuit.image"
