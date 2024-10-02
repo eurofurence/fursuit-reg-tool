@@ -7,7 +7,34 @@ import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
 import Pagination from "@/Components/Gallery/Pagination.vue";
 import {Head, router} from '@inertiajs/vue3'
 import {ref} from "vue";
-import Fursuit from "../../../interface/Gallery/Fursuit";
+
+/**
+ * API Item for the gallery used by the backend
+ *
+ * Fursuit interface for usage for the gallery items
+ */
+interface Fursuit {
+    /**
+     * Database ID of the fursuit
+     */
+    id: number,
+    /**
+     * Name of the fursuit
+     */
+    name: string,
+    /**
+     * Species of the fursuit
+     */
+    species: string,
+    /**
+     * Image url of the fursuit (Temporary link)
+     */
+    image: string,
+    /**
+     * Fursuit got caught X times
+     */
+    scoring: number,
+}
 
 defineOptions({layout: Layout})
 

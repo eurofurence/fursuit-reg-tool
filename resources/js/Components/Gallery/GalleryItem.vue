@@ -1,8 +1,7 @@
 <script setup>
-import Fursuit from "../../../interface/Gallery/Fursuit.js";
 
 const props = defineProps({
-    fursuit: Fursuit,
+    fursuit: Object,
 });
 </script>
 
@@ -54,9 +53,3 @@ const props = defineProps({
     user-select: none;
 }
 </style>
-
-<script>
-export default {
-    name: "GalleryItem",
-};
-</script>
