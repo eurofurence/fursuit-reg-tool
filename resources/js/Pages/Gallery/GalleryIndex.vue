@@ -1,20 +1,15 @@
 <script setup lang="ts">
 // @ts-ignore
 import Layout from "@/Layouts/Layout.vue";
-import {Head, router} from '@inertiajs/vue3'
+// @ts-ignore
 import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
+// @ts-ignore
+import Pagination from "@/Components/Gallery/Pagination.vue";
+import {Head, router} from '@inertiajs/vue3'
 import {ref} from "vue";
-import Pagnation from "@/Components/Gallery/Pagination.vue";
+import Fursuit from "../../../interface/Gallery/Fursuit";
 
 defineOptions({layout: Layout})
-
-interface Fursuit {
-    id: number,
-    name: string,
-    species: string,
-    image: string,
-    scoring: string,
-}
 
 const props = defineProps({
     fursuit: Array<Fursuit>,
@@ -45,7 +40,6 @@ function openImageInNewTab() {
 </script>
 
 <template>
-
     <Head title="Gallery"/>
     <div class="py-16">
         <div class="text-xl">Gallery</div>
@@ -82,7 +76,7 @@ function openImageInNewTab() {
         </div>
     </div>
     <!-- Pagnation -->
-    <Pagnation
+    <Pagination
         :site="props.site"
         :maxSite="props.maxSite"
         :routeForwards="() => {router.visit(route('gallery.site', { site: props.site + 1 }));}"

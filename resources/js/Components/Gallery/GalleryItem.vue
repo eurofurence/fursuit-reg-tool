@@ -1,6 +1,8 @@
 <script setup>
+import Fursuit from "../../../interface/Gallery/Fursuit.js";
+
 const props = defineProps({
-    fursuit: Object,
+    fursuit: Fursuit,
 });
 </script>
 
