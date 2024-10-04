@@ -21,7 +21,9 @@ class GalleryController extends Controller
     {
 
         $searchTerm = $request->input('s') ?? "";
-        $search = "%" . $searchTerm . "%";
+        $search = collect(explode(' ', $searchTerm))->map(function ($term) {
+            return '%' . trim($term) . '%';
+        })->toArray();
 
         if ($site < 1) {
             return redirect()->route('gallery.site', ['site' => 1, 's' => $searchTerm]);
@@ -30,9 +32,11 @@ class GalleryController extends Controller
         // Get the number of images
         $imageCount = Fursuit::query()
             ->where('status', "approved")
-            ->where('published', true)
-            ->whereRaw('LOWER(name) LIKE ?', [$search])
-            ->count();
+            ->where('published', true);
+        foreach ($search as $term) {
+            $imageCount = $imageCount->where('name', 'LIKE', $term);
+        }
+        $imageCount = $imageCount->count();
 
         $MAX_SITE = ceil($imageCount / self::IMAGES_PER_SITE);
 
@@ -44,8 +48,11 @@ class GalleryController extends Controller
             ->with('species')
             ->where('status', "approved")
             ->where('published', true)
-            ->whereRaw('LOWER(name) LIKE ?', [$search])
-            ->withCount('catchedByUsers')
+            ->where('name', 'LIKE', $search);
+        foreach ($search as $term) {
+            $fursuits = $fursuits->where('name', 'LIKE', $term);
+        }
+        $fursuits = $fursuits->withCount('catchedByUsers')
             ->orderBy('catched_by_users_count', 'desc')
             ->orderBy('name', 'asc')
             ->offset(($site - 1) * self::IMAGES_PER_SITE)
@@ -84,5 +91,15 @@ class GalleryController extends Controller
             'search' => $searchTerm,
         ]);
     }
+
+    public function getTotalFursuitCount(Request $request) {
+        $count = Fursuit::query()
+            ->where('status', "approved")
+            ->where('published', true)
+            ->count();
+        return response()->json(['count' => $count]);
+    }
+
+
 
 }

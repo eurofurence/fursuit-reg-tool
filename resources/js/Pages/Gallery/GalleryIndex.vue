@@ -48,6 +48,21 @@ const props = defineProps({
     search: String,
 })
 
+const totalFursuits = ref<number>(0)
+
+async function getFursuitAmount() {
+    sessionStorage.getItem('fursuitAmount') ? totalFursuits.value = parseInt(sessionStorage.getItem('fursuitAmount')) : await fetchFursuitAmount()
+}
+
+async function fetchFursuitAmount() {
+    const response = await fetch(route('gallery.count'), {
+        method: 'get',
+    })
+    const data = await response.json()
+    totalFursuits.value = data.count
+    sessionStorage.setItem('fursuitAmount', data.count)
+}
+
 // TODO: Remove
 console.log(props.ranking)
 
@@ -90,13 +105,15 @@ function goToPage(page: number) {
         }
     })
 }
+
+getFursuitAmount()
 </script>
 
 <template>
     <Head title="Gallery"/>
     <div class="py-16 flex justify-between items-center flex-wrap">
         <div class="md:w-1/4 w-screen text-center md:text-lef md:border md:rounded-lg py-2">
-            <p class="text-lg font-semibold">Total Fursuits: {{ props.suiteAmount }}</p>
+            <p class="text-lg font-semibold">Total Fursuits: {{ totalFursuits }} ({{ props.suiteAmount}})</p>
         </div>
         <form @submit="e => {
                 e.preventDefault();
@@ -106,11 +123,12 @@ function goToPage(page: number) {
             <input id="searchbar" type="text" placeholder="Search..." class="border rounded-lg p-2 w-3/4"
                    :value="props.search"
             />
-            <button @click="toggleMenu" class="bg-blue-500 text-white p-2 rounded-lg">Sorting</button>
+            <button @click="toggleMenu" class="bg-blue-500 text-white p-2 rounded-lg" type="button">Sorting</button>
         </form>
     </div>
     <div class="text-center text-4xl font-bold w-full h-full"
-         v-if="props.fursuit === null || props.fursuit.length === 0">No results found :/</div>
+         v-if="props.fursuit === null || props.fursuit.length === 0">No results found :/
+    </div>
     <!-- Gallery -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 justify-center">
         <GalleryItem
