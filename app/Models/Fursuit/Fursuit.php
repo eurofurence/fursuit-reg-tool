@@ -70,7 +70,7 @@ class Fursuit extends Model
         if (!$this->image_webp) {
             $originalImage = Storage::get($this->image);
             $manager = new ImageManager(new Driver());
-            $path = '/fursuits/' . pathinfo($this->image, PATHINFO_FILENAME) . '.webp'; // TODO: Change to correct path
+            $path = '/gallery/fursuits/' . pathinfo($this->image, PATHINFO_FILENAME) . '.webp';
             $webp = $manager->read($originalImage)->toWebp();
             Storage::put($path, $webp);
             $this->update(['image_webp' => $path]);
@@ -78,7 +78,7 @@ class Fursuit extends Model
 
         return Attribute::make(
             get: function ($value) {
-                return Storage::temporaryUrl($this->image_webp, now()->addMinutes(60));
+                return Storage::temporaryUrl($this->image_webp, now()->addMinutes(5)); // TODO: Change to permanent link when public
             },
         );
     }
