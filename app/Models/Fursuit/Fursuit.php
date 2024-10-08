@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\ModelStates\HasStates;
@@ -31,7 +33,7 @@ class Fursuit extends Model
         'catch_em_all' => 'boolean',
     ];
 
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url', 'image_webp_url'];
 
     public function user(): BelongsTo
     {
@@ -58,6 +60,25 @@ class Fursuit extends Model
         return Attribute::make(
             get: function ($value) {
                 return Storage::temporaryUrl($this->image, now()->addMinutes(5));
+            },
+        );
+    }
+
+    public function imageWebpUrl(): Attribute
+    {
+        // Generate webp version if not present yet
+        if (!$this->image_webp) {
+            $originalImage = Storage::get($this->image);
+            $manager = new ImageManager(new Driver());
+            $path = '/fursuits/' . pathinfo($this->image, PATHINFO_FILENAME) . '.webp'; // TODO: Change to correct path
+            $webp = $manager->read($originalImage)->toWebp();
+            Storage::put($path, $webp);
+            $this->update(['image_webp' => $path]);
+        }
+
+        return Attribute::make(
+            get: function ($value) {
+                return Storage::temporaryUrl($this->image_webp, now()->addMinutes(60));
             },
         );
     }

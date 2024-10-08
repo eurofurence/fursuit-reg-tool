@@ -3,13 +3,9 @@
 namespace App\Http\Controllers\GALLERY;
 
 use App\Http\Controllers\Controller;
-use App\Models\FCEA\UserCatch;
 use App\Models\FCEA\UserCatchRanking;
 use App\Models\Fursuit\Fursuit;
-use App\Models\User;
-use Database\Factories\Fursuit\FursuitFactory;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class GalleryController extends Controller
@@ -73,7 +69,7 @@ class GalleryController extends Controller
                         'id' => $fursuit->id,
                         'name' => $fursuit->name,
                         'species' => $fursuit->species->name,
-                        'image' => $fursuit->image_url,
+                        'image' => $fursuit->image_webp_url,
                         'scoring' => $fursuit->catched_by_users_count,
                     ];
                 }),
