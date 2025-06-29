@@ -19,7 +19,6 @@
     "dependencies": {
         "chokidar": "^3.6.0",
         "dayjs": "^1.11.11",
-        "formjs-vue2": "^1.4.0",
         "laravel-precognition-vue-inertia": "^0.5.5",
         "pica": "^9.0.1",
         "primeicons": "^7.0.0",
