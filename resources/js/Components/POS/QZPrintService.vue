@@ -2,7 +2,6 @@
 import {usePage} from "@inertiajs/vue3";
 import {onMounted} from "vue";
 import qz from "qz-tray";
-import { http } from "formjs-vue2"
 
 const page = usePage();
 
@@ -57,12 +56,19 @@ function startQZPrint() {
 
 function pollPrintJobs() {
     setInterval(() => {
-        http.get(route('pos.auth.printers.jobs'),{},{
-            onSuccess(printJobs) {
+        fetch(route('pos.auth.printers.jobs'), {
+            cache: 'no-store',
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+            .then((data) => data.json())
+            .then((printJobs) => {
                 printJobs.data.forEach((job) => {
                     console.log("job", job);
-                    http.post(route('pos.auth.printers.jobs.printed', {job: job.id}), {}, {
-                        onSuccess() {
+                    fetch(route('pos.auth.printers.jobs.printed', {job: job.id}), {
+                        method: 'POST'
+                    }).then(() => {
                             var printerOptions = (job.type === 'badge') ? {
                                 colorType: 'color',
                                 size: job.paper.mm,
@@ -88,17 +94,21 @@ function pollPrintJobs() {
                             qz.print(config, data).catch((err) => {
                                 console.error(err);
                             });
-                        }
-                    });
+                        });
                 });
-            }
-        })
+            })
     },5000)
 }
 
 function findPrinters() {
     qz.printers.details().then((printers) => {
-        http.post(route('pos.auth.printers.store'), {printers: printers});
+        fetch(route('pos.auth.printers.store'), {
+            method: "POST",
+            body: JSON.stringify({printers: printers}),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
     }).catch((err) => {
         console.error(err);
     });
