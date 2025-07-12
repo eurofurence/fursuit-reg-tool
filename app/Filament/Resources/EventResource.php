@@ -10,10 +10,7 @@ use Filament\Forms\Components\Group;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class EventResource extends Resource
 {
@@ -37,6 +34,8 @@ class EventResource extends Resource
                 Group::make([
                     Forms\Components\DateTimePicker::make('preorder_starts_at')->required(),
                     Forms\Components\DateTimePicker::make('preorder_ends_at')
+                        ->required(),
+                    Forms\Components\DateTimePicker::make('mass_printed_at')
                         ->required(),
                     Forms\Components\DateTimePicker::make('order_ends_at')
                         ->required(),
@@ -67,7 +66,11 @@ class EventResource extends Resource
                     ->dateTime('d.m.Y H:i')
                     ->description(fn (Event $record) => $record->preorder_ends_at?->diffForHumans())
                     ->sortable(),
-                TextColumn::make('order_ends_at')
+                Tables\Columns\TextColumn::make('mass_printed_at')
+                    ->dateTime('d.m.Y H:i')
+                    ->description(fn (Event $record) => $record->mass_printed_at?->diffForHumans())
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('order_ends_at')
                     ->dateTime('d.m.Y H:i')
                     ->description(fn (Event $record) => $record->order_ends_at?->diffForHumans())
                     ->sortable(),
