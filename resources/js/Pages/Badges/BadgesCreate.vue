@@ -1,8 +1,6 @@
 <script setup>
 import Layout from "@/Layouts/Layout.vue";
-import {Link, Head, usePage} from '@inertiajs/vue3'
-import Steps from 'primevue/steps';
-import Fieldset from 'primevue/fieldset';
+import {Head, usePage} from '@inertiajs/vue3'
 import InputText from "primevue/inputtext";
 import Dropdown from "primevue/dropdown";
 import Dialog from 'primevue/dialog';
@@ -37,7 +35,6 @@ const form = useForm('post', route('badges.store'), {
     publish: false,
     tos: false,
     upgrades: {
-        doubleSided: false,
         spareCopy: false
     }
 })
@@ -72,9 +69,6 @@ const latePrice = computed(() => {
 
 const total = computed(() => {
     let total = basePrice.value + latePrice.value;
-    if (form.upgrades.doubleSided) {
-        total += 1;
-    }
     if (form.upgrades.spareCopy) {
         total += 2;
     }
@@ -194,24 +188,9 @@ const total = computed(() => {
                 <div class="">
                     <div class="mb-8 ">
                         <h2 class="text-lg font-semibold">Upgrades</h2>
-                        <p>Get a spare copy or get an exclusive double printed badge!</p>
+                        <p>Get a spare copy of your printed badge!</p>
                     </div>
                     <div class="space-y-3">
-                        <div class="flex flex-col md:flex-row gap-8 w-full">
-                            <div class="flex gap-3">
-                                <div class="flex flex-row gap-2 mt-3">
-                                    <InputSwitch v-model="form.upgrades.doubleSided" id="extra1"
-                                                 aria-describedby="extra1-help"/>
-                                </div>
-                                <div>
-                                    <label class="font-semibold block" for="extra1">Double Sided Badge
-                                        <Tag value="+1,00 €"></Tag>
-                                    </label>
-                                    <small
-                                        id="extra1-help">By default our Badges are only Printed on one side. If you want to have a double sided badge, please select this option.</small>
-                                </div>
-                            </div>
-                        </div>
                         <div class="flex flex-col md:flex-row gap-8 w-full">
                             <div class="flex gap-3">
                                 <div class="flex flex-row gap-2 mt-3">
@@ -266,11 +245,6 @@ const total = computed(() => {
                                     <span>{{ latePrice }},00 €</span>
                                 </div>
                                 <small>Orders placed after the Preorder Deadline will be charged a late fee.</small>
-                            </div>
-                            <div v-if="form.upgrades.doubleSided"
-                                 class="flex justify-between border-b border-dotted border-gray-900">
-                                <span>Double Sided Badge</span>
-                                <span>1,00 €</span>
                             </div>
                             <div v-if="form.upgrades.spareCopy"
                                  class="flex justify-between mb-4 border-b border-dotted border-gray-900">

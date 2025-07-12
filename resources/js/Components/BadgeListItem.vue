@@ -112,12 +112,6 @@ function getBadgeTooltipText(status) {
                     <Tag severity="info" value="Discounted Extra Copy"></Tag>
                 </div>
             </div>
-            <div v-if="badge.dual_side_print" class="flex flex-col justify-center px-4 pb-1 md:p-4 gap-2">
-                <!-- dual_side_print, extra_copy badges -->
-                <div class="flex justify-center items-center gap-2">
-                    <Tag value="Dual Side Print"></Tag>
-                </div>
-            </div>
             <!-- Total Price -->
             <div class="flex flex-col justify-center p-4">
                 <p class="text-lg font-semibold font-main">{{ formatEuroFromCents(badge.total) }}</p>

@@ -1,8 +1,6 @@
 <script setup>
 import Layout from "@/Layouts/Layout.vue";
-import {Link, Head, usePage, router} from '@inertiajs/vue3'
-import Steps from 'primevue/steps';
-import Fieldset from 'primevue/fieldset';
+import {Link, Head, router} from '@inertiajs/vue3'
 import InputText from "primevue/inputtext";
 import Dropdown from "primevue/dropdown";
 import Dialog from 'primevue/dialog';
@@ -12,11 +10,8 @@ import {computed, onMounted, reactive, ref} from "vue";
 import Button from 'primevue/button';
 import ImageUpload from "@/Components/BadgeCreator/ImageUpload.vue";
 import Panel from 'primevue/panel';
-import Tag from 'primevue/tag';
-import dayjs from "dayjs";
 import InputError from "@/Components/InputError.vue";
 import Message from 'primevue/message';
-import ConfirmDialog from "primevue/confirmdialog";
 
 const deleteModalOpen = ref(null)
 
@@ -53,9 +48,6 @@ const form = useForm('post', route('badges.update',{badge: props.badge.id}), {
     image: null,
     catchEmAll: props.badge.fursuit.catch_em_all,
     publish: props.badge.fursuit.published,
-    upgrades: {
-        doubleSided: props.badge.dual_side_print
-    }
 },{
     forceFormData: true,
 })
@@ -95,11 +87,7 @@ const total = computed(() => {
     if (props.badge.extra_copy_of) {
         return 2;
     }
-    let total = basePrice.value + latePrice.value;
-    if (form.upgrades.doubleSided && !props.badge.extra_copy_of) {
-        total += 1;
-    }
-    return total;
+    return basePrice.value + latePrice.value;
 })
 
 function openImageModal() {
@@ -260,35 +248,6 @@ function openImageModal() {
                 <!-- End Publish -->
             </div>
             <!-- End Group 2 -->
-            <!-- Paid Extras -->
-            <div>
-                <div class="">
-                    <div class="mb-8 ">
-                        <h2 class="text-lg font-semibold">Upgrades</h2>
-                        <p>Get a double printed badge!</p>
-                    </div>
-                    <div class="space-y-3">
-                        <div class="flex flex-col md:flex-row gap-8 w-full">
-                            <div class="flex gap-3">
-                                <div class="flex flex-row gap-2 mt-3">
-                                    <InputSwitch v-model="form.upgrades.doubleSided"
-                                                 :disabled="!canEdit"
-                                                 id="extra1"
-                                                 aria-describedby="extra1-help"/>
-                                </div>
-                                <div>
-                                    <label class="font-semibold block"  for="extra1">Double Sided Badge
-                                        <Tag value="+1,00 €" v-if="!props.badge.extra_copy_of"></Tag>
-                                    </label>
-                                    <small
-                                        id="extra1-help">By default our Badges are only Printed on one side. If you want to have a double sided badge, please select this option.</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- End Paid Extras -->
-            </div>
             <Panel header="Checkout">
                 <template #header>
                     <div class="flex items-center gap-2">
@@ -310,16 +269,6 @@ function openImageModal() {
                                  class="flex justify-between border-b border-dotted border-gray-900">
                                 <span>Late Fee</span>
                                 <span>{{ latePrice }},00 €</span>
-                            </div>
-                            <div v-if="form.upgrades.doubleSided && !props.badge.extra_copy_of"
-                                 class="flex justify-between border-b border-dotted border-gray-900">
-                                <span>Double Sided Badge</span>
-                                <span>1,00 €</span>
-                            </div>
-                            <div v-if="form.upgrades.spareCopy || props.badge.extra_copy_of"
-                                 class="flex justify-between mb-4 border-b border-dotted border-gray-900">
-                                <span>Spare Copy</span>
-                                <span>2,00 €</span>
                             </div>
                             <!-- End Options -->
                             <div class="flex justify-between text-2xl border-b border-double border-gray-900">
