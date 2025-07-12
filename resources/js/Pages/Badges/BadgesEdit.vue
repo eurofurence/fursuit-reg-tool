@@ -70,7 +70,7 @@ function imageUpdatedEvent(image) {
 
 const basePrice = computed(() => {
     let price = 0;
-    if (props.badge.is_free_badge === false) {
+    if (props.badge.is_free_badge === false && !props.badge.extra_copy_of) {
         price += 2;
     }
     return price;
@@ -269,6 +269,11 @@ function openImageModal() {
                                  class="flex justify-between border-b border-dotted border-gray-900">
                                 <span>Late Fee</span>
                                 <span>{{ latePrice }},00 €</span>
+                            </div>
+                            <div v-if="props.badge.extra_copy_of"
+                                 class="flex justify-between mb-4 border-b border-dotted border-gray-900">
+                                <span>Spare Copy</span>
+                                <span>2,00 €</span>
                             </div>
                             <!-- End Options -->
                             <div class="flex justify-between text-2xl border-b border-double border-gray-900">
