@@ -75,7 +75,6 @@ class BadgeController extends Controller
 
             // Returns in cents
             $total = BadgeCalculationService::calculate(
-                doubleSided: $validated['upgrades']['doubleSided'],
                 isFreeBadge: $isFreeBadge,
                 isLate: $event->preorder_ends_at->isPast(),
             );
@@ -90,7 +89,7 @@ class BadgeController extends Controller
                 'tax_rate' => 0.19,
                 'tax' => round($tax),
                 'total' => round($total),
-                'dual_side_print' => $validated['upgrades']['doubleSided'],
+                'dual_side_print' => true,
                 'is_free_badge' => $isFreeBadge,
                 'apply_late_fee' => $event->preorder_ends_at->isPast(),
             ]);
@@ -165,10 +164,8 @@ class BadgeController extends Controller
             /**
              * Badge
              */
-            $badge->dual_side_print = $validated['upgrades']['doubleSided'];
             $previousTotal = $badge->total;
             $total = BadgeCalculationService::calculate(
-                doubleSided: $badge->dual_side_print,
                 isFreeBadge: $badge->is_free_badge,
                 isLate: $badge->apply_late_fee,
             );
@@ -183,10 +180,6 @@ class BadgeController extends Controller
             if ($previousTotal !== $total) {
                 $request->user()->forcePay($badge);
             }
-            // Update Extra Copy doulbe sided print
-            Badge::where('extra_copy_of', $badge->id)->update([
-                'dual_side_print' => $validated['upgrades']['doubleSided'],
-            ]);
             return $badge;
         });
         return redirect()->route('badges.index');

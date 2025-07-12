@@ -21,7 +21,6 @@ class BadgeUpdateRequest extends FormRequest
             ],
             'catchEmAll' =>  ['required','boolean'],
             'publish' =>  ['required','boolean'],
-            'upgrades.doubleSided' => ['required', 'boolean'],
         ];
     }
 }
