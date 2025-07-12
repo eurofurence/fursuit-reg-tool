@@ -13,10 +13,12 @@ class GalleryController extends Controller
 
     const IMAGES_PER_SITE = 3 * 3; // 10 rows with 3 images each // TODO: Reverse to 10 * 3
 
-    public function index(int $site, Request $request)
+    public function index(Request $request): \Inertia\Response | \Illuminate\Http\RedirectResponse
     {
 
-        $searchTerm = $request->input('s') ?? "";
+        $searchTerm = $request->input('query', "");
+        $site = intval($request->input('site', 1));
+
         $search = collect(explode(' ', $searchTerm))->map(function ($term) {
             return '%' . trim($term) . '%';
         })->toArray();
@@ -43,8 +45,7 @@ class GalleryController extends Controller
         $fursuits = Fursuit::query()
             ->with('species')
             ->where('status', "approved")
-            ->where('published', true)
-            ->where('name', 'LIKE', $search);
+            ->where('published', true);
         foreach ($search as $term) {
             $fursuits = $fursuits->where('name', 'LIKE', $term);
         }
@@ -57,7 +58,7 @@ class GalleryController extends Controller
 
         $topRankings = UserCatchRanking::query()
             ->whereNotNull('user_id')
-            ->orderBy('rank', 'desc')
+            ->orderBy('rank', 'asc')
             ->limit(3)
             ->with('user')
             ->get();
@@ -88,7 +89,7 @@ class GalleryController extends Controller
         ]);
     }
 
-    public function getTotalFursuitCount(Request $request) {
+    public function getTotalFursuitCount(Request $request): \Illuminate\Http\JsonResponse {
         $count = Fursuit::query()
             ->where('status', "approved")
             ->where('published', true)
