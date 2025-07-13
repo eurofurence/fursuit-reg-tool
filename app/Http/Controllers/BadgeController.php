@@ -99,7 +99,7 @@ class BadgeController extends Controller
             // Pay for Badge (force pay as we allow negative balance)
             $request->user()->forcePay($badge);
 
-            if ($isFreeBadge && $request->user()->free_badge_copies > 0) {
+            if ($isFreeBadge) {
                 $total = BadgeCalculationService::calculate(isSpareCopy: true);
                 for ($i = 0; $i < $request->user()->free_badge_copies; $i++) {
                     $clone = $badge->replicate();

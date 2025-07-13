@@ -17,8 +17,8 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->user->update([
-        'has_free_badge' => true,
-        'free_badge_copies' => 1,
+        'has_free_badge' => false,
+        'free_badge_copies' => 0,
     ]);
     $event = \App\Models\Event::factory()->create([
         'starts_at' => \Carbon\Carbon::parse('2024-06-01'),
