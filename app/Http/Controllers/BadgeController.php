@@ -33,8 +33,8 @@ class BadgeController extends Controller
         Gate::authorize('create', Badge::class);
         return Inertia::render('Badges/BadgesCreate', [
             'species' => Species::has('fursuits', count: 5)->orWhere('checked', true)->get('name'),
-            'isFree' => auth()->user()->has_free_badge,
-            'freeBadgeCopies' => auth()->user()->has_free_badge ? auth()->user()->free_badge_copies : 0,
+            'isFree' => auth()->user()->hasFreeBadge(),
+            'freeBadgeCopies' => auth()->user()->hasFreeBadge() ? auth()->user()->free_badge_copies : 0,
         ]);
     }
 
@@ -72,7 +72,7 @@ class BadgeController extends Controller
             ]);
 
             // is Free Badge
-            $isFreeBadge = $request->user()->has_free_badge;
+            $isFreeBadge = $request->user()->hasFreeBadge();
 
             // Returns in cents
             $total = BadgeCalculationService::calculate(

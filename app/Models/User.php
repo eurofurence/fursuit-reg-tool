@@ -74,4 +74,9 @@ class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat,
     {
         return $this->is_admin || $this->is_reviewer;
     }
+
+    public  function hasFreeBadge(): bool
+    {
+        return $this->has_free_badge;
+    }
 }
