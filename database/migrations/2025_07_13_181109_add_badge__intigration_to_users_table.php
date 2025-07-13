@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->tinyInteger('has_free_badge')->default(0)->after('remember_token');
+            $table->boolean('has_free_badge')->default(false)->after('remember_token');
             $table->integer('free_badge_copies')->default(0)->after('has_free_badge');
         });
     }
