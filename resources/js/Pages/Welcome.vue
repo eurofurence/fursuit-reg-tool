@@ -80,8 +80,10 @@ const messages = computed(() => {
                      v-if="usePage().props.auth.user !== null">
                     <!-- Claim Additional Fursuit Badges -->
                     <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" class="w-full" v-if="usePage().props.auth.user.has_free_badge" label="Customize First Fursuit Badge"/>
+                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" severity="warning" class="w-full" v-if="usePage().props.auth.user.badges.length === 0 && !usePage().props.auth.user.has_free_badge"
+                            label="Buy Fursuit Badges"/>
                     <!-- Buy Additional Fursuit Badges -->
-                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" severity="warning" class="w-full" v-if="!usePage().props.auth.user.has_free_badge"
+                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" severity="warning" class="w-full" v-if="usePage().props.auth.user.badges.length > 0"
                             label="Buy Additional Fursuit Badges"/>
                     <!-- Manage Badges -->
                     <Button @click="router.visit(route('badges.index'))"  icon="pi pi-id-card" class="w-full" v-if="usePage().props.auth.user.badges.length > 0" label="Review Ordered Badges"/>
