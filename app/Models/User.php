@@ -51,6 +51,8 @@ class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat,
         'token' => 'encrypted',
         'token_expires_at' => 'datetime',
         'attendee_id' => 'integer',
+        'has_free_badge' => 'bool',
+        "free_badge_copies" => "integer",
     ];
 
     public function badges()
