@@ -78,12 +78,10 @@ const messages = computed(() => {
             <div v-if="messages.showButtons" class="w-full">
                 <div class="flex flex-col md:flex-row gap-3 text-white w-full"
                      v-if="usePage().props.auth.user !== null">
-                    <!-- Action Select -->
-                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" class="w-full" v-if="usePage().props.auth.user.badges.length === 0 && showState === 'preorder'" label="Claim your first free Fursuit Badge!"/>
                     <!-- Claim Additional Fursuit Badges -->
-                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" class="w-full" v-else-if="usePage().props.auth.user.badges.length === 0">Get your first Fursuit Badge!</Button>
+                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" class="w-full" v-if="usePage().props.auth.user.has_free_badge" label="Customize First Fursuit Badge"/>
                     <!-- Buy Additional Fursuit Badges -->
-                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" severity="warning" v-if="usePage().props.auth.user.badges.length > 0" class="w-full"
+                    <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card" severity="warning" class="w-full" v-if="!usePage().props.auth.user.has_free_badge"
                             label="Buy Additional Fursuit Badges"/>
                     <!-- Manage Badges -->
                     <Button @click="router.visit(route('badges.index'))"  icon="pi pi-id-card" class="w-full" v-if="usePage().props.auth.user.badges.length > 0" label="Review Ordered Badges"/>
@@ -130,14 +128,14 @@ const messages = computed(() => {
         </p>
         <div class="mt-4">
             <h1 class="text-2xl font-semibold font-main">How to Get Your Badge:</h1>
-            <ul class="list-disc pl-6 mt-2">
-                <li class="mt-2">
+            <ul class="list-disc pl-6 mt-2 gap-2 flex flex-col">
+                <li>
                     <strong>First Preoder Badge Free:</strong> Simply register for Eurofurence and get your first fursuit badge for free.
                 </li>
-                <li class="mt-2">
+                <li>
                     <strong>Additional Badges & Late Orders:</strong> Order more for just 2 € each.
                 </li>
-                <li class="mt-2">
+                <li>
                     <strong>On-Site Services:</strong> Need a last-minute badge? We’ve got you covered with our late printing service for a small fee.
                 </li>
             </ul>
