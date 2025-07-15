@@ -24,6 +24,7 @@ class Event extends Model
             'preorder_starts_at' => 'datetime',
             'preorder_ends_at' => 'datetime',
             'order_ends_at' => 'datetime',
+            'mass_printed_at' => 'datetime',
         ];
     }
 

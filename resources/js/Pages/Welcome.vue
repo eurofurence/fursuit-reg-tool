@@ -14,15 +14,7 @@ defineOptions({
 })
 
 const props = defineProps({
-    showState: String,
-});
-
-const preorderPeriodEnded = computed(() => {
-    return dayjs().isAfter(dayjs('2022-08-15'));
-});
-
-const eventEnded = computed(() => {
-    return usePage().props.event === null;
+    showState: String
 });
 
 const messages = computed(() => {
@@ -120,6 +112,13 @@ const messages = computed(() => {
             severity="info"
             :closable="false">
             {{ messages.message.text }}
+        </Message>
+        <Message
+            v-if="new Date(usePage().props.event.mass_printed_at) < new Date()"
+            severity="info"
+            :closable="false"
+            >
+            {{ "Any fursuit badge orders placed now will be available to pick up starting from the 2nd convention day." }}
         </Message>
         <!-- End Countdown -->
         <PaymentInfoWidget />

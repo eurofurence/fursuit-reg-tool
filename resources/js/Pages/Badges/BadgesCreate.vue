@@ -13,6 +13,7 @@ import Panel from 'primevue/panel';
 import Tag from 'primevue/tag';
 import dayjs from "dayjs";
 import InputError from "@/Components/InputError.vue";
+import Message from "primevue/message";
 
 defineOptions({
     layout: Layout
@@ -90,6 +91,12 @@ const total = computed(() => {
             <h1 class="text-xl sm:text-2xl md:text-3xl font-semibold font-main">Eurofurence Fursuit Badge Creator</h1>
             <p>Welcome to our badge configurator, please enter all the details and options you would like!</p>
         </div>
+        <Message
+            v-if="new Date(usePage().props.event.mass_printed_at) < new Date()"
+            severity="info"
+            :closable="false">
+            {{ "Late badge orders can be picked up starting from the 2nd convention day." }}
+        </Message>
         <!-- Group 1 -- Fursuit Details -->
         <div class="space-y-8">
             <div class="md:border-2 md:shadow md:bg-white md:rounded-lg md:p-8">
