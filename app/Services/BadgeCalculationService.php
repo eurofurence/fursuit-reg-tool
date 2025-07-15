@@ -19,7 +19,11 @@ class BadgeCalculationService
             return 200;
         }
 
-        $baseFee = $isFreeBadge ? 0 : 200;
+        if ($isFreeBadge) {
+            return 0;
+        }
+
+        $baseFee = 200;
         if ($isLate) {
             $baseFee += 200;
         }
