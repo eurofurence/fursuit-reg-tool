@@ -116,8 +116,9 @@ const messages = computed(() => {
         <Message
             v-if="new Date(usePage().props.event.mass_printed_at) < new Date()"
             severity="info"
-            :closable="false">
-            {{ "Every badge orders placed now will be available to pick up on the 2nd convention day." }}
+            :closable="false"
+            >
+            {{ "Any fursuit badge orders placed now will be available to pick up starting from the 2nd convention day." }}
         </Message>
         <!-- End Countdown -->
         <PaymentInfoWidget />

@@ -101,7 +101,7 @@ const total = computed(() => {
             v-if="new Date(usePage().props.event.mass_printed_at) < new Date()"
             severity="info"
             :closable="false">
-            {{ "Your badge will be available to pick up on the 2nd convention day." }}
+            {{ "Late badge orders can be picked up starting from the 2nd convention day." }}
         </Message>
         <!-- Group 1 -- Fursuit Details -->
         <div class="space-y-8">
