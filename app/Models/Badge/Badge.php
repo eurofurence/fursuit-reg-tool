@@ -29,6 +29,7 @@ class Badge extends Model implements ProductInterface
         'printed_at' => 'datetime',
         'ready_for_pickup_at' => 'datetime',
         'picked_up_at' => 'datetime',
+        'is_free_badge' => 'boolean',
     ];
 
     public function fursuit(): BelongsTo

@@ -22,7 +22,6 @@ class BadgeCreateRequest extends FormRequest
             'catchEmAll' =>  ['required','boolean'],
             'publish' =>  ['required','boolean'],
             'tos' =>  ['required','accepted'],
-            'upgrades.doubleSided' => ['required', 'boolean'],
             'upgrades.spareCopy' => ['required', 'boolean'],
         ];
     }
