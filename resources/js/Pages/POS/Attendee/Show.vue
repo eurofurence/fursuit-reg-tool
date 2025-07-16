@@ -32,7 +32,7 @@ const showPrintConfirmModal = ref(false);
 const showHandoutConfirmModal = ref(false);
 
 const badgesReadyForHandout = computed(() => {
-    return props.badges.filter(badge => badge.status === 'ready_for_pickup').length;
+    return props.badges.filter(badge => badge.status_fulfillment === 'ready_for_pickup').length;
 });
 
 watchEffect(() => {
@@ -50,7 +50,7 @@ function printBadge() {
 
 function bulkHandout() {
     useForm('POST', route('pos.badges.handout.bulk'), {
-        badge_ids: (selectedBadges.value.length) ? selectedBadges.value.map(badge => badge.id) : props.badges.filter(badge => badge.status === 'ready_for_pickup').map(badge => badge.id)
+        badge_ids: (selectedBadges.value.length > 0) ? selectedBadges.value.map(badge => badge.id) : props.badges.filter(badge => badge.status_fulfillment === 'ready_for_pickup').map(badge => badge.id)
     }).submit();
     showHandoutConfirmModal.value = false;
 }

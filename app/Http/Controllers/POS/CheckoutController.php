@@ -11,6 +11,7 @@ use App\Domain\Checkout\Models\Checkout\States\Finished;
 use App\Domain\Checkout\Services\FiskalyService;
 use App\Http\Controllers\Controller;
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Payment\Unpaid;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -63,12 +64,12 @@ class CheckoutController extends Controller
         if (empty($data['badge_ids'])) {
             $data['badge_ids'] = Badge::whereHas('fursuit.user', function ($query) use ($data) {
                 $query->where('id', $data['user_id']);
-            })->where('status', 'unpaid')->pluck('id')->toArray();
+            })->where('status_payment', Unpaid::$name)->pluck('id')->toArray();
         } else {
 
             $data['badge_ids'] = Badge::whereHas('fursuit.user', function ($query) use ($data) {
                 $query->where('id', $data['user_id']);
-            })->where('status', 'unpaid')
+            })->where('status_payment', Unpaid::$name)
                 ->whereIn('id', $data['badge_ids'])
                 ->pluck('id')->toArray();
         }
