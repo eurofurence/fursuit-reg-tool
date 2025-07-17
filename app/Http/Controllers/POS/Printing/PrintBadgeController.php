@@ -13,7 +13,7 @@ class PrintBadgeController extends Controller
     public function __invoke(Badge $badge)
     {
         PrintBadgeJob::dispatch($badge);
-        if($badge->status_fulfillment !== Printed::class && $badge->status_fulfillment->canTransitionTo(Printed::class)) {
+        if($badge->status_fulfillment->canTransitionTo(Printed::class)) {
             $badge->status_fulfillment->transitionTo(Printed::class);
         }
         // dispatch print job

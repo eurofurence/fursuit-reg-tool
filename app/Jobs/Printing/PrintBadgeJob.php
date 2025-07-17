@@ -26,7 +26,7 @@ class PrintBadgeJob implements ShouldQueue
 
     public function handle(): void
     {
-        if($this->badge->status_fulfillment !== Printed::class && $this->badge->status_fulfillment->canTransitionTo(Printed::class)) {
+        if($this->badge->status_fulfillment->canTransitionTo(Printed::class)) {
             $this->badge->status_fulfillment->transitionTo(Printed::class);
         }
 

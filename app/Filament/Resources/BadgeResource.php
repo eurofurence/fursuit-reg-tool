@@ -130,7 +130,7 @@ class BadgeResource extends Resource
 
     public static function printBadge(Badge $badge, $mass = 0): Badge
     {
-        if ($badge->status_fulfillment !== Printed::class && $badge->status_fulfillment->canTransitionTo(Printed::class)) {
+        if ($badge->status_fulfillment->canTransitionTo(Printed::class)) {
             $badge->status_fulfillment->transitionTo(Printed::class);
         }
         // Add delay for mass printing so they are generated in order
