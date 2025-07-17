@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BadgeCreateRequest;
 use App\Http\Requests\BadgeUpdateRequest;
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Payment\Paid;
+use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Event;
-use App\Models\Fursuit\States\Pending;
 use App\Models\Species;
 use App\Models\User;
 use App\Notifications\BadgeCreatedNotification;
-use App\Notifications\FursuitApprovedNotification;
 use App\Services\BadgeCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +56,7 @@ class BadgeController extends Controller
             $validated = $request->validated();
             // Create Fursuit
             $fursuit = $request->user()->fursuits()->create([
-                'status' => Pending::$name,
+                'status' => \App\Models\Fursuit\States\Pending::$name,
                 'event_id' => $event->id,
                 'species_id' => Species::firstOrCreate([
                     'name' => $validated['species'],
@@ -80,11 +80,12 @@ class BadgeController extends Controller
             );
 
             // Tax is 19% in Germany
-            $subtotal = round($total / 1.19,);
+            $subtotal = round($total / 1.19, );
             $tax = round($total - $subtotal);
 
             $badge = $fursuit->badges()->create([
-                'status' => \App\Models\Badge\States\Pending::$name,
+                'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
+                'status_payment' => $total === 0 ? Paid::$name : Unpaid::class,
                 'subtotal' => round($subtotal),
                 'tax_rate' => 0.19,
                 'tax' => round($tax),
@@ -92,6 +93,7 @@ class BadgeController extends Controller
                 'dual_side_print' => true,
                 'is_free_badge' => $isFreeBadge,
                 'apply_late_fee' => $event->preorder_ends_at->isPast(),
+                'paid_at' => $total === 0 ? now() : null,
             ]);
             // Pay for Badge (force pay as we allow negative balance)
             $request->user()->forcePay($badge);
@@ -105,9 +107,12 @@ class BadgeController extends Controller
                 $clone->subtotal = round($total / 1.19);
                 $clone->tax = round($clone->total - $clone->subtotal);
                 $clone->extra_copy_of = $badge->id;
+                $clone->status_payment = Unpaid::class;
+                $clone->paid_at = null; // Spare copies are not paid immediately
                 $clone->save();
                 $request->user()->forcePay($clone->fresh());
             }
+
             return $badge;
         });
 
@@ -158,7 +163,7 @@ class BadgeController extends Controller
             }
             // if species_id, name or image changed, status goes back to pending review
             if ($fursuit->isDirty(['species_id', 'name', 'image'])) {
-                $fursuit->status = Pending::$name;
+                $fursuit->status = \App\Models\Badge\State_Fulfillment\Pending::$name;
             }
             $fursuit->save();
             /**
@@ -169,7 +174,7 @@ class BadgeController extends Controller
                 isFreeBadge: $badge->is_free_badge,
                 isLate: $badge->apply_late_fee,
             );
-            if($previousTotal !== $total) {
+            if ($previousTotal !== $total) {
                 $badge->fursuit->user->refund($badge);
             }
             $badge->total = round($total);

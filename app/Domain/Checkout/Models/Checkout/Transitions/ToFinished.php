@@ -6,7 +6,8 @@ use App\Domain\Checkout\Models\Checkout\Checkout;
 use App\Domain\Checkout\Models\Checkout\States\Cancelled;
 use App\Domain\Checkout\Models\Checkout\States\Finished;
 use App\Domain\Checkout\Services\FiskalyService;
-use App\Models\Badge\States\ReadyForPickup;
+use App\Models\Badge\State_Fulfillment\ReadyForPickup;
+use App\Models\Badge\State_Payment\Paid;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
@@ -26,8 +27,8 @@ class ToFinished extends Transition
             $fiskalyService->updateOrCreateTransaction($this->checkout);
 
             $this->checkout->items->each(function ($item) {
-                if ($item->payable->status->canTransitionTo(ReadyForPickup::class)) {
-                    $item->payable->status->transitionTo(ReadyForPickup::class);
+                if ($item->payable->status_payment->canTransitionTo(Paid::class)) {
+                    $item->payable->status_payment->transitionTo(Paid::class);
                 }
             });
 

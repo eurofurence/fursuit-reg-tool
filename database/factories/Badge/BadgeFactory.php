@@ -3,10 +3,12 @@
 namespace Database\Factories\Badge;
 
 use App\Models\Badge\Badge;
-use App\Models\Badge\States\Pending;
-use App\Models\Badge\States\PickedUp;
-use App\Models\Badge\States\Printed;
-use App\Models\Badge\States\ReadyForPickup;
+use App\Models\Badge\State_Fulfillment\Pending;
+use App\Models\Badge\State_Fulfillment\PickedUp;
+use App\Models\Badge\State_Fulfillment\Printed;
+use App\Models\Badge\State_Fulfillment\ReadyForPickup;
+use App\Models\Badge\State_Payment\Paid;
+use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Fursuit\Fursuit;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
@@ -20,11 +22,15 @@ class BadgeFactory extends Factory
         return [
             'is_free_badge' => $this->faker->boolean(),
             'extra_copy_of' => null,
-            'status' => $this->faker->randomElement([
+            'status_fulfillment' => $this->faker->randomElement([
                 Pending::$name,
                 Printed::$name,
                 ReadyForPickup::$name,
                 PickedUp::$name
+            ]),
+            'status_payment' => $this->faker->randomElement([
+                Paid::$name,
+                Unpaid::$name
             ]),
             'dual_side_print' => $this->faker->boolean(),
             'extra_copy' => $this->faker->boolean(),
