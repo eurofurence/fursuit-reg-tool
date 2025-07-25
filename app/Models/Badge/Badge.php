@@ -81,4 +81,13 @@ class Badge extends Model implements ProductInterface
         return LogOptions::defaults()
             ->logOnly(['*']);
     }
+
+    public function isCopyOfFreeBadge(): bool
+    {
+        if ($this->extra_copy_of !== null) {
+            $originalBadge = self::find($this->extra_copy_of);
+            return $originalBadge ? $originalBadge->is_free_badge : false;
+        }
+        return false;
+    }
 }

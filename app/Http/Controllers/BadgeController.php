@@ -112,6 +112,7 @@ class BadgeController extends Controller
                     $clone->save();
                     $request->user()->forcePay($clone->fresh());
                 }
+                $request->user()->wallet->deposit($total * $request->user()->free_badge_copies, ['title' => 'Fuirsuit Badge', 'description' => 'Already paid with the EF registration system']);
                 $request->user()->free_badge_copies = 0;
                 $request->user()->has_free_badge = false;
                 $request->user()->save();
