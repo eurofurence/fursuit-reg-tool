@@ -48,6 +48,8 @@ class AuthController extends Controller
                 'Please register for the Convention first before trying to obtain a fursuit badge.');
         }
 
+        $isNewUser = User::where('remote_id', $socialLiteUser->getId())->doesntExist();
+
         $user = User::updateOrCreate([
             'remote_id' => $socialLiteUser->getId(),
         ], [
@@ -75,6 +77,34 @@ class AuthController extends Controller
             refreshToken: $socialLiteUser->refreshToken,
             expiresIn: 3500
         );
+
+        if ($isNewUser) {
+            $fursuit = \Illuminate\Support\Facades\Http::attsrv()
+                ->withToken($socialLiteUser->token)
+                ->get('/attendees/' . $regId . '/packages/fursuit')
+                ->json();
+            if ($fursuit['present'] && $fursuit['count'] > 0) {
+
+                $fursuitAdditional = \Illuminate\Support\Facades\Http::attsrv()
+                    ->withToken($socialLiteUser->token)
+                    ->get('/attendees/' . $regId . '/packages/fursuitadd')
+                    ->json();
+
+                $copies = $fursuitAdditional['present'] ? $fursuitAdditional['count'] : 0;
+
+                $user->has_free_badge = true;
+                $user->free_badge_copies = $copies;
+                $user->save();
+
+
+                \Illuminate\Support\Facades\Http::attsrv()
+                    ->withToken($socialLiteUser->token)
+                    ->post('/attendees/' . $regId . '/additional-info/fursuitbadge', [
+                        'created' => false,
+                    ]);
+            }
+
+        }
 
         Auth::login($user, true);
         if(Session::exists('catch-em-all-redirect')) {

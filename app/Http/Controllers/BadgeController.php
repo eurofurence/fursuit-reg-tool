@@ -33,7 +33,8 @@ class BadgeController extends Controller
         Gate::authorize('create', Badge::class);
         return Inertia::render('Badges/BadgesCreate', [
             'species' => Species::has('fursuits', count: 5)->orWhere('checked', true)->get('name'),
-            'isFree' => auth()->user()->badges()->where('is_free_badge', true)->doesntExist(),
+            'isFree' => auth()->user()->hasFreeBadge(),
+            'freeBadgeCopies' => auth()->user()->hasFreeBadge() ? auth()->user()->free_badge_copies : 0,
         ]);
     }
 
@@ -71,7 +72,7 @@ class BadgeController extends Controller
             ]);
 
             // is Free Badge
-            $isFreeBadge = $request->user()->badges()->where('is_free_badge', true)->doesntExist();
+            $isFreeBadge = $request->user()->hasFreeBadge();
 
             // Returns in cents
             $total = BadgeCalculationService::calculate(
@@ -98,7 +99,32 @@ class BadgeController extends Controller
             // Pay for Badge (force pay as we allow negative balance)
             $request->user()->forcePay($badge);
 
-            if ($validated['upgrades']['spareCopy']) {
+            if ($isFreeBadge) {
+                $total = BadgeCalculationService::calculate(isSpareCopy: true);
+                for ($i = 0; $i < $request->user()->free_badge_copies; $i++) {
+                    $clone = $badge->replicate();
+                    $clone->is_free_badge = false;
+                    $clone->extra_copy = true;
+                    $clone->total = round($total);
+                    $clone->subtotal = round($total / 1.19);
+                    $clone->tax = round($clone->total - $clone->subtotal);
+                    $clone->extra_copy_of = $badge->id;
+                    $clone->save();
+                    $request->user()->forcePay($clone->fresh());
+                }
+                $request->user()->wallet->deposit($total * $request->user()->free_badge_copies, ['title' => 'Fuirsuit Badge', 'description' => 'Already paid with the EF registration system']);
+                $request->user()->free_badge_copies = 0;
+                $request->user()->has_free_badge = false;
+                $request->user()->save();
+
+                // Mark fursuitbadge as created
+                \Illuminate\Support\Facades\Http::attsrv()
+                    ->withToken($request->user()->token)
+                    ->post('/attendees/' . $request->user()->attendee_id . '/additional-info/fursuitbadge', [
+                        'created' => true,
+                    ]);
+
+            } elseif ($validated['upgrades']['spareCopy']) {
                 $total = BadgeCalculationService::calculate(isSpareCopy: true);
                 $clone = $badge->replicate();
                 $clone->is_free_badge = false;
