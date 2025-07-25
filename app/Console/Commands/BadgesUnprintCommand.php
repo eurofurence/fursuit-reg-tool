@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Badge\Badge;
-use App\Models\Badge\States\Pending;
+use App\Models\Badge\State_Fulfillment\Pending;
 use Illuminate\Console\Command;
 
 class BadgesUnprintCommand extends Command
@@ -16,7 +16,7 @@ class BadgesUnprintCommand extends Command
     {
         // Unprint all badges
         Badge::whereNotNull('printed_at')->update([
-            'status' => Pending::$name,
+            'status_fulfillment' => Pending::$name,
             'printed_at' => null,
         ]);
     }

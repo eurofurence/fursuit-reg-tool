@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Badge\Badge;
-use App\Models\Badge\States\Printed;
+use App\Models\Badge\State_Fulfillment\Printed;
 use Illuminate\Console\Command;
 
 class BadgesPrintCommand extends Command
@@ -16,7 +16,7 @@ class BadgesPrintCommand extends Command
     {
         // Prints all badges
         Badge::whereNull('printed_at')->update([
-            'status' => Printed::$name,
+            'status_fulfillment' => Printed::$name,
             'printed_at' => now(),
         ]);
     }

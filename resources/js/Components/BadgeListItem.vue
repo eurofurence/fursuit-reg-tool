@@ -60,8 +60,6 @@ function getBadgeSeverity(status) {
             return 'info';
         case 'ready_for_pickup':
             return 'success';
-        case 'unpaid':
-            return 'error';
         case 'picked_up':
             return 'success';
     }
@@ -86,24 +84,20 @@ function getBadgeTooltipText(status) {
     <div class="py-3 hover:bg-gray-50 duration-200 rounded cursor-pointer">
         <div class="flex flex-col md:flex-row text-center md:text-left">
             <div class="flex flex-col justify-center items-center">
-                <img :src="badge.fursuit.image_url" alt="Badge Image" class="h-32 object-cover rounded-lg"/>
+                <img :src="badge.fursuit.image_url" alt="Badge Image" class="h-32 object-cover rounded-lg" />
             </div>
             <div class="flex flex-col justify-center p-4 flex-1">
                 <h2 class="text-lg font-semibold font-main">{{ badge.fursuit.name }}</h2>
                 <p>{{ badge.fursuit.species.name }}</p>
                 <div class="py-1">
-                    <Tag
-                        v-if="badge.status === 'pending'"
+                    <Tag v-if="badge.status_fulfillment === 'pending'"
                         v-tooltip.bottom="getFursuitTooltipText(badge.fursuit.status)"
                         :severity="getFursuitSeverity(badge.fursuit.status)"
-                        :value="getFursuitStatusName(badge.fursuit.status)"
-                    />
-                    <Tag
-                        v-if="badge.fursuit.status === 'approved' && badge.status !== 'pending'"
-                        v-tooltip.bottom="getBadgeTooltipText(badge.status)"
-                        :severity="getBadgeSeverity(badge.status)"
-                        :value="getBadgeStatusName(badge.status)"
-                    />
+                        :value="getFursuitStatusName(badge.fursuit.status)" />
+                    <Tag v-if="badge.fursuit.status === 'approved' && badge.status_fulfillment !== 'pending'"
+                        v-tooltip.bottom="getBadgeTooltipText(badge.status_fulfillment)"
+                        :severity="getBadgeSeverity(badge.status_fulfillment)"
+                        :value="getBadgeStatusName(badge.status_fulfillment)" />
                 </div>
             </div>
             <div v-if="badge.extra_copy" class="flex flex-col justify-center px-4 pb-1 md:p-4 gap-2">
@@ -114,6 +108,8 @@ function getBadgeTooltipText(status) {
             </div>
             <!-- Total Price -->
             <div class="flex flex-col justify-center p-4">
+                <Tag v-if="badge.status_payment === 'unpaid'" v-tooltip.bottom="'This badge has not been paid yet.'"
+                    :severity="'danger'" :value="'Not Paid'" />
                 <p class="text-lg font-semibold font-main">{{ formatEuroFromCents(badge.total) }}</p>
                 <span class="text-xs">Price</span>
             </div>
