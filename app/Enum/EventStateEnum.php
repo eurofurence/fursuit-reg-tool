@@ -4,9 +4,7 @@ namespace App\Enum;
 
 enum EventStateEnum: string
 {
+    case OPEN = 'open';
     case CLOSED = 'closed';
-    case COUNTDOWN = 'countdown';
-    case PREORDER = 'preorder';
-    case LATE = 'late';
 
 }

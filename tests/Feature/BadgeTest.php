@@ -23,8 +23,7 @@ beforeEach(function () {
     $event = \App\Models\Event::factory()->create([
         'starts_at' => \Carbon\Carbon::parse('2024-06-01'),
         'ends_at' => \Carbon\Carbon::parse('2024-06-30'),
-        'preorder_starts_at' => \Carbon\Carbon::parse('2024-05-01'),
-        'preorder_ends_at' => \Carbon\Carbon::parse('2024-05-15'),
+        'order_starts_at' => \Carbon\Carbon::parse('2024-06-01'),
         'order_ends_at' => \Carbon\Carbon::parse('2024-06-25'),
     ]);
     // Fake Storage

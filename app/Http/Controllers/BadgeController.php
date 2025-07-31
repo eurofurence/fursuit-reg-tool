@@ -77,7 +77,7 @@ class BadgeController extends Controller
             // Returns in cents
             $total = BadgeCalculationService::calculate(
                 isFreeBadge: $isFreeBadge,
-                isLate: $event->preorder_ends_at->isPast(),
+                isLate: false, // No late fees in new system
             );
 
             // Tax is 19% in Germany
@@ -93,7 +93,7 @@ class BadgeController extends Controller
                 'total' => round($total),
                 'dual_side_print' => true,
                 'is_free_badge' => $isFreeBadge,
-                'apply_late_fee' => $event->preorder_ends_at->isPast(),
+                'apply_late_fee' => false, // No late fees in new system
                 'paid_at' => $total === 0 ? now() : null,
             ]);
             // Pay for Badge (force pay as we allow negative balance)

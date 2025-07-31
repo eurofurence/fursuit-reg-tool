@@ -63,9 +63,7 @@ const basePrice = computed(() => {
 })
 
 const latePrice = computed(() => {
-    if (dayjs().isAfter(dayjs(usePage().props.event.preorder_ends_at)) && props.isFree === false) {
-        return 2;
-    }
+    // No late fees in the new system
     return 0;
 })
 
@@ -94,7 +92,7 @@ const total = computed(() => {
         <ImageUpload @update-image="imageUpdatedEvent" @update-source="args => imageSource = args" :image-source="imageSource"></ImageUpload>
     </Dialog>
     <!-- Fursuit Creator -->
-    <div class="pt-8 px-6 xl:px-0">
+    <div class="pt-8 px-6 xl:px-0 max-w-screen-lg mx-auto">
         <div class="mb-8">
             <h1 class="text-xl sm:text-2xl md:text-3xl font-semibold font-main">Eurofurence Fursuit Badge Creator</h1>
             <p>Welcome to our badge configurator, please enter all the details and options you would like!</p>

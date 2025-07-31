@@ -21,15 +21,14 @@ test('Check Different States on Welcome Screen', function () {
     $event = \App\Models\Event::factory()->create([
         'starts_at' => \Carbon\Carbon::parse('2024-06-01'),
         'ends_at' => \Carbon\Carbon::parse('2024-06-30'),
-        'preorder_starts_at' => \Carbon\Carbon::parse('2024-05-01'),
-        'preorder_ends_at' => \Carbon\Carbon::parse('2024-05-15'),
+        'order_starts_at' => \Carbon\Carbon::parse('2024-06-01'),
         'order_ends_at' => \Carbon\Carbon::parse('2024-06-25'),
     ]);
     $tests = [
-      ['2024-04-25' => 'countdown'],
-      ['2024-05-02' => 'preorder'],
-      ['2024-05-16' => 'late'],
-      ['2024-06-26' => 'closed'],   ];
+      ['2024-05-25' => 'closed'], // Before event starts
+      ['2024-06-15' => 'open'],   // During event
+      ['2024-07-15' => 'closed'], // After event ends
+    ];
     foreach ($tests as $test) {
         // Time Travel
         travelTo(Carbon\Carbon::parse(array_key_first($test)));

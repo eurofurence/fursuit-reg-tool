@@ -37,8 +37,8 @@ class BadgePolicy
             return false;
         }
 
-        // Safety check if in CLOSED OR LATE return false
-        if ($event->state === \App\Enum\EventStateEnum::CLOSED || $event->state === \App\Enum\EventStateEnum::COUNTDOWN) {
+        // Allow badge creation only if event allows orders
+        if (!$event->allowsOrders()) {
             return false;
         }
 
@@ -79,8 +79,8 @@ class BadgePolicy
             return false;
         }
 
-        // Safety check if in CLOSED OR LATE return false
-        if ($event->state === \App\Enum\EventStateEnum::CLOSED || $event->state === \App\Enum\EventStateEnum::COUNTDOWN) {
+        // Allow badge creation only if event allows orders
+        if (!$event->allowsOrders()) {
             return false;
         }
 

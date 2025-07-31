@@ -16,7 +16,7 @@ class EventFactory extends Factory
             'name' => $this->faker->name(),
             'starts_at' => Carbon::now(),
             'ends_at' => Carbon::now(),
-            'preorder_ends_at' => Carbon::now(),
+            'order_starts_at' => Carbon::now(),
             'order_ends_at' => Carbon::now(),
         ];
     }

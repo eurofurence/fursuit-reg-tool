@@ -9,7 +9,7 @@ use App\Enum\EventStateEnum;
 
 class CreateOrUpdateEventForStateCommand extends Command
 {
-    protected $signature = 'event:state {state}';
+    protected $signature = 'event:state {state?}';
 
     protected $description = 'Creates or updates an event to match a specific state. Only for local or testing environments.';
 
@@ -26,22 +26,21 @@ class CreateOrUpdateEventForStateCommand extends Command
         }
 
         $state = $this->argument('state');
-        $event = Event::first();
+        if (!$state) {
+            // Interactive select mode
+            $choices = array_map(fn($case) => $case->value, EventStateEnum::cases());
+            $state = $this->choice('Select the event state', $choices);
+        }
 
+        $event = Event::first();
         $fromInput = EventStateEnum::tryFrom($state);
 
         switch ($fromInput) {
-            case EventStateEnum::COUNTDOWN:
-                $this->createOrUpdateEvent($event, now()->addDays(11), now()->addDays(20), now()->addDays(21), now()->addDays(30));
-                break;
-            case EventStateEnum::PREORDER:
-                $this->createOrUpdateEvent($event, now()->subDays(1), now()->subDays(10), now()->addDays(11), now()->addDays(20));
-                break;
-            case EventStateEnum::LATE:
-                $this->createOrUpdateEvent($event, now()->subDays(20), now()->subDays(10), now()->subDays(9), now()->addDays(10));
+            case EventStateEnum::OPEN:
+                $this->createOrUpdateEvent($event, now()->subDays(1), now()->addDays(30), now()->subDays(1), now()->addDays(25));
                 break;
             case EventStateEnum::CLOSED:
-                $this->createOrUpdateEvent($event, now()->subDays(30), now()->subDays(20), now()->subDays(19), now()->subDays(1));
+                $this->createOrUpdateEvent($event, now()->subDays(30), now()->subDays(1), now()->subDays(25), now()->subDays(15));
                 break;
             default:
                 $this->error('Invalid state provided.');
@@ -51,23 +50,21 @@ class CreateOrUpdateEventForStateCommand extends Command
         $this->info("Event has been created or updated to match the '$state' state.");
     }
 
-    private function createOrUpdateEvent($event, $startsAt, $preorderStartsAt, $preorderEndsAt, $orderEndsAt)
+    private function createOrUpdateEvent($event, $startsAt, $endsAt, $orderStartsAt, $orderEndsAt)
     {
         if ($event) {
             $event->update([
                 'starts_at' => $startsAt,
-                'ends_at' => now()->addDays(30),
-                'preorder_starts_at' => $preorderStartsAt,
-                'preorder_ends_at' => $preorderEndsAt,
+                'ends_at' => $endsAt,
+                'order_starts_at' => $orderStartsAt,
                 'order_ends_at' => $orderEndsAt,
             ]);
         } else {
             Event::create([
                 'name' => 'Test Event',
                 'starts_at' => $startsAt,
-                'ends_at' => now()->addDays(30),
-                'preorder_starts_at' => $preorderStartsAt,
-                'preorder_ends_at' => $preorderEndsAt,
+                'ends_at' => $endsAt,
+                'order_starts_at' => $orderStartsAt,
                 'order_ends_at' => $orderEndsAt,
             ]);
         }
