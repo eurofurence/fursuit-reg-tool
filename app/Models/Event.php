@@ -68,4 +68,9 @@ class Event extends Model
         $orderNotEnded = !$this->order_ends_at || $this->order_ends_at > $now;
         return $orderStarted && $orderNotEnded;
     }
+
+    public function fursuits()
+    {
+        return $this->hasMany(\App\Models\Fursuit\Fursuit::class);
+    }
 }

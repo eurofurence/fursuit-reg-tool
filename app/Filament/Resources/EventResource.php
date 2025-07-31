@@ -45,6 +45,18 @@ class EventResource extends Resource
                         ->helperText('When the badges were mass printed, if applicable')
                         ->required(),
                 ])->columns()->columnSpanFull()->label('Order Management'),
+                
+                Group::make([
+                    Forms\Components\Toggle::make('catch_em_all_enabled')
+                        ->label('Catch-Em-All Enabled')
+                        ->helperText('Enable catch-em-all functionality for this event')
+                        ->default(true),
+                    Forms\Components\Textarea::make('archival_notice')
+                        ->label('Archival Notice')
+                        ->helperText('Notice to display for archival/historical events')
+                        ->rows(3)
+                        ->columnSpanFull(),
+                ])->columns()->columnSpanFull()->label('Gallery Settings'),
             ]);
     }
 
@@ -77,6 +89,14 @@ class EventResource extends Resource
                     ->dateTime('d.m.Y H:i')
                     ->description(fn (Event $record) => $record->order_ends_at?->diffForHumans())
                     ->sortable(),
+                Tables\Columns\IconColumn::make('catch_em_all_enabled')
+                    ->label('Catch-Em-All')
+                    ->boolean(),
+                Tables\Columns\TextColumn::make('archival_notice')
+                    ->label('Archival Notice')
+                    ->limit(50)
+                    ->tooltip(fn (Event $record) => $record->archival_notice)
+                    ->placeholder('None'),
             ])
             ->filters([
                 //

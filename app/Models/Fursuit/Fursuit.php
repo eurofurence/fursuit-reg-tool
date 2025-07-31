@@ -66,19 +66,50 @@ class Fursuit extends Model
 
     public function imageWebpUrl(): Attribute
     {
-        // Generate webp version if not present yet
-        if (!$this->image_webp) {
-            $originalImage = Storage::get($this->image);
-            $manager = new ImageManager(new Driver());
-            $path = '/gallery/fursuits/' . pathinfo($this->image, PATHINFO_FILENAME) . '.webp';
-            $webp = $manager->read($originalImage)->toWebp();
-            Storage::put($path, $webp);
-            $this->update(['image_webp' => $path]);
-        }
-
         return Attribute::make(
             get: function ($value) {
-                return Storage::temporaryUrl($this->image_webp, now()->addMinutes(5)); // TODO: Change to permanent link when public
+                // If webp version doesn't exist, try to generate it
+                if (!$this->image_webp && $this->image) {
+                    try {
+                        $originalImage = Storage::get($this->image);
+                        $manager = new ImageManager(new Driver());
+                        $path = 'gallery/fursuits/' . pathinfo($this->image, PATHINFO_FILENAME) . '.webp';
+                        
+                        $webp = $manager->read($originalImage)->toWebp();
+                        Storage::put($path, $webp);
+                        $this->update(['image_webp' => $path]);
+                        
+                        return Storage::temporaryUrl($path, now()->addMinutes(5));
+                    } catch (\Exception $e) {
+                        // Log the error for debugging
+                        \Log::warning('Failed to generate WebP for fursuit ' . $this->id . ': ' . $e->getMessage());
+                        
+                        // Fallback to original image if WebP generation fails
+                        return Storage::temporaryUrl($this->image, now()->addMinutes(5));
+                    }
+                }
+
+                // Return existing webp image if available
+                if ($this->image_webp) {
+                    try {
+                        return Storage::temporaryUrl($this->image_webp, now()->addMinutes(5));
+                    } catch (\Exception $e) {
+                        // If webp URL generation fails, fall back to original
+                        \Log::warning('Failed to generate WebP URL for fursuit ' . $this->id . ': ' . $e->getMessage());
+                    }
+                }
+                
+                // Fallback to original image
+                if ($this->image) {
+                    try {
+                        return Storage::temporaryUrl($this->image, now()->addMinutes(5));
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to generate image URL for fursuit ' . $this->id . ': ' . $e->getMessage());
+                        return null;
+                    }
+                }
+                
+                return null;
             },
         );
     }
