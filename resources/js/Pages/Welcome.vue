@@ -166,7 +166,7 @@ const shouldShowRegMessage = computed(() => {
                                 v-if="user.badges?.length > 0"
                                 @click="router.visit(route('badges.index'))" 
                                 icon="pi pi-list" 
-                                class="bg-white/90 flex-1 text-gray-800 border-2 border-white hover:bg-white font-semibold"
+                                class="flex-1 font-semibold"
                                 size="large"
                                 fluid
                                 label="Manage Badges"
