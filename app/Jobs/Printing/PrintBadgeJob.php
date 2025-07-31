@@ -7,7 +7,7 @@ use App\Domain\Printing\Models\Printer;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Models\Badge\Badge;
-use App\Models\Badge\States\Printed;
+use App\Models\Badge\State_Fulfillment\Printed;
 use App\Models\Machine;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,8 +26,8 @@ class PrintBadgeJob implements ShouldQueue
 
     public function handle(): void
     {
-        if($this->badge->status !== Printed::class && $this->badge->status->canTransitionTo(Printed::class)) {
-            $this->badge->status->transitionTo(Printed::class);
+        if($this->badge->status_fulfillment->canTransitionTo(Printed::class)) {
+            $this->badge->status_fulfillment->transitionTo(Printed::class);
         }
 
 

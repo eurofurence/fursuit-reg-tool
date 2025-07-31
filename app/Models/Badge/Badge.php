@@ -3,7 +3,8 @@
 namespace App\Models\Badge;
 
 use App\Domain\Printing\Models\PrintJob;
-use App\Models\Badge\States\BadgeStatusState;
+use App\Models\Badge\State_Fulfillment\BadgeFulfillmentStatusState;
+use App\Models\Badge\State_Payment\BadgePaymentStatusState;
 use App\Models\Fursuit\Fursuit;
 use Bavix\Wallet\Interfaces\Customer;
 use Bavix\Wallet\Interfaces\ProductInterface;
@@ -22,13 +23,15 @@ class Badge extends Model implements ProductInterface
 
     protected $guarded = [];
     protected $casts = [
-        'status' => BadgeStatusState::class,
+        'status_fulfillment' => BadgeFulfillmentStatusState::class,
+        'status_payment' => BadgePaymentStatusState::class,
         'extra_copy' => 'boolean',
         'dual_side_print' => 'boolean',
         'apply_late_fee' => 'boolean',
         'printed_at' => 'datetime',
         'ready_for_pickup_at' => 'datetime',
         'picked_up_at' => 'datetime',
+        'is_free_badge' => 'boolean',
     ];
 
     public function fursuit(): BelongsTo
@@ -50,14 +53,14 @@ class Badge extends Model implements ProductInterface
     {
         // Title Generator
         $features = [];
-        if($this->dual_side_print) {
+        if ($this->dual_side_print) {
             $features[] = 'Double Sided Print';
         }
-        if($this->extra_copy_of) {
+        if ($this->extra_copy_of) {
             $features[] = 'Extra Copy';
         }
         $append = '';
-        if(count($features) > 0) {
+        if (count($features) > 0) {
             $append = ' with Extras (' . implode(', ', $features) . ')';
         }
         return [
@@ -77,5 +80,14 @@ class Badge extends Model implements ProductInterface
     {
         return LogOptions::defaults()
             ->logOnly(['*']);
+    }
+
+    public function isCopyOfFreeBadge(): bool
+    {
+        if ($this->extra_copy_of !== null) {
+            $originalBadge = self::find($this->extra_copy_of);
+            return $originalBadge ? $originalBadge->is_free_badge : false;
+        }
+        return false;
     }
 }

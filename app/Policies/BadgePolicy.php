@@ -2,12 +2,10 @@
 
 namespace App\Policies;
 
-use App\Enum\EventStateEnum;
 use App\Models\Badge\Badge;
-use App\Models\Badge\States\Pending;
+use App\Models\Badge\State_Fulfillment\Pending;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use Illuminate\Routing\Route;
 
 class BadgePolicy
 {
@@ -39,8 +37,8 @@ class BadgePolicy
             return false;
         }
 
-        // Safety check if in CLOSED OR LATE return false
-        if ($event->state === \App\Enum\EventStateEnum::CLOSED || $event->state === \App\Enum\EventStateEnum::COUNTDOWN) {
+        // Allow badge creation only if event allows orders
+        if (!$event->allowsOrders()) {
             return false;
         }
 
@@ -77,12 +75,12 @@ class BadgePolicy
             return false;
         }
         // Cannot edit a badge that has already been printed
-        if ((string) $badge->status !== Pending::$name) {
+        if (!$badge->status_fulfillment->equals(Pending::class)) {
             return false;
         }
 
-        // Safety check if in CLOSED OR LATE return false
-        if ($event->state === \App\Enum\EventStateEnum::CLOSED || $event->state === \App\Enum\EventStateEnum::COUNTDOWN) {
+        // Allow badge creation only if event allows orders
+        if (!$event->allowsOrders()) {
             return false;
         }
 

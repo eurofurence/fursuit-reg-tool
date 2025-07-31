@@ -1,8 +1,6 @@
 <script setup>
 import Layout from "@/Layouts/Layout.vue";
-import {Link, Head, usePage} from '@inertiajs/vue3'
-import Steps from 'primevue/steps';
-import Fieldset from 'primevue/fieldset';
+import {Head, usePage} from '@inertiajs/vue3'
 import InputText from "primevue/inputtext";
 import Dropdown from "primevue/dropdown";
 import Dialog from 'primevue/dialog';
@@ -15,6 +13,7 @@ import Panel from 'primevue/panel';
 import Tag from 'primevue/tag';
 import dayjs from "dayjs";
 import InputError from "@/Components/InputError.vue";
+import Message from "primevue/message";
 
 defineOptions({
     layout: Layout
@@ -22,7 +21,8 @@ defineOptions({
 
 const props = defineProps({
     species: Array,
-    isFree: Boolean
+    isFree: Boolean,
+    freeBadgeCopies: Number,
 })
 
 const imageModalOpen = ref(false)
@@ -37,8 +37,7 @@ const form = useForm('post', route('badges.store'), {
     publish: false,
     tos: false,
     upgrades: {
-        doubleSided: false,
-        spareCopy: false
+        spareCopy: props.freeBadgeCopies > 0,
     }
 })
 
@@ -64,20 +63,22 @@ const basePrice = computed(() => {
 })
 
 const latePrice = computed(() => {
-    if (dayjs().isAfter(dayjs(usePage().props.event.preorder_ends_at))) {
-        return 2;
-    }
+    // No late fees in the new system
     return 0;
 })
 
+const copiesPrice = computed(() => {
+    let price = 0
+    if (props.freeBadgeCopies > 0) {
+        price += props.freeBadgeCopies * 2;
+    } else if (form.upgrades.spareCopy) {
+        price += 2;
+    }
+    return price;
+})
+
 const total = computed(() => {
-    let total = basePrice.value + latePrice.value;
-    if (form.upgrades.doubleSided) {
-        total += 1;
-    }
-    if (form.upgrades.spareCopy) {
-        total += 2;
-    }
+    let total = basePrice.value + latePrice.value + copiesPrice.value;
     return total;
 })
 </script>
@@ -91,11 +92,17 @@ const total = computed(() => {
         <ImageUpload @update-image="imageUpdatedEvent" @update-source="args => imageSource = args" :image-source="imageSource"></ImageUpload>
     </Dialog>
     <!-- Fursuit Creator -->
-    <div class="pt-8 px-6 xl:px-0">
+    <div class="pt-8 px-6 xl:px-0 max-w-screen-lg mx-auto">
         <div class="mb-8">
             <h1 class="text-xl sm:text-2xl md:text-3xl font-semibold font-main">Eurofurence Fursuit Badge Creator</h1>
             <p>Welcome to our badge configurator, please enter all the details and options you would like!</p>
         </div>
+        <Message
+            v-if="new Date(usePage().props.event.mass_printed_at) < new Date()"
+            severity="info"
+            :closable="false">
+            {{ "Late badge orders can be picked up starting from the 2nd convention day." }}
+        </Message>
         <!-- Group 1 -- Fursuit Details -->
         <div class="space-y-8">
             <div class="md:border-2 md:shadow md:bg-white md:rounded-lg md:p-8">
@@ -194,29 +201,14 @@ const total = computed(() => {
                 <div class="">
                     <div class="mb-8 ">
                         <h2 class="text-lg font-semibold">Upgrades</h2>
-                        <p>Get a spare copy or get an exclusive double printed badge!</p>
+                        <p>Get a spare copy of your printed badge!</p>
                     </div>
                     <div class="space-y-3">
                         <div class="flex flex-col md:flex-row gap-8 w-full">
                             <div class="flex gap-3">
                                 <div class="flex flex-row gap-2 mt-3">
-                                    <InputSwitch v-model="form.upgrades.doubleSided" id="extra1"
-                                                 aria-describedby="extra1-help"/>
-                                </div>
-                                <div>
-                                    <label class="font-semibold block" for="extra1">Double Sided Badge
-                                        <Tag value="+1,00 €"></Tag>
-                                    </label>
-                                    <small
-                                        id="extra1-help">By default our Badges are only Printed on one side. If you want to have a double sided badge, please select this option.</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-8 w-full">
-                            <div class="flex gap-3">
-                                <div class="flex flex-row gap-2 mt-3">
                                     <InputSwitch v-model="form.upgrades.spareCopy" id="extra2"
-                                                 aria-describedby="extra2-help"/>
+                                                 aria-describedby="extra2-help" :disabled="props.isFree"/>
                                 </div>
                                 <div>
                                     <label class="font-semibold block" for="extra2">Spare Copy
@@ -267,15 +259,10 @@ const total = computed(() => {
                                 </div>
                                 <small>Orders placed after the Preorder Deadline will be charged a late fee.</small>
                             </div>
-                            <div v-if="form.upgrades.doubleSided"
-                                 class="flex justify-between border-b border-dotted border-gray-900">
-                                <span>Double Sided Badge</span>
-                                <span>1,00 €</span>
-                            </div>
                             <div v-if="form.upgrades.spareCopy"
-                                 class="flex justify-between mb-4 border-b border-dotted border-gray-900">
-                                <span>Spare Copy</span>
-                                <span>2,00 €</span>
+                                class="flex justify-between mb-4 border-b border-dotted border-gray-900">
+                                <span>Spare Copy{{ props.freeBadgeCopies > 1 ? " x" + props.freeBadgeCopies : "" }}</span>
+                                <span>{{ copiesPrice }},00 €</span>
                             </div>
                             <!-- End Options -->
                             <div class="flex justify-between text-2xl border-b border-double border-gray-900">
@@ -293,6 +280,4 @@ const total = computed(() => {
     </div>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

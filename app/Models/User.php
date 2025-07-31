@@ -51,6 +51,8 @@ class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat,
         'token' => 'encrypted',
         'token_expires_at' => 'datetime',
         'attendee_id' => 'integer',
+        'has_free_badge' => 'bool',
+        "free_badge_copies" => "integer",
     ];
 
     public function badges()
@@ -71,5 +73,10 @@ class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat,
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->is_admin || $this->is_reviewer;
+    }
+
+    public  function hasFreeBadge(): bool
+    {
+        return $this->has_free_badge;
     }
 }

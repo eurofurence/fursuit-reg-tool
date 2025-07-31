@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BadgeCreateRequest;
 use App\Http\Requests\BadgeUpdateRequest;
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Payment\Paid;
+use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Event;
-use App\Models\Fursuit\States\Pending;
 use App\Models\Species;
 use App\Models\User;
 use App\Notifications\BadgeCreatedNotification;
-use App\Notifications\FursuitApprovedNotification;
 use App\Services\BadgeCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +33,8 @@ class BadgeController extends Controller
         Gate::authorize('create', Badge::class);
         return Inertia::render('Badges/BadgesCreate', [
             'species' => Species::has('fursuits', count: 5)->orWhere('checked', true)->get('name'),
-            'isFree' => auth()->user()->badges()->where('is_free_badge', true)->doesntExist(),
+            'isFree' => auth()->user()->hasFreeBadge(),
+            'freeBadgeCopies' => auth()->user()->hasFreeBadge() ? auth()->user()->free_badge_copies : 0,
         ]);
     }
 
@@ -56,7 +57,7 @@ class BadgeController extends Controller
             $validated = $request->validated();
             // Create Fursuit
             $fursuit = $request->user()->fursuits()->create([
-                'status' => Pending::$name,
+                'status' => \App\Models\Fursuit\States\Pending::$name,
                 'event_id' => $event->id,
                 'species_id' => Species::firstOrCreate([
                     'name' => $validated['species'],
@@ -71,33 +72,59 @@ class BadgeController extends Controller
             ]);
 
             // is Free Badge
-            $isFreeBadge = $request->user()->badges()->where('is_free_badge', true)->doesntExist();
+            $isFreeBadge = $request->user()->hasFreeBadge();
 
             // Returns in cents
             $total = BadgeCalculationService::calculate(
-                doubleSided: $validated['upgrades']['doubleSided'],
                 isFreeBadge: $isFreeBadge,
-                isLate: $event->preorder_ends_at->isPast(),
+                isLate: false, // No late fees in new system
             );
 
             // Tax is 19% in Germany
-            $subtotal = round($total / 1.19,);
+            $subtotal = round($total / 1.19, );
             $tax = round($total - $subtotal);
 
             $badge = $fursuit->badges()->create([
-                'status' => \App\Models\Badge\States\Pending::$name,
+                'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
+                'status_payment' => $total === 0 ? Paid::$name : Unpaid::class,
                 'subtotal' => round($subtotal),
                 'tax_rate' => 0.19,
                 'tax' => round($tax),
                 'total' => round($total),
-                'dual_side_print' => $validated['upgrades']['doubleSided'],
+                'dual_side_print' => true,
                 'is_free_badge' => $isFreeBadge,
-                'apply_late_fee' => $event->preorder_ends_at->isPast(),
+                'apply_late_fee' => false, // No late fees in new system
+                'paid_at' => $total === 0 ? now() : null,
             ]);
             // Pay for Badge (force pay as we allow negative balance)
             $request->user()->forcePay($badge);
 
-            if ($validated['upgrades']['spareCopy']) {
+            if ($isFreeBadge) {
+                $total = BadgeCalculationService::calculate(isSpareCopy: true);
+                for ($i = 0; $i < $request->user()->free_badge_copies; $i++) {
+                    $clone = $badge->replicate();
+                    $clone->is_free_badge = false;
+                    $clone->extra_copy = true;
+                    $clone->total = round($total);
+                    $clone->subtotal = round($total / 1.19);
+                    $clone->tax = round($clone->total - $clone->subtotal);
+                    $clone->extra_copy_of = $badge->id;
+                    $clone->save();
+                    $request->user()->forcePay($clone->fresh());
+                }
+                $request->user()->wallet->deposit($total * $request->user()->free_badge_copies, ['title' => 'Fuirsuit Badge', 'description' => 'Already paid with the EF registration system']);
+                $request->user()->free_badge_copies = 0;
+                $request->user()->has_free_badge = false;
+                $request->user()->save();
+
+                // Mark fursuitbadge as created
+                \Illuminate\Support\Facades\Http::attsrv()
+                    ->withToken($request->user()->token)
+                    ->post('/attendees/' . $request->user()->attendee_id . '/additional-info/fursuitbadge', [
+                        'created' => true,
+                    ]);
+
+            } elseif ($validated['upgrades']['spareCopy']) {
                 $total = BadgeCalculationService::calculate(isSpareCopy: true);
                 $clone = $badge->replicate();
                 $clone->is_free_badge = false;
@@ -106,9 +133,12 @@ class BadgeController extends Controller
                 $clone->subtotal = round($total / 1.19);
                 $clone->tax = round($clone->total - $clone->subtotal);
                 $clone->extra_copy_of = $badge->id;
+                $clone->status_payment = Unpaid::class;
+                $clone->paid_at = null; // Spare copies are not paid immediately
                 $clone->save();
                 $request->user()->forcePay($clone->fresh());
             }
+
             return $badge;
         });
 
@@ -159,20 +189,18 @@ class BadgeController extends Controller
             }
             // if species_id, name or image changed, status goes back to pending review
             if ($fursuit->isDirty(['species_id', 'name', 'image'])) {
-                $fursuit->status = Pending::$name;
+                $fursuit->status = \App\Models\Badge\State_Fulfillment\Pending::$name;
             }
             $fursuit->save();
             /**
              * Badge
              */
-            $badge->dual_side_print = $validated['upgrades']['doubleSided'];
             $previousTotal = $badge->total;
             $total = BadgeCalculationService::calculate(
-                doubleSided: $badge->dual_side_print,
                 isFreeBadge: $badge->is_free_badge,
                 isLate: $badge->apply_late_fee,
             );
-            if($previousTotal !== $total) {
+            if ($previousTotal !== $total) {
                 $badge->fursuit->user->refund($badge);
             }
             $badge->total = round($total);
@@ -183,10 +211,6 @@ class BadgeController extends Controller
             if ($previousTotal !== $total) {
                 $request->user()->forcePay($badge);
             }
-            // Update Extra Copy doulbe sided print
-            Badge::where('extra_copy_of', $badge->id)->update([
-                'dual_side_print' => $validated['upgrades']['doubleSided'],
-            ]);
             return $badge;
         });
         return redirect()->route('badges.index');

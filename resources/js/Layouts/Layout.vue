@@ -8,10 +8,10 @@ const page = usePage().props;
 </script>
 
 <template>
-    <div class="sm:bg-gray-100">
-        <div class="min-h-screen w-full mx-auto bg-white flex flex-col">
+    <div class="bg-gray-100">
+        <div class="min-h-screen w-full mx-auto  flex flex-col">
             <!--- Logo -->
-            <div class="bg-primary-500 pl-4 drop-shadow">
+            <div class="bg-primary-500 relative z-10 pl-4 drop-shadow">
                 <div class="text-white max-w-screen-lg mx-auto flex gap-3">
                     <Link as="div" :href="route('welcome')" class="cursor-pointer relative h-16 flex gap-3">
                         <img src="../../assets/ef.svg"
@@ -39,7 +39,7 @@ const page = usePage().props;
                 </div>
             </div>
             <!-- End of Logo -->
-            <div class="pb-4 max-w-screen-lg w-full mx-auto flex-1">
+            <div class="pb-4 flex-1">
                 <slot></slot>
             </div>
             <!-- Footer -->

@@ -21,9 +21,9 @@ class Event extends Model
         return [
             'starts_at' => 'date',
             'ends_at' => 'date',
-            'preorder_starts_at' => 'datetime',
-            'preorder_ends_at' => 'datetime',
+            'order_starts_at' => 'datetime',
             'order_ends_at' => 'datetime',
+            'mass_printed_at' => 'datetime',
         ];
     }
 
@@ -35,20 +35,37 @@ class Event extends Model
     public function state(): Attribute
     {
         return new Attribute(get: function ($value) {
-            // If Preorder is in the future, then countdown
-            if ($this->preorder_starts_at > now()) {
-                return EventStateEnum::COUNTDOWN;
+            // If event end date has passed, then closed
+            if ($this->ends_at < now()) {
+                return EventStateEnum::CLOSED;
             }
-            // If Date is between Preorder dates, then preorder
-            if ($this->preorder_starts_at < now() && $this->preorder_ends_at > now()) {
-                return EventStateEnum::PREORDER;
+            // If event hasn't started yet, then closed
+            if ($this->starts_at > now()) {
+                return EventStateEnum::CLOSED;
             }
-            // If Date is between Preorder and Order dates, then late
-            if ($this->preorder_ends_at < now() && $this->order_ends_at > now()) {
-                return EventStateEnum::LATE;
+            // If orders haven't started yet, then closed
+            if ($this->order_starts_at && $this->order_starts_at > now()) {
+                return EventStateEnum::CLOSED;
             }
-            // If Date is after Order date, then closed
-            return EventStateEnum::CLOSED;
+            // If order period has ended, then closed
+            if ($this->order_ends_at && $this->order_ends_at < now()) {
+                return EventStateEnum::CLOSED;
+            }
+            // Event is active and orders are allowed, so it's open
+            return EventStateEnum::OPEN;
         });
+    }
+
+    public function allowsOrders(): bool
+    {
+        return $this->state === EventStateEnum::OPEN;
+    }
+
+    public function isInOrderWindow(): bool
+    {
+        $now = now();
+        $orderStarted = !$this->order_starts_at || $this->order_starts_at <= $now;
+        $orderNotEnded = !$this->order_ends_at || $this->order_ends_at > $now;
+        return $orderStarted && $orderNotEnded;
     }
 }
