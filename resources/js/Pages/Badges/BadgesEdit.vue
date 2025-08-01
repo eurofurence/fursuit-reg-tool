@@ -118,7 +118,7 @@ function openImageModal() {
         </div>
     </Dialog>
     <!-- Fursuit Creator -->
-    <div class="pt-8 px-6 xl:px-0">
+    <div class="pt-8 px-6 xl:px-0 max-w-screen-lg mx-auto">
         <div class="mb-8 lg:flex justify-between">
             <div>
                 <h1 class="text-xl sm:text-2xl md:text-3xl font-semibold font-main">Eurofurence Fursuit Badge Creator</h1>

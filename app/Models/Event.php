@@ -29,7 +29,10 @@ class Event extends Model
 
     public static function getActiveEvent(): Event|null
     {
-        return self::where('ends_at', '>', now())->orderBy('starts_at')->first();
+        return self::where('ends_at', '>', now())
+                   ->where('starts_at', '<=', now())
+                   ->orderBy('starts_at')
+                   ->first();
     }
 
     public function state(): Attribute

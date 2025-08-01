@@ -1,0 +1,12 @@
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	Loaded configuration from .env file
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	Warning: Config file not found at /home/martin/projects/fursuit-reg-tool/config.json, using environment variables
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	Using database configuration from: /home/martin/projects/fursuit-reg-tool/config.json
+2025-07-31T20:44:19.757+0200	[33mWARN[0m	Warning: Failed to initialize database: no database configuration provided
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	No database connections detected
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	Found 0 database connections for tool registration: []
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	No databases available, registering mock tools
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	Registering mock tools
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	Finished registering tools
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	No database connections available. Adding mock tools...
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	Registering mock tools
+2025-07-31T20:44:19.757+0200	[34mINFO[0m	Created default session: default-session
