@@ -179,10 +179,14 @@ const shouldShowRegMessage = computed(() => {
                     <!-- Closed State -->
                     <div v-else class="text-center space-y-6">
                         <p class="text-2xl mb-6 opacity-90">Badge orders are currently closed</p>
-                        <Link v-if="user.badges?.length > 0" :href="route('badges.index')" class="w-full">
-                        <Button icon="pi pi-list" class="flex-1 font-semibold text-xl" size="large"
-                            label="View My Badges" />
-                        </Link>
+                        <Button
+                            v-if="user.badges?.length > 0"
+                            @click="router.visit(route('badges.index'))"
+                            icon="pi pi-list"
+                            class="flex-1 bg-white/90 text-gray-800 border-2 border-white hover:bg-white font-semibold text-xl py-4 shadow-lg"
+                            size="large"
+                            label="View My Badges"
+                        />
                     </div>
                 </div>
 
