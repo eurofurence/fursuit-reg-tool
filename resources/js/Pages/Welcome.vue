@@ -135,7 +135,7 @@ const shouldShowRegMessage = computed(() => {
     </Head>
 
     <!-- Hero Section -->
-    <div class="relative z-0">
+    <div class="relative z-0 mb-8">
         <div class="bannerImage flex flex-col items-center justify-center px-6 py-32 text-white text-center">
             <div class="flex flex-col">
                     <h1 class="font-main text-4xl md:text-6xl font-bold drop-shadow-xl mb-4">
@@ -145,7 +145,6 @@ const shouldShowRegMessage = computed(() => {
                     Get your personalized badge for your character!
                 </p>
 
-                
                 <!-- Action Buttons -->
                 <div v-if="user" class="w-full max-w-2xl mx-auto">
                     <div v-if="orderStatus.status === 'open'" class="space-y-6">
@@ -200,14 +199,17 @@ const shouldShowRegMessage = computed(() => {
                     <!-- Closed State -->
                     <div v-else class="text-center space-y-6">
                         <p class="text-2xl mb-6 opacity-90">Badge orders are currently closed</p>
-                        <Button 
+                        <Link 
                             v-if="user.badges?.length > 0"
-                            @click="router.visit(route('badges.index'))" 
-                            icon="pi pi-list" 
-                            class="flex-1 bg-white/90 text-gray-800 border-2 border-white hover:bg-white font-semibold text-xl py-4 shadow-lg"
-                            size="large"
-                            label="View My Badges"
-                        />
+                            :href="route('badges.index')"
+                            class="w-full">
+                            <Button 
+                                icon="pi pi-list" 
+                                class="flex-1 font-semibold text-xl"
+                                size="large"
+                                label="View My Badges"
+                            />
+                        </Link>
                     </div>
                 </div>
                 

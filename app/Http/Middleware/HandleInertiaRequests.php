@@ -38,7 +38,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn() => $request->session()->get('error'),
             ],
             // Get event that did not end yet and is the next one
-            'event' => \App\Models\Event::where('ends_at', '>', now())->orderBy('starts_at')->first(),
+            'event' => \App\Models\Event::latest('starts_at')->first(),
         ];
     }
 

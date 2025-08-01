@@ -18,7 +18,7 @@ const props = defineProps({
 
 <template>
     <Head title="Manage your Fursuit Badges"/>
-    <div class="pt-8 px-6 xl:px-0">
+    <div class="pt-8 px-6 xl:px-0 max-w-screen-lg mx-auto">
         <div class="mb-8">
             <h1 class="text-xl sm:text-2xl md:text-3xl font-semibold font-main">Your Fursuit Badges</h1>
             <p>

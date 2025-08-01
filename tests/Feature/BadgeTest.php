@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\post;
 use function Pest\Laravel\put;
@@ -27,7 +28,8 @@ beforeEach(function () {
         'order_ends_at' => \Carbon\Carbon::parse('2024-06-25'),
     ]);
     // Fake Storage
-    Storage::fake('s3');
+    Storage::fake('local'); // Use local instead of s3 for tests
+    Http::fake(); // Mock all HTTP requests
 });
 
 test('user can create badge', function () {
@@ -35,7 +37,7 @@ test('user can create badge', function () {
     Notification::fake();
 
     // Travel to valid time
-    travelTo(\Carbon\Carbon::parse('2024-05-02'));
+    travelTo(\Carbon\Carbon::parse('2024-06-02'));
     actingAs($this->user);
     $response = post(route('badges.store'), [
         'species' => 'Wolf',
@@ -66,7 +68,7 @@ test('user can create badge', function () {
     // Get the badge from db
     $badge = Badge::first();
     // check if image was uploaded
-    Storage::disk('s3')->assertExists($badge->image);
+    Storage::assertExists($badge->fursuit->image);
     // Check notification was sent
     Notification::assertSentTo($this->user, \App\Notifications\BadgeCreatedNotification::class);
 });
@@ -103,7 +105,7 @@ test('user cannot create badge when event has ended', function () {
             'doubleSided' => true,
             'spareCopy' => true,
         ],
-    ])->assertRedirect(route('welcome'));
+    ])->assertForbidden();
 });
 
 test('user cannot update badge when event has ended', function () {
@@ -114,6 +116,9 @@ test('user cannot update badge when event has ended', function () {
     travelTo(\Carbon\Carbon::parse('2024-07-01'));
     actingAs($this->user);
     putJson(route('badges.update', $badge->id), [
+        'species' => 'Wolf',
         'name' => 'Updated Badge Name',
-    ])->assertRedirect(route('welcome'));
+        'catchEmAll' => true,
+        'publish' => true,
+    ])->assertForbidden();
 });

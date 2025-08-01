@@ -5,6 +5,7 @@ use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 use PhpParser\Node\Expr\AssignOp\Coalesce;
 
 return new class extends Migration {
@@ -21,12 +22,15 @@ return new class extends Migration {
             $table->timestamp('score_reached_at')->nullable();
         });
 
-        DB::statement(
-            'ALTER TABLE user_catch_rankings
-                    ADD CONSTRAINT user_xor_fursuit_exist
-                    CHECK ((user_id IS NOT NULL OR fursuit_id IS NOT NULL)
-                               AND NOT (user_id IS NOT NULL AND fursuit_id IS NOT NULL));'
-        );
+        // Only add constraint for databases that support it (MySQL/PostgreSQL)
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement(
+                'ALTER TABLE user_catch_rankings
+                        ADD CONSTRAINT user_xor_fursuit_exist
+                        CHECK ((user_id IS NOT NULL OR fursuit_id IS NOT NULL)
+                                   AND NOT (user_id IS NOT NULL AND fursuit_id IS NOT NULL));'
+            );
+        }
     }
 
     public function down(): void
