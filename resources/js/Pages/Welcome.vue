@@ -214,6 +214,10 @@ const shouldShowRegMessage = computed(() => {
                             Don't forget to customize it before the convention starts!
                         </p>
                     </div>
+                    <div class="flex-shrink-0 ml-4">
+                        <Button @click="router.visit(route('badges.create'))" icon="pi pi-edit"
+                            class="bg-white text-red-600 hover:bg-red-50 font-bold shadow-md" label="Customize Now" />
+                    </div>
                 </div>
             </div>
 
