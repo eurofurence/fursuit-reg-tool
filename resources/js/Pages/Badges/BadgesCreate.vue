@@ -1,12 +1,12 @@
 <script setup>
 import Layout from "@/Layouts/Layout.vue";
-import {Head, usePage} from '@inertiajs/vue3'
+import { Head, usePage } from '@inertiajs/vue3'
 import InputText from "primevue/inputtext";
 import Dropdown from "primevue/dropdown";
 import Dialog from 'primevue/dialog';
-import {useForm} from 'laravel-precognition-vue-inertia'
+import { useForm } from 'laravel-precognition-vue-inertia'
 import InputSwitch from 'primevue/inputswitch';
-import {computed, reactive, ref} from "vue";
+import { computed, reactive, ref } from "vue";
 import Button from 'primevue/button';
 import ImageUpload from "@/Components/BadgeCreator/ImageUpload.vue";
 import Panel from 'primevue/panel';
@@ -84,12 +84,14 @@ const total = computed(() => {
 </script>
 
 <template>
-    <Head title="Order your Fursuit Badge"/>
+
+    <Head title="Order your Fursuit Badge" />
     <Dialog ke v-model:visible="imageModalOpen" :dismissableMask="false" modal header="Upload Fursuit Picture"
-            :style="{ width: '25rem' }">
-        <span
-            class="text-surface-600 dark:text-surface-0/70 block mb-5">Please upload a picture, you can crop the image after you uploaded it.</span>
-        <ImageUpload @update-image="imageUpdatedEvent" @update-source="args => imageSource = args" :image-source="imageSource"></ImageUpload>
+        :style="{ width: '25rem' }">
+        <span class="text-surface-600 dark:text-surface-0/70 block mb-5">Please upload a picture, you can crop the image
+            after you uploaded it.</span>
+        <ImageUpload @update-image="imageUpdatedEvent" @update-source="args => imageSource = args"
+            :image-source="imageSource"></ImageUpload>
     </Dialog>
     <!-- Fursuit Creator -->
     <div class="pt-8 px-6 xl:px-0 max-w-screen-lg mx-auto">
@@ -97,10 +99,7 @@ const total = computed(() => {
             <h1 class="text-xl sm:text-2xl md:text-3xl font-semibold font-main">Eurofurence Fursuit Badge Creator</h1>
             <p>Welcome to our badge configurator, please enter all the details and options you would like!</p>
         </div>
-        <Message
-            v-if="new Date(usePage().props.event.mass_printed_at) < new Date()"
-            severity="info"
-            :closable="false">
+        <Message v-if="new Date(usePage().props.event.mass_printed_at) < new Date()" severity="info" :closable="false">
             {{ "Late badge orders can be picked up starting from the 2nd convention day." }}
         </Message>
         <!-- Group 1 -- Fursuit Details -->
@@ -115,18 +114,18 @@ const total = computed(() => {
                     <div class="w-48 mx-auto shrink-0">
                         <div class="block md:flex gap-6 justify-center mb-1">
                             <div v-if="!previewImage" @click="imageModalOpen = true"
-                                 class="bg-primary-600 h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 flex items-center justify-center cursor-pointer">
+                                class="bg-primary-600 h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 flex items-center justify-center cursor-pointer">
                                 <div class="text-primary-100 text-center text-sm px-4">
                                     Click/Tap here to upload a photo of your fursuit
                                 </div>
                             </div>
                             <div v-else class="relative">
                                 <div @click="imageModalOpen = true"
-                                     class="absolute top-0 right-0 h-64 w-48 z-50 rounded-lg duration-200 hover:bg-gray-900/50 text-center opacity-0 hover:opacity-100 flex flex-col justify-end items-center cursor-pointer">
+                                    class="absolute top-0 right-0 h-64 w-48 z-50 rounded-lg duration-200 hover:bg-gray-900/50 text-center opacity-0 hover:opacity-100 flex flex-col justify-end items-center cursor-pointer">
                                     <div class="text-white mb-2">Edit Image</div>
                                 </div>
                                 <img :src="previewImage" alt=""
-                                     class="h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 block z-25">
+                                    class="h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 block z-25">
                             </div>
                         </div>
                         <div class="text-center text-xs text-gray-500">
@@ -142,7 +141,7 @@ const total = computed(() => {
                         <div>
                             <div class="flex flex-col gap-2">
                                 <label for="name">Fursuit Name</label>
-                                <InputText class="w-full" id="name" v-model="form.name" aria-describedby="name-help"/>
+                                <InputText class="w-full" id="name" v-model="form.name" aria-describedby="name-help" />
                                 <InputError :error="form.errors.name"></InputError>
                                 <small id="name-help">Enter the name of the fursuit.</small>
                             </div>
@@ -153,14 +152,13 @@ const total = computed(() => {
                             <div class="flex flex-col gap-2">
                                 <label for="species">Fursuit Species</label>
                                 <Dropdown v-model="form.species" id="species" aria-describedby="species-help" editable
-                                          :options="species" optionLabel="name" optionValue="name"
-                                          placeholder="Select a Species"
-                                          class="w-full"/>
+                                    :options="species" optionLabel="name" optionValue="name"
+                                    placeholder="Select a Species" class="w-full" />
                                 <InputError :error="form.errors.species"></InputError>
-                                <small
-                                    id="species-help">Enter the species of the fursuit. You may select one of the existing ones or create a
-                                    <span
-                                        v-tooltip.bottom="'Woof, Woof! You found an Easteregg.'">mew</span> Species!</small>
+                                <small id="species-help">Enter the species of the fursuit. You may select one of the
+                                    existing ones or create a
+                                    <span v-tooltip.bottom="'Woof, Woof! You found an Easteregg.'">mew</span>
+                                    Species!</small>
                             </div>
                         </div>
                         <!-- End Species -->
@@ -174,11 +172,11 @@ const total = computed(() => {
                 <div>
                     <div>
                         <div class="flex flex-row gap-2">
-                            <InputSwitch v-model="form.catchEmAll" id="catchEmAll" aria-describedby="catchEmAll-help"/>
+                            <InputSwitch v-model="form.catchEmAll" id="catchEmAll" aria-describedby="catchEmAll-help" />
                             <label for="catchEmAll">Participate in the Catch-Em-All Game</label>
                         </div>
-                        <small
-                            id="catchEmAll-help">Participate in the Catch-Em-All game to be catchable by other attendees.</small>
+                        <small id="catchEmAll-help">Participate in the Catch-Em-All game to be catchable by other
+                            attendees.</small>
                     </div>
                 </div>
                 <!-- Catch Em All -->
@@ -186,18 +184,18 @@ const total = computed(() => {
                 <div>
                     <div>
                         <div class="flex flex-row gap-2">
-                            <InputSwitch v-model="form.publish" id="publish" aria-describedby="publish-help"/>
+                            <InputSwitch v-model="form.publish" id="publish" aria-describedby="publish-help" />
                             <label for="publish">Publish to Gallery</label>
                         </div>
-                        <small
-                            id="publish-help">Save your Fursuit Data and Publish your badge information in our Fursuiter gallery.</small>
+                        <small id="publish-help">Save your Fursuit Data and Publish your badge information in our
+                            Fursuiter gallery.</small>
                     </div>
                 </div>
                 <!-- End Publish -->
             </div>
             <!-- End Group 2 -->
             <!-- Paid Extras -->
-            <div>
+            <div :hidden="props.isFree">
                 <div class="">
                     <div class="mb-8 ">
                         <h2 class="text-lg font-semibold">Upgrades</h2>
@@ -208,14 +206,14 @@ const total = computed(() => {
                             <div class="flex gap-3">
                                 <div class="flex flex-row gap-2 mt-3">
                                     <InputSwitch v-model="form.upgrades.spareCopy" id="extra2"
-                                                 aria-describedby="extra2-help" :disabled="props.isFree"/>
+                                        aria-describedby="extra2-help" :disabled="props.isFree" />
                                 </div>
                                 <div>
                                     <label class="font-semibold block" for="extra2">Spare Copy
                                         <Tag value="+2,00 €"></Tag>
                                     </label>
-                                    <small
-                                        id="extra2-help">Get a spare copy of your badge. This is useful if you want to have a backup or if you want to give it to a friend.</small>
+                                    <small id="extra2-help">Get a spare copy of your badge. This is useful if you want
+                                        to have a backup or if you want to give it to a friend.</small>
                                 </div>
                             </div>
                         </div>
@@ -235,10 +233,11 @@ const total = computed(() => {
                         <!-- tOS Checkbox -->
                         <div class="flex items-center gap-2 mx-auto">
                             <div>
-                                <InputSwitch v-model="form.tos" id="tos" aria-describedby="tos-help"/>
+                                <InputSwitch v-model="form.tos" id="tos" aria-describedby="tos-help" />
                             </div>
-                            <label :class="{'text-red-500 font-bold': form.errors.tos}"
-                                   for="tos">I confirm that the Information that I have supplied is correct.</label>
+                            <label :class="{ 'text-red-500 font-bold': form.errors.tos }" for="tos">I confirm that the
+                                Information that I
+                                have supplied is correct.</label>
                         </div>
                         <InputError class="mx-auto" :error="form.errors.tos"></InputError>
                     </div>
@@ -251,8 +250,7 @@ const total = computed(() => {
                                 <span>{{ basePrice }},00 €</span>
                             </div>
                             <!-- Options -->
-                            <div v-if="latePrice > 0"
-                                 class="border-b border-dotted border-gray-900">
+                            <div v-if="latePrice > 0" class="border-b border-dotted border-gray-900">
                                 <div class="flex justify-between ">
                                     <span>Late Fee</span>
                                     <span>{{ latePrice }},00 €</span>
@@ -261,18 +259,19 @@ const total = computed(() => {
                             </div>
                             <div v-if="form.upgrades.spareCopy"
                                 class="flex justify-between mb-4 border-b border-dotted border-gray-900">
-                                <span>Spare Copy{{ props.freeBadgeCopies > 1 ? " x" + props.freeBadgeCopies : "" }}</span>
+                                <span>Spare Copy{{ props.freeBadgeCopies > 1 ? " x" + props.freeBadgeCopies : ""
+                                    }}</span>
                                 <span>{{ copiesPrice }},00 €</span>
                             </div>
                             <!-- End Options -->
                             <div class="flex justify-between text-2xl border-b border-double border-gray-900">
-                                <span>Total</span>
+                                <span class="flex gap-2 items-end">Total <p class="text-gray-500 whitespace-nowrap text-sm">{{ props.isFree ? '(already paid)' : '' }}</p></span>
                                 <span>{{ total }},00 €</span>
                             </div>
                         </div>
                         <!-- Confirm Button -->
                         <Button label="Confirm Badge Order" icon="pi pi-check" @click="submit()"
-                                :loading="form.processing" class="w-full"/>
+                            :loading="form.processing" class="w-full" />
                     </div>
                 </div>
             </Panel>

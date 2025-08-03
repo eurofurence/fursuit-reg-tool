@@ -138,7 +138,7 @@ const shouldShowRegMessage = computed(() => {
     <div class="relative z-0 mb-8">
         <div class="bannerImage flex flex-col items-center justify-center px-6 py-32 text-white text-center">
             <div class="flex flex-col">
-                    <h1 class="font-main text-4xl md:text-6xl font-bold drop-shadow-xl mb-4">
+                <h1 class="font-main text-4xl md:text-6xl font-bold drop-shadow-xl mb-4">
                     Eurofurence Fursuit Badge
                 </h1>
                 <p class="text-2xl drop-shadow-lg max-w-3xl mx-auto leading-relaxed">
@@ -151,42 +151,22 @@ const shouldShowRegMessage = computed(() => {
                         <!-- Action Buttons - Max 2 buttons side by side -->
                         <div class="flex flex-row gap-3 mt-6">
                             <!-- Primary Action Button -->
-                            <Button 
-                                @click="router.visit(route('badges.create'))" 
-                                icon="pi pi-id-card"
+                            <Button @click="router.visit(route('badges.create'))" icon="pi pi-id-card"
                                 class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white"
-                                fluid
-                                size="large"
-                                :label="userBadgeStatus?.action || 'Create Your Badge'"
-                            />
-                            
+                                fluid size="large" :label="userBadgeStatus?.action || 'Create Your Badge'" />
+
                             <!-- Secondary Action Button -->
-                            <Button 
-                                v-if="user.badges?.length > 0"
-                                @click="router.visit(route('badges.index'))" 
-                                icon="pi pi-list" 
-                                class="flex-1 font-semibold"
-                                size="large"
-                                fluid
-                                label="Manage Badges"
-                            />
-                            <a 
-                                v-else-if="shouldShowRegMessage"
-                                href="https://reglive.eurofurence.org/20250105-1445-r4v1/app/register"
-                                target="_blank"
-                                rel="noopener"
-                                class="flex-1 font-semibold"
-                            >
-                                <Button 
-                                    icon="pi pi-external-link"
-                                    size="large"
-                                    class="w-full"
-                                    fluid
-                                    label="Order More"
-                                />
+                            <Button v-if="user.badges?.length > 0" @click="router.visit(route('badges.index'))"
+                                icon="pi pi-list" class="flex-1 font-semibold" size="large" fluid
+                                label="Manage Badges" />
+                            <a v-else-if="shouldShowRegMessage"
+                                href="https://reglive.eurofurence.org/20250105-1445-r4v1/app/register" target="_blank"
+                                rel="noopener" class="flex-1 font-semibold">
+                                <Button icon="pi pi-external-link" size="large" class="w-full" fluid
+                                    label="Order More" />
                             </a>
                         </div>
-                        
+
                         <!-- Status Info -->
                         <div v-if="user.badges?.length > 0" class="flex justify-center mt-6">
                             <div class="bg-green-500/90 backdrop-blur-sm rounded-lg px-6 py-2 text-white shadow-lg">
@@ -195,33 +175,23 @@ const shouldShowRegMessage = computed(() => {
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Closed State -->
                     <div v-else class="text-center space-y-6">
                         <p class="text-2xl mb-6 opacity-90">Badge orders are currently closed</p>
-                        <Link 
-                            v-if="user.badges?.length > 0"
-                            :href="route('badges.index')"
-                            class="w-full">
-                            <Button 
-                                icon="pi pi-list" 
-                                class="flex-1 font-semibold text-xl"
-                                size="large"
-                                label="View My Badges"
-                            />
+                        <Link v-if="user.badges?.length > 0" :href="route('badges.index')" class="w-full">
+                        <Button icon="pi pi-list" class="flex-1 font-semibold text-xl" size="large"
+                            label="View My Badges" />
                         </Link>
                     </div>
                 </div>
-                
+
                 <!-- Login Button -->
                 <div v-else class="w-full max-w-xl mx-auto">
                     <Link method="POST" :href="route('auth.login.redirect')" class="w-full">
-                        <Button 
-                            icon="pi pi-sign-in" 
-                            class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white text-2xl py-4 px-8 font-bold shadow-2xl transform hover:scale-105 transition-all duration-200"
-                            size="large"
-                            label="Login with Eurofurence Identity"
-                        />
+                    <Button icon="pi pi-sign-in"
+                        class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white text-2xl py-4 px-8 font-bold shadow-2xl transform hover:scale-105 transition-all duration-200"
+                        size="large" label="Login with Eurofurence Identity" />
                     </Link>
                 </div>
             </div>
@@ -230,6 +200,23 @@ const shouldShowRegMessage = computed(() => {
 
     <div>
         <div class="px-6 xl:px-0 max-w-6xl mx-auto pt-3">
+            <!-- Free Badge Customization Warning -->
+            <div v-if="user && userBadgeStatus?.type === 'unclaimed'"
+                class="mb-6 bg-red-600 border-l-4 border-red-800 text-white p-6 rounded-lg shadow-lg">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="pi pi-exclamation-triangle text-2xl mr-4"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-bold mb-2">⚠️ Important: Customize Your Badge Now!</h3>
+                        <p class="text-red-100 mb-3">
+                            You have a badge waiting to be personalized.
+                            Don't forget to customize it before the convention starts!
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Flash Messages -->
             <Message v-if="usePage().props.flash.message" severity="error" :closable="true" class="mb-6">
                 {{ usePage().props.flash.message }}
@@ -270,7 +257,8 @@ const shouldShowRegMessage = computed(() => {
                                     <div class="space-y-3">
                                         <div class="flex items-start gap-3">
                                             <div class="w-16 flex-shrink-0">
-                                                <Chip label="FREE" class="bg-green-100 text-green-800 w-full justify-center" />
+                                                <Chip label="FREE"
+                                                    class="bg-green-100 text-green-800 w-full justify-center" />
                                             </div>
                                             <div class="flex-1">
                                                 <strong>First Badge</strong>
@@ -279,7 +267,8 @@ const shouldShowRegMessage = computed(() => {
                                         </div>
                                         <div class="flex items-start gap-3">
                                             <div class="w-16 flex-shrink-0">
-                                                <Chip label="2€" class="bg-blue-100 text-blue-800 w-full justify-center" />
+                                                <Chip label="2€"
+                                                    class="bg-blue-100 text-blue-800 w-full justify-center" />
                                             </div>
                                             <div class="flex-1">
                                                 <strong>Additional Badges</strong>
@@ -298,11 +287,13 @@ const shouldShowRegMessage = computed(() => {
                                     <div class="space-y-3">
                                         <div class="flex items-start gap-3">
                                             <div class="w-16 flex-shrink-0">
-                                                <Chip label="2€" class="bg-orange-100 text-orange-800 w-full justify-center" />
+                                                <Chip label="2€"
+                                                    class="bg-orange-100 text-orange-800 w-full justify-center" />
                                             </div>
                                             <div class="flex-1">
                                                 <strong>All Badges</strong>
-                                                <p class="text-sm text-gray-600">All badges cost 2€ each, including first badge</p>
+                                                <p class="text-sm text-gray-600">All badges cost 2€ each, including
+                                                    first badge</p>
                                             </div>
                                         </div>
                                         <div class="bg-orange-100 rounded-md p-3">
