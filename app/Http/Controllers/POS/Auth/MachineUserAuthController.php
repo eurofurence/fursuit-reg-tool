@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\POS\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\UserLoginRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 
 class MachineUserAuthController extends Controller
@@ -23,16 +21,17 @@ class MachineUserAuthController extends Controller
     {
         $salt = bin2hex(random_bytes(32));
         session(['user_login_salt' => $salt]);
+
         return Inertia::render('POS/Auth/EnterPinCode', [
             'salt' => $salt,
-            'user' => $user->only(['id', 'name'])
+            'user' => $user->only(['id', 'name']),
         ]);
     }
 
     public function submitLogin(User $user, Request $request)
     {
         // check if user is cashier
-        if (!$user->is_cashier) {
+        if (! $user->is_cashier) {
             return redirect()->back()->withErrors(['code' => 'User is not a cashier']);
         }
 
@@ -42,7 +41,7 @@ class MachineUserAuthController extends Controller
 
         // Load salt
         $salt = session('user_login_salt');
-        if (!hash_equals(hash('sha256', $user->pin_code.$salt), $data['code'])) {
+        if (! hash_equals(hash('sha256', $user->pin_code.$salt), $data['code'])) {
             return redirect()->back()->withErrors(['code' => 'Invalid code']);
         }
 
@@ -59,6 +58,7 @@ class MachineUserAuthController extends Controller
     public function logout()
     {
         Auth::guard('machine-user')->logout();
+
         return redirect()->route('pos.auth.user.select');
     }
 }

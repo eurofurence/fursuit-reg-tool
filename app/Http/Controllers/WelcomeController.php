@@ -11,6 +11,7 @@ class WelcomeController extends Controller
         // States => closed, coutdown, preorder, late => closed
         // Get next event by ends_at
         $event = \App\Models\Event::getActiveEvent();
+
         return Inertia::render('Welcome', [
             'showState' => $event?->state ?? \App\Enum\EventStateEnum::CLOSED->value,
         ]);

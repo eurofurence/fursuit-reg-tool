@@ -16,9 +16,7 @@ class CreateReceiptFromCheckoutJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(private readonly Checkout $checkout)
-    {
-    }
+    public function __construct(private readonly Checkout $checkout) {}
 
     public function handle(): void
     {
@@ -34,10 +32,10 @@ class CreateReceiptFromCheckoutJob implements ShouldQueue
         $base64_qr_encoded = QrCode::png($qrcodeData, $options);
         $receiptHtml = view('receipts.sale', ['checkout' => $checkout, 'qr' => $base64_qr_encoded])->render();
 
-        $defaultConfig = (new ConfigVariables())->getDefaults();
+        $defaultConfig = (new ConfigVariables)->getDefaults();
         $fontDirs = $defaultConfig['fontDir'];
 
-        $defaultFontConfig = (new FontVariables())->getDefaults();
+        $defaultFontConfig = (new FontVariables)->getDefaults();
         $fontData = $defaultFontConfig['fontdata'];
 
         $mpdf = new \Mpdf\Mpdf([
@@ -52,14 +50,14 @@ class CreateReceiptFromCheckoutJob implements ShouldQueue
                 resource_path('assets/fonts'),
             ]),
             'fontdata' => $fontData + [ // lowercase letters only in font key
-                    'fragmentmono' => [
-                        'R' => 'FragmentMono-Regular.ttf',
-                    ]
+                'fragmentmono' => [
+                    'R' => 'FragmentMono-Regular.ttf',
                 ],
-            'default_font' => 'fragmentmono'
+            ],
+            'default_font' => 'fragmentmono',
         ]);
         $mpdf->WriteHTML($receiptHtml);
 
-        \Storage::put('checkouts/' . $this->checkout->id . '.pdf', $mpdf->Output($this->checkout->id . '.pdf', \Mpdf\Output\Destination::STRING_RETURN));
+        \Storage::put('checkouts/'.$this->checkout->id.'.pdf', $mpdf->Output($this->checkout->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN));
     }
 }

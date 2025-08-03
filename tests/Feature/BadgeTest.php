@@ -1,15 +1,16 @@
 <?php
 
 use App\Models\Badge\Badge;
+use App\Models\EventUser;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Http;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\post;
-use function Pest\Laravel\put;
 use function Pest\Laravel\putJson;
 use function Pest\Laravel\travelTo;
 
@@ -17,15 +18,20 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->user->update([
-        'has_free_badge' => false,
-        'free_badge_copies' => 0,
-    ]);
-    $event = \App\Models\Event::factory()->create([
+    $this->event = \App\Models\Event::factory()->create([
         'starts_at' => \Carbon\Carbon::parse('2024-06-01'),
         'ends_at' => \Carbon\Carbon::parse('2024-06-30'),
         'order_starts_at' => \Carbon\Carbon::parse('2024-06-01'),
         'order_ends_at' => \Carbon\Carbon::parse('2024-06-25'),
+    ]);
+
+    // Create EventUser relationship with no prepaid badges
+    EventUser::create([
+        'user_id' => $this->user->id,
+        'event_id' => $this->event->id,
+        'attendee_id' => '12345',
+        'valid_registration' => true,
+        'prepaid_badges' => 0,
     ]);
     // Fake Storage
     Storage::fake('local'); // Use local instead of s3 for tests

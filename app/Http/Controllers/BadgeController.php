@@ -22,16 +22,55 @@ class BadgeController extends Controller
 {
     public function index(Request $request)
     {
+        $activeEvent = Event::getActiveEvent();
+        $user = $request->user();
+
+        // Current event badges
+        $badges = $user->badges()
+            ->whereHas('fursuit.event', function ($query) use ($activeEvent) {
+                $query->where('id', $activeEvent?->id);
+            })
+            ->with(['fursuit.species', 'fursuit.event'])
+            ->get();
+
+        // Add edit permissions for each badge
+        $badges->each(function ($badge) {
+            $badge->canEdit = Gate::allows('update', $badge);
+        });
+
+        // Previous years badges that are not picked up yet
+        $unpickedBadges = $user->badges()
+            ->whereHas('fursuit.event', function ($query) use ($activeEvent) {
+                if ($activeEvent) {
+                    $query->where('id', '!=', $activeEvent->id);
+                }
+            })
+            ->whereIn('status_fulfillment', ['printed', 'ready_for_pickup'])
+            ->with(['fursuit.species', 'fursuit.event'])
+            ->get();
+
         return Inertia::render('Badges/BadgesIndex', [
-            'badges' => $request->user()->badges()
-                ->with('fursuit.species')->get(),
+            'badges' => $badges,
+            'badgeCount' => $badges->count(),
+            'unpickedBadges' => $unpickedBadges,
             'canCreate' => Gate::allows('create', Badge::class),
+            'hasFreeBadge' => $user->hasFreeBadge(),
+            'freeBadgeCopies' => $user->free_badge_copies,
+            'event' => $activeEvent ? [
+                'id' => $activeEvent->id,
+                'name' => $activeEvent->name,
+                'state' => $activeEvent->state,
+                'allowsOrders' => $activeEvent->allowsOrders(),
+                'orderStartsAt' => $activeEvent->order_starts_at,
+                'orderEndsAt' => $activeEvent->order_ends_at,
+            ] : null,
         ]);
     }
 
     public function create(Request $request)
     {
         Gate::authorize('create', Badge::class);
+
         return Inertia::render('Badges/BadgesCreate', [
             'species' => Species::has('fursuits', count: 5)->orWhere('checked', true)->get('name'),
             'isFree' => auth()->user()->hasFreeBadge(),
@@ -82,7 +121,7 @@ class BadgeController extends Controller
             );
 
             // Tax is 19% in Germany
-            $subtotal = round($total / 1.19, );
+            $subtotal = round($total / 1.19);
             $tax = round($total - $subtotal);
 
             $badge = $fursuit->badges()->create([
@@ -101,8 +140,11 @@ class BadgeController extends Controller
             $request->user()->forcePay($badge);
 
             if ($isFreeBadge) {
+                $eventUser = $request->user()->eventUser($event->id);
+                $freeBadgeCopies = $eventUser ? $eventUser->free_badge_copies : 0;
+
                 $total = BadgeCalculationService::calculate(isSpareCopy: true);
-                for ($i = 0; $i < $request->user()->free_badge_copies; $i++) {
+                for ($i = 0; $i < $freeBadgeCopies; $i++) {
                     $clone = $badge->replicate();
                     $clone->is_free_badge = false;
                     $clone->extra_copy = true;
@@ -113,15 +155,17 @@ class BadgeController extends Controller
                     $clone->save();
                     $request->user()->forcePay($clone->fresh());
                 }
-                $request->user()->wallet->deposit($total * $request->user()->free_badge_copies, ['title' => 'Fuirsuit Badge', 'description' => 'Already paid with the EF registration system']);
-                $request->user()->free_badge_copies = 0;
-                $request->user()->has_free_badge = false;
-                $request->user()->save();
+                $request->user()->wallet->deposit($total * $freeBadgeCopies, ['title' => 'Fuirsuit Badge', 'description' => 'Already paid with the EF registration system']);
+
+                // Update EventUser to mark badges as used
+                if ($eventUser) {
+                    $eventUser->update(['prepaid_badges' => 0]);
+                }
 
                 // Mark fursuitbadge as created
                 \Illuminate\Support\Facades\Http::attsrv()
                     ->withToken($request->user()->token)
-                    ->post('/attendees/' . $request->user()->attendee_id . '/additional-info/fursuitbadge', [
+                    ->post('/attendees/'.$eventUser->attendee_id.'/additional-info/fursuitbadge', [
                         'created' => true,
                     ]);
 
@@ -152,6 +196,7 @@ class BadgeController extends Controller
     public function edit(Badge $badge, Request $request)
     {
         Gate::authorize('update', $badge);
+
         return Inertia::render('Badges/BadgesEdit', [
             'canEdit' => $request->user()->can('update', $badge),
             'canDelete' => $request->user()->can('delete', $badge),
@@ -222,8 +267,10 @@ class BadgeController extends Controller
                     // or when there are wallet/payment issues
                 }
             }
+
             return $badge;
         });
+
         return redirect()->route('badges.index');
     }
 
@@ -261,6 +308,7 @@ class BadgeController extends Controller
         if ($request->user()->badges()->count() === 0) {
             return redirect()->route('welcome');
         }
+
         return redirect()->route('badges.index');
     }
 }

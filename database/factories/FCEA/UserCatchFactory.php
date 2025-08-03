@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Database\Factories\FCEA;
 
 use App\Models\Event;

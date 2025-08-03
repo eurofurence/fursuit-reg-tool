@@ -21,6 +21,7 @@ class BadgePolicy
         if ($user->is_admin && request()->routeIs('filament.*')) {
             return true;
         }
+
         return $user->id === $badge->fursuit->user_id;
     }
 
@@ -38,7 +39,7 @@ class BadgePolicy
         }
 
         // Allow badge creation only if event allows orders
-        if (!$event->allowsOrders()) {
+        if (! $event->allowsOrders()) {
             return false;
         }
 
@@ -58,6 +59,7 @@ class BadgePolicy
         }
 
         $event = \App\Models\Event::getActiveEvent();
+
         return $this->delete($user, $badge);
     }
 
@@ -75,12 +77,12 @@ class BadgePolicy
             return false;
         }
         // Cannot edit a badge that has already been printed
-        if (!$badge->status_fulfillment->equals(Pending::class)) {
+        if (! $badge->status_fulfillment->equals(Pending::class)) {
             return false;
         }
 
         // Allow badge creation only if event allows orders
-        if (!$event->allowsOrders()) {
+        if (! $event->allowsOrders()) {
             return false;
         }
 

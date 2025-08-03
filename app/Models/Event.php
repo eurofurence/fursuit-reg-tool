@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 class Event extends Model
 {
     use HasFactory;
+
     public $timestamps = false;
 
     protected $guarded = [];
@@ -27,17 +28,19 @@ class Event extends Model
         ];
     }
 
-    public static function getActiveEvent(): Event|null
+    public static function getActiveEvent(): ?Event
     {
-        return self::where('ends_at', '>', now())
-                   ->where('starts_at', '<=', now())
-                   ->orderBy('starts_at')
-                   ->first();
+        $now = now();
+
+        return self::where('starts_at', '<=', $now)
+            ->where('ends_at', '>=', $now)
+            ->latest('starts_at')
+            ->first();
     }
 
     public function state(): Attribute
     {
-        return new Attribute(get: function ($value) {
+        return new Attribute(get: function () {
             // If event end date has passed, then closed
             if ($this->ends_at < now()) {
                 return EventStateEnum::CLOSED;
@@ -54,6 +57,7 @@ class Event extends Model
             if ($this->order_ends_at && $this->order_ends_at < now()) {
                 return EventStateEnum::CLOSED;
             }
+
             // Event is active and orders are allowed, so it's open
             return EventStateEnum::OPEN;
         });
@@ -67,8 +71,9 @@ class Event extends Model
     public function isInOrderWindow(): bool
     {
         $now = now();
-        $orderStarted = !$this->order_starts_at || $this->order_starts_at <= $now;
-        $orderNotEnded = !$this->order_ends_at || $this->order_ends_at > $now;
+        $orderStarted = ! $this->order_starts_at || $this->order_starts_at <= $now;
+        $orderNotEnded = ! $this->order_ends_at || $this->order_ends_at > $now;
+
         return $orderStarted && $orderNotEnded;
     }
 

@@ -19,9 +19,10 @@ use Spatie\ModelStates\HasStates;
 
 class Badge extends Model implements ProductInterface
 {
-    use HasStates, SoftDeletes, HasWalletFloat, LogsActivity, HasFactory;
+    use HasFactory, HasStates, HasWalletFloat, LogsActivity, SoftDeletes;
 
     protected $guarded = [];
+
     protected $casts = [
         'status_fulfillment' => BadgeFulfillmentStatusState::class,
         'status_payment' => BadgePaymentStatusState::class,
@@ -61,11 +62,12 @@ class Badge extends Model implements ProductInterface
         }
         $append = '';
         if (count($features) > 0) {
-            $append = ' with Extras (' . implode(', ', $features) . ')';
+            $append = ' with Extras ('.implode(', ', $features).')';
         }
+
         return [
             'title' => 'Fursuit Badge',
-            'description' => 'Purchase of Fursuit Badge #' . $this->id . $append,
+            'description' => 'Purchase of Fursuit Badge #'.$this->id.$append,
         ];
     }
 
@@ -86,8 +88,10 @@ class Badge extends Model implements ProductInterface
     {
         if ($this->extra_copy_of !== null) {
             $originalBadge = self::find($this->extra_copy_of);
+
             return $originalBadge ? $originalBadge->is_free_badge : false;
         }
+
         return false;
     }
 }

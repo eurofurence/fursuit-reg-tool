@@ -1,29 +1,27 @@
 <?php
 
+use App\Enum\EventStateEnum;
 use App\Models\Badge\Badge;
 use App\Models\Event;
+use App\Models\EventUser;
 use App\Models\User;
-use App\Enum\EventStateEnum;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Http;
+
 use function Pest\Laravel\actingAs;
+use function Pest\Laravel\delete;
 use function Pest\Laravel\get;
 use function Pest\Laravel\post;
 use function Pest\Laravel\put;
-use function Pest\Laravel\delete;
-use function Pest\Laravel\travelTo;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->user = User::factory()->create([
-        'has_free_badge' => false,
-        'free_badge_copies' => 0,
-    ]);
-    
+    $this->user = User::factory()->create();
+
     Storage::fake('local'); // Use local instead of s3 for tests
     Notification::fake();
     Http::fake(); // Mock all HTTP requests
@@ -51,20 +49,19 @@ describe('Event State: Past Event (CLOSED - Event Ended)', function () {
 
     test('badge index shows no create button when event ended', function () {
         actingAs($this->user);
-        
+
         $response = get(route('badges.index'));
-        
+
         $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => 
-            $page->where('canCreate', false)
+        $response->assertInertia(fn ($page) => $page->where('canCreate', false)
         );
     });
 
     test('badge creation is forbidden when event has ended', function () {
         actingAs($this->user);
-        
+
         get(route('badges.create'))->assertForbidden();
-        
+
         post(route('badges.store'), [
             'species' => 'Wolf',
             'name' => 'Test Badge',
@@ -99,9 +96,9 @@ describe('Event State: External Purchase Period (CLOSED - Pre-Event)', function 
 
     test('badge creation is forbidden when event hasnt started', function () {
         actingAs($this->user);
-        
+
         get(route('badges.create'))->assertForbidden();
-        
+
         post(route('badges.store'), [
             'species' => 'Wolf',
             'name' => 'Test Badge',
@@ -114,20 +111,30 @@ describe('Event State: External Purchase Period (CLOSED - Pre-Event)', function 
     });
 
     test('badge index shows existing badges but no create button', function () {
-        // Create a badge from a previous event/session
-        $badge = Badge::factory()
-            ->recycle($this->event)
+        // Create a past event that has ended
+        $pastEvent = Event::factory()->create([
+            'starts_at' => now()->subDays(90),
+            'ends_at' => now()->subDays(61),
+            'order_starts_at' => now()->subDays(85),
+            'order_ends_at' => now()->subDays(65),
+        ]);
+
+        // Create a badge from the past event that's ready for pickup
+        Badge::factory()
+            ->recycle($pastEvent)
             ->recycle($this->user)
-            ->create();
+            ->create([
+                'status_fulfillment' => 'ready_for_pickup',
+            ]);
 
         actingAs($this->user);
-        
+
         $response = get(route('badges.index'));
-        
+
         $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => 
-            $page->where('canCreate', false)
-                 ->has('badges', 1)
+        $response->assertInertia(fn ($page) => $page->where('canCreate', false)
+            ->has('badges', 0) // No badges from current active event
+            ->has('unpickedBadges', 1) // Badge from past event shows in unpicked section
         );
     });
 });
@@ -150,7 +157,7 @@ describe('Event State: External Purchase Period (CLOSED - Order Window Not Start
 
     test('badge creation is forbidden when order window hasnt started', function () {
         actingAs($this->user);
-        
+
         get(route('badges.create'))->assertForbidden();
     });
 });
@@ -178,31 +185,29 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
 
     test('badge index shows create button when orders are open', function () {
         actingAs($this->user);
-        
+
         $response = get(route('badges.index'));
-        
+
         $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => 
-            $page->where('canCreate', true)
+        $response->assertInertia(fn ($page) => $page->where('canCreate', true)
         );
     });
 
     test('user can access badge creation form when orders are open', function () {
         actingAs($this->user);
-        
+
         $response = get(route('badges.create'));
-        
+
         $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => 
-            $page->component('Badges/BadgesCreate')
-                 ->where('isFree', false)
-                 ->where('freeBadgeCopies', 0)
+        $response->assertInertia(fn ($page) => $page->component('Badges/BadgesCreate')
+            ->where('isFree', false)
+            ->where('freeBadgeCopies', 0)
         );
     });
 
     test('user can create badge when orders are open', function () {
         actingAs($this->user);
-        
+
         $response = post(route('badges.store'), [
             'species' => 'Wolf',
             'name' => 'Test Badge',
@@ -214,36 +219,38 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
                 'spareCopy' => false,
             ],
         ]);
-        
+
         $response->assertSessionHasNoErrors();
         $response->assertRedirect(route('badges.index'));
-        
+
         $this->assertDatabaseHas('fursuits', [
             'name' => 'Test Badge',
             'catch_em_all' => true,
             'published' => true,
         ]);
-        
+
         $this->assertDatabaseHas('badges', [
             'total' => 200, // 2€ in cents
         ]);
     });
 
     test('user with free badge can claim it', function () {
-        $this->user->update([
-            'has_free_badge' => true,
-            'free_badge_copies' => 0,
+        EventUser::create([
+            'user_id' => $this->user->id,
+            'event_id' => $this->event->id,
+            'attendee_id' => '12345',
+            'valid_registration' => true,
+            'prepaid_badges' => 1,
         ]);
-        
+
         actingAs($this->user);
-        
+
         $response = get(route('badges.create'));
-        
-        $response->assertInertia(fn ($page) => 
-            $page->where('isFree', true)
-                 ->where('freeBadgeCopies', 0)
+
+        $response->assertInertia(fn ($page) => $page->where('isFree', true)
+            ->where('freeBadgeCopies', 0)
         );
-        
+
         $response = post(route('badges.store'), [
             'species' => 'Fox',
             'name' => 'Free Badge',
@@ -255,34 +262,36 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
                 'spareCopy' => false,
             ],
         ]);
-        
+
         $response->assertSessionHasNoErrors();
-        
+
         $this->assertDatabaseHas('badges', [
             'total' => 0, // Free badge
             'is_free_badge' => true,
         ]);
-        
-        // User should no longer have free badge flag
-        $this->user->refresh();
-        expect($this->user->has_free_badge)->toBeFalse();
+
+        // User should no longer have free badges
+        $eventUser = EventUser::where('user_id', $this->user->id)->where('event_id', $this->event->id)->first();
+        expect($eventUser->prepaid_badges)->toBe(0);
     });
 
     test('user with additional free badge copies can claim them', function () {
-        $this->user->update([
-            'has_free_badge' => true,
-            'free_badge_copies' => 2,
+        EventUser::create([
+            'user_id' => $this->user->id,
+            'event_id' => $this->event->id,
+            'attendee_id' => '12345',
+            'valid_registration' => true,
+            'prepaid_badges' => 3, // 1 main + 2 copies
         ]);
-        
+
         actingAs($this->user);
-        
+
         $response = get(route('badges.create'));
-        
-        $response->assertInertia(fn ($page) => 
-            $page->where('isFree', true)
-                 ->where('freeBadgeCopies', 2)
+
+        $response->assertInertia(fn ($page) => $page->where('isFree', true)
+            ->where('freeBadgeCopies', 2)
         );
-        
+
         $response = post(route('badges.store'), [
             'species' => 'Dragon',
             'name' => 'Free with Copies',
@@ -294,23 +303,23 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
                 'spareCopy' => true, // This should create additional copies
             ],
         ]);
-        
+
         $response->assertSessionHasNoErrors();
-        
+
         // Should have main badge (free) + 2 copies
         $this->assertDatabaseCount('badges', 3);
-        
+
         // Main badge should be free
         $mainBadge = Badge::where('is_free_badge', true)->first();
         expect($mainBadge->total)->toBe(0);
-        
+
         // Extra copies should exist
         $extraBadges = Badge::where('extra_copy', true)->get();
         expect($extraBadges)->toHaveCount(2);
-        
-        // User should no longer have free copies
-        $this->user->refresh();
-        expect($this->user->free_badge_copies)->toBe(0);
+
+        // User should no longer have prepaid badges
+        $eventUser = EventUser::where('user_id', $this->user->id)->where('event_id', $this->event->id)->first();
+        expect($eventUser->prepaid_badges)->toBe(0);
     });
 
     test('user can edit pending badges during order window', function () {
@@ -320,22 +329,22 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
             ->create([
                 'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
             ]);
-        
+
         actingAs($this->user);
-        
+
         $response = get(route('badges.edit', $badge));
         $response->assertSuccessful();
-        
+
         $response = put(route('badges.update', $badge), [
             'species' => 'Updated Species',
             'name' => 'Updated Name',
             'publish' => true,
             'catchEmAll' => false,
         ]);
-        
+
         $response->assertRedirect(route('badges.index'));
         $response->assertSessionHasNoErrors();
-        
+
         $this->assertDatabaseHas('fursuits', [
             'name' => 'Updated Name',
         ]);
@@ -348,13 +357,13 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
             ->create([
                 'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
             ]);
-        
+
         actingAs($this->user);
-        
+
         $response = delete(route('badges.destroy', $badge));
-        
+
         $response->assertRedirect(route('welcome'));
-        
+
         $this->assertTrue($badge->fresh()->trashed());
     });
 
@@ -365,18 +374,18 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
             ->create([
                 'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Printed::$name,
             ]);
-        
+
         actingAs($this->user);
-        
+
         get(route('badges.edit', $badge))->assertForbidden();
-        
+
         put(route('badges.update', $badge), [
             'species' => 'Cat',
             'name' => 'Should Not Update',
             'catchEmAll' => true,
             'publish' => true,
         ])->assertForbidden();
-        
+
         delete(route('badges.destroy', $badge))->assertForbidden();
     });
 });
@@ -399,9 +408,9 @@ describe('Event State: Return to Closed State (Order Window Ended)', function ()
 
     test('badge creation is forbidden when order window has ended', function () {
         actingAs($this->user);
-        
+
         get(route('badges.create'))->assertForbidden();
-        
+
         post(route('badges.store'), [
             'species' => 'Wolf',
             'name' => 'Test Badge',
@@ -414,19 +423,18 @@ describe('Event State: Return to Closed State (Order Window Ended)', function ()
     });
 
     test('existing badges can still be viewed when order window has ended', function () {
-        $badge = Badge::factory()
+        Badge::factory()
             ->recycle($this->event)
             ->recycle($this->user)
             ->create();
 
         actingAs($this->user);
-        
+
         $response = get(route('badges.index'));
-        
+
         $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => 
-            $page->where('canCreate', false)
-                 ->has('badges', 1)
+        $response->assertInertia(fn ($page) => $page->where('canCreate', false)
+            ->has('badges', 1)
         );
     });
 });
@@ -438,19 +446,19 @@ describe('Multiple Events Handling', function () {
             'starts_at' => now()->subDays(60),
             'ends_at' => now()->subDays(30),
         ]);
-        
+
         // Current active event
         $activeEvent = Event::factory()->create([
             'starts_at' => now()->subDays(5),
             'ends_at' => now()->addDays(25),
         ]);
-        
+
         // Future event
         Event::factory()->create([
             'starts_at' => now()->addDays(60),
             'ends_at' => now()->addDays(90),
         ]);
-        
+
         expect(Event::getActiveEvent()->id)->toBe($activeEvent->id);
     });
 
@@ -460,12 +468,12 @@ describe('Multiple Events Handling', function () {
             'starts_at' => now()->subDays(60),
             'ends_at' => now()->subDays(30),
         ]);
-        
+
         Event::factory()->create([
             'starts_at' => now()->subDays(90),
             'ends_at' => now()->subDays(61),
         ]);
-        
+
         expect(Event::getActiveEvent())->toBeNull();
     });
 });

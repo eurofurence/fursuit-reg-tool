@@ -9,7 +9,7 @@ class FursuitObserver
 {
     public function created(Fursuit $fursuit): void
     {
-        if($fursuit->catch_em_all === true) {
+        if ($fursuit->catch_em_all === true) {
             $fursuit->catch_code = $this->generateCatchCode();
             $fursuit->save();
         }
@@ -17,7 +17,7 @@ class FursuitObserver
 
     public function updated(Fursuit $fursuit): void
     {
-        if($fursuit->catch_em_all === true && $fursuit->catch_code === null) {
+        if ($fursuit->catch_em_all === true && $fursuit->catch_code === null) {
             $fursuit->catch_code = $this->generateCatchCode();
             $fursuit->save();
         }
@@ -30,6 +30,7 @@ class FursuitObserver
             // NO 0 or O for readability
             $catch_code = (new FursuitCatchCode(Fursuit::class, 'catch_code'))->generate();
         } while (Fursuit::where('catch_code', $catch_code)->exists());
+
         return $catch_code;
     }
 }

@@ -2,10 +2,9 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\Event;
-use Carbon\Carbon;
 use App\Enum\EventStateEnum;
+use App\Models\Event;
+use Illuminate\Console\Command;
 
 class CreateOrUpdateEventForStateCommand extends Command
 {
@@ -20,15 +19,16 @@ class CreateOrUpdateEventForStateCommand extends Command
 
     public function handle()
     {
-        if (!app()->environment(['local', 'testing'])) {
+        if (! app()->environment(['local', 'testing'])) {
             $this->error('This command can only be run in local or testing environments.');
+
             return;
         }
 
         $state = $this->argument('state');
-        if (!$state) {
+        if (! $state) {
             // Interactive select mode
-            $choices = array_map(fn($case) => $case->value, EventStateEnum::cases());
+            $choices = array_map(fn ($case) => $case->value, EventStateEnum::cases());
             $state = $this->choice('Select the event state', $choices);
         }
 
@@ -44,6 +44,7 @@ class CreateOrUpdateEventForStateCommand extends Command
                 break;
             default:
                 $this->error('Invalid state provided.');
+
                 return;
         }
 

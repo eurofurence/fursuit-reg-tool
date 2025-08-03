@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('events', function (Blueprint $table) {
             $table->dateTime('mass_printed_at')
                 ->useCurrent()
-                ->after("preorder_ends_at")
+                ->after('preorder_ends_at')
                 ->comment('Timestamp when the event badges are being mass printed');
         });
     }

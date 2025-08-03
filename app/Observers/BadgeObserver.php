@@ -3,8 +3,6 @@
 namespace App\Observers;
 
 use App\Models\Badge\Badge;
-use App\Models\Fursuit\Fursuit;
-use Illuminate\Routing\Route;
 
 class BadgeObserver
 {
@@ -12,7 +10,7 @@ class BadgeObserver
     {
         // Based on tax_rate, calculate tax and update subtotal
         if ($badge->isDirty('total')) {
-            $badge->subtotal = round($badge->total / 1.19,);
+            $badge->subtotal = round($badge->total / 1.19);
             $badge->tax = round($badge->total - $badge->subtotal);
 
             $user = $badge->fursuit->user;

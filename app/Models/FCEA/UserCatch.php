@@ -13,7 +13,8 @@ use Spatie\Activitylog\Traits\LogsActivity;
 // Model for the actual unique catches. Will be used to calculate statistics
 class UserCatch extends Model
 {
-    use LogsActivity, HasFactory;
+    use HasFactory, LogsActivity;
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

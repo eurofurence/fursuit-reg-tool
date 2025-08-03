@@ -13,8 +13,7 @@ class BadgeCalculationService
         bool $isSpareCopy = false,
         bool $isFreeBadge = false,
         bool $isLate = false
-    ): int
-    {
+    ): int {
         if ($isSpareCopy) {
             return 200;
         }
@@ -27,6 +26,7 @@ class BadgeCalculationService
         if ($isLate) {
             $baseFee += 200;
         }
+
         return $baseFee;
     }
 }

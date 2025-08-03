@@ -8,7 +8,6 @@ use App\Models\Fursuit\Fursuit;
 use App\Models\SumUpReader;
 use App\Providers\Socialite\SocialiteIdentityProvider;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Socialite\Contracts\Factory;
 

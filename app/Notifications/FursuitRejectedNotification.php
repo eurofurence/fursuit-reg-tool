@@ -11,7 +11,7 @@ class FursuitRejectedNotification extends Notification
 {
     private Badge $badge;
 
-    public function __construct(public Fursuit $fursuit,public string $reason)
+    public function __construct(public Fursuit $fursuit, public string $reason)
     {
         $this->badge = $this->fursuit->badges()->whereNull('extra_copy_of')->first();
     }

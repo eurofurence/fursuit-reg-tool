@@ -15,6 +15,7 @@ class FiskalyService
     }
 
     private $accessToken;
+
     private $refreshToken;
 
     private function ensureAuth()
@@ -31,6 +32,7 @@ class FiskalyService
             }
 
             $this->refreshAuthToken();
+
             return;
         }
 
@@ -72,12 +74,13 @@ class FiskalyService
     private function getAccessToken()
     {
         $this->ensureAuth();
+
         return $this->accessToken;
     }
 
     public function changeAdminPin(string $oldPin, string $newPin): bool
     {
-        $response = $this->request()->patch('tss/' . config('services.fiskaly.tss_id') . '/admin', [
+        $response = $this->request()->patch('tss/'.config('services.fiskaly.tss_id').'/admin', [
             'admin_puk' => $oldPin,
             'new_admin_pin' => $newPin,
         ])->throw();
@@ -87,7 +90,7 @@ class FiskalyService
 
     public function adminLogin()
     {
-        $response = $this->request()->post('tss/' . config('services.fiskaly.tss_id') . '/admin/auth', [
+        $response = $this->request()->post('tss/'.config('services.fiskaly.tss_id').'/admin/auth', [
             'admin_pin' => config('services.fiskaly.puk'),
         ])->throw();
 
@@ -97,7 +100,7 @@ class FiskalyService
     // admin logout
     public function adminLogout()
     {
-        $response = $this->request()->post('tss/' . config('services.fiskaly.tss_id') . '/admin/logout', [
+        $response = $this->request()->post('tss/'.config('services.fiskaly.tss_id').'/admin/logout', [
             'admin_pin' => config('services.fiskaly.puk'),
         ])->throw();
 
@@ -110,13 +113,14 @@ class FiskalyService
         if ($state === 'INITIALIZED') {
             $this->adminLogin();
         }
-        $response = $this->request()->patch('tss/' . config('services.fiskaly.tss_id'), [
+        $response = $this->request()->patch('tss/'.config('services.fiskaly.tss_id'), [
             'state' => $state,
         ])->throw();
 
         if ($state === 'INITIALIZED') {
             $this->adminLogout();
         }
+
         return true;
     }
 
@@ -124,11 +128,12 @@ class FiskalyService
     {
         $this->adminLogin();
         $response = $this->request()
-            ->put('tss/' . config('services.fiskaly.tss_id') . '/client/' . $tseClient->remote_id, [
+            ->put('tss/'.config('services.fiskaly.tss_id').'/client/'.$tseClient->remote_id, [
                 'serial_number' => $tseClient->remote_id,
             ])
             ->throw();
         $this->adminLogout();
+
         return $response->json();
     }
 
@@ -137,18 +142,19 @@ class FiskalyService
     {
         $this->adminLogin();
         $response = $this->request()
-            ->patch('tss/' . config('services.fiskaly.tss_id') . '/client/' . $tseClient->remote_id, [
+            ->patch('tss/'.config('services.fiskaly.tss_id').'/client/'.$tseClient->remote_id, [
                 'state' => $tseClient->state->value,
             ])
             ->throw();
         $this->adminLogout();
+
         return $response->json();
     }
 
     public function updateOrCreateTransaction(Checkout $checkout)
     {
         $response = $this->request()
-            ->put('tss/' . config('services.fiskaly.tss_id') . '/tx/' . $checkout->remote_id . '?tx_revision=' . $checkout->remote_rev_count, [
+            ->put('tss/'.config('services.fiskaly.tss_id').'/tx/'.$checkout->remote_id.'?tx_revision='.$checkout->remote_rev_count, [
                 'client_id' => $checkout->machine->tseClient->remote_id,
                 'type' => 'RECEIPT',
                 'state' => $checkout->status,
@@ -158,20 +164,20 @@ class FiskalyService
                             'receipt_type' => 'RECEIPT',
                             'amounts_per_vat_rate' => [
                                 [
-                                    'vat_rate' => "NORMAL",
-                                    'amount' => number_format(round($checkout->total / 100, 2),2),
-                                ]
+                                    'vat_rate' => 'NORMAL',
+                                    'amount' => number_format(round($checkout->total / 100, 2), 2),
+                                ],
                             ],
                             'amounts_per_payment_type' => [
                                 [
                                     'payment_type' => 'CASH',
-                                    'amount' => number_format(round($checkout->total / 100, 2),2),
+                                    'amount' => number_format(round($checkout->total / 100, 2), 2),
                                     'currency_code' => 'EUR',
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
             ])
             ->throw();
         $checkout->increment('remote_rev_count');

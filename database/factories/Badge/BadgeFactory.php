@@ -26,11 +26,11 @@ class BadgeFactory extends Factory
                 Pending::$name,
                 Printed::$name,
                 ReadyForPickup::$name,
-                PickedUp::$name
+                PickedUp::$name,
             ]),
             'status_payment' => $this->faker->randomElement([
                 Paid::$name,
-                Unpaid::$name
+                Unpaid::$name,
             ]),
             'dual_side_print' => $this->faker->boolean(),
             'extra_copy' => $this->faker->boolean(),

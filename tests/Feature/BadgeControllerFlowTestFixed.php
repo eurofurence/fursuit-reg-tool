@@ -1,28 +1,26 @@
 <?php
 
-use App\Models\Event;
-use App\Models\User;
-use App\Models\Badge\Badge;
 use App\Enum\EventStateEnum;
+use App\Models\Badge\Badge;
+use App\Models\Event;
+use App\Models\EventUser;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 use function Pest\Laravel\post;
 use function Pest\Laravel\put;
-use function Pest\Laravel\delete;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->user = User::factory()->create([
-        'has_free_badge' => false,
-        'free_badge_copies' => 0,
-    ]);
-    
+    $this->user = User::factory()->create();
+
     Storage::fake('local');
     Notification::fake();
     Http::fake(); // Mock all HTTP requests
@@ -32,11 +30,11 @@ describe('Badge Controller Flow - No Active Event', function () {
     test('badge routes redirect to welcome when no active event exists', function () {
         // No events at all
         actingAs($this->user);
-        
+
         // EventEndedMiddleware redirects to welcome when no active event
         get(route('badges.index'))->assertRedirect(route('welcome'));
         get(route('badges.create'))->assertRedirect(route('welcome'));
-        
+
         post(route('badges.store'), [
             'species' => 'Wolf',
             'name' => 'Test Badge',
@@ -58,7 +56,7 @@ describe('Badge Controller Flow - No Active Event', function () {
         ]);
 
         actingAs($this->user);
-        
+
         // EventEndedMiddleware redirects to welcome when no active event
         get(route('badges.index'))->assertRedirect(route('welcome'));
         get(route('badges.create'))->assertRedirect(route('welcome'));
@@ -83,22 +81,21 @@ describe('Badge Controller Flow - Event Active, Orders Closed', function () {
 
     test('badge index is accessible but shows no create button', function () {
         actingAs($this->user);
-        
+
         $response = get(route('badges.index'));
-        
+
         $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => 
-            $page->where('canCreate', false)
+        $response->assertInertia(fn ($page) => $page->where('canCreate', false)
         );
     });
 
     test('badge creation is forbidden when orders are closed', function () {
         actingAs($this->user);
-        
+
         // Policy should prevent creation
         $response = get(route('badges.create'));
         $response->assertStatus(403);
-        
+
         $response = post(route('badges.store'), [
             'species' => 'Wolf',
             'name' => 'Test Badge',
@@ -136,29 +133,27 @@ describe('Badge Controller Flow - Event Active, Orders Open', function () {
 
     test('badge index shows create button when orders are allowed', function () {
         actingAs($this->user);
-        
+
         $response = get(route('badges.index'));
-        
+
         $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => 
-            $page->where('canCreate', true)
+        $response->assertInertia(fn ($page) => $page->where('canCreate', true)
         );
     });
 
     test('user can access badge creation form', function () {
         actingAs($this->user);
-        
+
         $response = get(route('badges.create'));
-        
+
         $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => 
-            $page->component('Badges/BadgesCreate')
+        $response->assertInertia(fn ($page) => $page->component('Badges/BadgesCreate')
         );
     });
 
     test('user can create regular badge when orders are allowed', function () {
         actingAs($this->user);
-        
+
         $response = post(route('badges.store'), [
             'species' => 'Wolf',
             'name' => 'Test Badge',
@@ -168,22 +163,25 @@ describe('Badge Controller Flow - Event Active, Orders Open', function () {
             'tos' => true,
             'upgrades' => ['spareCopy' => false],
         ]);
-        
+
         $response->assertRedirect(route('badges.index'));
-        
+
         $this->assertDatabaseHas('badges', [
             'is_free_badge' => false,
         ]);
     });
 
     test('user with free badge can claim it', function () {
-        $this->user->update([
-            'has_free_badge' => true,
-            'free_badge_copies' => 0,
+        EventUser::create([
+            'user_id' => $this->user->id,
+            'event_id' => $this->event->id,
+            'attendee_id' => '12345',
+            'valid_registration' => true,
+            'prepaid_badges' => 1,
         ]);
-        
+
         actingAs($this->user);
-        
+
         $response = post(route('badges.store'), [
             'species' => 'Cat',
             'name' => 'Free Badge',
@@ -193,14 +191,14 @@ describe('Badge Controller Flow - Event Active, Orders Open', function () {
             'tos' => true,
             'upgrades' => ['spareCopy' => false],
         ]);
-        
+
         $response->assertRedirect(route('badges.index'));
-        
+
         $this->assertDatabaseHas('badges', [
             'total' => 0, // Free badge
             'is_free_badge' => true,
         ]);
-        
+
         // User should no longer have free badge available
         $this->user->refresh();
         expect($this->user->has_free_badge)->toBeFalse();
@@ -213,9 +211,9 @@ describe('Badge Controller Flow - Event Active, Orders Open', function () {
             ->create([
                 'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
             ]);
-        
+
         actingAs($this->user);
-        
+
         $response = get(route('badges.edit', $badge));
         $response->assertSuccessful();
     });
@@ -227,11 +225,11 @@ describe('Badge Controller Flow - Event Active, Orders Open', function () {
             ->create([
                 'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Printed::$name,
             ]);
-        
+
         actingAs($this->user);
-        
+
         get(route('badges.edit', $badge))->assertStatus(403);
-        
+
         put(route('badges.update', $badge), [
             'species' => 'Cat',
             'name' => 'Should Not Update',
@@ -259,9 +257,9 @@ describe('Badge Controller Flow - Order Window Ended', function () {
 
     test('badge creation is forbidden when order window has ended', function () {
         actingAs($this->user);
-        
+
         get(route('badges.create'))->assertStatus(403);
-        
+
         post(route('badges.store'), [
             'species' => 'Wolf',
             'name' => 'Test Badge',
@@ -278,14 +276,13 @@ describe('Badge Controller Flow - Order Window Ended', function () {
             ->recycle($this->event)
             ->recycle($this->user)
             ->create();
-        
+
         actingAs($this->user);
-        
+
         $response = get(route('badges.index'));
-        
+
         $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => 
-            $page->where('badges', fn ($badges) => count($badges) === 1)
+        $response->assertInertia(fn ($page) => $page->where('badges', fn ($badges) => count($badges) === 1)
         );
     });
 });
@@ -297,17 +294,17 @@ describe('Multiple Events Handling', function () {
             'starts_at' => now()->subDays(60),
             'ends_at' => now()->subDays(30),
         ]);
-        
+
         $activeEvent = Event::factory()->create([
             'starts_at' => now()->subDays(5),
             'ends_at' => now()->addDays(25),
         ]);
-        
+
         $futureEvent = Event::factory()->create([
             'starts_at' => now()->addDays(40),
             'ends_at' => now()->addDays(70),
         ]);
-        
+
         $result = Event::getActiveEvent();
         expect($result?->id)->toBe($activeEvent->id);
     });
@@ -318,12 +315,12 @@ describe('Multiple Events Handling', function () {
             'starts_at' => now()->subDays(60),
             'ends_at' => now()->subDays(30),
         ]);
-        
+
         Event::factory()->create([
             'starts_at' => now()->addDays(40),
             'ends_at' => now()->addDays(70),
         ]);
-        
+
         expect(Event::getActiveEvent())->toBeNull();
     });
 });

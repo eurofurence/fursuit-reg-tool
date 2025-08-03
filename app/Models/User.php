@@ -9,18 +9,16 @@ use App\Models\Fursuit\Fursuit;
 use Bavix\Wallet\Interfaces\Customer;
 use Bavix\Wallet\Interfaces\Wallet;
 use Bavix\Wallet\Interfaces\WalletFloat;
-use Bavix\Wallet\Traits\CanPay;
 use Bavix\Wallet\Traits\CanPayFloat;
-use Bavix\Wallet\Traits\HasWalletFloat;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat, Customer
+class User extends Authenticatable implements Customer, FilamentUser, Wallet, WalletFloat
 {
-    use HasFactory, Notifiable, CanPayFloat;
+    use CanPayFloat, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -50,9 +48,6 @@ class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat,
         'refresh_token_expires_at' => 'datetime',
         'token' => 'encrypted',
         'token_expires_at' => 'datetime',
-        'attendee_id' => 'integer',
-        'has_free_badge' => 'bool',
-        "free_badge_copies" => "integer",
     ];
 
     public function badges()
@@ -70,13 +65,34 @@ class User extends Authenticatable implements FilamentUser, Wallet, WalletFloat,
         return $this->hasMany(UserCatch::class);
     }
 
+    public function eventUsers()
+    {
+        return $this->hasMany(EventUser::class);
+    }
+
+    public function eventUser($eventId = null)
+    {
+        $eventId = $eventId ?? Event::getActiveEvent()?->id;
+
+        return $this->eventUsers()->where('event_id', $eventId)->first();
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->is_admin || $this->is_reviewer;
     }
 
-    public  function hasFreeBadge(): bool
+    public function hasFreeBadge($eventId = null): bool
     {
-        return $this->has_free_badge;
+        $eventUser = $this->eventUser($eventId);
+
+        return $eventUser ? $eventUser->hasFreeBadge() : false;
+    }
+
+    public function getFreeBadgeCopiesAttribute()
+    {
+        $eventUser = $this->eventUser();
+
+        return $eventUser ? $eventUser->free_badge_copies : 0;
     }
 }

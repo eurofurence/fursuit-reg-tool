@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\MachineResource\Pages;
 
 use App\Filament\Resources\MachineResource;
-use App\Models\Device;
 use App\Models\Machine;
 use Filament\Actions;
 use Filament\Infolists\Components\TextEntry;
@@ -22,7 +21,7 @@ class EditMachine extends EditRecord
                 ->infolist([
                     TextEntry::make('Login Link')
                         ->copyable()
-                        ->getStateUsing(fn(Machine $record) => URL::signedRoute('pos.auth.machine.login', [
+                        ->getStateUsing(fn (Machine $record) => URL::signedRoute('pos.auth.machine.login', [
                             'machine_id' => $record->id,
                         ])),
                 ]),

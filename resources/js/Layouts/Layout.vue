@@ -29,7 +29,11 @@ const page = usePage().props;
                             </div>
                         </div>
                     </Link>
-                    <div class="flex items-center justify-end ml-auto pr-2">
+                    <div class="flex items-center justify-end ml-auto pr-2 gap-2">
+                        <Link :href="route('gallery.index')" class="text-white" v-if="usePage().props.auth.user">
+                            <Button title="Gallery" class="text-white" text size="large" icon="pi pi-images"
+                                    aria-label="Gallery"/>
+                        </Link>
                         <Link :href="route('auth.logout')" method="POST" class="text-white"
                               v-if="usePage().props.auth.user">
                             <Button title="Logout" class="text-white" text size="large" icon="pi pi-sign-out"

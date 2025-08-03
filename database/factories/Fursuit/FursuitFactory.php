@@ -21,7 +21,7 @@ class FursuitFactory extends Factory
             'status' => $this->faker->randomElement([
                 Pending::$name,
                 Approved::$name,
-                Rejected::$name
+                Rejected::$name,
             ]),
             'name' => $this->faker->name(),
             'image' => $this->faker->filePath(),
