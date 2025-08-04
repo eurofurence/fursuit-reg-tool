@@ -14,6 +14,9 @@ import InputError from "@/Components/InputError.vue";
 import Message from 'primevue/message';
 
 const deleteModalOpen = ref(null)
+const consentDialogOpen = ref(false);
+const consentType = ref(''); // 'catchEmAll' or 'gallery'
+const galleryDataDialogOpen = ref(false);
 
 import { useConfirm } from "primevue/useconfirm";
 
@@ -58,6 +61,46 @@ onMounted(() => {
 
 function submit() {
     form.submit();
+}
+
+function handleCatchEmAllChange(value) {
+    if (value && !form.catchEmAll) {
+        consentType.value = 'catchEmAll';
+        consentDialogOpen.value = true;
+    } else {
+        form.catchEmAll = value;
+    }
+}
+
+function handleGalleryChange(value) {
+    if (value && !form.publish) {
+        consentType.value = 'gallery';
+        consentDialogOpen.value = true;
+    } else {
+        form.publish = value;
+    }
+}
+
+function acceptConsent() {
+    if (consentType.value === 'catchEmAll') {
+        form.catchEmAll = true;
+    } else if (consentType.value === 'gallery') {
+        form.publish = true;
+    }
+    consentDialogOpen.value = false;
+}
+
+function declineConsent() {
+    if (consentType.value === 'catchEmAll') {
+        form.catchEmAll = false;
+    } else if (consentType.value === 'gallery') {
+        form.publish = false;
+    }
+    consentDialogOpen.value = false;
+}
+
+function showDataUsageInfo() {
+    galleryDataDialogOpen.value = true;
 }
 
 function imageUpdatedEvent(image) {
@@ -115,6 +158,95 @@ function openImageModal() {
         <div class="flex justify-end gap-4">
             <Button label="Cancel" @click="deleteModalOpen = false" class="w-1/2"/>
             <Button label="Delete" @click="deleteBadge" class="w-1/2" icon="pi pi-trash" severity="danger"/>
+        </div>
+    </Dialog>
+    
+    <!-- Consent Dialog -->
+    <Dialog v-model:visible="consentDialogOpen" :dismissableMask="false" modal 
+            :header="consentType === 'catchEmAll' ? 'Catch-Em-All Game Consent' : 'Fursuit Gallery Consent'"
+            :style="{ width: '35rem' }">
+        <div class="mb-4">
+            <p class="mb-3 font-semibold">
+                {{ consentType === 'catchEmAll' ? 'These features are for fursuiters only!' : 'Gallery Publishing Consent' }}
+            </p>
+            <p class="mb-4">
+                Please ensure that your Fursuit Badge contains:
+            </p>
+            <ul class="list-disc pl-6 mb-4 space-y-1">
+                <li>Pictures of real fursuiters only</li>
+                <li>No AI-generated content</li>
+                <li>No digital art</li>
+                <li v-if="consentType === 'gallery'">No NSFW content (for gallery publishing)</li>
+            </ul>
+            <div v-if="consentType === 'gallery'">
+                <p class="mb-2">
+                    <strong>Data Usage:</strong> By publishing to the gallery, your identity username, badge image, fursuit name, and species will be published to our online fursuiters database, visible and searchable publicly for anyone to see.
+                </p>
+                <p class="mb-4">
+                    If you participate in the catch-em-all game, we will also display how many times you have been caught.
+                </p>
+                <Button 
+                    link 
+                    label="Learn more about data usage" 
+                    @click="showDataUsageInfo()"
+                    class="p-0 text-sm mb-3"
+                />
+            </div>
+            <div v-if="consentType === 'catchEmAll'">
+                <p class="mb-4">
+                    <strong>Leaderboard Visibility:</strong> In the catch-em-all game, your fursuit name, species, and identity username will be visible on the leaderboard.
+                </p>
+            </div>
+        </div>
+        <div class="flex justify-end gap-3">
+            <Button label="Decline" @click="declineConsent()" severity="secondary" />
+            <Button label="Accept" @click="acceptConsent()" />
+        </div>
+    </Dialog>
+    
+    <!-- Data Usage Information Dialog -->
+    <Dialog v-model:visible="galleryDataDialogOpen" modal header="How We Store Your Data"
+            :style="{ width: '40rem' }">
+        <div class="space-y-4">
+            <h3 class="font-semibold text-lg">Fursuit Gallery Data Storage</h3>
+            <p>
+                When you choose to publish your fursuit to our gallery, we collect and display the following information publicly:
+            </p>
+            <ul class="list-disc pl-6 space-y-2">
+                <li><strong>Identity Username:</strong> Your registered username will be visible</li>
+                <li><strong>Badge Image:</strong> The photo you upload will be displayed</li>
+                <li><strong>Fursuit Name:</strong> The name you give your fursuit</li>
+                <li><strong>Species:</strong> The species classification of your fursuit</li>
+            </ul>
+            
+            <h4 class="font-semibold">Catch-Em-All Game Integration</h4>
+            <p>
+                If you also participate in the Catch-Em-All game, we will additionally display:
+            </p>
+            <ul class="list-disc pl-6 space-y-2">
+                <li><strong>Catch Count:</strong> How many times other participants have caught you</li>
+                <li><strong>Leaderboard Position:</strong> Your ranking in the game</li>
+            </ul>
+            
+            <h4 class="font-semibold">Public Visibility</h4>
+            <p>
+                This information will be:
+            </p>
+            <ul class="list-disc pl-6 space-y-2">
+                <li>Visible to anyone visiting our website</li>
+                <li>Searchable by name, species, or username</li>
+                <li>Available without requiring login or registration</li>
+            </ul>
+            
+            <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mt-4">
+                <p class="text-sm">
+                    <strong>Note:</strong> You can withdraw consent at any time by contacting our support team. 
+                    Your data will then be removed from public display within 48 hours.
+                </p>
+            </div>
+        </div>
+        <div class="flex justify-end mt-6">
+            <Button label="Close" @click="galleryDataDialogOpen = false" />
         </div>
     </Dialog>
     <!-- Fursuit Creator -->
@@ -224,12 +356,16 @@ function openImageModal() {
                 <div>
                     <div>
                         <div class="flex flex-row gap-2">
-                            <InputSwitch v-model="form.catchEmAll" :disabled="!canEdit" id="catchEmAll"
-                                         aria-describedby="catchEmAll-help"/>
+                            <InputSwitch 
+                                :model-value="form.catchEmAll" 
+                                @update:model-value="canEdit ? handleCatchEmAllChange : () => {}" 
+                                :disabled="!canEdit" 
+                                id="catchEmAll"
+                                aria-describedby="catchEmAll-help"/>
                             <label for="catchEmAll">Participate in the Catch-Em-All Game</label>
                         </div>
                         <small
-                            id="catchEmAll-help">Participate in the Catch-Em-All game to be catchable by other attendees.</small>
+                            id="catchEmAll-help">Participate in the Catch-Em-All game to be catchable by other attendees. <strong>For fursuiters only.</strong></small>
                     </div>
                 </div>
                 <!-- Catch Em All -->
@@ -237,12 +373,16 @@ function openImageModal() {
                 <div>
                     <div>
                         <div class="flex flex-row gap-2">
-                            <InputSwitch v-model="form.publish" :disabled="!canEdit" id="publish"
-                                         aria-describedby="publish-help"/>
+                            <InputSwitch 
+                                :model-value="form.publish" 
+                                @update:model-value="canEdit ? handleGalleryChange : () => {}" 
+                                :disabled="!canEdit" 
+                                id="publish"
+                                aria-describedby="publish-help"/>
                             <label for="publish">Publish to Gallery</label>
                         </div>
                         <small
-                            id="publish-help">Save your Fursuit Data and Publish your badge information in our Fursuiter gallery.</small>
+                            id="publish-help">Save your Fursuit Data and Publish your badge information in our Fursuiter gallery. <strong>For fursuiters only.</strong></small>
                     </div>
                 </div>
                 <!-- End Publish -->

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm, usePage } from '@inertiajs/vue3'
+import { Head, useForm, usePage, router } from '@inertiajs/vue3'
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue"
 import Button from "primevue/button"
 import Message from "primevue/message"
@@ -12,6 +12,7 @@ import Divider from 'primevue/divider'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
 import Avatar from 'primevue/avatar'
+import Dropdown from 'primevue/dropdown'
 import { ref, computed } from 'vue'
 
 defineOptions({ layout: CatchEmAllLayout })
@@ -31,6 +32,13 @@ const props = defineProps<{
     },
     userRanking: Array<any>,
     fursuitRanking: Array<any>,
+    eventsWithEntries: Array<{
+        id: number
+        name: string
+        starts_at: string
+    }>,
+    selectedEvent?: string | null,
+    isGlobal: boolean,
     flash: object,
     caughtFursuit?: {
         name: string
@@ -42,6 +50,29 @@ const props = defineProps<{
 
 const page = usePage()
 const showCaughtMessage = ref(!!props.caughtFursuit)
+
+// Event selection
+const eventOptions = computed(() => {
+    const options = [
+        { label: 'Global (All-Time)', value: 'global' },
+        ...props.eventsWithEntries.map(event => ({
+            label: `${event.name} (${new Date(event.starts_at).getFullYear()})`,
+            value: event.id.toString()
+        }))
+    ]
+    return options
+})
+
+const selectedEventValue = ref(props.selectedEvent || (props.eventsWithEntries[0]?.id?.toString() || 'global'))
+
+const onEventChange = () => {
+    router.get(route('fcea.dashboard'), {
+        event: selectedEventValue.value
+    }, {
+        preserveState: false,
+        replace: true
+    })
+}
 
 const submit = () => {
     form.catch_code = form.catch_code.toUpperCase()
@@ -217,6 +248,21 @@ const getRankIcon = (rank: number) => {
                     </div>
                 </template>
                 <template #content>
+                    <!-- Event Selection Dropdown -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Show leaderboard for:</label>
+                        <Dropdown 
+                            v-model="selectedEventValue" 
+                            :options="eventOptions" 
+                            optionLabel="label" 
+                            optionValue="value" 
+                            placeholder="Select event or view"
+                            class="w-full"
+                            @change="onEventChange"
+                            fluid
+                        />
+                    </div>
+                    
                     <TabView>
                         <TabPanel header="🕵️ Catchers">
                             <div v-if="userRanking.length" class="space-y-2">

@@ -20,7 +20,9 @@ defineOptions({
 })
 
 const props = defineProps({
-    showState: String
+    showState: String,
+    event: Object,
+    prepaidBadgesLeft: Number
 });
 
 const currentTime = ref(dayjs());
@@ -39,8 +41,9 @@ onUnmounted(() => {
     }
 });
 
-const event = computed(() => usePage().props.event);
+const event = computed(() => props.event || usePage().props.event);
 const user = computed(() => usePage().props.auth.user);
+const prepaidBadgesLeft = computed(() => props.prepaidBadgesLeft || 0);
 
 const orderStatus = computed(() => {
     if (props.showState === 'open') {
@@ -83,8 +86,16 @@ const userBadgeStatus = computed(() => {
     const hasFreeBadge = user.value.has_free_badge;
     const badgeCount = user.value.badges?.length || 0;
     const freeBadgeCopies = user.value.free_badge_copies || 0;
+    const prepaidLeft = prepaidBadgesLeft.value;
 
-    if (badgeCount === 0 && hasFreeBadge) {
+    if (prepaidLeft > 0) {
+        return {
+            type: 'prepaid',
+            message: `You have ${prepaidLeft} prepaid badge${prepaidLeft > 1 ? 's' : ''} to customize!`,
+            action: `Customize Badge${prepaidLeft > 1 ? 's' : ''}`,
+            severity: 'success'
+        };
+    } else if (badgeCount === 0 && hasFreeBadge) {
         return {
             type: 'unclaimed',
             message: 'You have a badge waiting to be claimed!',
@@ -147,7 +158,32 @@ const shouldShowRegMessage = computed(() => {
 
                 <!-- Action Buttons -->
                 <div v-if="user" class="w-full max-w-2xl mx-auto">
-                    <div v-if="orderStatus.status === 'open'" class="space-y-6">
+                    <!-- Show prepaid badge button even when orders are closed -->
+                    <div v-if="prepaidBadgesLeft > 0" class="space-y-6">
+                        <div class="flex flex-row gap-3 mt-6">
+                            <!-- Prepaid Badge Button -->
+                            <Button 
+                                @click="router.visit(route('badges.create'))" 
+                                icon="pi pi-star"
+                                class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 border-0 text-white"
+                                fluid
+                                size="large"
+                                :label="`Customize Prepaid Badge${prepaidBadgesLeft > 1 ? 's' : ''}`"
+                            />
+                            
+                            <!-- Secondary Action Button -->
+                            <Button 
+                                v-if="user.badges?.length > 0"
+                                @click="router.visit(route('badges.index'))" 
+                                icon="pi pi-list" 
+                                class="flex-1 font-semibold"
+                                size="large"
+                                label="Manage Badges"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div v-else-if="orderStatus.status === 'open'" class="space-y-6">
                         <!-- Action Buttons - Max 2 buttons side by side -->
                         <div class="flex flex-row gap-3 mt-6">
                             <!-- Primary Action Button -->

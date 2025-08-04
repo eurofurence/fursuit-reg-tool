@@ -95,4 +95,23 @@ class User extends Authenticatable implements Customer, FilamentUser, Wallet, Wa
 
         return $eventUser ? $eventUser->free_badge_copies : 0;
     }
+
+    public function getPrepaidBadgesLeft($eventId = null): int
+    {
+        $eventUser = $this->eventUser($eventId);
+        $event = Event::getActiveEvent();
+
+        if (! $eventUser || ! $event) {
+            return 0;
+        }
+
+        $prepaidBadges = $eventUser->prepaid_badges;
+        $orderedBadges = $this->badges()
+            ->whereHas('fursuit.event', function ($query) use ($event) {
+                $query->where('id', $event->id);
+            })
+            ->count();
+
+        return max(0, $prepaidBadges - $orderedBadges);
+    }
 }

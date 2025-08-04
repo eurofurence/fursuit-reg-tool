@@ -30,9 +30,13 @@ const page = usePage().props;
                         </div>
                     </Link>
                     <div class="flex items-center justify-end ml-auto pr-2 gap-2">
-                        <Link :href="route('gallery.index')" class="text-white" v-if="usePage().props.auth.user">
+                        <Link :href="route('gallery.index')" class="text-white">
                             <Button title="Gallery" class="text-white" text size="large" icon="pi pi-images"
                                     aria-label="Gallery"/>
+                        </Link>
+                        <Link :href="route('fcea.dashboard')" class="text-white">
+                            <Button title="Catch-Em-All Game" class="text-white" text size="large" icon="pi pi-trophy"
+                                    aria-label="Catch-Em-All Game"/>
                         </Link>
                         <Link :href="route('auth.logout')" method="POST" class="text-white"
                               v-if="usePage().props.auth.user">

@@ -18,6 +18,7 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
 
     Route::middleware('auth')->group(function () {
         Route::resource('badges', \App\Http\Controllers\BadgeController::class);
+        Route::get('/statistics', [\App\Http\Controllers\StatisticsController::class, 'index'])->name('statistics');
     });
 });
 

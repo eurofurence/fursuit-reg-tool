@@ -11,6 +11,7 @@ use App\Models\FCEA\UserCatchRanking;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -21,13 +22,37 @@ use function Sodium\add;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $rankingSize = 10;
+        $selectedEventId = $request->get('event');
+        $isGlobal = $selectedEventId === 'global';
+
         $event = $this->getFceaEvent();
 
+        // Get events that have FCEA entries for the dropdown
+        $eventsWithEntries = $this->getEventsWithFceaEntries();
+
+        // Determine which event to use for filtering
+        $filterEvent = null;
+        if (! $isGlobal && $selectedEventId) {
+            $filterEvent = \App\Models\Event::find($selectedEventId);
+        } elseif (! $isGlobal && ! $selectedEventId) {
+            // Default to the first event with FCEA entries if current event has no data
+            $userCatchesInCurrentEvent = UserCatch::where('user_id', Auth::id())
+                ->where('event_id', $event?->id)
+                ->exists();
+                
+            if ($event && $userCatchesInCurrentEvent) {
+                $filterEvent = $event; // Use current event if user has catches there
+            } else {
+                // Fall back to the most recent event where user has catches
+                $filterEvent = $eventsWithEntries->first(); // Use first event with FCEA entries
+            }
+        }
+
         // Get basic user info
-        $myUserInfo = $this->getMyUserInfo();
+        $myUserInfo = $this->getMyUserInfo($filterEvent, $isGlobal);
 
         // Calculate total fursuiters available to catch in the selected event with caching
         $totalFursuiters = 0;
@@ -35,7 +60,7 @@ class DashboardController extends Controller
             $totalFursuiters = Cache::remember(
                 "total_fursuiters_{$event->id}",
                 1800, // Cache for 30 minutes
-                fn() => Fursuit::where('event_id', $event->id)
+                fn () => Fursuit::where('event_id', $event->id)
                     ->where('catch_em_all', true)
                     ->count()
             );
@@ -47,18 +72,20 @@ class DashboardController extends Controller
         $remaining = max(0, $totalFursuiters - $userCatchCount);
 
         // Get rankings with caching
+        $cacheKey = $isGlobal ? "user_ranking_global_{$myUserInfo->user_id}_{$rankingSize}" : "user_ranking_event_{$filterEvent?->id}_{$myUserInfo->user_id}_{$rankingSize}";
         $userRanking = Cache::remember(
-            "user_ranking_display_{$myUserInfo->user_id}_{$rankingSize}",
+            $cacheKey,
             300, // Cache for 5 minutes
-            fn() => $this->getUserRanking($myUserInfo, $rankingSize)
+            fn () => $this->getUserRanking($myUserInfo, $rankingSize, $filterEvent, $isGlobal)
         );
-        
+
         $myFursuitInfos = $this->getMyFursuitInfos($myUserInfo);
-        
+
+        $fursuitCacheKey = $isGlobal ? "fursuit_ranking_global_{$rankingSize}" : "fursuit_ranking_event_{$filterEvent?->id}_{$rankingSize}";
         $fursuitRanking = Cache::remember(
-            "fursuit_ranking_top_{$rankingSize}",
-            300, // Cache for 5 minutes  
-            fn() => $this->getTopFursuitRanking($rankingSize)
+            $fursuitCacheKey,
+            300, // Cache for 5 minutes
+            fn () => $this->getTopFursuitRanking($rankingSize, $filterEvent, $isGlobal)
         );
 
         $myFursuitInfoCatchedTotal = $myFursuitInfos->sum(function ($entry) {
@@ -82,6 +109,9 @@ class DashboardController extends Controller
                 'remaining' => $remaining,
                 'total_available' => $totalFursuiters,
             ],
+            'eventsWithEntries' => $eventsWithEntries,
+            'selectedEvent' => $selectedEventId ?: ($filterEvent ? $filterEvent->id : 'global'),
+            'isGlobal' => $isGlobal,
             'userRanking' => $userRanking
                 ->filter(fn ($e) => $e->score > 0)
                 ->map(function ($entry) {
@@ -152,7 +182,7 @@ class DashboardController extends Controller
         }
 
         $fursuitId = $logEntry->tryGetFursuit()->id;
-        
+
         $logEntry->already_caught = UserCatch::where('user_id', Auth::id())
             ->where('fursuit_id', $fursuitId)
             ->exists(); // Entry exists
@@ -171,10 +201,10 @@ class DashboardController extends Controller
         $userCatch->user_id = Auth::id();
         $userCatch->fursuit_id = $fursuitId;
         $userCatch->save();
-        
+
         // Queue ranking update instead of synchronous refresh
         dispatch(new UpdateRankingsJob(Auth::id(), $fursuitId));
-        
+
         // Clear relevant cached data immediately for responsive UI
         Cache::forget('user_rankings');
         Cache::forget('fursuit_rankings');
@@ -307,14 +337,25 @@ class DashboardController extends Controller
         return 0;
     }
 
-    private function getMyUserInfo(): UserCatchRanking
+    private function getMyUserInfo(?\App\Models\Event $filterEvent = null, bool $isGlobal = false): UserCatchRanking
     {
+        if ($isGlobal) {
+            // For global view, calculate all-time stats
+            return $this->getGlobalUserInfo();
+        }
+
+        if ($filterEvent) {
+            // For specific event, calculate event-specific stats
+            return $this->getEventUserInfo($filterEvent->id);
+        }
+
+        // Default current ranking
         $myUserInfo = UserCatchRanking::getInfoOfUser(Auth::id()); // Getting own Rank, may be null if user is new
 
         if (! $myUserInfo) { // User not in ranking
             // Create a default entry for new users instead of full ranking refresh
             $catchCount = UserCatch::where('user_id', Auth::id())->count();
-            
+
             $myUserInfo = new UserCatchRanking;
             $myUserInfo->user_id = Auth::id();
             $myUserInfo->rank = 0; // Will be updated by background job
@@ -322,7 +363,7 @@ class DashboardController extends Controller
             $myUserInfo->score_till_next = 0;
             $myUserInfo->others_behind = 0;
             $myUserInfo->user = Auth::user();
-            
+
             // Queue a ranking update to fix this properly
             dispatch(new UpdateRankingsJob(Auth::id()));
         }
@@ -330,8 +371,17 @@ class DashboardController extends Controller
         return $myUserInfo;
     }
 
-    private function getUserRanking(UserCatchRanking $myUserInfo, int $rankingSize)
+    private function getUserRanking(UserCatchRanking $myUserInfo, int $rankingSize, ?\App\Models\Event $filterEvent = null, bool $isGlobal = false)
     {
+        if ($isGlobal) {
+            return $this->getGlobalUserRanking($myUserInfo, $rankingSize);
+        }
+
+        if ($filterEvent) {
+            return $this->getEventUserRanking($myUserInfo, $rankingSize, $filterEvent->id);
+        }
+
+        // Default current ranking logic
         $topRanking = UserCatchRanking::queryUserRanking()
             ->whereBetween('id', [1, $rankingSize]) // Top X Ranking
             ->orderBy('id') // already ordered by rank/score_reached_at
@@ -351,13 +401,191 @@ class DashboardController extends Controller
         return $this->AddPlaceholderOnJump($ranking->get());
     }
 
+    /**
+     * Get global (all-time) user info
+     */
+    private function getGlobalUserInfo(): UserCatchRanking
+    {
+        $userId = Auth::id();
+        $totalCatches = UserCatch::where('user_id', $userId)->count();
+
+        // Get user's rank globally
+        $usersWithMoreCatches = User::withCount('fursuitsCatched')
+            ->having('fursuits_catched_count', '>', $totalCatches)
+            ->count();
+
+        $rank = $usersWithMoreCatches + 1;
+
+        $myUserInfo = new UserCatchRanking;
+        $myUserInfo->id = $rank;
+        $myUserInfo->user_id = $userId;
+        $myUserInfo->rank = $rank;
+        $myUserInfo->score = $totalCatches;
+        $myUserInfo->score_till_next = 0; // TODO: Calculate if needed
+        $myUserInfo->others_behind = 0; // TODO: Calculate if needed
+        $myUserInfo->user = Auth::user();
+
+        return $myUserInfo;
+    }
+
+    /**
+     * Get event-specific user info
+     */
+    private function getEventUserInfo(int $eventId): UserCatchRanking
+    {
+        $userId = Auth::id();
+        $eventCatches = UserCatch::where('user_id', $userId)
+            ->where('event_id', $eventId)
+            ->count();
+
+        // Get user's rank for this event
+        $usersWithMoreCatches = User::whereHas('fursuitsCatched', function ($query) use ($eventId) {
+            $query->where('event_id', $eventId);
+        })
+        ->withCount(['fursuitsCatched' => function ($query) use ($eventId) {
+            $query->where('event_id', $eventId);
+        }])
+        ->having('fursuits_catched_count', '>', $eventCatches)
+        ->count();
+
+        $rank = $usersWithMoreCatches + 1;
+
+        $myUserInfo = new UserCatchRanking;
+        $myUserInfo->id = $rank;
+        $myUserInfo->user_id = $userId;
+        $myUserInfo->rank = $rank;
+        $myUserInfo->score = $eventCatches;
+        $myUserInfo->score_till_next = 0;
+        $myUserInfo->others_behind = 0;
+        $myUserInfo->user = Auth::user();
+
+        return $myUserInfo;
+    }
+
+    /**
+     * Get global user ranking
+     */
+    private function getGlobalUserRanking(UserCatchRanking $myUserInfo, int $rankingSize): Collection
+    {
+        $topUsers = User::withCount('fursuitsCatched')
+            ->withMax('fursuitsCatched', 'created_at')
+            ->orderByDesc('fursuits_catched_count')
+            ->orderBy('fursuits_catched_max_created_at')
+            ->limit($rankingSize)
+            ->get()
+            ->map(function ($user, $index) {
+                $ranking = new UserCatchRanking;
+                $ranking->id = $index + 1;
+                $ranking->user_id = $user->id;
+                $ranking->rank = $index + 1;
+                $ranking->score = $user->fursuits_catched_count;
+                $ranking->user = $user;
+
+                return $ranking;
+            });
+
+        return $topUsers;
+    }
+
+    /**
+     * Get event-specific user ranking
+     */
+    private function getEventUserRanking(UserCatchRanking $myUserInfo, int $rankingSize, int $eventId): Collection
+    {
+        $topUsers = User::withCount(['fursuitsCatched' => function ($query) use ($eventId) {
+            $query->where('event_id', $eventId);
+        }])
+            ->withMax(['fursuitsCatched' => function ($query) use ($eventId) {
+                $query->where('event_id', $eventId);
+            }], 'created_at')
+            ->having('fursuits_catched_count', '>', 0)
+            ->orderByDesc('fursuits_catched_count')
+            ->orderBy('fursuits_catched_max_created_at')
+            ->limit($rankingSize)
+            ->get()
+            ->map(function ($user, $index) {
+                $ranking = new UserCatchRanking;
+                $ranking->id = $index + 1;
+                $ranking->user_id = $user->id;
+                $ranking->rank = $index + 1;
+                $ranking->score = $user->fursuits_catched_count;
+                $ranking->user = $user;
+
+                return $ranking;
+            });
+
+        return $topUsers;
+    }
+
+    /**
+     * Get global fursuit ranking
+     */
+    private function getGlobalFursuitRanking(int $rankingSize): Collection
+    {
+        $topFursuits = Fursuit::withCount('catchedByUsers')
+            ->withMax('catchedByUsers', 'created_at')
+            ->having('catched_by_users_count', '>', 0)
+            ->orderByDesc('catched_by_users_count')
+            ->orderBy('catched_by_users_max_created_at')
+            ->with(['species', 'user'])
+            ->limit($rankingSize)
+            ->get()
+            ->map(function ($fursuit, $index) {
+                $ranking = new UserCatchRanking;
+                $ranking->id = $index + 1;
+                $ranking->fursuit_id = $fursuit->id;
+                $ranking->rank = $index + 1;
+                $ranking->score = $fursuit->catched_by_users_count;
+                $ranking->fursuit = $fursuit;
+
+                return $ranking;
+            });
+
+        return $topFursuits;
+    }
+
+    /**
+     * Get event-specific fursuit ranking
+     */
+    private function getEventFursuitRanking(int $rankingSize, int $eventId): Collection
+    {
+        $topFursuits = Fursuit::withCount(['catchedByUsers' => function ($query) use ($eventId) {
+            $query->where('event_id', $eventId);
+        }])
+            ->withMax(['catchedByUsers' => function ($query) use ($eventId) {
+                $query->where('event_id', $eventId);
+            }], 'created_at')
+            ->where('event_id', $eventId)
+            ->having('catched_by_users_count', '>', 0)
+            ->orderByDesc('catched_by_users_count')
+            ->orderBy('catched_by_users_max_created_at')
+            ->with(['species', 'user'])
+            ->limit($rankingSize)
+            ->get()
+            ->map(function ($fursuit, $index) {
+                $ranking = new UserCatchRanking;
+                $ranking->id = $index + 1;
+                $ranking->fursuit_id = $fursuit->id;
+                $ranking->rank = $index + 1;
+                $ranking->score = $fursuit->catched_by_users_count;
+                $ranking->fursuit = $fursuit;
+
+                return $ranking;
+            });
+
+        return $topFursuits;
+    }
+
     private function getMyFursuitInfos(UserCatchRanking $myUserInfo): Collection
     {
+        if (!$myUserInfo->user) {
+            return new Collection();
+        }
+        
         $myFursuitIDs = $myUserInfo->user->fursuits->pluck('id')->toArray();  // Get all own Fursuit IDs
 
         return UserCatchRanking::getInfoOfFursuits($myFursuitIDs); // Get Ranking info of my fursuits
     }
-
 
     private function AddPlaceholderOnJump(Collection $userRanking): Collection
     {
@@ -421,10 +649,31 @@ class DashboardController extends Controller
     }
 
     /**
+     * Get events that have FCEA entries (UserCatch records)
+     */
+    private function getEventsWithFceaEntries(): Collection
+    {
+        return \App\Models\Event::whereHas('fursuits.catchedByUsers')
+            ->orderByDesc('starts_at')
+            ->get(['id', 'name', 'starts_at']);
+    }
+
+    /**
      * Get only the top fursuit rankings without user position logic or separators.
      */
-    private function getTopFursuitRanking(int $rankingSize): Collection
+    private function getTopFursuitRanking(int $rankingSize, ?\App\Models\Event $filterEvent = null, bool $isGlobal = false): Collection
     {
+        if ($isGlobal) {
+            // For global view, we need to rebuild rankings based on all-time data
+            return $this->getGlobalFursuitRanking($rankingSize);
+        }
+
+        if ($filterEvent) {
+            // For specific event, filter by event_id
+            return $this->getEventFursuitRanking($rankingSize, $filterEvent->id);
+        }
+
+        // Default current ranking
         return UserCatchRanking::queryFursuitRanking()
             ->with(['fursuit.species', 'fursuit.user'])
             ->whereBetween('id', [1, $rankingSize])

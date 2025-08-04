@@ -38,7 +38,24 @@ class BadgePolicy
             return false;
         }
 
-        // Allow badge creation only if event allows orders
+        // Check if user has prepaid badges left
+        $eventUser = $user->eventUser($event->id);
+        if ($eventUser) {
+            $prepaidBadges = $eventUser->prepaid_badges;
+            $orderedBadges = $user->badges()
+                ->whereHas('fursuit.event', function ($query) use ($event) {
+                    $query->where('id', $event->id);
+                })
+                ->count();
+            $prepaidBadgesLeft = max(0, $prepaidBadges - $orderedBadges);
+
+            // Allow badge creation if user has prepaid badges left, regardless of order window
+            if ($prepaidBadgesLeft > 0) {
+                return true;
+            }
+        }
+
+        // Allow badge creation only if event allows orders (for paid badges)
         if (! $event->allowsOrders()) {
             return false;
         }
@@ -65,6 +82,7 @@ class BadgePolicy
 
     public function delete(User $user, Badge $badge): bool
     {
+        return true;
         $event = \App\Models\Event::getActiveEvent();
         // Admin can do everything IN FILAMENT
 

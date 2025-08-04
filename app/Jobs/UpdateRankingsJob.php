@@ -13,6 +13,7 @@ class UpdateRankingsJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
+
     public int $maxExceptions = 1;
 
     /**
@@ -34,7 +35,7 @@ class UpdateRankingsJob implements ShouldQueue
         try {
             Log::info('Starting ranking refresh job', [
                 'user_id' => $this->userId,
-                'fursuit_id' => $this->fursuitId
+                'fursuit_id' => $this->fursuitId,
             ]);
 
             // Clear cached rankings
@@ -49,7 +50,7 @@ class UpdateRankingsJob implements ShouldQueue
         } catch (\Exception $e) {
             Log::error('Ranking refresh job failed', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }

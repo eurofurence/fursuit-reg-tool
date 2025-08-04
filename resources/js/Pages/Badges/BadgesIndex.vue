@@ -22,6 +22,8 @@ const props = defineProps({
     canCreate: Boolean,
     hasFreeBadge: Boolean,
     freeBadgeCopies: Number,
+    prepaidBadges: Number,
+    prepaidBadgesLeft: Number,
     event: Object
 });
 
@@ -89,14 +91,28 @@ function getFursuitSeverity(status) {
                     <p class="text-gray-600">
                         Total badges: <span class="font-semibold">{{ badgeCount }}</span>
                         <span v-if="event && event.name"> • {{ event.name }}</span>
+                        <span v-if="prepaidBadgesLeft > 0" class="ml-2 text-green-600 font-semibold">
+                            • {{ prepaidBadgesLeft }} prepaid badge{{ prepaidBadgesLeft > 1 ? 's' : '' }} available
+                        </span>
                     </p>
                 </div>
                 
                 <!-- Action Buttons -->
                 <div class="flex flex-col sm:flex-row gap-2">
+                    <!-- Prepaid Badge Button (shows even when orders are closed) -->
+                    <Button
+                        v-if="prepaidBadgesLeft > 0"
+                        @click="router.visit(route('badges.create'))"
+                        size="small"
+                        severity="success"
+                        icon="pi pi-star"
+                        class="w-full sm:w-auto"
+                        :label="`Customize Prepaid Badge${prepaidBadgesLeft > 1 ? `s (${prepaidBadgesLeft})` : ''}`"
+                    />
+                    
                     <!-- Free Badge Button -->
                     <Button
-                        v-if="hasFreeBadge && event && event.allowsOrders"
+                        v-else-if="hasFreeBadge && event && event.allowsOrders"
                         @click="router.visit(route('badges.create'))"
                         size="small"
                         severity="success"
@@ -115,15 +131,16 @@ function getFursuitSeverity(status) {
                         label="Purchase Badge"
                     />
                     
-                    <!-- Orders Closed Message -->
-                    <Message 
-                        v-else-if="event && !event.allowsOrders"
+                    <!-- Orders Not Yet Open Message -->
+                    <Message
+                        v-else-if="event && event.orderStartsAt && new Date(event.orderStartsAt) > new Date()"
                         severity="info"
                         :closable="false"
                         class="mb-0"
                     >
-                        Badge ordering is currently closed
+                        You may order additional badges starting {{ new Date(event.orderStartsAt).toLocaleDateString('de-DE') }}.
                     </Message>
+                    
                 </div>
             </div>
         </div>
@@ -240,8 +257,15 @@ function getFursuitSeverity(status) {
                         v-if="canCreate && event && event.allowsOrders"
                         @click="router.visit(route('badges.create'))"
                         icon="pi pi-plus"
-                        :label="hasFreeBadge ? 'Create Free Badge' : 'Purchase Badge'"
-                        :severity="hasFreeBadge ? 'success' : 'primary'"
+                        :label="hasFreeBadge ? 'Create Free Badge' : (prepaidBadgesLeft > 0 ? 'Customize Prepaid Badge' : 'Purchase Badge')"
+                        :severity="hasFreeBadge || prepaidBadgesLeft > 0 ? 'success' : 'primary'"
+                    />
+                    <Button
+                        v-else-if="prepaidBadgesLeft > 0"
+                        @click="router.visit(route('badges.create'))"
+                        icon="pi pi-star"
+                        label="Customize Prepaid Badge"
+                        severity="success"
                     />
                 </div>
             </template>

@@ -49,6 +49,11 @@ class BadgeController extends Controller
             ->with(['fursuit.species', 'fursuit.event'])
             ->get();
 
+        // Calculate prepaid badges available
+        $eventUser = $activeEvent ? $user->eventUser($activeEvent->id) : null;
+        $prepaidBadges = $eventUser ? $eventUser->prepaid_badges : 0;
+        $prepaidBadgesLeft = $user->getPrepaidBadgesLeft($activeEvent?->id);
+
         return Inertia::render('Badges/BadgesIndex', [
             'badges' => $badges,
             'badgeCount' => $badges->count(),
@@ -56,6 +61,8 @@ class BadgeController extends Controller
             'canCreate' => Gate::allows('create', Badge::class),
             'hasFreeBadge' => $user->hasFreeBadge(),
             'freeBadgeCopies' => $user->free_badge_copies,
+            'prepaidBadges' => $prepaidBadges,
+            'prepaidBadgesLeft' => $prepaidBadgesLeft,
             'event' => $activeEvent ? [
                 'id' => $activeEvent->id,
                 'name' => $activeEvent->name,
@@ -71,10 +78,15 @@ class BadgeController extends Controller
     {
         Gate::authorize('create', Badge::class);
 
-        return Inertia::render('Badges/BadgesCreate', [
+        $user = $request->user();
+        $activeEvent = Event::getActiveEvent();
+        $prepaidBadgesLeft = $user->getPrepaidBadgesLeft($activeEvent?->id);
+
+        return Inertia::render('Badges/BadgeForm', [
             'species' => Species::has('fursuits', count: 5)->orWhere('checked', true)->get('name'),
-            'isFree' => auth()->user()->hasFreeBadge(),
-            'freeBadgeCopies' => auth()->user()->hasFreeBadge() ? auth()->user()->free_badge_copies : 0,
+            'isFree' => $user->hasFreeBadge(),
+            'freeBadgeCopies' => $user->hasFreeBadge() ? $user->free_badge_copies : 0,
+            'prepaidBadgesLeft' => $prepaidBadgesLeft,
         ]);
     }
 
@@ -85,9 +97,9 @@ class BadgeController extends Controller
             // Lock Wallet Balance
             $request->user()->balanceInt;
             // Lock user for update
-            User::where('id', auth()->id())->lockForUpdate()->first();
-            Badge::whereHas('fursuit', function ($query) {
-                $query->where('user_id', auth()->id());
+            User::where('id', $request->user()->id)->lockForUpdate()->first();
+            Badge::whereHas('fursuit', function ($query) use ($request) {
+                $query->where('user_id', $request->user()->id);
             })->lockForUpdate()->get();
 
             $event = Event::getActiveEvent();
@@ -111,12 +123,23 @@ class BadgeController extends Controller
                 'catch_em_all' => $validated['catchEmAll'] ?? false,
             ]);
 
-            // is Free Badge
+            // is Free Badge or Prepaid Badge
+            $eventUser = $request->user()->eventUser($event->id);
+            $prepaidBadges = $eventUser ? $eventUser->prepaid_badges : 0;
+            $orderedBadges = $request->user()->badges()
+                ->whereHas('fursuit.event', function ($query) use ($event) {
+                    $query->where('id', $event->id);
+                })
+                ->count();
+            // prepaidBadges is now a max limit, not decremented
+            $prepaidBadgesLeft = max(0, $prepaidBadges - $orderedBadges);
+
             $isFreeBadge = $request->user()->hasFreeBadge();
+            $isPrepaidBadge = $prepaidBadgesLeft > 0;
 
             // Returns in cents
             $total = BadgeCalculationService::calculate(
-                isFreeBadge: $isFreeBadge,
+                isFreeBadge: $isFreeBadge || $isPrepaidBadge,
                 isLate: false, // No late fees in new system
             );
 
@@ -132,12 +155,14 @@ class BadgeController extends Controller
                 'tax' => round($tax),
                 'total' => round($total),
                 'dual_side_print' => true,
-                'is_free_badge' => $isFreeBadge,
+                'is_free_badge' => $isFreeBadge || $isPrepaidBadge,
                 'apply_late_fee' => false, // No late fees in new system
                 'paid_at' => $total === 0 ? now() : null,
             ]);
             // Pay for Badge (force pay as we allow negative balance)
             $request->user()->forcePay($badge);
+
+            // No longer decrement prepaid_badges, just use as max limit
 
             if ($isFreeBadge) {
                 $eventUser = $request->user()->eventUser($event->id);
@@ -157,10 +182,7 @@ class BadgeController extends Controller
                 }
                 $request->user()->wallet->deposit($total * $freeBadgeCopies, ['title' => 'Fuirsuit Badge', 'description' => 'Already paid with the EF registration system']);
 
-                // Update EventUser to mark badges as used
-                if ($eventUser) {
-                    $eventUser->update(['prepaid_badges' => 0]);
-                }
+                // No longer update prepaid_badges to 0
 
                 // Mark fursuitbadge as created
                 \Illuminate\Support\Facades\Http::attsrv()
@@ -197,7 +219,7 @@ class BadgeController extends Controller
     {
         Gate::authorize('update', $badge);
 
-        return Inertia::render('Badges/BadgesEdit', [
+        return Inertia::render('Badges/BadgeForm', [
             'canEdit' => $request->user()->can('update', $badge),
             'canDelete' => $request->user()->can('delete', $badge),
             'badge' => $badge->load('fursuit.species'),

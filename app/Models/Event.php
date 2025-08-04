@@ -32,10 +32,11 @@ class Event extends Model
     {
         $now = now();
 
-        return self::where('starts_at', '<=', $now)
-            ->where('ends_at', '>=', $now)
-            ->latest('starts_at')
-            ->first();
+        return self::latest('starts_at')
+            ->get()
+            ->first(function ($event) {
+                return $event->allowsOrders();
+            });
     }
 
     public function state(): Attribute
@@ -43,10 +44,6 @@ class Event extends Model
         return new Attribute(get: function () {
             // If event end date has passed, then closed
             if ($this->ends_at < now()) {
-                return EventStateEnum::CLOSED;
-            }
-            // If event hasn't started yet, then closed
-            if ($this->starts_at > now()) {
                 return EventStateEnum::CLOSED;
             }
             // If orders haven't started yet, then closed
@@ -58,7 +55,7 @@ class Event extends Model
                 return EventStateEnum::CLOSED;
             }
 
-            // Event is active and orders are allowed, so it's open
+            // Orders are allowed (event may not have started yet, but orders are open)
             return EventStateEnum::OPEN;
         });
     }

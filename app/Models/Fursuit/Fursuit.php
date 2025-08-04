@@ -186,7 +186,7 @@ class Fursuit extends Model
             if ($fursuit->isDirty('catch_code') && $fursuit->getOriginal('catch_code')) {
                 UserCatchLog::clearFursuitCache($fursuit->getOriginal('catch_code'));
             }
-            
+
             // Clear total fursuiters cache if catch_em_all flag changes
             if ($fursuit->isDirty('catch_em_all') && $fursuit->event_id) {
                 Cache::forget("total_fursuiters_{$fursuit->event_id}");
@@ -205,7 +205,7 @@ class Fursuit extends Model
             if ($fursuit->catch_code) {
                 UserCatchLog::clearFursuitCache($fursuit->catch_code);
             }
-            
+
             // Clear total fursuiters cache
             if ($fursuit->event_id) {
                 Cache::forget("total_fursuiters_{$fursuit->event_id}");

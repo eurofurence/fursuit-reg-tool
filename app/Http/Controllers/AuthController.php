@@ -62,7 +62,6 @@ class AuthController extends Controller
 
         $user->wallet->balance;
 
-
         $activeEvent = Event::getActiveEvent();
         $eventUser = null;
         if ($activeEvent) {
@@ -103,9 +102,7 @@ class AuthController extends Controller
             );
         }
 
-        // Check for prepaid badges for new users OR existing users who need prepaid badge check
-        $needsBadgeCheck = $isNewUser || ($eventUser && $eventUser->prepaid_badges === 0 && !cache()->has("prepaid_check_{$user->id}_{$activeEvent?->id}"));
-        if ($activeEvent && $eventUser && $needsBadgeCheck) {
+        if ($activeEvent && $eventUser) {
             $fursuit = \Illuminate\Support\Facades\Http::attsrv()
                 ->withToken($socialLiteUser->token)
                 ->get('/attendees/'.$regId.'/packages/fursuit')
@@ -130,10 +127,6 @@ class AuthController extends Controller
                         'created' => false,
                     ]);
             }
-            
-            // Mark that we've checked this user's prepaid badges for this event
-            cache()->put("prepaid_check_{$user->id}_{$activeEvent->id}", true, now()->addHours(24));
-
         }
 
         Auth::login($user, true);
