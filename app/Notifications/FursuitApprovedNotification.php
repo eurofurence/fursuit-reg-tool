@@ -18,10 +18,6 @@ class FursuitApprovedNotification extends Notification
 
     public function via($notifiable): array
     {
-        // Do not send notification if badge was created in a previous year
-        if ($this->badge && $this->badge->created_at && $this->badge->created_at->year < now()->year) {
-            return [];
-        }
         return ['mail'];
     }
 

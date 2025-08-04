@@ -25,7 +25,12 @@ class PendingToRejected extends Transition
                 ->by($this->reviewer)
                 ->withProperties(['reason' => $this->reason])
                 ->log('Fursuit rejected');
-            $this->fursuit->user->notify(new FursuitRejectedNotification($this->fursuit, $this->reason));
+            // Only notify if badge was created after the event's end date
+            $badge = $this->fursuit->badges()->whereNull('extra_copy_of')->first();
+            $eventEndsAt = $this->fursuit->event->ends_at ?? null;
+            if ($badge && $badge->created_at && $eventEndsAt && $badge->created_at->gt($eventEndsAt)) {
+                $this->fursuit->user->notify(new FursuitRejectedNotification($this->fursuit, $this->reason));
+            }
 
             return $this->fursuit;
         });

@@ -24,7 +24,14 @@ class PendingToApproved extends Transition
                 ->performedOn($this->fursuit)
                 ->causedBy($this->reviewer)
                 ->log('Fursuit approved');
-            $this->fursuit->user->notify(new FursuitApprovedNotification($this->fursuit));
+
+
+            // Only notify if badge was created after the event's end date
+            $badge = $this->fursuit->badges()->whereNull('extra_copy_of')->first();
+            $eventEndsAt = $this->fursuit->event->ends_at ?? null;
+            if ($badge && $badge->created_at && $eventEndsAt && $badge->created_at->gt($eventEndsAt)) {
+                $this->fursuit->user->notify(new FursuitApprovedNotification($this->fursuit));
+            }
 
             return $this->fursuit;
         });
