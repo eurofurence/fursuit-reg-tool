@@ -286,7 +286,7 @@ const shouldShowRegMessage = computed(() => {
                                 <div class="bg-green-50 border border-green-200 rounded-lg p-4">
                                     <h3 class="font-semibold text-green-800 mb-3 flex items-center">
                                         <i class="pi pi-calendar mr-2"></i>
-                                        Before 10th July 2025 (Official Registration Period)
+                                        Before 17th August 2025 (Official Registration Period)
                                     </h3>
                                     <div class="space-y-3">
                                         <div class="flex items-start gap-3">
@@ -314,7 +314,7 @@ const shouldShowRegMessage = computed(() => {
                                 <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
                                     <h3 class="font-semibold text-orange-800 mb-3 flex items-center">
                                         <i class="pi pi-calendar mr-2"></i>
-                                        After 10th July 2025 (Late Orders)
+                                        After 17th August 2025 (Late Orders)
                                     </h3>
                                     <div class="space-y-3">
                                         <div class="flex items-start gap-3">
