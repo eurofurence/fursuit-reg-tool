@@ -99,15 +99,7 @@ function confirmImage() {
 
     <!-- Rules -->
     <div class="text-sm mt-2 my-4">
-        <p class="max-w-xs">All photos will be manually reviewed before printing. Kindly follow the rules to ensure your photo does not get rejected.</p>
-        <p class="max-w-xs">We reserve the right to reject submissions for the following reasons, but not limited to:</p>
-        <ul class="list-disc pl-4 mt-2">
-            <li>No Digital Art</li>
-            <li>No Human Faces</li>
-            <li>No Animals</li>
-            <li>No AI-Generated Content</li>
-            <li>No NSFW Content</li>
-        </ul>
+        <p class="max-w-xs">All photos will be manually reviewed before printing. We ask that your photo follows the <a href="https://help.eurofurence.org/legal/roc/" target="_blank">code of conduct</a>.</p>
     </div>
 
     <div :class="{'grid grid-cols-2 gap-3': image.src}">

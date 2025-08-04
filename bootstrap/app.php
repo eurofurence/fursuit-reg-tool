@@ -11,18 +11,18 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        then: function() {
+        then: function () {
             \Illuminate\Support\Facades\Route::prefix('fcea/')
                 ->name('fcea.')
                 ->middleware([
                     'web',
-                    'catch-auth:web'
+                    'catch-auth:web',
                 ])
                 ->group(base_path('routes/fcea.php'));
             \Illuminate\Support\Facades\Route::middleware([
                 'pos-auth:machine',
                 'pos-auth:machine-user',
-                'web',\App\Http\Middleware\InactivityLogoutMiddleware::class
+                'web', \App\Http\Middleware\InactivityLogoutMiddleware::class,
             ])
                 ->prefix('pos/')
                 ->name('pos.')

@@ -16,6 +16,6 @@ class RefreshTokensCommand extends Command
     {
         User::where('refresh_token_expires_at', '<', now())
             ->chunk(100,
-                fn($chunk) => $chunk->each(fn(User $user) => (new TokenRefreshService($user))->refreshToken()));
+                fn ($chunk) => $chunk->each(fn (User $user) => (new TokenRefreshService($user))->refreshToken()));
     }
 }

@@ -17,8 +17,6 @@ use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class FursuitResource extends Resource
 {
@@ -40,7 +38,7 @@ class FursuitResource extends Resource
                             ->alignCenter(),
                         TextEntry::make('rules')
                             ->listWithLineBreaks()
-                            ->getStateUsing(fn() => [
+                            ->getStateUsing(fn () => [
                                 'Fursuits in your possession.',
                                 'No humans in the photos.',
                                 'No explicit content.',
@@ -76,8 +74,8 @@ class FursuitResource extends Resource
                         TextEntry::make('status')
                             ->badge()
                             ->hint('Current status of the fursuit.')
-                            ->color(fn(Fursuit $fursuit) => $fursuit->status->color())
-                            ->formatStateUsing(fn($state) => ucfirst($state)),
+                            ->color(fn (Fursuit $fursuit) => $fursuit->status->color())
+                            ->formatStateUsing(fn ($state) => ucfirst($state)),
                     ])->columnSpan(9),
                 ])->columns(12)->columnSpanFull(),
             ]);
@@ -127,8 +125,8 @@ class FursuitResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->color(fn(Fursuit $fursuit) => $fursuit->status->color())
-                    ->formatStateUsing(fn($state) => ucfirst($state))
+                    ->color(fn (Fursuit $fursuit) => $fursuit->status->color())
+                    ->formatStateUsing(fn ($state) => ucfirst($state))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
@@ -153,18 +151,18 @@ class FursuitResource extends Resource
                         'approved' => 'Approved',
                         'rejected' => 'Rejected',
                     ])
-                ->default('pending'),
+                    ->default('pending'),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                //Tables\Actions\EditAction::make(),
+                // Tables\Actions\EditAction::make(),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            RelationManagers\ActivitiesRelationManager::class
+            RelationManagers\ActivitiesRelationManager::class,
         ];
     }
 

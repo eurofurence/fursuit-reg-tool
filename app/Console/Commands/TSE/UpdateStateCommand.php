@@ -14,7 +14,7 @@ class UpdateStateCommand extends Command
     public function handle(): void
     {
         $state = $this->argument('state');
-        $fiskalyService = new FiskalyService();
+        $fiskalyService = new FiskalyService;
         $fiskalyService->updateTssState($state);
     }
 }

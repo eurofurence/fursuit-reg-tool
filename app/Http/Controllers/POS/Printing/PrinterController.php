@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\POS\Printing;
 
-use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
@@ -19,7 +18,7 @@ class PrinterController extends Controller
         collect($data)->each(function ($printer) use ($request) {
             $request->user('machine')->printers()->firstOrCreate([
                 'name' => $printer['name'],
-            ],[
+            ], [
                 'name' => $printer['name'],
                 'type' => PrintJobTypeEnum::Receipt,
                 'paper_sizes' => $printer['sizes'],
@@ -32,12 +31,13 @@ class PrinterController extends Controller
     {
         $machine = auth('machine')->user();
         $printers = $machine->printers()->get();
-        return PrintJob::whereHas('printer', fn($query) => $query->where('machine_id', $machine->id))
-            ->where('status','=',PrintJobStatusEnum::Pending)
+
+        return PrintJob::whereHas('printer', fn ($query) => $query->where('machine_id', $machine->id))
+            ->where('status', '=', PrintJobStatusEnum::Pending)
             ->limit(5)
             ->orderBy('created_at')
             ->get()
-            ->map(fn(PrintJob $printJob) => [
+            ->map(fn (PrintJob $printJob) => [
                 'id' => $printJob->id,
                 'printer' => $printJob->printer->name,
                 'type' => $printJob->type,

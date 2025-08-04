@@ -12,19 +12,18 @@ use Inertia\Inertia;
 
 class GalleryController extends Controller
 {
-
     const ITEMS_PER_LOAD = 20; // 20 items per infinite scroll load
 
-    public function index(Request $request): \Inertia\Response | \Illuminate\Http\RedirectResponse
+    public function index(Request $request): \Inertia\Response|\Illuminate\Http\RedirectResponse
     {
-        $searchTerm = $request->input('query', "");
+        $searchTerm = $request->input('query', '');
         $speciesFilter = $request->input('species', '');
         $eventFilter = $request->input('event', '');
         // Set default sort based on whether catch-em-all is enabled
         $defaultSort = 'catches_desc';
-        if (!empty($eventFilter)) {
+        if (! empty($eventFilter)) {
             $tempEvent = Event::find($eventFilter);
-            if ($tempEvent && !$tempEvent->catch_em_all_enabled) {
+            if ($tempEvent && ! $tempEvent->catch_em_all_enabled) {
                 $defaultSort = 'name_asc';
             }
         }
@@ -32,7 +31,7 @@ class GalleryController extends Controller
         $offset = intval($request->input('offset', 0));
 
         $search = collect(explode(' ', $searchTerm))->map(function ($term) {
-            return '%' . trim($term) . '%';
+            return '%'.trim($term).'%';
         })->toArray();
 
         if ($offset < 0) {
@@ -42,7 +41,7 @@ class GalleryController extends Controller
         // Build base query
         $query = Fursuit::query()
             ->with(['species', 'event'])
-            ->where('status', "approved")
+            ->where('status', 'approved')
             ->whereNotNull('image')
             ->where('published', true);
 
@@ -52,20 +51,20 @@ class GalleryController extends Controller
         }
 
         // Apply species filter
-        if (!empty($speciesFilter)) {
+        if (! empty($speciesFilter)) {
             $query->whereHas('species', function ($q) use ($speciesFilter) {
-                $q->where('name', 'LIKE', '%' . $speciesFilter . '%');
+                $q->where('name', 'LIKE', '%'.$speciesFilter.'%');
             });
         }
 
         // Apply event filter and get event data
         $selectedEvent = null;
         $isHistoricalEvent = false;
-        if (!empty($eventFilter)) {
+        if (! empty($eventFilter)) {
             $query->where('event_id', $eventFilter);
             $selectedEvent = Event::find($eventFilter);
             if ($selectedEvent) {
-                $isHistoricalEvent = !$selectedEvent->catch_em_all_enabled;
+                $isHistoricalEvent = ! $selectedEvent->catch_em_all_enabled;
             }
         }
 
@@ -73,10 +72,10 @@ class GalleryController extends Controller
         $totalCount = $query->count();
 
         // Apply sorting - skip catch-related sorting for historical events (EF15-EF27)
-        if (!$isHistoricalEvent && ($sortBy === 'catches_asc' || $sortBy === 'catches_desc' || $sortBy === null)) {
+        if (! $isHistoricalEvent && ($sortBy === 'catches_asc' || $sortBy === 'catches_desc' || $sortBy === null)) {
             $query->withCount('catchedByUsers');
         }
-        
+
         switch ($sortBy) {
             case 'catches_asc':
                 if ($isHistoricalEvent) {
@@ -190,14 +189,14 @@ class GalleryController extends Controller
 
     public function loadMore(Request $request): \Illuminate\Http\JsonResponse
     {
-        $searchTerm = $request->input('query', "");
+        $searchTerm = $request->input('query', '');
         $speciesFilter = $request->input('species', '');
         $eventFilter = $request->input('event', '');
         // Set default sort based on whether catch-em-all is enabled
         $defaultSort = 'catches_desc';
-        if (!empty($eventFilter)) {
+        if (! empty($eventFilter)) {
             $tempEvent = Event::find($eventFilter);
-            if ($tempEvent && !$tempEvent->catch_em_all_enabled) {
+            if ($tempEvent && ! $tempEvent->catch_em_all_enabled) {
                 $defaultSort = 'name_asc';
             }
         }
@@ -209,13 +208,13 @@ class GalleryController extends Controller
         }
 
         $search = collect(explode(' ', $searchTerm))->map(function ($term) {
-            return '%' . trim($term) . '%';
+            return '%'.trim($term).'%';
         })->toArray();
 
         // Build base query
         $query = Fursuit::query()
             ->with(['species', 'event'])
-            ->where('status', "approved")
+            ->where('status', 'approved')
             ->whereNotNull('image')
             ->where('published', true);
 
@@ -225,20 +224,20 @@ class GalleryController extends Controller
         }
 
         // Apply species filter
-        if (!empty($speciesFilter)) {
+        if (! empty($speciesFilter)) {
             $query->whereHas('species', function ($q) use ($speciesFilter) {
-                $q->where('name', 'LIKE', '%' . $speciesFilter . '%');
+                $q->where('name', 'LIKE', '%'.$speciesFilter.'%');
             });
         }
 
         // Apply event filter and get event data
         $selectedEvent = null;
         $isHistoricalEvent = false;
-        if (!empty($eventFilter)) {
+        if (! empty($eventFilter)) {
             $query->where('event_id', $eventFilter);
             $selectedEvent = Event::find($eventFilter);
             if ($selectedEvent) {
-                $isHistoricalEvent = !$selectedEvent->catch_em_all_enabled;
+                $isHistoricalEvent = ! $selectedEvent->catch_em_all_enabled;
             }
         }
 
@@ -246,10 +245,10 @@ class GalleryController extends Controller
         $totalCount = $query->count();
 
         // Apply sorting - skip catch-related sorting for historical events (EF15-EF27)
-        if (!$isHistoricalEvent && ($sortBy === 'catches_asc' || $sortBy === 'catches_desc' || $sortBy === null)) {
+        if (! $isHistoricalEvent && ($sortBy === 'catches_asc' || $sortBy === 'catches_desc' || $sortBy === null)) {
             $query->withCount('catchedByUsers');
         }
-        
+
         switch ($sortBy) {
             case 'catches_asc':
                 if ($isHistoricalEvent) {
@@ -305,14 +304,13 @@ class GalleryController extends Controller
         ]);
     }
 
-    public function getTotalFursuitCount(Request $request): \Illuminate\Http\JsonResponse {
+    public function getTotalFursuitCount(Request $request): \Illuminate\Http\JsonResponse
+    {
         $count = Fursuit::query()
-            ->where('status', "approved")
+            ->where('status', 'approved')
             ->where('published', true)
             ->count();
+
         return response()->json(['count' => $count]);
     }
-
-
-
 }

@@ -2,21 +2,20 @@
 
 namespace App\Badges;
 
-use Imagine\Image\Box;
-use Imagine\Image\Point;
-use App\Models\Badge\Badge;
-use Illuminate\Http\Response;
-use Imagine\Image\Palette\RGB;
-use Imagine\Image\ImageInterface;
 use App\Badges\Bases\BadgeBase_V1;
-use App\Interfaces\BadgeInterface;
-use App\Badges\Components\TextField;
-use Illuminate\Support\Facades\Storage;
 use App\Badges\Components\TextAlignment;
+use App\Badges\Components\TextField;
+use App\Interfaces\BadgeInterface;
+use App\Models\Badge\Badge;
+use Illuminate\Support\Facades\Storage;
+use Imagine\Image\Box;
+use Imagine\Image\ImageInterface;
 use Imagine\Image\Palette\Color\ColorInterface;
+use Imagine\Image\Palette\RGB;
+use Imagine\Image\Point;
 use Mpdf\Mpdf;
 
-#Documentation: https://imagine.readthedocs.io/en/stable/
+// Documentation: https://imagine.readthedocs.io/en/stable/
 
 class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
 {
@@ -44,7 +43,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $this->addThirdLayer($badge_objekt, $size);
         $this->addFourthLayer($badge_objekt);
 
-        if ($this->badge->fursuit->catch_em_all == true && !empty($this->badge->fursuit->catch_code)) {
+        if ($this->badge->fursuit->catch_em_all == true && ! empty($this->badge->fursuit->catch_code)) {
             $this->addFifthLayer($badge_objekt, $size);
         }
 
@@ -79,7 +78,8 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
             $mpdf->AddPageByArray($options);
             $mpdf->Image('var:badgeImageBack', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
         }
-        return $mpdf->Output($badge->id . '.pdf', \Mpdf\Output\Destination::STRING_RETURN);
+
+        return $mpdf->Output($badge->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     }
 
     private function addFirstLayer(Box $size)
@@ -87,6 +87,7 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         // Add background
         $image = $this->imagine->open(resource_path('badges/ef28/images/first_layer_bg_purple.png'));
         $image->resize($size);
+
         return $image;
     }
 
@@ -143,7 +144,6 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $badge_object->paste($overlayImage, new Point(0, 0));
     }
 
-
     private function addThirdLayer(ImageInterface $badge_object, Box $size)
     {
         // Load the overlay image
@@ -167,10 +167,10 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $font_path = resource_path($this->font_path); // Path to the font file
 
         // Create color palette - Text color
-        $palette = new RGB();
+        $palette = new RGB;
         $font_color = $palette->color($this->font_color);
         // Create color palette - Frame
-        $border_color = $palette->color("#9579aa");
+        $border_color = $palette->color('#9579aa');
 
         // Position of the texts in the image
         $position_attendee_id = new Point(
@@ -303,7 +303,6 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         // The text is drawn automatically when the TextField object is created.
     }
 
-
     private function addFifthLayer(ImageInterface $badge_object, Box $size)
     {
         // Add catch em all field
@@ -317,10 +316,10 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $position = new Point($this->width_px - 558, $this->height_px - 182);
 
         // Create color palette - Text color
-        $palette = new RGB();
+        $palette = new RGB;
         $font_color = $palette->color($this->font_color);
         // Create color palette - Frame
-        $border_color = $palette->color("#9579aa");
+        $border_color = $palette->color('#9579aa');
 
         // Add to badge
         $badge_object->paste($overlayImage, new Point(0, 0));

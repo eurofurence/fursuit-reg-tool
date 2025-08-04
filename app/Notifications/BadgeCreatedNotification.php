@@ -3,16 +3,12 @@
 namespace App\Notifications;
 
 use App\Models\Badge\Badge;
-use App\Models\Fursuit\Fursuit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class BadgeCreatedNotification extends Notification
 {
-
-    public function __construct(public Badge $badge)
-    {
-    }
+    public function __construct(public Badge $badge) {}
 
     public function via($notifiable): array
     {

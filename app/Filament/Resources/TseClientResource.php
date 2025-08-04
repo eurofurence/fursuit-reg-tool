@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Domain\Checkout\Models\TseClient;
 use App\Filament\Resources\TseClientResource\Pages;
-use App\Filament\Resources\TseClientResource\RelationManagers;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;

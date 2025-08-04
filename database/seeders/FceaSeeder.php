@@ -3,12 +3,10 @@
 namespace Database\Seeders;
 
 use App\Http\Controllers\FCEA\DashboardController;
-use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\FCEA\UserCatch;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 
@@ -19,8 +17,8 @@ class FceaSeeder extends Seeder
      */
     public function run(): void
     {
-        Artisan::call("event:state preorder");
-        $event =  Event::first();
+        Artisan::call('event:state preorder');
+        $event = Event::first();
 
         $users = User::factory(50)->create();
         $fursuiters = $users->random(20);

@@ -11,7 +11,7 @@ class Printer extends Model
 {
     protected $guarded = [];
 
-    function casts()
+    public function casts()
     {
         return [
             'type' => PrintJobTypeEnum::class,

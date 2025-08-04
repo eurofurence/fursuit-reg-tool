@@ -5,7 +5,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
@@ -26,7 +27,6 @@ return new class extends Migration {
         DB::statement('UPDATE badges SET status_fulfillment = "ready_for_pickup" WHERE status_fulfillment = "ready_for_pickup"');
         DB::statement('UPDATE badges SET status_fulfillment = "picked_up" WHERE status_fulfillment = "picked_up"');
         DB::statement('UPDATE badges SET status_fulfillment = "pending" WHERE status_fulfillment = "pending"');
-
 
         Schema::table('badges', function (Blueprint $table) {
             $table->string('status_payment', 255)->after('status_fulfillment')->nullable(false)->change(); // Make it non-nullable after migration

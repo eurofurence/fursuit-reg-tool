@@ -13,15 +13,11 @@ use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use App\Models\Badge\State_Payment\BadgePaymentStatusState;
 use App\Models\Badge\State_Payment\Paid;
 use App\Models\Badge\State_Payment\Unpaid;
-use App\Models\Fursuit\States\FursuitStatusState;
-use App\Models\Machine;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Collection;
 
 class BadgeResource extends Resource
@@ -42,11 +38,11 @@ class BadgeResource extends Resource
                 // Status
                 Forms\Components\Select::make('status_fulfillment')
                     ->label('status_fulfillment')
-                    ->options(BadgeFulfillmentStatusState::getStateMapping()->keys()->mapWithKeys(fn($key) => [$key => ucfirst($key)]))
+                    ->options(BadgeFulfillmentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key) => [$key => ucfirst($key)]))
                     ->required(),
                 Forms\Components\Select::make('status_payment')
                     ->label('status_payment')
-                    ->options(BadgePaymentStatusState::getStateMapping()->keys()->mapWithKeys(fn($key) => [$key => ucfirst($key)]))
+                    ->options(BadgePaymentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key) => [$key => ucfirst($key)]))
                     ->required(),
                 Forms\Components\Group::make([
                     // Total
@@ -60,7 +56,7 @@ class BadgeResource extends Resource
                     Forms\Components\TextInput::make('subtotal')
                         ->label('Sub-Total')
                         ->disabled(),
-                ])->columnSpanFull()->columns(3)
+                ])->columnSpanFull()->columns(3),
             ]);
     }
 
@@ -72,10 +68,13 @@ class BadgeResource extends Resource
                     ->sortable()
                     ->searchable()
                     ->label('Custom ID'),
-                Tables\Columns\TextColumn::make('fursuit.user.attendee_id')
+                Tables\Columns\TextColumn::make('attendee_id')
                     ->sortable()
                     ->searchable()
-                    ->label('Attendee ID'),
+                    ->label('Attendee ID')
+                    ->getStateUsing(function (Badge $record) {
+                        return $record->fursuit->user->eventUser()?->attendee_id ?? 'N/A';
+                    }),
                 Tables\Columns\TextColumn::make('fursuit.name')
                     ->searchable()
                     ->label('Fursuit'),
@@ -92,10 +91,10 @@ class BadgeResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status_fulfillment')
-                    ->options(BadgeFulfillmentStatusState::getStateMapping()->keys()->mapWithKeys(fn($key) => [ucfirst($key) => $key]))
+                    ->options(BadgeFulfillmentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key) => [ucfirst($key) => $key]))
                     ->label('Badge Fulfillment Status'),
                 Tables\Filters\SelectFilter::make('status_payment')
-                    ->options(BadgePaymentStatusState::getStateMapping()->keys()->mapWithKeys(fn($key) => [ucfirst($key) => $key]))
+                    ->options(BadgePaymentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key) => [ucfirst($key) => $key]))
                     ->label('Badge Payment Status'),
                 // Duplex Bool Filter
                 Tables\Filters\TernaryFilter::make('dual_side_print')
@@ -120,12 +119,12 @@ class BadgeResource extends Resource
                     ->label('Print Badge')
                     ->requiresConfirmation()
                     ->action(function (Collection $records) {
-                        return $records->reverse()->each(fn(Badge $record, $index) => static::printBadge($record, $index));
+                        return $records->reverse()->each(fn (Badge $record, $index) => static::printBadge($record, $index));
                     }),
             ])
             ->selectCurrentPageOnly()
             ->paginationPageOptions([10, 25, 50, 100])
-            ->defaultSort('fursuit.user.attendee_id', 'asc');
+            ->defaultSort('custom_id', 'asc');
     }
 
     public static function printBadge(Badge $badge, $mass = 0): Badge
@@ -135,6 +134,7 @@ class BadgeResource extends Resource
         }
         // Add delay for mass printing so they are generated in order
         PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($mass * 15));
+
         return $badge;
     }
 

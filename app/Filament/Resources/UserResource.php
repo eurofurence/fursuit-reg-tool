@@ -3,15 +3,12 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class UserResource extends Resource
 {
@@ -40,12 +37,6 @@ class UserResource extends Resource
                     ->required(),
                 Forms\Components\Toggle::make('is_admin')
                     ->required(),
-                Forms\Components\Toggle::make('is_cashier')
-                    ->required(),
-                // pin_code 6 digits
-                Forms\Components\TextInput::make('pin_code')
-                    ->minLength(6)
-                    ->maxLength(6),
 
             ]);
     }

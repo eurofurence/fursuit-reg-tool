@@ -9,6 +9,7 @@ use Spatie\ModelStates\State;
 abstract class CheckoutStatusState extends State
 {
     public static string $name;
+
     abstract public function color(): string;
 
     public static function config(): \Spatie\ModelStates\StateConfig

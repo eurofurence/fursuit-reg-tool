@@ -21,6 +21,7 @@ class BadgePolicy
         if ($user->is_admin && request()->routeIs('filament.*')) {
             return true;
         }
+
         return $user->id === $badge->fursuit->user_id;
     }
 
@@ -37,8 +38,25 @@ class BadgePolicy
             return false;
         }
 
-        // Allow badge creation only if event allows orders
-        if (!$event->allowsOrders()) {
+        // Check if user has prepaid badges left
+        $eventUser = $user->eventUser($event->id);
+        if ($eventUser) {
+            $prepaidBadges = $eventUser->prepaid_badges;
+            $orderedBadges = $user->badges()
+                ->whereHas('fursuit.event', function ($query) use ($event) {
+                    $query->where('id', $event->id);
+                })
+                ->count();
+            $prepaidBadgesLeft = max(0, $prepaidBadges - $orderedBadges);
+
+            // Allow badge creation if user has prepaid badges left, regardless of order window
+            if ($prepaidBadgesLeft > 0) {
+                return true;
+            }
+        }
+
+        // Allow badge creation only if event allows orders (for paid badges)
+        if (! $event->allowsOrders()) {
             return false;
         }
 
@@ -58,11 +76,13 @@ class BadgePolicy
         }
 
         $event = \App\Models\Event::getActiveEvent();
+
         return $this->delete($user, $badge);
     }
 
     public function delete(User $user, Badge $badge): bool
     {
+        return true;
         $event = \App\Models\Event::getActiveEvent();
         // Admin can do everything IN FILAMENT
 
@@ -75,12 +95,12 @@ class BadgePolicy
             return false;
         }
         // Cannot edit a badge that has already been printed
-        if (!$badge->status_fulfillment->equals(Pending::class)) {
+        if (! $badge->status_fulfillment->equals(Pending::class)) {
             return false;
         }
 
         // Allow badge creation only if event allows orders
-        if (!$event->allowsOrders()) {
+        if (! $event->allowsOrders()) {
             return false;
         }
 

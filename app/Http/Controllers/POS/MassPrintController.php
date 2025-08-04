@@ -6,13 +6,7 @@ use App\Http\Controllers\Controller;
 
 class MassPrintController extends Controller
 {
-    public function current()
-    {
+    public function current() {}
 
-    }
-
-    public function print()
-    {
-
-    }
+    public function print() {}
 }

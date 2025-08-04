@@ -14,7 +14,7 @@ export default {
         class: 'p-5'
     },
     title: {
-        class: 'text-2xl font-bold mb-2'
+        class: 'text-xl font-bold mb-2'
     },
     subtitle: {
         class: [

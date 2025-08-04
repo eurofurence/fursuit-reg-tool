@@ -8,7 +8,6 @@ use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\Printed;
-use App\Models\Machine;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,21 +19,18 @@ class PrintBadgeJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(private readonly Badge $badge)
-    {
-    }
+    public function __construct(private readonly Badge $badge) {}
 
     public function handle(): void
     {
-        if($this->badge->status_fulfillment->canTransitionTo(Printed::class)) {
+        if ($this->badge->status_fulfillment->canTransitionTo(Printed::class)) {
             $this->badge->status_fulfillment->transitionTo(Printed::class);
         }
 
-
-        $printer = new EF28_Badge();
+        $printer = new EF28_Badge;
         $pdfContent = $printer->getPdf($this->badge);
         // Store PDF Content in PrintJobs Storage
-        $filePath = 'badges/' . $this->badge->id . '.pdf';
+        $filePath = 'badges/'.$this->badge->id.'.pdf';
         Storage::put($filePath, $pdfContent);
         // Printer to send job to
         $sendTo = Printer::where('is_active', true)
