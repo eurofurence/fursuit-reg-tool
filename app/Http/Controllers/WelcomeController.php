@@ -32,10 +32,4 @@ class WelcomeController extends Controller
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
         ]);
     }
-
-    // TODO remove this
-    public function test()
-    {
-        return Inertia::render('POS/Dashboard');
-    }
 }
