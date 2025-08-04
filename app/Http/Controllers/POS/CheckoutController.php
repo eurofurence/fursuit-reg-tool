@@ -28,7 +28,8 @@ class CheckoutController extends Controller
         }
         // transaction needs to be in state Active to be shown
         if ($checkout->status->equals(Cancelled::class)) {
-            return redirect()->route('pos.attendee.show', ['attendeeId' => $checkout->user->attendee_id])->with('error', 'Checkout is cancelled.');
+            $attendeeId = $checkout->user->eventUser()?->attendee_id;
+            return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId])->with('error', 'Checkout is cancelled.');
         }
         $transactionData = $this->getTransactionData($checkout);
 
@@ -126,7 +127,8 @@ class CheckoutController extends Controller
     {
         $checkout->status->transitionTo(Cancelled::class);
 
-        return redirect()->route('pos.attendee.show', ['attendeeId' => $checkout->user->attendee_id]);
+        $attendeeId = $checkout->user->eventUser()?->attendee_id;
+        return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId]);
     }
 
     public function startCardPayment(Checkout $checkout)

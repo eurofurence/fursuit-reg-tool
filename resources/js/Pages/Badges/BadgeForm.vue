@@ -25,8 +25,6 @@ const props = defineProps({
     species: Array,
     
     // Create mode props
-    isFree: Boolean,
-    freeBadgeCopies: Number,
     prepaidBadgesLeft: Number,
     
     // Edit mode props
@@ -72,7 +70,7 @@ const form = useForm(
         publish: false,
         tos: false,
         upgrades: {
-            spareCopy: props.freeBadgeCopies > 0,
+            spareCopy: false, // Remove automatic spare copy logic
         }
     },
     isEditMode.value ? { forceFormData: true } : {}
@@ -159,7 +157,8 @@ const basePrice = computed(() => {
     }
     
     let price = 0;
-    if (props.isFree === false && (props.prepaidBadgesLeft === 0 || props.prepaidBadgesLeft === undefined)) {
+    // Check if user has prepaid badges left, otherwise charge 2€
+    if (props.prepaidBadgesLeft === 0 || props.prepaidBadgesLeft === undefined) {
         price += 2;
     }
     return price;
@@ -178,9 +177,7 @@ const copiesPrice = computed(() => {
     }
     
     let price = 0;
-    if (props.freeBadgeCopies > 0) {
-        price += props.freeBadgeCopies * 2;
-    } else if (form.upgrades.spareCopy) {
+    if (form.upgrades.spareCopy) {
         price += 2;
     }
     return price;
@@ -522,7 +519,7 @@ const canEditFields = computed(() => {
                                     <InputSwitch 
                                         v-model="form.upgrades.spareCopy" 
                                         id="spareCopy"
-                                        :disabled="props.isFree"
+                                        :disabled="false"
                                     />
                                     <div class="flex-1">
                                         <div class="flex items-center gap-2 mb-1">
@@ -574,7 +571,7 @@ const canEditFields = computed(() => {
                                     <div v-if="form.upgrades.spareCopy || (isEditMode && badge.extra_copy_of)" 
                                          class="flex justify-between items-center py-2 border-b border-gray-100">
                                         <span class="text-gray-600">
-                                            Spare Copy{{ freeBadgeCopies > 1 ? ` ×${freeBadgeCopies}` : '' }}
+                                            Spare Copy
                                         </span>
                                         <span class="font-medium">{{ copiesPrice }},00 €</span>
                                     </div>

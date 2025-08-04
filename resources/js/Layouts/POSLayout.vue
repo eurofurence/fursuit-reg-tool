@@ -4,18 +4,80 @@ import Menu from "primevue/menu";
 import { Link } from "@inertiajs/vue3";
 import DigitalClock from "@/Components/POS/DigitalClock.vue";
 import Badge from "primevue/badge";
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import QZPrintService from "@/Components/POS/QZPrintService.vue";
 import ToastService from "@/Components/POS/ToastService.vue";
+import ShortcutsDialog from "@/Components/POS/ShortcutsDialog.vue";
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 const cashier = computed(() => page.props.auth.user);
 
+// Responsive breakpoint detection
+const isMobile = ref(false);
+const isTablet = ref(false);
+
+const checkBreakpoint = () => {
+    const width = window.innerWidth;
+    isMobile.value = width < 768;
+    isTablet.value = width >= 768 && width < 1024;
+};
+
+onMounted(() => {
+    checkBreakpoint();
+    window.addEventListener('resize', checkBreakpoint);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', checkBreakpoint);
+});
+
 const userMenu = ref();
 const userMenuItems = ref([
     { label: 'Switch User', icon: 'pi pi-user', route: route('pos.auth.user.logout'), method: 'POST' },
+    { label: 'Keyboard Shortcuts', icon: 'pi pi-keyboard', command: () => showShortcutsDialog.value = true },
 ]);
+const showShortcutsDialog = ref(false);
+
+// Keyboard Shortcuts
+function handleGlobalShortcuts(e) {
+    // Ctrl+K: Search Attendee
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        // Route to attendee search
+        window.location.href = route('pos.attendee.lookup');
+    }
+    // Ctrl+P: Start Payment for All
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('pos-shortcut-payment'));
+    }
+    // Ctrl+H: Handout All
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('pos-shortcut-handout'));
+    }
+    // F1: Show Shortcuts Dialog
+    if (e.key === 'F1') {
+        e.preventDefault();
+        showShortcutsDialog.value = true;
+    }
+    // ENTER: Confirm Dialogs
+    if (e.key === 'Enter') {
+        window.dispatchEvent(new CustomEvent('pos-shortcut-confirm'));
+    }
+}
+
+onMounted(() => {
+    checkBreakpoint();
+    window.addEventListener('resize', checkBreakpoint);
+    window.addEventListener('keydown', handleGlobalShortcuts);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', checkBreakpoint);
+    window.removeEventListener('keydown', handleGlobalShortcuts);
+});
 
 const toggleUserMenu = (event) => {
     userMenu.value.toggle(event);
@@ -31,34 +93,95 @@ const props = defineProps({
     <ToastService/>
     <!-- Keep this, responsible for printing! -->
     <QZPrintService/>
-    <div class="min-h-screen lg:h-screen w-full flex flex-col bg-gray-200">
-        <div class="p-4 flex flex-row items-center" v-if="page.props.auth.user">
-            <Link :href="route(backToRoute)" v-if="backToRoute">
-                <Button icon="pi pi-arrow-left" class="p-button-rounded p-button-text" label="Back" />
-            </Link>
-            <!-- <Badge class="select-none" v-if="attendee" :value="attendee.name + ' #' + attendee.attendee_id" size="large" severity="success"></Badge> -->
-            <div class="flex-grow text-center text-slate-500 font-semibold text-lg">
-                <DigitalClock />
-            </div>
-            <Button type="button" icon="pi pi-user" @click="toggleUserMenu" aria-haspopup="true" aria-controls="overlay_menu" :label="cashier.name" />
-            <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true">
-                <template #item="{ item, props }">
-                    <Link :href="item.route" :method="item.method" v-ripple>
-                        <div class="flex items-center px-4 py-2">
-                            <span :class="item.icon"></span>
-                            <span class="ml-2">{{ item.label }}</span>
-                        </div>
+    <div class="min-h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
+        <!-- Modern Header -->
+        <header class="bg-white shadow-sm border-b border-slate-200" v-if="page.props.auth.user">
+            <div class="px-6 py-4 flex items-center justify-between">
+                <!-- Left Section -->
+                <div class="flex items-center space-x-4">
+                    <Link :href="route(backToRoute)" v-if="backToRoute">
+                        <Button 
+                            icon="pi pi-arrow-left" 
+                            class="p-button-text p-button-lg hover:bg-slate-100" 
+                            :label="isMobile ? '' : 'Back'" 
+                        />
                     </Link>
-                </template>
-            </Menu>
-        </div>
-        <div class="flex-1">
+                    <div v-if="attendee" class="hidden sm:flex items-center space-x-2">
+                        <Badge :value="attendee.name + ' #' + attendee.attendee_id" size="large" severity="success" class="font-medium"/>
+                    </div>
+                </div>
+                
+                <!-- Center Section - Clock -->
+                <div class="flex-1 text-center">
+                    <DigitalClock class="text-slate-600 font-semibold text-xl"/>
+                </div>
+                
+                <!-- Right Section - User Menu -->
+                <div class="flex items-center space-x-3">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-sm text-slate-500">Cashier</div>
+                        <div class="font-medium text-slate-800">{{ cashier.name }}</div>
+                    </div>
+                    <Button 
+                        type="button" 
+                        icon="pi pi-user" 
+                        @click="toggleUserMenu" 
+                        aria-haspopup="true" 
+                        aria-controls="overlay_menu" 
+                        class="p-button-rounded p-button-lg"
+                        :label="isMobile ? '' : 'Menu'"
+                    />
+                    <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" class="mt-2">
+                        <template #item="{ item }">
+                            <Link :href="item.route" :method="item.method" v-ripple>
+                                <div class="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors">
+                                    <span :class="item.icon" class="text-slate-600"></span>
+                                    <span class="ml-3 font-medium">{{ item.label }}</span>
+                                </div>
+                            </Link>
+                        </template>
+                    </Menu>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="flex-1 p-6">
             <slot></slot>
-        </div>
+            <ShortcutsDialog v-model:visible="showShortcutsDialog" />
+        </main>
     </div>
 </template>
-<style>
-html {
-    font-size:25px;
+<style scoped>
+/* Modern POS Layout Styles */
+.pos-container {
+    min-height: 100vh;
+    font-size: 1rem;
+}
+
+/* Responsive text sizing for touch devices */
+@media (max-width: 768px) {
+    :deep(.p-button) {
+        font-size: 1.1rem;
+        min-height: 3rem;
+        min-width: 3rem;
+    }
+}
+
+/* Large touch targets for tablets */
+@media (min-width: 768px) and (max-width: 1024px) {
+    :deep(.p-button) {
+        font-size: 1.2rem;
+        min-height: 3.5rem;
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+/* Desktop optimization */
+@media (min-width: 1024px) {
+    :deep(.p-button) {
+        font-size: 1rem;
+        min-height: 2.75rem;
+    }
 }
 </style>

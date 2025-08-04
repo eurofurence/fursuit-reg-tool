@@ -49,18 +49,4 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) {
         Integration::handles($exceptions);
-
-        $exceptions->respond(function (\Illuminate\Http\Response $response, \Throwable $exception, \Illuminate\Http\Request $request) {
-            if (! app()->environment('local') &&
-                in_array($response->getStatusCode(), [500, 503, 404, 403, 419, 429]) &&
-                $request->header('X-Inertia')) {
-
-                return \Inertia\Inertia::render('Error', [
-                    'status' => $response->getStatusCode(),
-                    'message' => $exception->getMessage(),
-                ])
-                    ->toResponse($request)
-                    ->setStatusCode($response->getStatusCode());
-            }
-        });
     })->create();

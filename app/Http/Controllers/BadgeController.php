@@ -59,8 +59,6 @@ class BadgeController extends Controller
             'badgeCount' => $badges->count(),
             'unpickedBadges' => $unpickedBadges,
             'canCreate' => Gate::allows('create', Badge::class),
-            'hasFreeBadge' => $user->hasFreeBadge(),
-            'freeBadgeCopies' => $user->free_badge_copies,
             'prepaidBadges' => $prepaidBadges,
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
             'event' => $activeEvent ? [
@@ -84,8 +82,6 @@ class BadgeController extends Controller
 
         return Inertia::render('Badges/BadgeForm', [
             'species' => Species::has('fursuits', count: 5)->orWhere('checked', true)->get('name'),
-            'isFree' => $user->hasFreeBadge(),
-            'freeBadgeCopies' => $user->hasFreeBadge() ? $user->free_badge_copies : 0,
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
         ]);
     }
@@ -134,12 +130,11 @@ class BadgeController extends Controller
             // prepaidBadges is now a max limit, not decremented
             $prepaidBadgesLeft = max(0, $prepaidBadges - $orderedBadges);
 
-            $isFreeBadge = $request->user()->hasFreeBadge();
             $isPrepaidBadge = $prepaidBadgesLeft > 0;
 
-            // Returns in cents
+            // Returns in cents - all badges cost 2€ unless prepaid
             $total = BadgeCalculationService::calculate(
-                isFreeBadge: $isFreeBadge || $isPrepaidBadge,
+                isFreeBadge: $isPrepaidBadge, // Use prepaid logic for "free" calculation
                 isLate: false, // No late fees in new system
             );
 
@@ -155,43 +150,15 @@ class BadgeController extends Controller
                 'tax' => round($tax),
                 'total' => round($total),
                 'dual_side_print' => true,
-                'is_free_badge' => $isFreeBadge || $isPrepaidBadge,
+                'is_free_badge' => $isPrepaidBadge,
                 'apply_late_fee' => false, // No late fees in new system
                 'paid_at' => $total === 0 ? now() : null,
             ]);
             // Pay for Badge (force pay as we allow negative balance)
             $request->user()->forcePay($badge);
 
-            // No longer decrement prepaid_badges, just use as max limit
-
-            if ($isFreeBadge) {
-                $eventUser = $request->user()->eventUser($event->id);
-                $freeBadgeCopies = $eventUser ? $eventUser->free_badge_copies : 0;
-
-                $total = BadgeCalculationService::calculate(isSpareCopy: true);
-                for ($i = 0; $i < $freeBadgeCopies; $i++) {
-                    $clone = $badge->replicate();
-                    $clone->is_free_badge = false;
-                    $clone->extra_copy = true;
-                    $clone->total = round($total);
-                    $clone->subtotal = round($total / 1.19);
-                    $clone->tax = round($clone->total - $clone->subtotal);
-                    $clone->extra_copy_of = $badge->id;
-                    $clone->save();
-                    $request->user()->forcePay($clone->fresh());
-                }
-                $request->user()->wallet->deposit($total * $freeBadgeCopies, ['title' => 'Fuirsuit Badge', 'description' => 'Already paid with the EF registration system']);
-
-                // No longer update prepaid_badges to 0
-
-                // Mark fursuitbadge as created
-                \Illuminate\Support\Facades\Http::attsrv()
-                    ->withToken($request->user()->token)
-                    ->post('/attendees/'.$eventUser->attendee_id.'/additional-info/fursuitbadge', [
-                        'created' => true,
-                    ]);
-
-            } elseif ($validated['upgrades']['spareCopy']) {
+            // Handle spare copy if requested
+            if ($validated['upgrades']['spareCopy']) {
                 $total = BadgeCalculationService::calculate(isSpareCopy: true);
                 $clone = $badge->replicate();
                 $clone->is_free_badge = false;

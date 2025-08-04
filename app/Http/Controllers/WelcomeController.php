@@ -20,11 +20,11 @@ class WelcomeController extends Controller
         }
 
         return Inertia::render('Welcome', [
-            'showState' => $event?->state ?? \App\Enum\EventStateEnum::CLOSED->value,
+            'showState' => $event?->state->value ?? \App\Enum\EventStateEnum::CLOSED->value,
             'event' => $event ? [
                 'id' => $event->id,
                 'name' => $event->name,
-                'state' => $event->state,
+                'state' => $event->state->value,
                 'allowsOrders' => $event->allowsOrders(),
                 'orderStartsAt' => $event->order_starts_at,
                 'orderEndsAt' => $event->order_ends_at,

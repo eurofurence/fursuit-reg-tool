@@ -21,8 +21,6 @@ defineOptions({
 
 const props = defineProps({
     species: Array,
-    isFree: Boolean,
-    freeBadgeCopies: Number,
     prepaidBadgesLeft: Number,
 })
 
@@ -41,7 +39,7 @@ const form = useForm('post', route('badges.store'), {
     publish: false,
     tos: false,
     upgrades: {
-        spareCopy: props.freeBadgeCopies > 0,
+        spareCopy: false, // Remove automatic spare copy
     }
 })
 
@@ -100,7 +98,8 @@ function imageUpdatedEvent(image) {
 
 const basePrice = computed(() => {
     let price = 0;
-    if (props.isFree === false && props.prepaidBadgesLeft === 0) {
+    // Charge 2€ if no prepaid badges left
+    if (props.prepaidBadgesLeft === 0) {
         price += 2;
     }
     return price;
@@ -113,9 +112,7 @@ const latePrice = computed(() => {
 
 const copiesPrice = computed(() => {
     let price = 0
-    if (props.freeBadgeCopies > 0) {
-        price += props.freeBadgeCopies * 2;
-    } else if (form.upgrades.spareCopy) {
+    if (form.upgrades.spareCopy) {
         price += 2;
     }
     return price;
@@ -336,7 +333,7 @@ const total = computed(() => {
                             <div class="flex gap-3">
                                 <div class="flex flex-row gap-2 mt-3">
                                     <InputSwitch v-model="form.upgrades.spareCopy" id="extra2"
-                                                 aria-describedby="extra2-help" :disabled="props.isFree"/>
+                                                 aria-describedby="extra2-help" :disabled="false"/>
                                 </div>
                                 <div>
                                     <label class="font-semibold block" for="extra2">Spare Copy
@@ -389,7 +386,7 @@ const total = computed(() => {
                             </div>
                             <div v-if="form.upgrades.spareCopy"
                                 class="flex justify-between mb-4 border-b border-dotted border-gray-900">
-                                <span>Spare Copy{{ props.freeBadgeCopies > 1 ? " x" + props.freeBadgeCopies : "" }}</span>
+                                <span>Spare Copy</span>
                                 <span>{{ copiesPrice }},00 €</span>
                             </div>
                             <!-- End Options -->

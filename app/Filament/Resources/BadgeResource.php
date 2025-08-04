@@ -68,10 +68,13 @@ class BadgeResource extends Resource
                     ->sortable()
                     ->searchable()
                     ->label('Custom ID'),
-                Tables\Columns\TextColumn::make('fursuit.user.attendee_id')
+                Tables\Columns\TextColumn::make('attendee_id')
                     ->sortable()
                     ->searchable()
-                    ->label('Attendee ID'),
+                    ->label('Attendee ID')
+                    ->getStateUsing(function (Badge $record) {
+                        return $record->fursuit->user->eventUser()?->attendee_id ?? 'N/A';
+                    }),
                 Tables\Columns\TextColumn::make('fursuit.name')
                     ->searchable()
                     ->label('Fursuit'),
@@ -121,7 +124,7 @@ class BadgeResource extends Resource
             ])
             ->selectCurrentPageOnly()
             ->paginationPageOptions([10, 25, 50, 100])
-            ->defaultSort('fursuit.user.attendee_id', 'asc');
+            ->defaultSort('custom_id', 'asc');
     }
 
     public static function printBadge(Badge $badge, $mass = 0): Badge

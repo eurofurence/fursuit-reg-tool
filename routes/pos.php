@@ -32,3 +32,12 @@ Route::post('/checkout/{checkout}/payWithCash', [\App\Http\Controllers\POS\Check
 Route::get('/checkout/{checkout}/receipt', [\App\Http\Controllers\ReceiptController::class, 'show'])->name('checkout.receipt');
 Route::post('/checkout/{checkout}/receipt/print', [\App\Http\Controllers\ReceiptController::class, 'printReceipt'])->name('checkout.receipt.print');
 Route::post('/checkout/{checkout}/receipt/email', [\App\Http\Controllers\ReceiptController::class, 'sendEmail'])->name('checkout.receipt.email');
+// Print Queue
+Route::prefix('/print-queue')->name('print-queue.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\POS\PrintQueueController::class, 'index'])->name('index');
+    Route::post('/{printJob}/mark-printed', [\App\Http\Controllers\POS\PrintQueueController::class, 'markAsPrinted'])->name('mark-printed');
+    Route::post('/{printJob}/retry', [\App\Http\Controllers\POS\PrintQueueController::class, 'retry'])->name('retry');
+    Route::delete('/{printJob}', [\App\Http\Controllers\POS\PrintQueueController::class, 'delete'])->name('delete');
+});
+// Statistics
+Route::get('/statistics', [\App\Http\Controllers\POS\StatisticsController::class, 'index'])->name('statistics');

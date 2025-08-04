@@ -46,21 +46,22 @@ const user = computed(() => usePage().props.auth.user);
 const prepaidBadgesLeft = computed(() => props.prepaidBadgesLeft || 0);
 
 const orderStatus = computed(() => {
+    // Trust the backend's state determination
     if (props.showState === 'open') {
-        const orderEndsAt = dayjs(event.value?.order_ends_at);
-        const timeRemaining = orderEndsAt.diff(currentTime.value);
+        // Show countdown only if order_ends_at is available and in the future
+        const orderEndsAt = event.value?.order_ends_at ? dayjs(event.value.order_ends_at) : null;
+        const timeRemaining = orderEndsAt ? orderEndsAt.diff(currentTime.value) : null;
 
-        if (timeRemaining > 0) {
-            return {
-                status: 'open',
-                message: 'Badge orders are currently open',
-                timeRemaining: orderEndsAt.from(currentTime.value),
-                severity: 'success'
-            };
-        }
+        return {
+            status: 'open',
+            message: 'Badge orders are currently open',
+            timeRemaining: (orderEndsAt && timeRemaining && timeRemaining > 0) ? orderEndsAt.from(currentTime.value) : null,
+            severity: 'success'
+        };
     }
 
-    if (event.value?.order_starts_at) {
+    // Check for upcoming state only if not open
+    if (props.showState !== 'open' && event.value?.order_starts_at) {
         const orderStartsAt = dayjs(event.value.order_starts_at);
         if (orderStartsAt.isAfter(currentTime.value)) {
             return {
@@ -83,9 +84,7 @@ const orderStatus = computed(() => {
 const userBadgeStatus = computed(() => {
     if (!user.value) return null;
 
-    const hasFreeBadge = user.value.has_free_badge;
     const badgeCount = user.value.badges?.length || 0;
-    const freeBadgeCopies = user.value.free_badge_copies || 0;
     const prepaidLeft = prepaidBadgesLeft.value;
 
     if (prepaidLeft > 0) {
@@ -95,26 +94,12 @@ const userBadgeStatus = computed(() => {
             action: `Customize Badge${prepaidLeft > 1 ? 's' : ''}`,
             severity: 'success'
         };
-    } else if (badgeCount === 0 && hasFreeBadge) {
-        return {
-            type: 'unclaimed',
-            message: 'You have a badge waiting to be claimed!',
-            action: 'Claim Your Badge',
-            severity: 'warn'
-        };
-    } else if (badgeCount === 0 && !hasFreeBadge) {
+    } else if (badgeCount === 0) {
         return {
             type: 'none',
             message: 'No badges ordered yet',
             action: 'Order Your First Badge',
             severity: 'info'
-        };
-    } else if (freeBadgeCopies > 0) {
-        return {
-            type: 'additional_free',
-            message: `You have ${freeBadgeCopies} additional badge${freeBadgeCopies > 1 ? 's' : ''} available!`,
-            action: 'Claim Additional Badges',
-            severity: 'warn'
         };
     } else {
         return {

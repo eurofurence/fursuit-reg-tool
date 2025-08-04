@@ -20,8 +20,6 @@ const props = defineProps({
     badgeCount: Number,
     unpickedBadges: Array,
     canCreate: Boolean,
-    hasFreeBadge: Boolean,
-    freeBadgeCopies: Number,
     prepaidBadges: Number,
     prepaidBadgesLeft: Number,
     event: Object
@@ -110,17 +108,6 @@ function getFursuitSeverity(status) {
                         :label="`Customize Prepaid Badge${prepaidBadgesLeft > 1 ? `s (${prepaidBadgesLeft})` : ''}`"
                     />
                     
-                    <!-- Free Badge Button -->
-                    <Button
-                        v-else-if="hasFreeBadge && event && event.allowsOrders"
-                        @click="router.visit(route('badges.create'))"
-                        size="small"
-                        severity="success"
-                        icon="pi pi-gift"
-                        class="w-full sm:w-auto"
-                        :label="`Add Free Badge${freeBadgeCopies > 0 ? ` (+${freeBadgeCopies} copies)` : ''}`"
-                    />
-                    
                     <!-- Purchase Badge Button -->
                     <Button
                         v-else-if="canCreate && event && event.allowsOrders"
@@ -128,7 +115,7 @@ function getFursuitSeverity(status) {
                         size="small"
                         icon="pi pi-plus"
                         class="w-full sm:w-auto"
-                        label="Purchase Badge"
+                        label="Purchase Badge (2€)"
                     />
                     
                     <!-- Orders Not Yet Open Message -->
@@ -257,8 +244,8 @@ function getFursuitSeverity(status) {
                         v-if="canCreate && event && event.allowsOrders"
                         @click="router.visit(route('badges.create'))"
                         icon="pi pi-plus"
-                        :label="hasFreeBadge ? 'Create Free Badge' : (prepaidBadgesLeft > 0 ? 'Customize Prepaid Badge' : 'Purchase Badge')"
-                        :severity="hasFreeBadge || prepaidBadgesLeft > 0 ? 'success' : 'primary'"
+                        :label="prepaidBadgesLeft > 0 ? 'Customize Prepaid Badge' : 'Purchase Badge (2€)'"
+                        :severity="prepaidBadgesLeft > 0 ? 'success' : 'primary'"
                     />
                     <Button
                         v-else-if="prepaidBadgesLeft > 0"

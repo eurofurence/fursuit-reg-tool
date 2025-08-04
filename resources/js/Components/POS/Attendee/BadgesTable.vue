@@ -13,9 +13,13 @@ import { useForm } from "laravel-precognition-vue-inertia";
 import Tag from 'primevue/tag';
 const toast = useToast();
 
-defineProps({
+const props = defineProps({
     attendee: Object,
-    badges: Array
+    badges: Array,
+    readonly: {
+        type: Boolean,
+        default: false
+    }
 })
 
 const emit = defineEmits(['update:selectedBadges', 'printBadge']);
@@ -44,7 +48,7 @@ function changeHandout(badgeId, undo) {
 <template>
     <DataTable dataKey="id" v-model:selection="selectedBadges" :value="badges" class="-m-5"
         tableStyle="min-width: 50rem">
-        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+        <Column v-if="!props.readonly" selectionMode="multiple" headerStyle="width: 3rem"></Column>
         <Column field="custom_id" header="ID"></Column>
         <Column field="fursuit.name" header="Fursuit"></Column>
         <Column field="fursuit.status" header="Fursuit Status"></Column>
@@ -80,7 +84,7 @@ function changeHandout(badgeId, undo) {
                 </div>
             </template>
         </Column>
-        <Column header="Actions">
+        <Column v-if="!props.readonly" header="Actions">
             <template #body="slotProps">
                 <div class="grid grid-cols-2 gap-5">
                     <Button v-if="slotProps.data.status_fulfillment === 'pending'"
@@ -92,6 +96,14 @@ function changeHandout(badgeId, undo) {
                         @click="changeHandout(slotProps.data.id, false)">Handout</Button>
                     <Button severity="warning" v-if="slotProps.data.status_fulfillment === 'picked_up'"
                         @click="changeHandout(slotProps.data.id, true)">Undo Handout</Button>
+                </div>
+            </template>
+        </Column>
+        <Column v-else header="Actions">
+            <template #body="slotProps">
+                <div class="flex gap-2">
+                    <Button severity="secondary" size="small"
+                        @click="emit('printBadge', slotProps.data.id)">Print</Button>
                 </div>
             </template>
         </Column>

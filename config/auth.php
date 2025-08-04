@@ -46,7 +46,7 @@ return [
         ],
         'machine-user' => [
             'driver' => 'session',
-            'provider' => 'users',
+            'provider' => 'staff',
         ],
     ],
 
@@ -76,6 +76,11 @@ return [
         'machines' => [
             'driver' => 'eloquent',
             'model' => App\Models\Machine::class,
+        ],
+
+        'staff' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Staff::class,
         ],
 
         // 'users' => [

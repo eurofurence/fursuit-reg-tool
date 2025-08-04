@@ -17,6 +17,8 @@ Route::middleware('auth:machine')->group(function () {
         ->name('user.logout');
     Route::get('/login', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'selectUser'])
         ->name('user.select');
+    Route::post('/login', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'submitPinLogin'])
+        ->name('user.pin.submit');
     Route::get('/login/{user}', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'showLogin'])
         ->name('user.login.show');
     Route::post('/login/{user}', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'submitLogin'])
