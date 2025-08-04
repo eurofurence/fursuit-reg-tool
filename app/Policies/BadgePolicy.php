@@ -82,7 +82,6 @@ class BadgePolicy
 
     public function delete(User $user, Badge $badge): bool
     {
-        return true;
         $event = \App\Models\Event::getActiveEvent();
         // Admin can do everything IN FILAMENT
 
