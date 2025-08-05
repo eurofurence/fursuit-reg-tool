@@ -68,11 +68,11 @@ enum SpeciesRarity: string
     public function getPoints(): int
     {
         return match ($this) {
-            self::COMMON => 1,
-            self::UNCOMMON => 2,
-            self::RARE => 5,
-            self::EPIC => 10,
-            self::LEGENDARY => 25,
+            self::COMMON => config('fcea.species_rarity_value_common'),
+            self::UNCOMMON => config('fcea.species_rarity_value_uncommon'),
+            self::RARE => config('fcea.species_rarity_value_rare'),
+            self::EPIC => config('fcea.species_rarity_value_epic'),
+            self::LEGENDARY => config('fcea.species_rarity_value_legendary'),
         };
     }
 }
