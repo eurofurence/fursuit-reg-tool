@@ -7,13 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EventUser extends Model
 {
-    protected $fillable = [
-        'user_id',
-        'event_id',
-        'attendee_id',
-        'valid_registration',
-        'prepaid_badges',
-    ];
+    protected $guarded = [];
 
     protected $casts = [
         'valid_registration' => 'boolean',

@@ -30,13 +30,8 @@ class Event extends Model
 
     public static function getActiveEvent(): ?Event
     {
-        $now = now();
-
         return self::latest('starts_at')
-            ->get()
-            ->first(function ($event) {
-                return $event->allowsOrders();
-            });
+            ->first();
     }
 
     public function state(): Attribute

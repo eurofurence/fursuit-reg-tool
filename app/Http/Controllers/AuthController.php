@@ -133,7 +133,7 @@ class AuthController extends Controller
         if (Session::exists('catch-em-all-redirect')) {
             Session::forget('catch-em-all-redirect');
 
-            return redirect()->route('fcea.dashboard');
+            return redirect()->route('catch-em-all.catch');
         }
 
         return redirect()->route('dashboard');

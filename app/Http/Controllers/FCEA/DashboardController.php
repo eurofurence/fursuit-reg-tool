@@ -28,27 +28,18 @@ class DashboardController extends Controller
         $selectedEventId = $request->get('event');
         $isGlobal = $selectedEventId === 'global';
 
-        $event = $this->getFceaEvent();
+        $currentEvent = $this->getFceaEvent();
 
         // Get events that have FCEA entries for the dropdown
         $eventsWithEntries = $this->getEventsWithFceaEntries();
 
-        // Determine which event to use for filtering
+        // Simplified event logic: default to current event unless explicitly specified
         $filterEvent = null;
         if (! $isGlobal && $selectedEventId) {
             $filterEvent = \App\Models\Event::find($selectedEventId);
         } elseif (! $isGlobal && ! $selectedEventId) {
-            // Default to the first event with FCEA entries if current event has no data
-            $userCatchesInCurrentEvent = UserCatch::where('user_id', Auth::id())
-                ->where('event_id', $event?->id)
-                ->exists();
-                
-            if ($event && $userCatchesInCurrentEvent) {
-                $filterEvent = $event; // Use current event if user has catches there
-            } else {
-                // Fall back to the most recent event where user has catches
-                $filterEvent = $eventsWithEntries->first(); // Use first event with FCEA entries
-            }
+            // Always default to current event, even if user has no catches there yet
+            $filterEvent = $currentEvent;
         }
 
         // Get basic user info
@@ -56,11 +47,11 @@ class DashboardController extends Controller
 
         // Calculate total fursuiters available to catch in the selected event with caching
         $totalFursuiters = 0;
-        if ($event) {
+        if ($filterEvent) {
             $totalFursuiters = Cache::remember(
-                "total_fursuiters_{$event->id}",
-                1800, // Cache for 30 minutes
-                fn () => Fursuit::where('event_id', $event->id)
+                "total_fursuiters_{$filterEvent->id}",
+                3600, // Cache for 1 hour - this data changes rarely
+                fn () => Fursuit::where('event_id', $filterEvent->id)
                     ->where('catch_em_all', true)
                     ->count()
             );
@@ -71,20 +62,21 @@ class DashboardController extends Controller
         $catchPercentage = $totalFursuiters > 0 ? round(($userCatchCount / $totalFursuiters) * 100, 1) : 0;
         $remaining = max(0, $totalFursuiters - $userCatchCount);
 
-        // Get rankings with caching
-        $cacheKey = $isGlobal ? "user_ranking_global_{$myUserInfo->user_id}_{$rankingSize}" : "user_ranking_event_{$filterEvent?->id}_{$myUserInfo->user_id}_{$rankingSize}";
+        // Get rankings with improved caching
+        $eventKey = $isGlobal ? 'global' : ($filterEvent?->id ?? 'none');
+        $userCacheKey = "user_ranking_{$eventKey}_{$rankingSize}";
         $userRanking = Cache::remember(
-            $cacheKey,
-            300, // Cache for 5 minutes
+            $userCacheKey,
+            600, // Cache for 10 minutes - rankings don't change that frequently
             fn () => $this->getUserRanking($myUserInfo, $rankingSize, $filterEvent, $isGlobal)
         );
 
         $myFursuitInfos = $this->getMyFursuitInfos($myUserInfo);
 
-        $fursuitCacheKey = $isGlobal ? "fursuit_ranking_global_{$rankingSize}" : "fursuit_ranking_event_{$filterEvent?->id}_{$rankingSize}";
+        $fursuitCacheKey = "fursuit_ranking_{$eventKey}_{$rankingSize}";
         $fursuitRanking = Cache::remember(
             $fursuitCacheKey,
-            300, // Cache for 5 minutes
+            600, // Cache for 10 minutes - rankings don't change that frequently
             fn () => $this->getTopFursuitRanking($rankingSize, $filterEvent, $isGlobal)
         );
 
@@ -206,8 +198,12 @@ class DashboardController extends Controller
         dispatch(new UpdateRankingsJob(Auth::id(), $fursuitId));
 
         // Clear relevant cached data immediately for responsive UI
-        Cache::forget('user_rankings');
-        Cache::forget('fursuit_rankings');
+        $eventId = $event->id;
+        Cache::forget("user_ranking_global_10");
+        Cache::forget("user_ranking_{$eventId}_10");
+        Cache::forget("fursuit_ranking_global_10");
+        Cache::forget("fursuit_ranking_{$eventId}_10");
+        Cache::forget("total_fursuiters_{$eventId}");
 
         return to_route('fcea.dashboard')->with('caught_fursuit', $fursuitId);
     }

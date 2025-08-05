@@ -34,7 +34,7 @@ const page = usePage().props;
                             <Button title="Gallery" class="text-white" text size="large" icon="pi pi-images"
                                     aria-label="Gallery"/>
                         </Link>
-                        <Link :href="route('fcea.dashboard')" class="text-white">
+                        <Link :href="route('catch-em-all.catch')" class="text-white">
                             <Button title="Catch-Em-All Game" class="text-white" text size="large" icon="pi pi-trophy"
                                     aria-label="Catch-Em-All Game"/>
                         </Link>

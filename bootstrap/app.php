@@ -12,13 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
-            \Illuminate\Support\Facades\Route::prefix('fcea/')
-                ->name('fcea.')
+            \Illuminate\Support\Facades\Route::prefix('catch-em-all/')
+                ->name('catch-em-all.')
                 ->middleware([
                     'web',
                     'catch-auth:web',
                 ])
-                ->group(base_path('routes/fcea.php'));
+                ->group(base_path('routes/catch-em-all.php'));
             \Illuminate\Support\Facades\Route::middleware([
                 'pos-auth:machine',
                 'pos-auth:machine-user',
@@ -45,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'pos-auth' => \App\Http\Middleware\PosAuthMiddleware::class,
             'catch-auth' => \App\Http\Middleware\CatchEmAllAuthMiddleware::class,
+            'catch-introduction' => \App\Http\Middleware\CatchEmAllIntroductionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

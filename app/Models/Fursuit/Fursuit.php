@@ -4,7 +4,6 @@ namespace App\Models\Fursuit;
 
 use App\Models\Badge\Badge;
 use App\Models\Event;
-use App\Models\FCEA\UserCatch;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\Fursuit\States\FursuitStatusState;
 use App\Models\Species;
@@ -171,7 +170,7 @@ class Fursuit extends Model
 
     public function catchedByUsers()
     {
-        return $this->hasMany(UserCatch::class);
+        return $this->hasMany(\App\Domain\CatchEmAll\Models\UserCatch::class);
     }
 
     /**

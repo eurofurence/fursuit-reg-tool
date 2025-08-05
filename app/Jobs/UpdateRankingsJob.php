@@ -38,9 +38,19 @@ class UpdateRankingsJob implements ShouldQueue
                 'fursuit_id' => $this->fursuitId,
             ]);
 
-            // Clear cached rankings
-            Cache::forget('user_rankings');
-            Cache::forget('fursuit_rankings');
+            // Clear cached rankings - use specific cache keys for better performance
+            $cacheKeys = [
+                'user_ranking_global_10',
+                'fursuit_ranking_global_10',
+                'user_ranking_1_10',    // EF28
+                'user_ranking_2_10',    // EF29
+                'fursuit_ranking_1_10', // EF28
+                'fursuit_ranking_2_10', // EF29
+            ];
+
+            foreach ($cacheKeys as $key) {
+                Cache::forget($key);
+            }
 
             // Perform the full ranking refresh
             DashboardController::refreshRanking();
