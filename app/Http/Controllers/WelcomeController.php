@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Badge\Badge;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class WelcomeController extends Controller
@@ -14,7 +16,7 @@ class WelcomeController extends Controller
         $event = \App\Models\Event::getActiveEvent();
 
         $prepaidBadgesLeft = 0;
-        if ($event && Auth::check()) {
+        if ($event && Auth::check() && Gate::allows('create', Badge::class)) {
             $user = Auth::user();
             $prepaidBadgesLeft = $user->getPrepaidBadgesLeft($event->id);
         }

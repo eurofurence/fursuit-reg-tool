@@ -38,6 +38,11 @@ class BadgePolicy
             return false;
         }
 
+        // Allow badge creation only if event allows orders (for paid badges)
+        if (! $event->allowsOrders()) {
+            return false;
+        }
+
         // Check if user has prepaid badges left
         $eventUser = $user->eventUser($event->id);
         if ($eventUser) {
@@ -53,11 +58,6 @@ class BadgePolicy
             if ($prepaidBadgesLeft > 0) {
                 return true;
             }
-        }
-
-        // Allow badge creation only if event allows orders (for paid badges)
-        if (! $event->allowsOrders()) {
-            return false;
         }
 
         return true;
