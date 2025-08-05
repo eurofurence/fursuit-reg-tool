@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
-// Model to manage Logging for the Catch feature. Attempts/Successful/Duplicates. Allows to detect Cheating/Bruteforcing.
+// Model to manage Logging for the Catch feature. Attempts/Successful/Duplicates. Allows detecting Cheating/Bruteforce.
 class UserCatchLog extends Model
 {
     // Simple caching so save database lookups

@@ -22,4 +22,4 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
     });
 });
 
-Route::permanentRedirect('/catch-em-all', '/fcea/');
+Route::permanentRedirect('/fcea/', '/catch-em-all');
