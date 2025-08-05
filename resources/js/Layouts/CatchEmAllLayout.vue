@@ -13,7 +13,7 @@ defineProps<{
 
 <template>
     <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 pb-20 dark">
-        <Head :title="title || 'Fursuit Catch em all" />
+        <Head :title="title || 'Fursuit Catch em all'" />
 
         <AppHeader :title="title" :subtitle="subtitle" />
 
