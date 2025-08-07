@@ -24,7 +24,17 @@ class StatisticsController extends Controller
             return $this->generateStatistics();
         });
 
+        if (!Auth::user()?->is_admin ?? true)
+            $statistics = $this->removePrivateData($statistics);
+
         return Inertia::render('Statistics/Index', $statistics);
+    }
+    private function removePrivateData(array $statistics): array
+    {
+        $statistics['fursuits']['top_owners'] = [];
+        $statistics['fcea']['top_catchers'] = [];
+        $statistics['users']['most_active_users'] = [];
+        return $statistics;
     }
 
     private function generateStatistics(): array
@@ -40,8 +50,7 @@ class StatisticsController extends Controller
             'species' => $this->getSpeciesStats($currentEvent),
             'users' => $this->getUserStats($currentEvent),
             'timeline' => $this->getTimelineStats($currentEvent),
-            'currentEvent' => $currentEvent,
-            'isAdmin' => Auth::user()?->is_admin ?? false,
+            'currentEvent' => $currentEvent?->name ?? 'No Active Event',
         ];
     }
 
