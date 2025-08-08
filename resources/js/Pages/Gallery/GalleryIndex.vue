@@ -51,7 +51,9 @@ const props = defineProps<{
     fursuits: Fursuit[],
     ranking: Ranking[],
     has_more: boolean,
-    total: number,
+    totalResult: number,
+    totalFursuit: number, // Count of All registered Fursuits
+    totalFursuiter: number, // Count of Fursuiter - as of a user with at leats one Fursuit
     filters: Filters,
     species_options: SpeciesOption[],
     event_options: EventOption[],
@@ -256,8 +258,14 @@ onUnmounted(() => {
             <!-- Header Section -->
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900 mb-2">Fursuit Gallery</h1>
-                <p class="text-gray-600">
-                    Discover amazing fursuits from Eurofurence - {{ total }} total attendees
+                <p v-if="selected_event && totalFursuiter" class="text-gray-600">
+                    Discover amazing fursuits from Eurofurence - {{ totalFursuiter }} total fursuiter with {{ totalFursuit }} fursuits of {{ selected_event.name }}
+                </p>
+                <p v-else-if="selected_event" class="text-gray-600">
+                    Discover amazing fursuits from Eurofurence - {{ totalFursuit }} total fursuits of {{ selected_event.name }}
+                </p>
+                <p v-else class="text-gray-600">
+                    Discover amazing fursuits from Eurofurence - {{ totalFursuit }} total fursuits
                 </p>
             </div>
 
@@ -348,7 +356,7 @@ onUnmounted(() => {
                 <!-- Filter Actions -->
                 <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
                     <div class="text-sm text-gray-600">
-                        Showing {{ allFursuits.length }} of {{ total }} fursuits
+                        Showing {{ allFursuits.length }} of {{ totalResult }} fursuits
                         <span v-if="hasMore" class="text-blue-600">(scroll for more)</span>
                     </div>
                     <button

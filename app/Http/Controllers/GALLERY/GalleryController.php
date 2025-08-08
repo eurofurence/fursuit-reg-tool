@@ -46,17 +46,6 @@ class GalleryController extends Controller
             ->whereNotNull('image')
             ->where('published', true);
 
-        // Apply search filter
-        foreach ($search as $term) {
-            $query->where('fursuits.name', 'LIKE', $term);
-        }
-
-        // Apply species filter
-        if (! empty($speciesFilter)) {
-            $query->whereHas('species', function ($q) use ($speciesFilter) {
-                $q->where('name', 'LIKE', '%'.$speciesFilter.'%');
-            });
-        }
 
         // Apply event filter and get event data
         $selectedEvent = null;
@@ -69,8 +58,26 @@ class GalleryController extends Controller
             }
         }
 
-        // Get total count
-        $totalCount = $query->count();
+        $totalFursuiterCount = 0;
+        if (! $isHistoricalEvent && $selectedEvent) // When searching specifically for an EF with Catch-em-all data
+            $totalFursuiterCount = $query->clone()->distinct()->count('user_id'); // Assume that fursuits are linked to a user
+
+        $totalFursuitCount = $query->count(); // Get total Fursuiter count of this event filter
+
+        // Apply name search filter
+        foreach ($search as $term) {
+            $query->where('fursuits.name', 'LIKE', $term);
+        }
+
+        // Apply species filter
+        if (! empty($speciesFilter)) {
+            $query->whereHas('species', function ($q) use ($speciesFilter) {
+                $q->where('name', 'LIKE', '%'.$speciesFilter.'%');
+            });
+        }
+
+        // Get total Fursuiter count remaining after filtering
+        $totalResultCount = $query->count();
 
         // Move duplicated sort to func
         $this->applyGallerySorting($query, $sortBy, $isHistoricalEvent);
@@ -79,7 +86,7 @@ class GalleryController extends Controller
             ->limit(self::ITEMS_PER_LOAD)
             ->get();
 
-        $hasMore = ($offset + self::ITEMS_PER_LOAD) < $totalCount;
+        $hasMore = ($offset + self::ITEMS_PER_LOAD) < $totalResultCount;
 
         $topRankings = UserCatchRanking::query()
             ->whereNotNull('user_id')
@@ -119,7 +126,9 @@ class GalleryController extends Controller
         return Inertia::render('Gallery/GalleryIndex', [
             'fursuits' => $fursuitData,
             'has_more' => $hasMore,
-            'total' => $totalCount,
+            'totalResult' => $totalResultCount,
+            'totalFursuit' => $totalFursuitCount,
+            'totalFursuiter' => $totalFursuiterCount,
             'is_historical_event' => $isHistoricalEvent,
             'selected_event' => $selectedEvent ? [
                 'id' => $selectedEvent->id,
