@@ -117,19 +117,18 @@ function getFursuitSeverity(status) {
                         class="w-full sm:w-auto"
                         label="Purchase Badge (2€)"
                     />
-
-                    <!-- Orders Not Yet Open Message -->
-                    <Message
-                        v-else-if="event && event.orderStartsAt && new Date(event.orderStartsAt) > new Date()"
-                        severity="info"
-                        :closable="false"
-                        class="mb-0"
-                    >
-                        You may order additional badges starting {{ new Date(event.orderStartsAt).toLocaleDateString('de-DE') }}. If you have ordered additional badges trough your ticket, you may need to logout and log back in to customize them.
-                    </Message>
-
                 </div>
             </div>
+            
+            <!-- Orders Not Yet Open Message - Full width block with margin -->
+            <Message
+                v-if="event && event.orderStartsAt && new Date(event.orderStartsAt) > new Date()"
+                severity="info"
+                :closable="false"
+                class="mt-6"
+            >
+                You may order additional badges starting {{ new Date(event.orderStartsAt).toLocaleDateString('de-DE') }}. If you have ordered additional badges trough your ticket, you may need to logout and log back in to customize them.
+            </Message>
         </div>
 
         <PaymentInfoWidget />
