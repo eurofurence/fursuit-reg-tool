@@ -219,12 +219,9 @@ function getFursuitSeverity(status) {
                                 severity="secondary"
                                 v-tooltip.top="'Edit Badge'"
                             />
-                            <Tag
-                                v-else
-                                severity="secondary"
-                                value="Cannot Edit"
-                                size="small"
-                            />
+                            <div v-else class="text-xs">
+                                Cannot Edit
+                            </div>
                         </template>
                     </Column>
                 </DataTable>

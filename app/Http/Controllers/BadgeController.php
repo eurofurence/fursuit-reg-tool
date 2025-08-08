@@ -20,6 +20,11 @@ use Inertia\Inertia;
 
 class BadgeController extends Controller
 {
+    public function show(Request $request) // Catch any malformed request e.g. ./badges/AnyWord
+    {
+        return $this->index($request);
+    }
+
     public function index(Request $request)
     {
         $activeEvent = Event::getActiveEvent();

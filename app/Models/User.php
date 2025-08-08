@@ -14,6 +14,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Gate;
 
 class User extends Authenticatable implements Customer, FilamentUser, Wallet, WalletFloat
 {
@@ -101,6 +102,11 @@ class User extends Authenticatable implements Customer, FilamentUser, Wallet, Wa
         $event = Event::getActiveEvent();
 
         if (! $eventUser || ! $event) {
+            return 0;
+        }
+
+        // Check if Badges can be created (e.g. order deadline is over)
+        if (! Gate::allows('create', Badge::class)) {
             return 0;
         }
 

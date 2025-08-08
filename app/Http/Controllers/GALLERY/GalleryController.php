@@ -79,29 +79,40 @@ class GalleryController extends Controller
         switch ($sortBy) {
             case 'catches_asc':
                 if ($isHistoricalEvent) {
-                    $query->orderBy('name', 'asc'); // Fallback to name for historical events
+                    $query->orderBy('name')
+                          ->orderByDesc('event_id'); // Fallback to name for historical events
                 } else {
-                    $query->orderBy('catched_by_users_count', 'asc')->orderBy('name', 'asc');
+                    $query->orderBy('catched_by_users_count')
+                          ->orderBy('name')
+                          ->orderByDesc('event_id'); // Show newest event first on same name + count
                 }
                 break;
             case 'name_asc':
-                $query->orderBy('name', 'asc');
+                $query->orderBy('name')
+                      ->orderByDesc('event_id');
                 break;
             case 'name_desc':
-                $query->orderBy('name', 'desc');
+                $query->orderByDesc('name')
+                      ->orderByDesc('event_id');
                 break;
             case 'catches_desc':
                 if ($isHistoricalEvent) {
-                    $query->orderBy('name', 'asc'); // Fallback to name for historical events
+                    $query->orderBy('name')
+                          ->orderByDesc('event_id'); // Fallback to name for historical events
                 } else {
-                    $query->orderBy('catched_by_users_count', 'desc')->orderBy('name', 'asc');
+                    $query->orderByDesc('catched_by_users_count')
+                          ->orderBy('name')
+                          ->orderByDesc('event_id');
                 }
                 break;
             default:
                 if ($isHistoricalEvent) {
-                    $query->orderBy('name', 'asc'); // Default to name for historical events
+                    $query->orderBy('name')
+                          ->orderByDesc('event_id'); // Default to name for historical events
                 } else {
-                    $query->orderBy('catched_by_users_count', 'desc')->orderBy('name', 'asc');
+                    $query->orderByDesc('catched_by_users_count')
+                          ->orderBy('name')
+                          ->orderByDesc('event_id');
                 }
                 break;
         }

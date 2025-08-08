@@ -53,10 +53,10 @@ class UserCatch extends Model
         })->count();
 
         return match (true) {
-            $speciesCount >= 100 => SpeciesRarity::COMMON,
-            $speciesCount >= 50 => SpeciesRarity::UNCOMMON,
-            $speciesCount >= 20 => SpeciesRarity::RARE,
-            $speciesCount >= 5 => SpeciesRarity::EPIC,
+            $speciesCount >= config('fcea.species_rarity_threshold_common') => SpeciesRarity::COMMON,
+            $speciesCount >= config('fcea.species_rarity_threshold_uncommon') => SpeciesRarity::UNCOMMON,
+            $speciesCount >= config('fcea.species_rarity_threshold_rare') => SpeciesRarity::RARE,
+            $speciesCount >= config('fcea.species_rarity_threshold_epic') => SpeciesRarity::EPIC,
             default => SpeciesRarity::LEGENDARY,
         };
     }

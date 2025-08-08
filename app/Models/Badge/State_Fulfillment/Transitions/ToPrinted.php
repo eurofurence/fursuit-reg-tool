@@ -24,7 +24,7 @@ class ToPrinted extends Transition
 
                 $user = $this->badge->fursuit->user()->lockForUpdate()->first();
                 do {
-                    $customId = "{$user->attendee_id}-".$nextId++;
+                    $customId = "{$user->eventUser()->attendee_id}-".$nextId++;
                 } while (Badge::where('custom_id', $customId)->exists());
                 $this->badge->custom_id = $customId;
 
