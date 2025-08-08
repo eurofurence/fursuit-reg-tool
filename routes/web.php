@@ -1,11 +1,15 @@
 <?php
 
 use App\Http\Controllers\WelcomeController;
+use App\Http\Controllers\DebugController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', WelcomeController::class)->name('welcome');
 Route::redirect('/auth-login', '/auth/login')->name('login');
 Route::redirect('/auth-done', '/')->name('dashboard');
+
+// Debug endpoint - only available in non-production
+Route::get('/debug/login', [DebugController::class, 'debugLogin'])->name('debug.login');
 
 Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(function () {
     Route::prefix('/auth')->name('auth.')->group(function () {

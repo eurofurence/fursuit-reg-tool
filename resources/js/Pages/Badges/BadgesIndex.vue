@@ -94,7 +94,7 @@ function getFursuitSeverity(status) {
                         </span>
                     </p>
                 </div>
-                
+
                 <!-- Action Buttons -->
                 <div class="flex flex-col sm:flex-row gap-2">
                     <!-- Prepaid Badge Button (shows even when orders are closed) -->
@@ -107,7 +107,7 @@ function getFursuitSeverity(status) {
                         class="w-full sm:w-auto"
                         :label="`Customize Prepaid Badge${prepaidBadgesLeft > 1 ? `s (${prepaidBadgesLeft})` : ''}`"
                     />
-                    
+
                     <!-- Purchase Badge Button -->
                     <Button
                         v-else-if="canCreate && event && event.allowsOrders"
@@ -117,7 +117,7 @@ function getFursuitSeverity(status) {
                         class="w-full sm:w-auto"
                         label="Purchase Badge (2€)"
                     />
-                    
+
                     <!-- Orders Not Yet Open Message -->
                     <Message
                         v-else-if="event && event.orderStartsAt && new Date(event.orderStartsAt) > new Date()"
@@ -125,9 +125,9 @@ function getFursuitSeverity(status) {
                         :closable="false"
                         class="mb-0"
                     >
-                        You may order additional badges starting {{ new Date(event.orderStartsAt).toLocaleDateString('de-DE') }}.
+                        You may order additional badges starting {{ new Date(event.orderStartsAt).toLocaleDateString('de-DE') }}. If you have ordered additional badges trough your ticket, you may need to logout and log back in to customize them.
                     </Message>
-                    
+
                 </div>
             </div>
         </div>
@@ -137,17 +137,17 @@ function getFursuitSeverity(status) {
         <!-- Badges Table -->
         <Card v-if="badges.length > 0" class="mt-6">
             <template #content>
-                <DataTable 
-                    :value="badges" 
-                    stripedRows 
+                <DataTable
+                    :value="badges"
+                    stripedRows
                     class="p-datatable-sm"
                     :rowHover="true"
                 >
                     <!-- Image Column -->
                     <Column header="Image" style="width: 120px;">
                         <template #body="slotProps">
-                            <img 
-                                :src="slotProps.data.fursuit.image_url" 
+                            <img
+                                :src="slotProps.data.fursuit.image_url"
                                 :alt="`${slotProps.data.fursuit.name} badge`"
                                 class="w-16 h-16 object-cover rounded-lg border"
                             />
@@ -172,23 +172,23 @@ function getFursuitSeverity(status) {
                         <template #body="slotProps">
                             <div class="flex flex-col gap-1">
                                 <!-- Show fursuit status if pending -->
-                                <Tag 
+                                <Tag
                                     v-if="slotProps.data.status_fulfillment === 'pending'"
                                     :severity="getFursuitSeverity(slotProps.data.fursuit.status)"
                                     :value="getFursuitStatusName(slotProps.data.fursuit.status)"
                                     size="small"
                                 />
-                                
+
                                 <!-- Show badge status if fursuit approved -->
-                                <Tag 
+                                <Tag
                                     v-else-if="slotProps.data.fursuit.status === 'approved'"
                                     :severity="getBadgeSeverity(slotProps.data.status_fulfillment)"
                                     :value="getBadgeStatusName(slotProps.data.status_fulfillment)"
                                     size="small"
                                 />
-                                
+
                                 <!-- Payment Status -->
-                                <Tag 
+                                <Tag
                                     v-if="slotProps.data.status_payment === 'unpaid'"
                                     severity="danger"
                                     value="Not Paid"
@@ -268,21 +268,21 @@ function getFursuitSeverity(status) {
             </template>
             <template #content>
                 <Message severity="warn" :closable="false" class="mb-4">
-                    <strong>Important:</strong> You have badges from previous years that have not been picked up yet. 
+                    <strong>Important:</strong> You have badges from previous years that have not been picked up yet.
                     Please come to our desk in the fursuit lounge after the 2nd con day to collect them.
                 </Message>
-                
-                <DataTable 
-                    :value="unpickedBadges" 
-                    stripedRows 
+
+                <DataTable
+                    :value="unpickedBadges"
+                    stripedRows
                     class="p-datatable-sm"
                     :rowHover="false"
                 >
                     <!-- Image Column -->
                     <Column header="Image" style="width: 120px;">
                         <template #body="slotProps">
-                            <img 
-                                :src="slotProps.data.fursuit.image_url" 
+                            <img
+                                :src="slotProps.data.fursuit.image_url"
                                 :alt="`${slotProps.data.fursuit.name} badge`"
                                 class="w-16 h-16 object-cover rounded-lg border opacity-75"
                             />
@@ -305,7 +305,7 @@ function getFursuitSeverity(status) {
                     <!-- Status Column -->
                     <Column header="Status">
                         <template #body="slotProps">
-                            <Tag 
+                            <Tag
                                 :severity="getBadgeSeverity(slotProps.data.status_fulfillment)"
                                 :value="getBadgeStatusName(slotProps.data.status_fulfillment)"
                                 size="small"
