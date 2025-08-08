@@ -34,7 +34,7 @@ class FursuitRejectedNotification extends Notification
             ->action('Edit Badge', route('badges.edit', [
                 'badge' => $this->badge->id,
             ]))
-            ->line('Please do not reply to this email. If you have any questions, please contact us at conops@eurofurence.org');
+            ->line('Please do not reply to this email. If you have any questions, please contact us at fursuit-team@eurofurence.org');
     }
 
     public function toArray($notifiable): array
