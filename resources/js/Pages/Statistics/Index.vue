@@ -220,11 +220,11 @@ const props = defineProps({
                             <span class="font-semibold text-orange-600">{{ fcea.completion_stats.average_completion }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>Average Completion</span>
+                            <span>Median Completion</span>
                             <span class="font-semibold text-orange-600">{{ fcea.completion_stats.median_completion }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>Players with 100% compleation</span>
+                            <span>Players with 100% Completion</span>
                             <span class="font-semibold text-orange-600">{{ fcea.completion_stats.players_with_100_percent }}</span>
                         </div>
                         <div class="flex justify-between">
