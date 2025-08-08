@@ -255,8 +255,8 @@ class GalleryController extends Controller
     {
         // Apply sorting - skip catch-related sorting for historical events (EF15-EF27)
         // Catch related sort at 1st place
-        if (! $isHistoricalEvent && ($sortBy === 'catches_asc' || $sortBy === 'catches_desc')) {
-            $query->withCount('catchedByUsers');
+        if (! $isHistoricalEvent) {
+            $query->withCount('catchedByUsers'); // Always adding Catch Values if event can contain these
 
             if ($sortBy === 'catches_asc')
                 $query->orderBy('catched_by_users_count');
