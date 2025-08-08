@@ -38,12 +38,7 @@ class BadgePolicy
             return false;
         }
 
-        // Allow badge creation only if event allows orders (for paid badges)
-        if (! $event->allowsOrders()) {
-            return false;
-        }
-
-        // Check if user has prepaid badges left
+        // Check if user has prepaid badges left FIRST - these bypass order window restrictions
         $eventUser = $user->eventUser($event->id);
         if ($eventUser) {
             $prepaidBadges = $eventUser->prepaid_badges;
@@ -58,6 +53,11 @@ class BadgePolicy
             if ($prepaidBadgesLeft > 0) {
                 return true;
             }
+        }
+
+        // For paid badges, check if event allows orders
+        if (! $event->allowsOrders()) {
+            return false;
         }
 
         return true;

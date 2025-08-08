@@ -8,13 +8,16 @@ use App\Models\Badge\Badge;
 use App\Models\Badge\State_Payment\Paid;
 use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Event;
+use App\Models\EventUser;
 use App\Models\Species;
 use App\Models\User;
 use App\Notifications\BadgeCreatedNotification;
 use App\Services\BadgeCalculationService;
+use App\Services\TokenRefreshService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -304,5 +307,109 @@ class BadgeController extends Controller
         }
 
         return redirect()->route('badges.index');
+    }
+
+    public function refreshPrepaidBadges(Request $request)
+    {
+        $user = $request->user();
+        $activeEvent = Event::getActiveEvent();
+
+        if (!$activeEvent) {
+            return response()->json(['error' => 'No active event found'], 400);
+        }
+
+        try {
+            // Get fresh token or use existing one
+            $tokenService = new TokenRefreshService($user);
+            $accessToken = $tokenService->getValidAccessToken();
+
+            if (!$accessToken) {
+                return response()->json(['error' => 'Unable to get authentication token'], 401);
+            }
+
+            // Get or create EventUser relationship
+            $eventUser = EventUser::firstOrCreate([
+                'user_id' => $user->id,
+                'event_id' => $activeEvent->id,
+            ], [
+                'attendee_id' => null,
+                'valid_registration' => false,
+                'prepaid_badges' => 0,
+            ]);
+
+            // Get attendee info
+            $attendeeListResponse = Http::attsrv()
+                ->withToken($accessToken)
+                ->get('/attendees')
+                ->json();
+
+            $regId = $attendeeListResponse['ids'][0] ?? null;
+
+            if (!$regId) {
+                return response()->json(['error' => 'No registration found'], 404);
+            }
+
+            // Get registration status
+            $statusResponse = Http::attsrv()
+                ->withToken($accessToken)
+                ->get('/attendees/' . $regId . '/status');
+
+            // Update EventUser with attendee info
+            $eventUser->update([
+                'attendee_id' => $regId,
+                'valid_registration' => in_array($statusResponse->json()['status'], ['paid', 'checked in']),
+            ]);
+
+            // Check for fursuit packages
+            $fursuit = Http::attsrv()
+                ->withToken($accessToken)
+                ->get('/attendees/' . $regId . '/packages/fursuit')
+                ->json();
+
+            $totalPrepaidBadges = 0;
+
+            if ($fursuit['present'] && $fursuit['count'] > 0) {
+                // Get additional fursuit badges
+                $fursuitAdditional = Http::attsrv()
+                    ->withToken($accessToken)
+                    ->get('/attendees/' . $regId . '/packages/fursuitadd')
+                    ->json();
+
+                $additionalCopies = $fursuitAdditional['present'] ? $fursuitAdditional['count'] : 0;
+                $totalPrepaidBadges = $fursuit['count'] + $additionalCopies;
+
+                // Update the prepaid badges count
+                $eventUser->update([
+                    'prepaid_badges' => $totalPrepaidBadges,
+                ]);
+
+                // Mark as not created in reg system
+                Http::attsrv()
+                    ->withToken($accessToken)
+                    ->post('/attendees/' . $regId . '/additional-info/fursuitbadge', [
+                        'created' => false,
+                    ]);
+            } else {
+                // No fursuit packages found
+                $eventUser->update([
+                    'prepaid_badges' => 0,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'prepaid_badges' => $totalPrepaidBadges,
+                'prepaid_badges_left' => $user->getPrepaidBadgesLeft($activeEvent->id),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to refresh prepaid badges', [
+                'user_id' => $user->id,
+                'event_id' => $activeEvent->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'Failed to refresh prepaid badges'], 500);
+        }
     }
 }

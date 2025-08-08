@@ -46,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'pos-auth' => \App\Http\Middleware\PosAuthMiddleware::class,
             'catch-auth' => \App\Http\Middleware\CatchEmAllAuthMiddleware::class,
             'catch-introduction' => \App\Http\Middleware\CatchEmAllIntroductionMiddleware::class,
+            'ensure-event-user' => \App\Http\Middleware\EnsureEventUserMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

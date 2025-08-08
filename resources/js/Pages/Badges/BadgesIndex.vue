@@ -11,6 +11,8 @@ import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
 import { formatEuroFromCents } from "@/helpers.js";
+import { ref } from "vue";
+import axios from "axios";
 
 defineOptions({
     layout: Layout
@@ -25,8 +27,25 @@ const props = defineProps({
     event: Object
 });
 
+const isRefreshing = ref(false);
+
 function canEditBadge(badge) {
     return badge.canEdit;
+}
+
+async function refreshPrepaidBadges() {
+    isRefreshing.value = true;
+    
+    try {
+        await axios.post(route('badges.refresh-prepaid'));
+        // Refresh the page to show updated data
+        router.reload({ only: ['prepaidBadges', 'prepaidBadgesLeft'] });
+    } catch (error) {
+        console.error('Failed to refresh prepaid badges:', error);
+        // Could add toast notification here
+    } finally {
+        isRefreshing.value = false;
+    }
 }
 
 function getBadgeStatusName(status) {
@@ -129,6 +148,7 @@ function getFursuitSeverity(status) {
             >
                 You may order additional badges starting {{ new Date(event.orderStartsAt).toLocaleDateString('de-DE') }}. If you have ordered additional badges trough your ticket, you may need to logout and log back in to customize them.
             </Message>
+
         </div>
 
         <PaymentInfoWidget />
@@ -253,6 +273,20 @@ function getFursuitSeverity(status) {
                 </div>
             </template>
         </Card>
+
+        <!-- Refresh Prepaid Badges Section -->
+        <div v-if="event && !prepaidBadgesLeft" class="text-center mt-6">
+            <p class="text-gray-600 mb-2">Not seeing your preordered badges? Your login session might be using old registration data.</p>
+            <button
+                @click="refreshPrepaidBadges"
+                :disabled="isRefreshing"
+                class="text-blue-600 hover:text-blue-800 underline text-sm transition-colors duration-200"
+            >
+                <i v-if="isRefreshing" class="pi pi-spin pi-spinner mr-1"></i>
+                <i v-else class="pi pi-refresh mr-1"></i>
+                {{ isRefreshing ? 'Refreshing...' : 'Refresh Now' }}
+            </button>
+        </div>
 
         <!-- Unpicked Badges from Previous Years -->
         <Card v-if="unpickedBadges && unpickedBadges.length > 0" class="mt-6">
