@@ -231,7 +231,7 @@ class BadgeController extends Controller
                 $fursuit->image = $request->file('image')->store('fursuits');
             }
             // if species_id, name or image changed, status goes back to pending review
-            if ($fursuit->isDirty(['species_id', 'name', 'image'])) {
+            if ($fursuit->isDirty(['species_id', 'name', 'image', 'catch_em_all', 'published'])) {
                 $fursuit->status = \App\Models\Badge\State_Fulfillment\Pending::$name;
             }
             $fursuit->save();
