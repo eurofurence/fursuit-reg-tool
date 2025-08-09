@@ -13,7 +13,7 @@ use Inertia\Inertia;
 
 class GalleryController extends Controller
 {
-    const ITEMS_PER_LOAD = 20; // 20 items per infinite scroll load
+    const ITEMS_PER_LOAD = 5; // 20 items per infinite scroll load
 
     public function index(Request $request): \Inertia\Response|\Illuminate\Http\RedirectResponse
     {
@@ -45,7 +45,6 @@ class GalleryController extends Controller
             ->where('status', 'approved')
             ->whereNotNull('image')
             ->where('published', true);
-
 
         // Apply event filter and get event data
         $selectedEvent = null;
@@ -196,18 +195,6 @@ class GalleryController extends Controller
             ->whereNotNull('image')
             ->where('published', true);
 
-        // Apply search filter
-        foreach ($search as $term) {
-            $query->where('name', 'LIKE', $term);
-        }
-
-        // Apply species filter
-        if (! empty($speciesFilter)) {
-            $query->whereHas('species', function ($q) use ($speciesFilter) {
-                $q->where('name', 'LIKE', '%'.$speciesFilter.'%');
-            });
-        }
-
         // Apply event filter and get event data
         $selectedEvent = null;
         $isHistoricalEvent = false;
@@ -217,6 +204,18 @@ class GalleryController extends Controller
             if ($selectedEvent) {
                 $isHistoricalEvent = ! $selectedEvent->catch_em_all_enabled;
             }
+        }
+
+        // Apply name search filter
+        foreach ($search as $term) {
+            $query->where('fursuits.name', 'LIKE', $term);
+        }
+
+        // Apply species filter
+        if (! empty($speciesFilter)) {
+            $query->whereHas('species', function ($q) use ($speciesFilter) {
+                $q->where('name', 'LIKE', '%'.$speciesFilter.'%');
+            });
         }
 
         // Get total count
