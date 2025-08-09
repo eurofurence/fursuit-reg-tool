@@ -13,7 +13,7 @@ use Inertia\Inertia;
 
 class GalleryController extends Controller
 {
-    const ITEMS_PER_LOAD = 5; // 20 items per infinite scroll load
+    const ITEMS_PER_LOAD = 20; // 20 items per infinite scroll load
 
     public function index(Request $request): \Inertia\Response|\Illuminate\Http\RedirectResponse
     {
