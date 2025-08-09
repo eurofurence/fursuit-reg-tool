@@ -114,14 +114,14 @@ function imageUpdatedEvent(image) {
 const basePrice = computed(() => {
     let price = 0;
     if (props.badge.is_free_badge === false && !props.badge.extra_copy_of) {
-        price += 2;
+        price += 3;
     }
     return price;
 })
 
 const latePrice = computed(() => {
     if (props.badge.apply_late_fee) {
-        return 2;
+        return 3;
     }
     return 0;
 })

@@ -13,6 +13,7 @@ class WelcomeController extends Controller
         // Get next event by ends_at
         $event = \App\Models\Event::getActiveEvent();
 
+
         $prepaidBadgesLeft = 0;
         if ($event && Auth::check()) {
             $user = Auth::user();
@@ -26,8 +27,8 @@ class WelcomeController extends Controller
                 'name' => $event->name,
                 'state' => $event->state->value,
                 'allowsOrders' => $event->allowsOrders(),
-                'orderStartsAt' => $event->order_starts_at,
-                'orderEndsAt' => $event->order_ends_at,
+                'orderStartsAt' => $event->order_starts_at?->toISOString(),
+                'orderEndsAt' => $event->order_ends_at?->toISOString(),
             ] : null,
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
         ]);

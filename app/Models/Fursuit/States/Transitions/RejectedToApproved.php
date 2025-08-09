@@ -5,11 +5,11 @@ namespace App\Models\Fursuit\States\Transitions;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
 use App\Models\User;
-use App\Notifications\FursuitApprovedNotification;
+use App\Notifications\FursuitRejectionReversedNotification;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
-class PendingToApproved extends Transition
+class RejectedToApproved extends Transition
 {
     public function __construct(public Fursuit $fursuit, public User $reviewer) {}
 
@@ -23,14 +23,10 @@ class PendingToApproved extends Transition
             activity()
                 ->performedOn($this->fursuit)
                 ->causedBy($this->reviewer)
-                ->log('Fursuit approved');
+                ->log('Fursuit approved (was previously rejected)');
 
-
-            // Only notify if we are reviewing before the event has ended (i.e., notification is still relevant)
-            $eventEndsAt = $this->fursuit->event->ends_at ?? null;
-            if ($eventEndsAt && now()->lt($eventEndsAt)) {
-                $this->fursuit->user->notify(new FursuitApprovedNotification($this->fursuit));
-            }
+            // Always notify when reversing a rejection - this is important for user experience
+            $this->fursuit->user->notify(new FursuitRejectionReversedNotification($this->fursuit));
 
             return $this->fursuit;
         });

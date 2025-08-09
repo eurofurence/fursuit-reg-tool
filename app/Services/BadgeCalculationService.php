@@ -22,10 +22,8 @@ class BadgeCalculationService
             return 0;
         }
 
-        $baseFee = 200;
-        if ($isLate) {
-            $baseFee += 200;
-        }
+        // All non-prepaid badges cost 3€ (300 cents)
+        $baseFee = 300;
 
         return $baseFee;
     }

@@ -65,9 +65,9 @@ const orderStatus = computed(() => {
         };
     }
 
-    // Check for upcoming state only if not open
-    if (props.showState !== 'open' && event.value?.order_starts_at) {
-        const orderStartsAt = dayjs(event.value.order_starts_at);
+    // Check for upcoming state only if not open - this takes precedence over user-specific states
+    if (props.showState !== 'open' && event.value?.orderStartsAt) {
+        const orderStartsAt = dayjs(event.value.orderStartsAt);
         if (orderStartsAt.isAfter(currentTime.value)) {
             return {
                 status: 'upcoming',
@@ -233,6 +233,24 @@ const shouldShowRegMessage = computed(() => {
                         </div>
                     </div>
 
+                    <!-- Upcoming State (Orders haven't started yet) -->
+                    <div v-else-if="orderStatus.status === 'upcoming'" class="text-center space-y-6">
+                        <p class="text-2xl mb-6 opacity-90">
+                            Login to customize your fursuit badge that you have bought with your ticket. Additional badges can be ordered at a fee from {{ dayjs(event.orderStartsAt).format('D.M.YYYY') }}.
+                        </p>
+                        <Link
+                            v-if="user.badges?.length > 0"
+                            :href="route('badges.index')"
+                            class="w-full">
+                            <Button
+                                icon="pi pi-list"
+                                class="flex-1 font-semibold text-xl"
+                                size="large"
+                                label="View My Badges"
+                            />
+                        </Link>
+                    </div>
+
                     <!-- NoPreorder State -->
                     <div v-else-if="orderStatus.status === 'noPreorder'" class="text-center space-y-6">
                         <p class="text-2xl mb-6 opacity-90">You did not pre-order any fursuit badges with your registration.</p>
@@ -363,17 +381,23 @@ const shouldShowRegMessage = computed(() => {
                                     <div class="space-y-3">
                                         <div class="flex items-start gap-3">
                                             <div class="w-16 flex-shrink-0">
-                                                <Chip label="2€" class="bg-orange-100 text-orange-800 w-full justify-center" />
+                                                <Chip label="3€" class="bg-orange-100 text-orange-800 w-full justify-center" />
                                             </div>
                                             <div class="flex-1">
                                                 <strong>All Badges</strong>
-                                                <p class="text-sm text-gray-600">All badges cost 2€ each, including first badge</p>
+                                                <p class="text-sm text-gray-600">All badges cost 3€ each, including first badge</p>
                                             </div>
                                         </div>
                                         <div class="bg-orange-100 rounded-md p-3">
                                             <p class="text-sm text-orange-800">
                                                 <i class="pi pi-info-circle mr-1"></i>
                                                 <strong>Pickup:</strong> Available from the 2nd convention day
+                                            </p>
+                                        </div>
+                                        <div class="bg-orange-100 rounded-md p-3">
+                                            <p class="text-sm text-orange-800">
+                                                <i class="pi pi-info-circle mr-1"></i>
+                                                <strong>Price Update:</strong> In order to offset costs we have increased the price to 3,- € for onsite orders.
                                             </p>
                                         </div>
                                     </div>

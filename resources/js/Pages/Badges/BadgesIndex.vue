@@ -134,7 +134,7 @@ function getFursuitSeverity(status) {
                         size="small"
                         icon="pi pi-plus"
                         class="w-full sm:w-auto"
-                        label="Purchase Badge (2€)"
+                        label="Purchase Badge (3€)"
                     />
                 </div>
             </div>
@@ -260,7 +260,7 @@ function getFursuitSeverity(status) {
                         v-if="canCreate && event && event.allowsOrders"
                         @click="router.visit(route('badges.create'))"
                         icon="pi pi-plus"
-                        :label="prepaidBadgesLeft > 0 ? 'Customize Prepaid Badge' : 'Purchase Badge (2€)'"
+                        :label="prepaidBadgesLeft > 0 ? 'Customize Prepaid Badge' : 'Purchase Badge (3€)'"
                         :severity="prepaidBadgesLeft > 0 ? 'success' : 'primary'"
                     />
                     <Button
