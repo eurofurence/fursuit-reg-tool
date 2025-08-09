@@ -45,6 +45,11 @@ const event = computed(() => props.event || usePage().props.event);
 const user = computed(() => usePage().props.auth.user);
 const prepaidBadgesLeft = computed(() => props.prepaidBadgesLeft || 0);
 
+const userBadgeOrderedCount = computed(() => {
+    if (!user.value) return null;
+    return user.value.badges?.length || 0;
+});
+
 const orderStatus = computed(() => {
     // Trust the backend's state determination
     if (props.showState === 'open') {
@@ -69,6 +74,17 @@ const orderStatus = computed(() => {
                 message: 'Badge orders open',
                 timeRemaining: orderStartsAt.from(currentTime.value),
                 severity: 'info'
+            };
+        }
+    }
+
+    if (user.value) { // If logged in
+        if (!prepaidBadgesLeft.value && !userBadgeOrderedCount.value) { // Doesnt have a preorder badge available
+            return {
+                status: 'noPreorder',
+                message: 'You did not pre-order any fursuit badges with your registration.',
+                timeRemaining: null,
+                severity: 'secondary'
             };
         }
     }
@@ -147,58 +163,58 @@ const shouldShowRegMessage = computed(() => {
                     <div v-if="prepaidBadgesLeft > 0" class="space-y-6">
                         <div class="flex flex-row gap-3 mt-6">
                             <!-- Prepaid Badge Button -->
-                            <Button 
-                                @click="router.visit(route('badges.create'))" 
+                            <Button
+                                @click="router.visit(route('badges.create'))"
                                 icon="pi pi-star"
                                 class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 border-0 text-white"
                                 fluid
                                 size="large"
                                 :label="`Customize Prepaid Badge${prepaidBadgesLeft > 1 ? 's' : ''}`"
                             />
-                            
+
                             <!-- Secondary Action Button -->
-                            <Button 
+                            <Button
                                 v-if="user.badges?.length > 0"
-                                @click="router.visit(route('badges.index'))" 
-                                icon="pi pi-list" 
+                                @click="router.visit(route('badges.index'))"
+                                icon="pi pi-list"
                                 class="flex-1 font-semibold"
                                 size="large"
                                 label="Manage Badges"
                             />
                         </div>
                     </div>
-                    
+
                     <div v-else-if="orderStatus.status === 'open'" class="space-y-6">
                         <!-- Action Buttons - Max 2 buttons side by side -->
                         <div class="flex flex-row gap-3 mt-6">
                             <!-- Primary Action Button -->
-                            <Button 
-                                @click="router.visit(route('badges.create'))" 
+                            <Button
+                                @click="router.visit(route('badges.create'))"
                                 icon="pi pi-id-card"
                                 class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white"
                                 fluid
                                 size="large"
                                 :label="userBadgeStatus?.action || 'Create Your Badge'"
                             />
-                            
+
                             <!-- Secondary Action Button -->
-                            <Button 
+                            <Button
                                 v-if="user.badges?.length > 0"
-                                @click="router.visit(route('badges.index'))" 
-                                icon="pi pi-list" 
+                                @click="router.visit(route('badges.index'))"
+                                icon="pi pi-list"
                                 class="flex-1 font-semibold"
                                 size="large"
                                 fluid
                                 label="Manage Badges"
                             />
-                            <a 
+                            <a
                                 v-else-if="shouldShowRegMessage"
                                 href="https://reglive.eurofurence.org/20250105-1445-r4v1/app/register"
                                 target="_blank"
                                 rel="noopener"
                                 class="flex-1 font-semibold"
                             >
-                                <Button 
+                                <Button
                                     icon="pi pi-external-link"
                                     size="large"
                                     class="w-full"
@@ -207,7 +223,7 @@ const shouldShowRegMessage = computed(() => {
                                 />
                             </a>
                         </div>
-                        
+
                         <!-- Status Info -->
                         <div v-if="user.badges?.length > 0" class="flex justify-center mt-6">
                             <div class="bg-green-500/90 backdrop-blur-sm rounded-lg px-6 py-2 text-white shadow-lg">
@@ -216,16 +232,44 @@ const shouldShowRegMessage = computed(() => {
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Closed State -->
-                    <div v-else class="text-center space-y-6">
-                        <p class="text-2xl mb-6 opacity-90">Badge orders are currently closed</p>
-                        <Link 
+
+                    <!-- NoPreorder State -->
+                    <div v-else-if="orderStatus.status === 'noPreorder'" class="text-center space-y-6">
+                        <p class="text-2xl mb-6 opacity-90">You did not pre-order any fursuit badges with your registration.</p>
+                        <a
+                            href="https://reg.eurofurence.org"
+                            target="_blank"
+                            class="w-full">
+                            <Button
+                                icon="pi pi-ticket"
+                                class="flex-1 font-semibold text-xl"
+                                size="large"
+                                label="Check my Registration"
+                            />
+                        </a>
+                        <Link
                             v-if="user.badges?.length > 0"
                             :href="route('badges.index')"
                             class="w-full">
-                            <Button 
-                                icon="pi pi-list" 
+                            <Button
+                                icon="pi pi-list"
+                                class="flex-1 font-semibold text-xl"
+                                size="large"
+                                label="View My Badges"
+                            />
+                        </Link>
+                        <p class="mb-6 opacity-90">You may need to logout and log back in to make changes take effect.</p>
+                    </div>
+
+                    <!-- Closed State -->
+                    <div v-else class="text-center space-y-6">
+                        <p class="text-2xl mb-6 opacity-90">Badge orders are currently closed</p>
+                        <Link
+                            v-if="user.badges?.length > 0"
+                            :href="route('badges.index')"
+                            class="w-full">
+                            <Button
+                                icon="pi pi-list"
                                 class="flex-1 font-semibold text-xl"
                                 size="large"
                                 label="View My Badges"
@@ -233,12 +277,12 @@ const shouldShowRegMessage = computed(() => {
                         </Link>
                     </div>
                 </div>
-                
+
                 <!-- Login Button -->
                 <div v-else class="w-full max-w-xl mx-auto">
                     <Link method="POST" :href="route('auth.login.redirect')" class="w-full">
-                        <Button 
-                            icon="pi pi-sign-in" 
+                        <Button
+                            icon="pi pi-sign-in"
                             class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white text-2xl py-4 px-8 font-bold shadow-2xl transform hover:scale-105 transition-all duration-200"
                             size="large"
                             label="Login with Eurofurence Identity"

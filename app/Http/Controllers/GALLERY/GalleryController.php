@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\FCEA\UserCatchRanking;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Species;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -45,17 +46,6 @@ class GalleryController extends Controller
             ->whereNotNull('image')
             ->where('published', true);
 
-        // Apply search filter
-        foreach ($search as $term) {
-            $query->where('name', 'LIKE', $term);
-        }
-
-        // Apply species filter
-        if (! empty($speciesFilter)) {
-            $query->whereHas('species', function ($q) use ($speciesFilter) {
-                $q->where('name', 'LIKE', '%'.$speciesFilter.'%');
-            });
-        }
 
         // Apply event filter and get event data
         $selectedEvent = null;
@@ -68,60 +58,35 @@ class GalleryController extends Controller
             }
         }
 
-        // Get total count
-        $totalCount = $query->count();
+        $totalFursuiterCount = 0;
+        if (! $isHistoricalEvent && $selectedEvent) // When searching specifically for an EF with Catch-em-all data
+            $totalFursuiterCount = $query->clone()->distinct()->count('user_id'); // Assume that fursuits are linked to a user
 
-        // Apply sorting - skip catch-related sorting for historical events (EF15-EF27)
-        if (! $isHistoricalEvent && ($sortBy === 'catches_asc' || $sortBy === 'catches_desc' || $sortBy === null)) {
-            $query->withCount('catchedByUsers');
+        $totalFursuitCount = $query->count(); // Get total Fursuiter count of this event filter
+
+        // Apply name search filter
+        foreach ($search as $term) {
+            $query->where('fursuits.name', 'LIKE', $term);
         }
 
-        switch ($sortBy) {
-            case 'catches_asc':
-                if ($isHistoricalEvent) {
-                    $query->orderBy('name')
-                          ->orderByDesc('event_id'); // Fallback to name for historical events
-                } else {
-                    $query->orderBy('catched_by_users_count')
-                          ->orderBy('name')
-                          ->orderByDesc('event_id'); // Show newest event first on same name + count
-                }
-                break;
-            case 'name_asc':
-                $query->orderBy('name')
-                      ->orderByDesc('event_id');
-                break;
-            case 'name_desc':
-                $query->orderByDesc('name')
-                      ->orderByDesc('event_id');
-                break;
-            case 'catches_desc':
-                if ($isHistoricalEvent) {
-                    $query->orderBy('name')
-                          ->orderByDesc('event_id'); // Fallback to name for historical events
-                } else {
-                    $query->orderByDesc('catched_by_users_count')
-                          ->orderBy('name')
-                          ->orderByDesc('event_id');
-                }
-                break;
-            default:
-                if ($isHistoricalEvent) {
-                    $query->orderBy('name')
-                          ->orderByDesc('event_id'); // Default to name for historical events
-                } else {
-                    $query->orderByDesc('catched_by_users_count')
-                          ->orderBy('name')
-                          ->orderByDesc('event_id');
-                }
-                break;
+        // Apply species filter
+        if (! empty($speciesFilter)) {
+            $query->whereHas('species', function ($q) use ($speciesFilter) {
+                $q->where('name', 'LIKE', '%'.$speciesFilter.'%');
+            });
         }
+
+        // Get total Fursuiter count remaining after filtering
+        $totalResultCount = $query->count();
+
+        // Move duplicated sort to func
+        $this->applyGallerySorting($query, $sortBy, $isHistoricalEvent);
 
         $fursuits = $query->offset($offset)
             ->limit(self::ITEMS_PER_LOAD)
             ->get();
 
-        $hasMore = ($offset + self::ITEMS_PER_LOAD) < $totalCount;
+        $hasMore = ($offset + self::ITEMS_PER_LOAD) < $totalResultCount;
 
         $topRankings = UserCatchRanking::query()
             ->whereNotNull('user_id')
@@ -161,7 +126,9 @@ class GalleryController extends Controller
         return Inertia::render('Gallery/GalleryIndex', [
             'fursuits' => $fursuitData,
             'has_more' => $hasMore,
-            'total' => $totalCount,
+            'totalResult' => $totalResultCount,
+            'totalFursuit' => $totalFursuitCount,
+            'totalFursuiter' => $totalFursuiterCount,
             'is_historical_event' => $isHistoricalEvent,
             'selected_event' => $selectedEvent ? [
                 'id' => $selectedEvent->id,
@@ -255,40 +222,8 @@ class GalleryController extends Controller
         // Get total count
         $totalCount = $query->count();
 
-        // Apply sorting - skip catch-related sorting for historical events (EF15-EF27)
-        if (! $isHistoricalEvent && ($sortBy === 'catches_asc' || $sortBy === 'catches_desc' || $sortBy === null)) {
-            $query->withCount('catchedByUsers');
-        }
-
-        switch ($sortBy) {
-            case 'catches_asc':
-                if ($isHistoricalEvent) {
-                    $query->orderBy('name', 'asc'); // Fallback to name for historical events
-                } else {
-                    $query->orderBy('catched_by_users_count', 'asc')->orderBy('name', 'asc');
-                }
-                break;
-            case 'name_asc':
-                $query->orderBy('name', 'asc');
-                break;
-            case 'name_desc':
-                $query->orderBy('name', 'desc');
-                break;
-            case 'catches_desc':
-                if ($isHistoricalEvent) {
-                    $query->orderBy('name', 'asc'); // Fallback to name for historical events
-                } else {
-                    $query->orderBy('catched_by_users_count', 'desc')->orderBy('name', 'asc');
-                }
-                break;
-            default:
-                if ($isHistoricalEvent) {
-                    $query->orderBy('name', 'asc'); // Default to name for historical events
-                } else {
-                    $query->orderBy('catched_by_users_count', 'desc')->orderBy('name', 'asc');
-                }
-                break;
-        }
+        // Move duplicated sort to func
+        $this->applyGallerySorting($query, $sortBy, $isHistoricalEvent);
 
         $fursuits = $query->offset($offset)
             ->limit(self::ITEMS_PER_LOAD)
@@ -323,5 +258,33 @@ class GalleryController extends Controller
             ->count();
 
         return response()->json(['count' => $count]);
+    }
+
+    private function applyGallerySorting(Builder $query, string $sortBy, bool $isHistoricalEvent)
+    {
+        // Apply sorting - skip catch-related sorting for historical events (EF15-EF27)
+        // Catch related sort at 1st place
+        if (! $isHistoricalEvent) {
+            $query->withCount('catchedByUsers'); // Always adding Catch Values if event can contain these
+
+            if ($sortBy === 'catches_asc')
+                $query->orderBy('catched_by_users_count');
+            else if($sortBy === 'catches_desc')
+                $query->orderByDesc('catched_by_users_count');
+        }
+
+        // Name base sorting at 2nd place
+        switch ($sortBy) {
+            default:
+            case 'name_asc':
+                $query->orderBy('name');
+                break;
+            case 'name_desc':
+                $query->orderByDesc('name');
+                break;
+        }
+
+        // Event base sorting at 3rd place (unfortunately event_id is not suitable)
+        $query->orderByLeftPowerJoins('event.name','desc');
     }
 }

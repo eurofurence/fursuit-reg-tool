@@ -14,6 +14,14 @@ class UserCatchLog extends Model
     // Simple caching so save database lookups
     protected ?Fursuit $fursuit = null;
 
+    protected $fillable = [
+        'event_id',
+        'user_id',
+        'catch_code',
+        'is_successful',
+        'already_caught',
+    ];
+
     protected $casts = [
         'is_successful' => 'boolean',
         'already_caught' => 'boolean',
