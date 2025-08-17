@@ -50,16 +50,16 @@ const showRecentCatch = computed({
 });
 
 const submit = () => {
-    if (form.processing) return; // Prevent multiple submissions
+    if (form.processing) return // Prevent multiple submissions
 
-    form.catch_code = form.catch_code.toUpperCase();
-    form.post(route("catch-em-all.catch.submit"), {
+    form.catch_code = form.catch_code.toUpperCase()
+    form.post(route('catch-em-all.catch.submit'), {
         onSuccess: () => {
-            form.reset();
+            form.reset()
         },
-        preserveScroll: true, // Preserve scroll position
-    });
-};
+        preserveScroll: true // Preserve scroll position
+    })
+}
 
 const formatCode = (value: string) => {
     return value
@@ -75,20 +75,20 @@ const onCodeInput = (event: any) => {
 };
 
 // Auto-focus input on mount and handle cleanup
-const codeInput = ref();
+const codeInput = ref()
 onMounted(() => {
     // Use nextTick to ensure component is mounted
     nextTick(() => {
         if (codeInput.value?.$el) {
-            codeInput.value.$el.focus();
+            codeInput.value.$el.focus()
         }
-    });
+    })
 
     // Reset form when navigating away
-    window.addEventListener("beforeunload", () => {
-        form.reset();
-    });
-});
+    window.addEventListener('beforeunload', () => {
+        form.reset()
+    })
+})
 
 const getRankIcon = (rank: number) => {
     if (rank === 1) return Crown;

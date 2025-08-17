@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
-import { router } from "@inertiajs/vue3";
+import { ref, computed } from 'vue'
+import { router } from '@inertiajs/vue3'
+import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
+import Card from 'primevue/card'
+import Dropdown from 'primevue/dropdown'
 import {
     BookOpen,
+    Star,
+    Gem,
+    Sparkles,
     Crown,
     Filter,
     Gem,
@@ -135,11 +140,11 @@ const collectionByRarity = computed(() => {
         epic: [],
         rare: [],
         uncommon: [],
-        common: [],
-    };
+        common: []
+    }
 
-    props.collection.suits.forEach((suit) => {
-        const rarity = suit.rarity.level;
+    props.collection.species.forEach(species => {
+        const rarity = species.rarity.level
         if (grouped[rarity]) {
             grouped[rarity].push(suit);
         }
@@ -173,21 +178,18 @@ const rarityStats = computed(() => {
         epic: 0,
         rare: 0,
         uncommon: 0,
-        common: 0,
-    };
-
-    // Check if collection and suits exist before processing
-    if (props.collection?.suits) {
-        props.collection.suits.forEach((suit) => {
-            const rarity = suit.rarity.level;
-            if (stats[rarity] !== undefined) {
-                stats[rarity]++;
-            }
-        });
+        common: 0
     }
 
-    return stats;
-});
+    props.collection.species.forEach(species => {
+        const rarity = species.rarity.level
+        if (stats[rarity] !== undefined) {
+            stats[rarity] += species.count
+        }
+    })
+
+    return stats
+})
 </script>
 
 <template>
@@ -215,6 +217,9 @@ const rarityStats = computed(() => {
                     >
                         {{ collection.species.length }} unique species •
                         {{ collection.totalCatches }} total catches
+                    </p>
+                    <p class="text-sm text-gray-600" v-else>
+                        Loading collection...
                     </p>
                     <p class="text-sm text-gray-600" v-else>
                         Loading collection...
