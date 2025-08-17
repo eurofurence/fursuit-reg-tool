@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
 import Button from "primevue/button"
 import InputText from 'primevue/inputtext'
@@ -38,11 +38,14 @@ const props = defineProps<{
 const showRecentCatch = ref(!!props.recentCatch)
 
 const submit = () => {
+    if (form.processing) return // Prevent multiple submissions
+    
     form.catch_code = form.catch_code.toUpperCase()
     form.post(route('catch-em-all.catch.submit'), {
         onSuccess: () => {
             form.reset()
-        }
+        },
+        preserveScroll: true // Preserve scroll position
     })
 }
 
@@ -56,10 +59,20 @@ const onCodeInput = (event: any) => {
     event.target.value = formatted
 }
 
-// Auto-focus input on mount
-const codeInput = ref<HTMLInputElement>()
+// Auto-focus input on mount and handle cleanup
+const codeInput = ref()
 onMounted(() => {
-    codeInput.value?.focus()
+    // Use nextTick to ensure component is mounted
+    nextTick(() => {
+        if (codeInput.value?.$el) {
+            codeInput.value.$el.focus()
+        }
+    })
+    
+    // Reset form when navigating away
+    window.addEventListener('beforeunload', () => {
+        form.reset()
+    })
 })
 
 const getRankIcon = (rank: number) => {

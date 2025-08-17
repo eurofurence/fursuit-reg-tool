@@ -6,7 +6,7 @@ use App\Domain\CatchEmAll\Controllers\GameController;
 /**
  * CATCH EM ALL GAME ROUTES - Mobile-first fursuiter hunting game
  */
-/*
+
 Route::middleware('auth')->group(function () {
     // Introduction routes (no middleware)
     Route::get('/introduction', [GameController::class, 'introduction'])->name('introduction');
@@ -21,4 +21,4 @@ Route::middleware('auth')->group(function () {
         Route::post('/catch', [GameController::class, 'catch'])->name('catch.submit');
     });
 });
-*/
+

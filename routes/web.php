@@ -29,4 +29,6 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
     });
 });
 
-Route::permanentRedirect('/fcea/', '/catch-em-all');
+// have consistent backslash for catch-em-all
+Route::permanentRedirect('/fcea/', '/catch-em-all/');
+Route::permanentRedirect('/catch-em-all', '/catch-em-all/');

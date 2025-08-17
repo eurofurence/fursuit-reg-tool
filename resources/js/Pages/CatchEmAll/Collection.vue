@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
 import Card from 'primevue/card'
@@ -27,6 +27,17 @@ const props = defineProps<{
     flash?: any
 }>()
 
+// Debug logs for initial props
+// console.log('[Collection] Received props:', {
+//     collectionExists: !!props.collection,
+//     speciesCount: props.collection?.species?.length,
+//     totalSpecies: props.collection?.totalSpecies,
+//     totalCatches: props.collection?.totalCatches,
+//     eventsCount: props.eventsWithEntries?.length,
+//     selectedEvent: props.selectedEvent,
+//     isGlobal: props.isGlobal
+// })
+
 // Event selection
 const eventOptions = computed(() => [
     { label: 'Global (All-Time)', value: 'global' },
@@ -39,6 +50,7 @@ const eventOptions = computed(() => [
 const selectedEventValue = ref(props.selectedEvent || 'global')
 
 const onEventChange = () => {
+    console.log('[Collection] Event changed to:', selectedEventValue.value)
     router.get(route('catch-em-all.collection'), {
         event: selectedEventValue.value
     }, {
@@ -46,6 +58,18 @@ const onEventChange = () => {
         replace: true
     })
 }
+
+// Monitor collection changes
+watch(() => props.collection, (newVal, oldVal) => {
+    // console.log('[Collection] Collection updated:', {
+    //     hasOldData: !!oldVal,
+    //     hasNewData: !!newVal,
+    //     oldSpeciesCount: oldVal?.species?.length,
+    //     newSpeciesCount: newVal?.species?.length,
+    //     newTotalSpecies: newVal?.totalSpecies,
+    //     newTotalCatches: newVal?.totalCatches
+    // })
+}, { deep: true })
 
 // View mode toggle
 const viewMode = ref<'grid' | 'list'>('list')
@@ -63,6 +87,12 @@ const rarityOptions = [
 
 // Filter collection by rarity
 const filteredCollection = computed(() => {
+    //TODO: figure out if having props.collection.species "isEmpty" check is necessary 
+
+    // Return empty array if collection or species is not loaded yet
+    if (!props.collection?.species) {
+        return []
+    }
     if (selectedRarity.value === 'all') {
         return props.collection.species
     }
@@ -80,7 +110,7 @@ const collectionByRarity = computed(() => {
         uncommon: [],
         common: []
     }
-    
+
     props.collection.species.forEach(species => {
         const rarity = species.rarity.level
         if (grouped[rarity]) {
@@ -113,12 +143,15 @@ const rarityStats = computed(() => {
         common: 0
     }
     
-    props.collection.species.forEach(species => {
-        const rarity = species.rarity.level
-        if (stats[rarity] !== undefined) {
-            stats[rarity] += species.count
-        }
-    })
+    // Check if collection and species exist before processing
+    if (props.collection?.species) {
+        props.collection.species.forEach(species => {
+            const rarity = species.rarity.level
+            if (stats[rarity] !== undefined) {
+                stats[rarity] += species.count
+            }
+        })
+    }
     
     return stats
 })
@@ -134,8 +167,11 @@ const rarityStats = computed(() => {
                         <BookOpen class="w-8 h-8 text-white" />
                     </div>
                     <h2 class="text-xl font-bold text-gray-800">Your Collection</h2>
-                    <p class="text-sm text-gray-600">
+                    <p class="text-sm text-gray-600" v-if="collection?.totalSpecies !== undefined">
                         {{ collection.totalSpecies }} unique species • {{ collection.totalCatches }} total catches
+                    </p>
+                    <p class="text-sm text-gray-600" v-else>
+                        Loading collection...
                     </p>
                 </div>
 

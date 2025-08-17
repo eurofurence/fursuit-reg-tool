@@ -166,7 +166,7 @@ class GameController extends Controller
         $currentEvent = $this->getCurrentEvent();
         $filterEvent = $this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
 
-        $collection = $this->gameStatsService->getDetailedCollection($user, $filterEvent, $isGlobal);
+        $collection = $this->gameStatsService->getUserCollection($user, $filterEvent, $isGlobal);
         $eventsWithEntries = $this->getEventsWithEntries();
 
         return Inertia::render('CatchEmAll/Collection', [
