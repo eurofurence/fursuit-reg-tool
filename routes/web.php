@@ -38,3 +38,7 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
         Route::get('/statistics', [\App\Http\Controllers\StatisticsController::class, 'index'])->name('statistics');
     });
 });
+
+// have consistent backslash for catch-em-all
+Route::permanentRedirect('/fcea/', '/catch-em-all/');
+Route::permanentRedirect('/catch-em-all', '/catch-em-all/');

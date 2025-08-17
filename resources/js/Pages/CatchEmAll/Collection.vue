@@ -158,6 +158,11 @@ const collectionByRarity = computed(() => {
         epic: [],
         rare: [],
         uncommon: [],
+        common: []
+    }
+
+    props.collection.species.forEach(species => {
+        const rarity = species.rarity.level
         common: [],
     };
 
@@ -239,6 +244,9 @@ const getRarityBgColor = (textColor: string) => {
                         catches
                     </p>
                     <p class="text-sm text-gray-300" v-else>
+                        Loading collection...
+                    </p>
+                    <p class="text-sm text-gray-600" v-else>
                         Loading collection...
                     </p>
                 </div>
@@ -384,15 +392,15 @@ const getRarityBgColor = (textColor: string) => {
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-white text-gray-600 hover:bg-gray-50'
                                 "
-                                :title="showCounters 
-                                    ? 'Hide scoring numbers on fursuit cards' 
+                                :title="showCounters
+                                    ? 'Hide scoring numbers on fursuit cards'
                                     : 'Show scoring numbers on fursuit cards'"
                             >
                                 <span class="text-sm font-medium">
                                     {{ showCounters ? 'Hide' : 'Show' }}
                                 </span>
                             </button>
-                            
+
                             <!-- Mobile Tooltip Info Button -->
                             <button
                                 @click="showTooltip = !showTooltip"
@@ -402,9 +410,9 @@ const getRarityBgColor = (textColor: string) => {
                                 <Info class="w-2.5 h-2.5" />
                             </button>
                         </div>
-                        
+
                         <!-- Mobile Tooltip -->
-                        <div 
+                        <div
                             v-show="showTooltip"
                             class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap md:hidden"
                         >
@@ -453,7 +461,7 @@ const getRarityBgColor = (textColor: string) => {
                                 {{ fursuit.species }}
                             </p>
                         </div>
-                        
+
                         <!-- Combined Rarity and Counter Badge -->
                         <div class="text-center mx-4">
                             <span
