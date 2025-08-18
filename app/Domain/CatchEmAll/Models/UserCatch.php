@@ -19,11 +19,9 @@ class UserCatch extends Model
         'user_id',
         'fursuit_id',
         'event_id',
-        'points_earned',
     ];
 
     protected $casts = [
-        'points_earned' => 'integer',
     ];
 
     public function user(): BelongsTo
@@ -61,14 +59,9 @@ class UserCatch extends Model
         };
     }
 
-    public function calculatePoints(): int
-    {
-        return $this->getSpeciesRarity()->getPoints();
-    }
-
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['user_id', 'fursuit_id', 'points_earned']);
+            ->logOnly(['user_id', 'fursuit_id']);
     }
 }
