@@ -14,6 +14,7 @@ class GameStatsService
     {
         $cacheKey = $isGlobal ? "game_stats_global_{$user->id}" : "game_stats_{$filterEvent?->id}_{$user->id}";
 
+
         return Cache::remember($cacheKey, 600, function () use ($user, $filterEvent, $isGlobal) {
             $query = UserCatch::where('user_id', $user->id);
 
@@ -23,8 +24,10 @@ class GameStatsService
 
             $catches = $query->with(['fursuit.species'])->get();
 
+
             $totalCatches = $catches->count();
             $uniqueSpecies = $catches->pluck('fursuit.species.id')->unique()->count();
+
 
             // Calculate rank
             $rank = $this->calculateUserRank($user, $filterEvent, $isGlobal, $totalPoints);
@@ -34,8 +37,10 @@ class GameStatsService
             // Calculate rarity distribution
             $rarityStats = $this->calculateRarityDistribution($catches);
 
+
             // Get available fursuiters count
             $totalAvailable = $this->getTotalAvailableFursuiters($filterEvent);
+
 
             return [
                 'rank' => $rank,
@@ -51,6 +56,7 @@ class GameStatsService
     public function getLeaderboard($filterEvent = null, bool $isGlobal = false, int $limit = 10, int $rankCutoff = 3): array
     {
         $cacheKey = $isGlobal ? "leaderboard_global_{$limit}" : "leaderboard_{$filterEvent?->id}_{$limit}";
+
 
         $result = Cache::remember($cacheKey, 600, function () use ($filterEvent, $isGlobal, $limit, $rankCutoff) {
             $query = User::withCount([
@@ -180,9 +186,100 @@ class GameStatsService
         return is_array($result) ? $result : [];
     }
 
+    public function getUserLeaderboard(int $userId, int $userRank, int $userCatched, string $userName = null, int $rankCutoff = 3, $filterEvent = null, bool $isGlobal = false): array
+    {
+        $cacheKey = $isGlobal ? "user_leaderboard_global" : "user_leaderboard_{$filterEvent?->id}";
+
+        $result = Cache::remember($cacheKey, 600, function () use ($filterEvent, $isGlobal, $userId, $userName, $userCatched, $userRank, $rankCutoff) {
+            $lower = User::withCount([
+                'fursuitsCatched' => function ($q) use ($filterEvent, $isGlobal, $userId) {
+                    if (!$isGlobal && $filterEvent) {
+                        $q->where('event_id', $filterEvent->id);
+                    }
+                    $q->where('user_id', '<>', $userId);
+                }
+            ])
+                ->having('fursuits_catched_count', '>', 0)
+                ->having('fursuits_catched_count', '<=', $userCatched)
+                ->orderByDesc('fursuits_catched_count')
+                ->limit(3);
+
+
+            $upper = User::withCount([
+                'fursuitsCatched' => function ($q) use ($filterEvent, $isGlobal) {
+                    if (!$isGlobal && $filterEvent) {
+                        $q->where('event_id', $filterEvent->id);
+                    }
+                }
+            ])
+                ->having('fursuits_catched_count', '>', 0)
+                ->having('fursuits_catched_count', '>', $userCatched)
+                ->orderBy('fursuits_catched_count')
+                ->limit(3);
+
+
+            $aboveUser = $upper->get();
+            $rank = $userRank;
+            $lastCatch = $userCatched;
+
+            $leaderboard = [];
+
+            foreach ($aboveUser as $index => $user) {
+                if ($lastCatch < $user->fursuits_catched_count) {
+                    $rank--;
+                    if($rank <= $rankCutoff) {
+                        break;
+                    }
+                }
+                $leaderboard[] = [
+                    'id' => $user->id,
+                    'name' => $user->name ?? 'Unknown User',
+                    'rank' => $rank,
+                    'catches' => $user->fursuits_catched_count ?? 0,
+                ];
+                $lastCatch = $user->fursuits_catched_count;
+            }
+
+            $leaderboard = array_reverse($leaderboard);
+
+            $leaderboard[] = [
+                'id' => $userId,
+                'name' => $userName ?? 'Unknown User',
+                'rank' => $userRank,
+                'catches' => $userCatched
+            ];
+
+            $belowUser = $lower->get();
+
+            $rank = $userRank;
+            $lastCatch = $userCatched;
+
+            foreach ($belowUser as $index => $user) {
+                if ($lastCatch > $user->fursuits_catched_count) {
+                    $rank++;
+                }
+                $leaderboard[] = [
+                    'id' => $user->id,
+                    'name' => $user->name ?? 'Unknown User',
+                    'rank' => $rank,
+                    'catches' => $user->fursuits_catched_count ?? 0,
+                ];
+                $lastCatch = $user->fursuits_catched_count;
+            }
+
+
+            return $leaderboard;
+        });
+
+
+        // Ensure we always return an array, even if cache returns something else
+        return is_array($result) ? $result : [];
+    }
+
     public function getUserCollection(User $user, $filterEvent = null, bool $isGlobal = false): array
     {
         $cacheKey = $isGlobal ? "collection_global_{$user->id}" : "collection_{$filterEvent?->id}_{$user->id}";
+
 
         return Cache::remember($cacheKey, 600, function () use ($user, $filterEvent, $isGlobal) {
             $query = UserCatch::where('user_id', $user->id)
@@ -194,13 +291,16 @@ class GameStatsService
 
             $catches = $query->get();
 
+
             // Group by species
             $speciesGrouped = $catches->groupBy('fursuit.species.name');
             $speciesArray = [];
 
+
             foreach ($speciesGrouped as $speciesName => $speciesCatches) {
                 $firstCatch = $speciesCatches->first();
                 $rarity = $firstCatch->getSpeciesRarity();
+
 
                 $speciesArray[] = [
                     'species' => $speciesName,
@@ -222,11 +322,12 @@ class GameStatsService
                         'icon' => $rarity->getIcon(),
                     ],
                     'firstCaught' => $speciesCatches->sortBy('created_at')->first()->created_at,
-                    'totalPoints' => $speciesCatches->sum('points_earned'),
                 ];
             }
 
             // Sort by total points descending
+
+            // Sort by total catches descending
             usort($speciesArray, function ($a, $b) {
                 return $b['totalPoints'] <=> $a['totalPoints'];
                     'gallery' => [
@@ -264,6 +365,7 @@ class GameStatsService
 
         $catches = $query->orderByDesc('created_at')->get();
 
+
         $result = [];
         foreach ($catches as $catch) {
             $rarity = $catch->getSpeciesRarity();
@@ -287,6 +389,7 @@ class GameStatsService
             ];
         }
 
+
         return $result;
     }
 
@@ -309,6 +412,7 @@ class GameStatsService
     private function calculateRarityDistribution($catches): array
     {
         $distribution = [];
+
 
         foreach (SpeciesRarity::cases() as $rarity) {
 
@@ -344,3 +448,4 @@ class GameStatsService
         );
     }
 }
+
