@@ -40,7 +40,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
 
         $badge_objekt = $this->addFirstLayer($size);
         $this->addSecondLayer($badge_objekt, $size);
-        //$this->addThirdLayer($badge_objekt);
+        $this->addThirdLayer($badge_objekt);
 
         if ($this->badge->fursuit->catch_em_all == true && ! empty($this->badge->fursuit->catch_code)) {
             $this->addFourthLayer($badge_objekt, $size);
@@ -151,43 +151,26 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         $text_species = $this->badge->fursuit->species->name;
 
         // Fonts and color definitions
-        $font_path = resource_path($this->font_path); // Path to the font file
+        $font_path = $this->font_path; // Path to the font file
 
         // Create color palette - Text color
         $palette = new RGB;
         $font_color = $palette->color($this->font_color);
-        // Create color palette - Frame
-        $border_color = $palette->color('#9579aa');
 
         // Position of the texts in the image
         $position_attendee_id = new Point(
-            $this->width_px - 129, // X-Position (adapted)
-            38 // Y-Position
+            $this->width_px - 602, // X-Position (adapted)
+            78 // Y-Position
         );
 
         $position_species = new Point(
-            $this->width_px - 321 - 160, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 213 // Y-Position
+            $this->width_px - 321 - 310, // X-Position (adapted for the width of the text box)
+            $this->height_px - 67 - 151 // Y-Position
         );
 
         $position_name = new Point(
-            $this->width_px - 321 - 160, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 339 // Y-Position
-        );
-
-        $position_name_label = new Point(
-            $this->width_px - 321 - 260, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 361 // Y-Position
-        );
-
-        $position_species_label = new Point(
-            $this->width_px - 321 - 275, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 232 // Y-Position
-        );
-
-        $position_fursuit_badge = new Point(
-            $this->width_px - 321 - 230, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 482 // Y-Position
+            $this->width_px - 321 - 310, // X-Position (adapted for the width of the text box)
+            $this->height_px - 67 - 257 // Y-Position
         );
 
         // Create TextField objects and draw text on the image
@@ -203,8 +186,6 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             $position_attendee_id,
             TextAlignment::LEFT, // Right-aligned alignment
             1, // Maximum number of lines
-            textStrokeThickness: 1,
-            textStrokeColor: $border_color
         );
 
         new TextField(
@@ -212,15 +193,13 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             321, // Width of the text field
             60, // Height of the text field
             15, // Minimum font size
-            50, // Start font size
+            40, // Start font size
             $font_path,
             $font_color,
             $badge_object,
             $position_species,
             TextAlignment::LEFT, // Centered alignment
-            2, // Maximum number of lines
-            textStrokeThickness: 1,
-            textStrokeColor: $border_color
+            1, // Maximum number of lines
         );
 
         new TextField(
@@ -228,63 +207,13 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             321, // Width of the text field
             60, // Height of the text field
             15, // Minimum font size
-            50, // Start font size
+            40, // Start font size
             $font_path,
             $font_color,
             $badge_object,
             $position_name,
             TextAlignment::LEFT, // Centered alignment
-            2, // Maximum number of lines
-            textStrokeThickness: 1,
-            textStrokeColor: $border_color
-        );
-
-        new TextField(
-            'Name:',
-            321, // Width of the text field
-            90, // Height of the text field
-            15, // Minimum font size
-            25, // Start font size
-            $font_path,
-            $font_color,
-            $badge_object,
-            $position_name_label,
-            TextAlignment::LEFT, // Centered alignment
-            2, // Maximum number of lines
-            textStrokeThickness: 1,
-            textStrokeColor: $border_color
-        );
-
-        new TextField(
-            'Species:',
-            321, // Width of the text field
-            90, // Height of the text field
-            15, // Minimum font size
-            22, // Start font size
-            $font_path,
-            $font_color,
-            $badge_object,
-            $position_species_label,
-            TextAlignment::LEFT, // Centered alignment
-            2, // Maximum number of lines
-            textStrokeThickness: 1,
-            textStrokeColor: $border_color
-        );
-
-        new TextField(
-            'Fursuit Badge',
-            500, // Width of the text field
-            90, // Height of the text field
-            15, // Minimum font size
-            55, // Start font size
-            $font_path,
-            $font_color,
-            $badge_object,
-            $position_fursuit_badge,
-            TextAlignment::CENTER, // Centered alignment
-            2, // Maximum number of lines
-            textStrokeThickness: 1,
-            textStrokeColor: $border_color
+            1, // Maximum number of lines
         );
 
         // The text is drawn automatically when the TextField object is created.
@@ -316,15 +245,13 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             500, // Width of the text field
             90, // Height of the text field
             15, // Minimum font size
-            43, // Start font size
+            40, // Start font size
             $this->font_path,
             $font_color,
             $badge_object,
             $position,
             TextAlignment::CENTER, // Centered alignment
             2, // Maximum number of lines
-            textStrokeThickness: 1,
-            textStrokeColor: $border_color
         );
     }
 }
