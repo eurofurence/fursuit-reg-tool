@@ -27,7 +27,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         $this->height_px = 648;
         $this->width_px = 1024;
         $this->font_color = '#FFFFFF';
-        $this->font_path = 'badges/ef29/fonts/ORBITRON_MEDIUM.TTF';
+        $this->font_path = resource_path('badges/ef29/fonts/ORBITRON_MEDIUM.ttf');
         $this->file_format = 'png';
     }
 
@@ -40,11 +40,10 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
 
         $badge_objekt = $this->addFirstLayer($size);
         $this->addSecondLayer($badge_objekt, $size);
-        $this->addThirdLayer($badge_objekt, $size);
-        $this->addFourthLayer($badge_objekt);
+        //$this->addThirdLayer($badge_objekt);
 
         if ($this->badge->fursuit->catch_em_all == true && ! empty($this->badge->fursuit->catch_code)) {
-            $this->addFifthLayer($badge_objekt, $size);
+            $this->addFourthLayer($badge_objekt, $size);
         }
 
         // Rotate image 180 degrees
@@ -85,7 +84,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
     private function addFirstLayer(Box $size)
     {
         // Add background
-        $image = $this->imagine->open(resource_path('badges/ef28/images/first_layer_bg_purple.png'));
+        $image = $this->imagine->open(resource_path('badges/ef29/images/first_layer_space_layout_main.png'));
         $image->resize($size);
 
         return $image;
@@ -94,24 +93,24 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
     private function addSecondLayer(ImageInterface $badge_object, Box $size)
     {
         // Load the overlay image in which green is to be replaced
-        $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/second_layer_green_screen.png'));
+        $overlayImage = $this->imagine->open(resource_path('badges/ef29/images/second_layer_green_screen.png'));
 
         // Adjust to badge size
         $overlayImage->resize($size);
 
-        // cLoad the image to be used as a replacement for green
+        // Load the image to be used as a replacement for green
         $replacementImage = $this->imagine->open(Storage::temporaryUrl($this->badge->fursuit->image, now()->addMinutes(1)));
-        $replacementImage->resize(new Box(380, 507));
+        $replacementImage->resize(new Box(350, 455));
 
         $replacementSize = $replacementImage->getSize();
 
         // Define the offsets for the shift
         $xOffset = 35; // For example, move it 30 pixels to the right
-        $yOffset = 100; // For example, move it down by 100 pixels
+        $yOffset = 35; // For example, move it down by 100 pixels
 
         // Replace green areas in the overlay image with the replacement image
-        for ($x = 35; $x < $size->getWidth() - 610; $x++) {
-            for ($y = 100; $y < $size->getHeight() - 45; $y++) {
+        for ($x = 35; $x < $size->getWidth() - 600; $x++) {
+            for ($y = 10; $y < $size->getHeight() - 150; $y++) {
                 // Get the color of the pixel in the overlay image
                 $color = $overlayImage->getColorAt(new Point($x, $y));
 
@@ -144,19 +143,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         $badge_object->paste($overlayImage, new Point(0, 0));
     }
 
-    private function addThirdLayer(ImageInterface $badge_object, Box $size)
-    {
-        // Load the overlay image
-        $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/third_layer_overlay.png'));
-
-        // Adjust to badge size
-        $overlayImage->resize($size);
-
-        // Add to badge
-        $badge_object->paste($overlayImage, new Point(0, 0));
-    }
-
-    private function addFourthLayer(ImageInterface $badge_object)
+    private function addThirdLayer(ImageInterface $badge_object)
     {
         // Texts
         $text_attendee_id = $this->badge->custom_id;
@@ -303,17 +290,17 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         // The text is drawn automatically when the TextField object is created.
     }
 
-    private function addFifthLayer(ImageInterface $badge_object, Box $size)
+    private function addFourthLayer(ImageInterface $badge_object, Box $size)
     {
         // Add catch em all field
         // Load the overlay image in which green is to be replaced
-        $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/fifth_layer_catch_em_all.png'));
+        $overlayImage = $this->imagine->open(resource_path('badges/ef29/images/fourth_layer_catch_em_all.png'));
 
         // Customize to badge size
         $overlayImage->resize($size);
 
         // Textposition
-        $position = new Point($this->width_px - 558, $this->height_px - 182);
+        $position = new Point($this->width_px - 587, $this->height_px - 143);
 
         // Create color palette - Text color
         $palette = new RGB;
@@ -329,8 +316,8 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             500, // Width of the text field
             90, // Height of the text field
             15, // Minimum font size
-            60, // Start font size
-            resource_path('badges/ef28/fonts/upcib.ttf'),
+            43, // Start font size
+            $this->font_path,
             $font_color,
             $badge_object,
             $position,

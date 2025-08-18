@@ -101,7 +101,7 @@ class TextField
         $this->textStrokeColor = $textStrokeColor;
         $this->textStrokeThickness = $textStrokeThickness;
 
-        // Zeichne den Text beim Erstellen des Objekts
+        // Draw the text when creating the object
         return $this->drawTextInBox($image, $position);
     }
 
@@ -123,7 +123,7 @@ class TextField
             $font = new Font($this->font_path, $fontSize, $this->font_color);
             $textBox = $font->box($this->text);
 
-            // Überprüft, ob der Text in die Box passt
+            // Checks whether the text fits into the box
             if ($textBox->getWidth() > $this->width || $textBox->getHeight() > $this->height) {
                 $fontSize--;  // Reduces the font size if the text is too large
             } else {
@@ -151,7 +151,7 @@ class TextField
             }
         }
 
-        // Zeichnet den Text auf das Bild an der berechneten Position
+        // Draws the text on the image at the calculated position
         $image->draw()->text($this->text, $font, new Point($x, $y));
 
         return $image;
