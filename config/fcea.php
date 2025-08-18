@@ -38,10 +38,10 @@ return [
     |
     */
 
-    'species_rarity_threshold_common' => env('SPECIES_RARITY_THRESHOLD_COMMON', 100),
-    'species_rarity_threshold_uncommon' => env('SPECIES_RARITY_THRESHOLD_UNCOMMON', 50),
-    'species_rarity_threshold_rare' => env('SPECIES_RARITY_THRESHOLD_RARE', 20),
-    'species_rarity_threshold_epic' => env('SPECIES_RARITY_THRESHOLD_EPIC', 5),
+    'species_rarity_threshold_uncommon' => env('SPECIES_RARITY_THRESHOLD_UNCOMMON', 5),
+    'species_rarity_threshold_rare' => env('SPECIES_RARITY_THRESHOLD_RARE', 10),
+    'species_rarity_threshold_epic' => env('SPECIES_RARITY_THRESHOLD_EPIC', 20),
+    'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 50),
     // If none of this applies, the species is considered legendary
     //'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 1),
 
