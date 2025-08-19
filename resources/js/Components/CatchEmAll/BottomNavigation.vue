@@ -16,8 +16,7 @@ const page = usePage()
 
 // Get current route name to determine active tab
 const currentRoute = computed(() => {
-    const ziggy = page.props.ziggy as { route?: { current?: string } }
-    const routeName = ziggy?.route?.current || ''
+    const routeName = route().current()
     if (routeName.includes('leaderboard')) return 'leaderboard'
     if (routeName.includes('achievements')) return 'achievements'
     if (routeName.includes('collection')) return 'collection'
