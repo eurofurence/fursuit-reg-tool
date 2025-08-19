@@ -214,7 +214,6 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             $position_name,
             TextAlignment::LEFT, // Centered alignment
             1, // Maximum number of lines
-            $font_color
         );
 
         // The text is drawn automatically when the TextField object is created.
