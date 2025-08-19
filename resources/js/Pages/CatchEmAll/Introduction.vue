@@ -63,7 +63,7 @@ const steps = [
 </script>
 
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <div class="dark min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
         <!-- Hero Section -->
         <div class="relative px-4 pt-12 pb-8">
             <div class="text-center mb-8">
