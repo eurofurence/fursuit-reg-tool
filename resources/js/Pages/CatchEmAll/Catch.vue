@@ -111,6 +111,7 @@ const getRankIcon = (rank: number) => {
             :modal="true"
             class="mx-4 dark-dialog"
             :style="{ width: '90vw', maxWidth: '400px' }"
+            dismissableMask
         >
             <template #header>
                 <div class="text-center w-full">
