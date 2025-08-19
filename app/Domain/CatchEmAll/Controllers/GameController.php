@@ -122,7 +122,6 @@ class GameController extends Controller
             'user_id' => $user->id,
             'fursuit_id' => $fursuit->id,
             'event_id' => $event->id,
-            'points_earned' => $this->calculatePoints($fursuit),
         ]);
         $userCatch->save();
 
@@ -287,15 +286,8 @@ class GameController extends Controller
                 'color' => $rarity->getColor(),
                 'gradient' => $rarity->getGradient(),
                 'icon' => $rarity->getIcon(),
-                'points' => $rarity->getPoints(),
             ],
         ];
-    }
-
-    private function calculatePoints(Fursuit $fursuit): int
-    {
-        $tempCatch = new UserCatch(['fursuit_id' => $fursuit->id]);
-        return $tempCatch->calculatePoints();
     }
 
     private function createCatchLog($event, $user, $catchCode): UserCatchLog
