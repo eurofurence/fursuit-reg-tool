@@ -12,7 +12,6 @@ use App\Models\Event;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -273,7 +272,7 @@ class GameController extends Controller
             return null;
 
         $userCatch = new UserCatch(['fursuit_id' => $fursuitId]);
-        $rarity = $userCatch->getSpeciesRarity();
+        $rarity = $userCatch->getFursuitRarity();
 
         return [
             'id' => $fursuit->id,
