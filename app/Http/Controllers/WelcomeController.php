@@ -15,9 +15,11 @@ class WelcomeController extends Controller
 
 
         $prepaidBadgesLeft = 0;
+        $currentEventBadgeCount = 0;
         if ($event && Auth::check()) {
             $user = Auth::user();
             $prepaidBadgesLeft = $user->getPrepaidBadgesLeft($event->id);
+            $currentEventBadgeCount = $user->badges()->where('event_id', $event->id)->count();
         }
 
         return Inertia::render('Welcome', [
@@ -31,6 +33,7 @@ class WelcomeController extends Controller
                 'orderEndsAt' => $event->order_ends_at?->toISOString(),
             ] : null,
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
+            'currentEventBadgeCount' => $currentEventBadgeCount,
         ]);
     }
 }

@@ -10,8 +10,8 @@ class AllowedPritingCharactersRule implements ValidationRule
 {
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (! preg_match('/^[!"§$%&\/()=?`²³{[\]}@€~#\'*+,\-.;:_<>|°^¨´µ·×÷¹¼½¾¬«»©®™± äöüÄÖÜßéèêëàâçîïôûùÿñ¡¿]+$/u', $value)) {
-            $fail(Str::ucfirst($attribute).' can only contain the following allowed characters: !"§$%&/()=?`²³{[]}\@€~#\'*+~,-.;:_<>|°^¨´µ·×÷¹²³¼½¾¬«»©®™± äöüÄÖÜßéèêëàâçîïôûùûÿñ¡¿');
+        if (! preg_match('/^[a-zA-Z0-9!"§$%&\/()=?`²³{[\]}@€~#\'*+,\-.;:_<>|°^¨´µ·×÷¹¼½¾¬«»©®™± äöüÄÖÜßéèêëàâçîïôùûÿñ¡¿]+$/u', $value)) {
+            $fail(Str::ucfirst($attribute).' can only contain alphanumeric and the following special characters: !"§$%&/()=?`²³{[]}\@€~#\'*+~,-.;:_<>|°^¨´µ·×÷¹²³¼½¾¬«»©®™± äöüÄÖÜßéèêëàâçîïôûùûÿñ¡¿');
         }
     }
 }
