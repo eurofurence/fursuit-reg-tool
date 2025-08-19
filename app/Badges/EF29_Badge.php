@@ -192,7 +192,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             $text_species,
             321, // Width of the text field
             60, // Height of the text field
-            15, // Minimum font size
+            18, // Minimum font size
             40, // Start font size
             $font_path,
             $font_color,
@@ -206,7 +206,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             $text_name,
             321, // Width of the text field
             60, // Height of the text field
-            15, // Minimum font size
+            18, // Minimum font size
             40, // Start font size
             $font_path,
             $font_color,
@@ -214,6 +214,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             $position_name,
             TextAlignment::LEFT, // Centered alignment
             1, // Maximum number of lines
+            $font_color
         );
 
         // The text is drawn automatically when the TextField object is created.
