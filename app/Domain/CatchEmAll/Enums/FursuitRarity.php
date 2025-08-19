@@ -2,7 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Enums;
 
-enum SpeciesRarity: string
+enum FursuitRarity: string
 {
     case COMMON = 'common';
     case UNCOMMON = 'uncommon';
