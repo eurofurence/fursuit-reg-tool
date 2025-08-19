@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { useForm } from "@inertiajs/vue3";
-import { ref, onMounted, nextTick } from "vue";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import Button from "primevue/button";
-import InputText from "primevue/inputtext";
-import Card from "primevue/card";
-import Dialog from "primevue/dialog";
+import { useForm } from "@inertiajs/vue3";
 import {
-    Trophy,
     Award,
     BookOpen,
-    Target,
-    User,
-    TrendingUp,
-    Star,
-    Zap,
     Crown,
+    Star,
+    Target,
+    TrendingUp,
+    Trophy,
+    User,
+    Zap,
 } from "lucide-vue-next";
+import Button from "primevue/button";
+import Card from "primevue/card";
+import Dialog from "primevue/dialog";
+import InputText from "primevue/inputtext";
+import { computed, nextTick, onMounted, ref } from "vue";
 
 const form = useForm({ catch_code: "" });
 
@@ -34,7 +34,20 @@ const props = defineProps<{
     flash?: any;
 }>();
 
-const showRecentCatch = ref(!!props.recentCatch);
+const closedID = ref(null);
+const showRecentCatch = computed({
+    get: () => {
+        if (closedID.value === props.recentCatch?.id) {
+            return false;
+        }
+        return !!props.recentCatch;
+    },
+    set: (value) => {
+        if (value == false) {
+            closedID.value = props.recentCatch?.id;
+        }
+    },
+});
 
 const submit = () => {
     if (form.processing) return; // Prevent multiple submissions
@@ -98,6 +111,7 @@ const getRankIcon = (rank: number) => {
             :modal="true"
             class="mx-4 dark-dialog"
             :style="{ width: '90vw', maxWidth: '400px' }"
+            dismissableMask
         >
             <template #header>
                 <div class="text-center w-full">
@@ -157,9 +171,6 @@ const getRankIcon = (rank: number) => {
                     :class="recentCatch.rarity.gradient"
                 >
                     <div class="font-bold">{{ recentCatch.rarity.label }}</div>
-                    <div class="text-sm">
-                        +{{ recentCatch.rarity.points }} points!
-                    </div>
                 </div>
 
                 <Button
