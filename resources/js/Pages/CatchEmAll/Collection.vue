@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
-import { router } from "@inertiajs/vue3";
-import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import Card from "primevue/card";
-import Dropdown from "primevue/dropdown";
+import { ref, computed, watch } from 'vue'
+import { router } from '@inertiajs/vue3'
+import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
+import Card from 'primevue/card'
+import Dropdown from 'primevue/dropdown'
 import {
     BookOpen,
     Star,
@@ -142,10 +142,10 @@ const collectionByRarity = computed(() => {
         if (grouped[rarity]) {
             grouped[rarity].push(suit);
         }
-    });
+    })
 
-    return grouped;
-});
+    return grouped
+})
 
 // Get rarity icon
 const getRarityIcon = (rarity: string) => {
@@ -279,10 +279,7 @@ const rarityStats = computed(() => {
                 >
                     <!-- Event Filter -->
                     <div class="flex-1 min-w-0">
-                        <label
-                            class="block text-sm font-medium text-gray-700 mb-2"
-                            >Event:</label
-                        >
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Event:</label>
                         <Dropdown
                             v-model="selectedEventValue"
                             :options="eventOptions"
@@ -296,10 +293,7 @@ const rarityStats = computed(() => {
 
                     <!-- Rarity Filter -->
                     <div class="flex-1 min-w-0">
-                        <label
-                            class="block text-sm font-medium text-gray-700 mb-2"
-                            >Rarity:</label
-                        >
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Rarity:</label>
                         <Dropdown
                             v-model="selectedRarity"
                             :options="rarityOptions"
@@ -330,15 +324,9 @@ const rarityStats = computed(() => {
                             >
                                 <List class="w-5 h-5" />
                             </button>
-                            <button
-                                @click="viewMode = 'grid'"
-                                class="px-3 py-2 transition-colors"
-                                :class="
-                                    viewMode === 'grid'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                                "
-                            >
+                            <button @click="viewMode = 'grid'"
+                                    class="px-3 py-2 transition-colors"
+                                    :class="viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">
                                 <Grid3X3 class="w-5 h-5" />
                             </button>
                         </div>
