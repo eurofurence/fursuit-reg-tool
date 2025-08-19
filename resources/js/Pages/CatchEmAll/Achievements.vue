@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
 import Card from 'primevue/card'
-import { 
-    Award, 
-    Star, 
-    Shield, 
-    Zap, 
-    Target, 
-    Trophy, 
-    Crown, 
-    Users, 
+import {
+    Award,
+    Star,
+    Shield,
+    Zap,
+    Target,
+    Trophy,
+    Crown,
+    Users,
     Clock,
     CheckCircle,
     Circle
@@ -89,17 +89,17 @@ const formatDate = (dateString: string) => {
                 </div>
 
                 <div class="grid grid-cols-3 gap-4">
-                    <div class="text-center p-4 bg-green-900/20 rounded-lg border border-green-700">
+                    <div class="text-center pt-4 pb-4 p-0.5 bg-green-900/20 rounded-lg border border-green-700 achievement-icon">
                         <CheckCircle class="w-8 h-8 mx-auto mb-2 text-green-600" />
                         <div class="text-2xl font-bold text-green-400">{{ completedAchievements.length }}</div>
                         <div class="text-sm text-green-300">Completed</div>
                     </div>
-                    <div class="text-center p-4 bg-blue-900/20 rounded-lg border border-blue-700">
+                    <div class="text-center pt-4 pb-4 p-0.5 bg-blue-900/20 rounded-lg border border-blue-700 achievement-icon">
                         <Clock class="w-8 h-8 mx-auto mb-2 text-blue-600" />
                         <div class="text-2xl font-bold text-blue-400">{{ inProgressAchievements.length }}</div>
                         <div class="text-sm text-blue-300">In Progress</div>
                     </div>
-                    <div class="text-center p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <div class="text-center pt-4 pb-4 p-0.5 bg-gray-700/50 rounded-lg border border-gray-600 achievement-icon">
                         <Circle class="w-8 h-8 mx-auto mb-2 text-gray-400" />
                         <div class="text-2xl font-bold text-gray-300">{{ lockedAchievements.length }}</div>
                         <div class="text-sm text-gray-400">Locked</div>
@@ -122,7 +122,7 @@ const formatDate = (dateString: string) => {
                             <div class="w-14 h-14 rounded-full flex items-center justify-center border-2 border-green-300 bg-green-100">
                                 <component :is="getCategoryIcon(achievement.achievement)" class="w-7 h-7 text-green-600" />
                             </div>
-                            
+
                             <!-- Achievement Info -->
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
@@ -160,12 +160,12 @@ const formatDate = (dateString: string) => {
                                  :class="'border-blue-300 bg-blue-100'">
                                 <component :is="getCategoryIcon(achievement.achievement)" class="w-7 h-7 text-blue-600" />
                             </div>
-                            
+
                             <!-- Achievement Info -->
                             <div class="flex-1">
                                 <h4 class="font-semibold text-gray-800 mb-1">{{ achievement.title }}</h4>
                                 <p class="text-sm text-gray-600 mb-3">{{ achievement.description }}</p>
-                                
+
                                 <!-- Progress Bar -->
                                 <div class="space-y-2">
                                     <div class="flex justify-between text-sm">
@@ -200,7 +200,7 @@ const formatDate = (dateString: string) => {
                             <div class="w-14 h-14 rounded-full flex items-center justify-center border-2 border-gray-300 bg-gray-100">
                                 <component :is="getCategoryIcon(achievement.achievement)" class="w-7 h-7 text-gray-400" />
                             </div>
-                            
+
                             <!-- Achievement Info -->
                             <div class="flex-1">
                                 <h4 class="font-semibold text-gray-600 mb-1">{{ achievement.title }}</h4>
