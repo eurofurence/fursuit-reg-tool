@@ -7,6 +7,19 @@ Route::get('/', WelcomeController::class)->name('welcome');
 Route::redirect('/auth-login', '/auth/login')->name('login');
 Route::redirect('/auth-done', '/')->name('dashboard');
 
+// Redirects to catch domain
+Route::get('/fcea', function () {
+    $catchDomain = config('fcea.domain');
+    $protocol = str_contains($catchDomain, 'localhost') ? 'http' : 'https';
+    return redirect($protocol . '://' . $catchDomain);
+});
+
+Route::get('/catch-em-all', function () {
+    $catchDomain = config('fcea.domain');
+    $protocol = str_contains($catchDomain, 'localhost') ? 'http' : 'https';
+    return redirect($protocol . '://' . $catchDomain);
+});
+
 Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(function () {
     Route::prefix('/auth')->name('auth.')->group(function () {
         Route::get('/login', [\App\Http\Controllers\AuthController::class, 'show'])->middleware('guest')->name('login');
@@ -21,5 +34,3 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
         Route::get('/statistics', [\App\Http\Controllers\StatisticsController::class, 'index'])->name('statistics');
     });
 });
-
-Route::permanentRedirect('/catch-em-all', '/fcea/');
