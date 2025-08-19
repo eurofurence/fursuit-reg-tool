@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { router } from '@inertiajs/vue3'
+import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
+import Card from 'primevue/card'
+import Dropdown from 'primevue/dropdown'
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
@@ -146,10 +151,10 @@ const filteredCollection = computed(() => {
     if (selectedRarity.value === "all") {
         return props.collection.suits;
     }
-    return props.collection.suits.filter(
-        (suit) => suit.rarity.level === selectedRarity.value
-    );
-});
+    return props.collection.species.filter(species =>
+        species.rarity.level === selectedRarity.value
+    )
+})
 
 // Group species by rarity
 const collectionByRarity = computed(() => {
@@ -166,10 +171,10 @@ const collectionByRarity = computed(() => {
         if (grouped[rarity]) {
             grouped[rarity].push(suit);
         }
-    });
+    })
 
-    return grouped;
-});
+    return grouped
+})
 
 // Get rarity icon
 const getRarityIcon = (rarity: string) => {
@@ -304,11 +309,8 @@ const getRarityBgColor = (textColor: string) => {
                     "
                 >
                     <!-- Event Filter -->
-                    <div v-if="eventOptions.length > 2" class="flex-1 min-w-20">
-                        <label
-                            class="block text-sm font-medium text-gray-700 mb-2"
-                            >Event:</label
-                        >
+                    <div class="flex-1 min-w-0">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Event:</label>
                         <Dropdown
                             v-model="selectedEventValue"
                             :options="eventOptions"
@@ -321,11 +323,8 @@ const getRarityBgColor = (textColor: string) => {
                     </div>
 
                     <!-- Rarity Filter -->
-                    <div class="flex-1 min-w-20">
-                        <label
-                            class="block text-sm font-medium text-gray-300 mb-2"
-                            >Rarity:</label
-                        >
+                    <div class="flex-1 min-w-0">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Rarity:</label>
                         <Dropdown
                             v-model="selectedRarity"
                             :options="rarityOptions"
@@ -384,15 +383,15 @@ const getRarityBgColor = (textColor: string) => {
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-white text-gray-600 hover:bg-gray-50'
                                 "
-                                :title="showCounters 
-                                    ? 'Hide scoring numbers on fursuit cards' 
+                                :title="showCounters
+                                    ? 'Hide scoring numbers on fursuit cards'
                                     : 'Show scoring numbers on fursuit cards'"
                             >
                                 <span class="text-sm font-medium">
                                     {{ showCounters ? 'Hide' : 'Show' }}
                                 </span>
                             </button>
-                            
+
                             <!-- Mobile Tooltip Info Button -->
                             <button
                                 @click="showTooltip = !showTooltip"
@@ -402,9 +401,9 @@ const getRarityBgColor = (textColor: string) => {
                                 <Info class="w-2.5 h-2.5" />
                             </button>
                         </div>
-                        
+
                         <!-- Mobile Tooltip -->
-                        <div 
+                        <div
                             v-show="showTooltip"
                             class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap md:hidden"
                         >
@@ -453,7 +452,7 @@ const getRarityBgColor = (textColor: string) => {
                                 {{ fursuit.species }}
                             </p>
                         </div>
-                        
+
                         <!-- Combined Rarity and Counter Badge -->
                         <div class="text-center mx-4">
                             <span
