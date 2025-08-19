@@ -43,7 +43,6 @@ const currentIcon = computed(() => {
                     </h1>
                     <p class="text-xs text-gray-400">
                         {{ subtitle || 'Catch them all!' }}
-                        {{}}
                     </p>
                 </div>
             </div>
