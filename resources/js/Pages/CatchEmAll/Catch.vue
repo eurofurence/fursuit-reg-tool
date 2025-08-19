@@ -225,7 +225,7 @@ const getRankIcon = (rank: number) => {
                     </div>
 
                     <!-- Quick Stats Grid -->
-                    <div class="grid grid-cols-3 gap-3 pt-2">
+                    <div class="grid grid-cols-2 gap-2 pt-2">
                         <div class="text-center p-3 bg-blue-900/20 rounded-lg">
                             <BookOpen
                                 class="w-5 h-5 mx-auto mb-1 text-blue-400"
@@ -247,19 +247,6 @@ const getRankIcon = (rank: number) => {
                             </div>
                             <div class="text-xs text-green-300">
                                 Achievements
-                            </div>
-                        </div>
-                        <div
-                            class="text-center p-3 bg-purple-900/20 rounded-lg"
-                        >
-                            <TrendingUp
-                                class="w-5 h-5 mx-auto mb-1 text-purple-400"
-                            />
-                            <div class="text-lg font-bold text-purple-400">
-                                {{ 0 }}
-                            </div>
-                            <div class="text-xs text-purple-300">
-                                Avg Points
                             </div>
                         </div>
                     </div>
