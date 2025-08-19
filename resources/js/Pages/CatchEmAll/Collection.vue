@@ -350,6 +350,16 @@ const rarityStats = computed(() => {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+.icon-text {
+    font-size: 0.55rem;
+    line-height: .75rem;
+}
+
+.icon-box {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
 /* Grid view animations */
 @keyframes sparkle {
     0%, 100% { opacity: 1; }
