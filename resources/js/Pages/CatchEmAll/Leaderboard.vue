@@ -70,7 +70,7 @@ const getPodiumIcon = (rank: number) => {
         :flash="flash"
     >
         <!-- Event Filter -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
+        <Card v-if="eventOptions.length > 1" class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
                 <div class="space-y-3">
                     <label class="block text-sm font-medium text-gray-300"

@@ -4,12 +4,12 @@ import { router } from '@inertiajs/vue3'
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
 import Card from 'primevue/card'
 import Dropdown from 'primevue/dropdown'
-import { 
-    BookOpen, 
-    Star, 
-    Gem, 
-    Sparkles, 
-    Crown, 
+import {
+    BookOpen,
+    Star,
+    Gem,
+    Sparkles,
+    Crown,
     Filter,
     Grid3X3,
     List
@@ -87,7 +87,7 @@ const rarityOptions = [
 
 // Filter collection by rarity
 const filteredCollection = computed(() => {
-    //TODO: figure out if having props.collection.species "isEmpty" check is necessary 
+    //TODO: figure out if having props.collection.species "isEmpty" check is necessary
 
     // Return empty array if collection or species is not loaded yet
     if (!props.collection?.species) {
@@ -96,7 +96,7 @@ const filteredCollection = computed(() => {
     if (selectedRarity.value === 'all') {
         return props.collection.species
     }
-    return props.collection.species.filter(species => 
+    return props.collection.species.filter(species =>
         species.rarity.level === selectedRarity.value
     )
 })
@@ -117,7 +117,7 @@ const collectionByRarity = computed(() => {
             grouped[rarity].push(species)
         }
     })
-    
+
     return grouped
 })
 
@@ -142,7 +142,7 @@ const rarityStats = computed(() => {
         uncommon: 0,
         common: 0
     }
-    
+
     // Check if collection and species exist before processing
     if (props.collection?.species) {
         props.collection.species.forEach(species => {
@@ -152,7 +152,7 @@ const rarityStats = computed(() => {
             }
         })
     }
-    
+
     return stats
 })
 </script>
@@ -211,13 +211,13 @@ const rarityStats = computed(() => {
             <template #content>
                 <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                     <!-- Event Filter -->
-                    <div class="flex-1 min-w-0">
+                    <div v-if="eventOptions.length > 1" class="flex-1 min-w-0">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Event:</label>
-                        <Dropdown 
-                            v-model="selectedEventValue" 
-                            :options="eventOptions" 
-                            optionLabel="label" 
-                            optionValue="value" 
+                        <Dropdown
+                            v-model="selectedEventValue"
+                            :options="eventOptions"
+                            optionLabel="label"
+                            optionValue="value"
                             class="w-full"
                             @change="onEventChange"
                             fluid
@@ -227,11 +227,11 @@ const rarityStats = computed(() => {
                     <!-- Rarity Filter -->
                     <div class="flex-1 min-w-0">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Rarity:</label>
-                        <Dropdown 
-                            v-model="selectedRarity" 
-                            :options="rarityOptions" 
-                            optionLabel="label" 
-                            optionValue="value" 
+                        <Dropdown
+                            v-model="selectedRarity"
+                            :options="rarityOptions"
+                            optionLabel="label"
+                            optionValue="value"
                             class="w-full"
                             fluid
                         />
@@ -241,12 +241,12 @@ const rarityStats = computed(() => {
                     <div class="flex-shrink-0">
                         <label class="block text-sm font-medium text-gray-700 mb-2">View:</label>
                         <div class="flex rounded-lg border border-gray-300 overflow-hidden">
-                            <button @click="viewMode = 'list'" 
+                            <button @click="viewMode = 'list'"
                                     class="px-3 py-2 transition-colors"
                                     :class="viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">
                                 <List class="w-5 h-5" />
                             </button>
-                            <button @click="viewMode = 'grid'" 
+                            <button @click="viewMode = 'grid'"
                                     class="px-3 py-2 transition-colors"
                                     :class="viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">
                                 <Grid3X3 class="w-5 h-5" />
@@ -271,7 +271,7 @@ const rarityStats = computed(() => {
                                  :class="species.rarity.color.replace('text-', 'border-') + '-300 ' + species.rarity.color.replace('text-', 'bg-') + '-100'">
                                 <component :is="getRarityIcon(species.rarity.level)" class="w-6 h-6" :class="species.rarity.color" />
                             </div>
-                            
+
                             <!-- Species Info -->
                             <div>
                                 <div class="font-semibold text-gray-900">{{ species.species }}</div>
@@ -283,7 +283,7 @@ const rarityStats = computed(() => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Points and Count -->
                         <div class="text-right">
                             <div class="text-xl font-bold text-gray-800">×{{ species.count }}</div>
@@ -303,7 +303,7 @@ const rarityStats = computed(() => {
                              :class="species.rarity.color.replace('text-', 'border-') + '-300 ' + species.rarity.color.replace('text-', 'bg-') + '-100'">
                             <component :is="getRarityIcon(species.rarity.level)" class="w-6 h-6" :class="species.rarity.color" />
                         </div>
-                        
+
                         <!-- Species Info -->
                         <div class="font-semibold text-gray-900 text-sm mb-1">{{ species.species }}</div>
                         <div class="text-xs font-medium mb-2" :class="species.rarity.color">
