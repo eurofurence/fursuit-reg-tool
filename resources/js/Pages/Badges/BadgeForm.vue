@@ -151,22 +151,22 @@ function deleteBadge() {
 const basePrice = computed(() => {
     if (isEditMode.value) {
         if (props.badge.is_free_badge === false && !props.badge.extra_copy_of) {
-            return 2;
+            return 3;
         }
         return 0;
     }
     
     let price = 0;
-    // Check if user has prepaid badges left, otherwise charge 2€
+    // Check if user has prepaid badges left, otherwise charge 3€
     if (props.prepaidBadgesLeft === 0 || props.prepaidBadgesLeft === undefined) {
-        price += 2;
+        price += 3;
     }
     return price;
 })
 
 const latePrice = computed(() => {
     if (isEditMode.value) {
-        return props.badge.apply_late_fee ? 2 : 0;
+        return props.badge.apply_late_fee ? 3 : 0;
     }
     return 0; // No late fees in new system
 })

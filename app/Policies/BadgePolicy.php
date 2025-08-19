@@ -38,7 +38,7 @@ class BadgePolicy
             return false;
         }
 
-        // Check if user has prepaid badges left
+        // Check if user has prepaid badges left FIRST - these bypass order window restrictions
         $eventUser = $user->eventUser($event->id);
         if ($eventUser) {
             $prepaidBadges = $eventUser->prepaid_badges;
@@ -55,7 +55,7 @@ class BadgePolicy
             }
         }
 
-        // Allow badge creation only if event allows orders (for paid badges)
+        // For paid badges, check if event allows orders
         if (! $event->allowsOrders()) {
             return false;
         }
@@ -75,34 +75,40 @@ class BadgePolicy
             return false;
         }
 
+        // Cannot edit when no active event
         $event = \App\Models\Event::getActiveEvent();
+        if ($event === null) {
+            return false;
+        }
 
-        return $this->delete($user, $badge);
+        // Cannot edit a badge that has already been printed
+        if (!$badge->status_fulfillment->equals(Pending::class)) {
+            return false;
+        }
+
+        // Users can edit their badges until printing, regardless of event order window or fursuit approval status
+        return $user->id === $badge->fursuit->user_id;
     }
 
     public function delete(User $user, Badge $badge): bool
     {
-        $event = \App\Models\Event::getActiveEvent();
-        // Admin can do everything IN FILAMENT
-
         // Admin can do everything
         if ($user->is_admin && request()->routeIs('filament.*')) {
             return true;
         }
-        // Cannot edit when no active event
+
+        // Cannot delete when no active event
+        $event = \App\Models\Event::getActiveEvent();
         if ($event === null) {
             return false;
         }
-        // Cannot edit a badge that has already been printed
-        if (! $badge->status_fulfillment->equals(Pending::class)) {
+
+        // Cannot delete a badge that has already been printed
+        if (!$badge->status_fulfillment->equals(Pending::class)) {
             return false;
         }
 
-        // Allow badge creation only if event allows orders
-        if (! $event->allowsOrders()) {
-            return false;
-        }
-
+        // Users can delete their badges until printing, regardless of event order window or fursuit approval status
         return $user->id === $badge->fursuit->user_id;
     }
 

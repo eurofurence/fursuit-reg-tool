@@ -30,7 +30,7 @@
 
                                 <div
                                     style="font-family:Arial, Helvetica Neue, Helvetica, sans-serif;font-size:12px;line-height:1;text-align:left;color:#8f8d8d;"
-                                >Yours,<br />Eurofurence Fursuit Badge Team<br /><br /> Any help required? Shoot us an email to: <a href="mailto:conops@eurofurence.org" style="color:#8f8d8d;">conops@eurofurence.org</a></div>
+                                >Yours,<br />Eurofurence Fursuit Badge Team<br /><br /> Any help required? Shoot us an email to: <a href="mailto:fursuit-team@eurofurence.org" style="color:#8f8d8d;">fursuit-team@eurofurence.org</a></div>
 
                             </td>
                         </tr>

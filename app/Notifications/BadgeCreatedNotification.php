@@ -21,7 +21,7 @@ class BadgeCreatedNotification extends Notification
             ->salutation('')
             ->subject('[NO ACTION REQUIRED] Fursuit Badge Pending Review')
             ->line('Thank you for submitting your badge for review. We will notify you once your badge has been approved or if we need any additional information.')
-            ->line('Please do not reply to this email. If you have any questions, please contact us at conops@eurofurence.org')
+            ->line('Please do not reply to this email. If you have any questions, please contact us at fursuit-team@eurofurence.org')
             ->action('Edit Badge', route('badges.edit', [
                 'badge' => $this->badge->id,
             ]))

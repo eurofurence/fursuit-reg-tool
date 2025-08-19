@@ -98,9 +98,9 @@ function imageUpdatedEvent(image) {
 
 const basePrice = computed(() => {
     let price = 0;
-    // Charge 2€ if no prepaid badges left
+    // Charge 3€ if no prepaid badges left
     if (props.prepaidBadgesLeft === 0) {
-        price += 2;
+        price += 3;
     }
     return price;
 })

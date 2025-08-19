@@ -6,10 +6,14 @@ use App\Filament\Resources\FursuitResource;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
 use App\Models\Fursuit\States\Rejected;
+use App\Models\Fursuit\States\Transitions\RejectedToApproved;
+use App\Notifications\FursuitApprovedNotification;
+use App\Notifications\FursuitRejectedNotification;
 use Filament\Actions;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Log;
 
@@ -104,6 +108,55 @@ class ViewFursuit extends ViewRecord
                     }
 
                     return redirect()->route('filament.admin.resources.fursuits.index');
+                }),
+            Actions\Action::make('Approve Rejected')
+                ->label('Approve (Rejected)')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->visible(fn (Fursuit $record) => $record->status instanceof Rejected)
+                ->requiresConfirmation()
+                ->modalHeading('Approve Rejected Fursuit')
+                ->modalDescription('This will send an apology email to the user and approve the fursuit.')
+                ->modalSubmitActionLabel('Yes, approve it')
+                ->action(function (Fursuit $record) {
+                    $record->status->transitionTo(Approved::class, auth()->user());
+                    
+                    Notification::make()
+                        ->title('Rejected fursuit approved successfully')
+                        ->success()
+                        ->send();
+                }),
+            Actions\Action::make('Send Notification')
+                ->label('Send Notification')
+                ->icon('heroicon-o-envelope')
+                ->color('info')
+                ->form([
+                    Select::make('notification_type')
+                        ->label('Notification Type')
+                        ->options([
+                            'approved' => 'Approval Notification',
+                            'rejected' => 'Rejection Notification',
+                        ])
+                        ->required(),
+                    Textarea::make('rejection_reason')
+                        ->label('Rejection Reason (Required for Rejection)')
+                        ->visible(fn ($get) => $get('notification_type') === 'rejected')
+                        ->required(fn ($get) => $get('notification_type') === 'rejected'),
+                ])
+                ->action(function (Fursuit $record, array $data) {
+                    if ($data['notification_type'] === 'approved') {
+                        $record->user->notify(new FursuitApprovedNotification($record));
+                        $message = 'Approval notification sent successfully';
+                    } else {
+                        $reason = $data['rejection_reason'] ?? 'No reason provided';
+                        $record->user->notify(new FursuitRejectedNotification($record, $reason));
+                        $message = 'Rejection notification sent successfully';
+                    }
+                    
+                    Notification::make()
+                        ->title($message)
+                        ->success()
+                        ->send();
                 }),
             // NEXT FURSUIT
             Actions\Action::make('Next Fursuit')

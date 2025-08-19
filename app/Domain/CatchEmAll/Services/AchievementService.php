@@ -56,7 +56,7 @@ class AchievementService
     private function checkFirstCatch(User $user): void
     {
         $catchCount = UserCatch::where('user_id', $user->id)->count();
-        
+
         if ($catchCount === 1) {
             $this->grantAchievement($user, Achievement::FIRST_CATCH);
         }
@@ -64,7 +64,7 @@ class AchievementService
 
     private function checkSpeciesCollector(User $user): void
     {
-        $speciesCount = UserCatch::where('user_id', $user->id)
+        $speciesCount = UserCatch::where('user_catches.user_id', $user->id)
             ->join('fursuits', 'user_catches.fursuit_id', '=', 'fursuits.id')
             ->distinct('fursuits.species_id')
             ->count();
@@ -183,7 +183,7 @@ class AchievementService
         ]);
 
         $existing->progress = min($progress, $maxProgress);
-        
+
         if ($existing->progress >= $maxProgress && !$existing->earned_at) {
             $existing->earned_at = now();
             $existing->save();

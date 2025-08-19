@@ -13,8 +13,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('badges', function (Blueprint $table) {
+            $table->string('status_payment', 255)->after('status')->nullable(); // Temporarily nullable to avoid issues with existing data
             $table->renameColumn('status', 'status_fulfillment');
-            $table->string('status_payment', 255)->after('status_fulfillment')->nullable(); // Temporarily nullable to avoid issues with existing data
         });
 
         // Payment status migration
