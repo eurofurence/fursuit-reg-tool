@@ -77,7 +77,7 @@ const formatDate = (dateString: string) => {
 </script>
 
 <template>
-    <CatchEmAllLayout title="Achievements" subtitle="Your progress and unlocks" :flash="flash">
+    <CatchEmAllLayout title="Achievements" subtitle="Your progress and unlocks" :flash="flash" icon="gem">
         <!-- Stats Overview -->
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>

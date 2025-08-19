@@ -158,7 +158,7 @@ const rarityStats = computed(() => {
 </script>
 
 <template>
-    <CatchEmAllLayout title="Collection" subtitle="Your fursuiter collection" :flash="flash">
+    <CatchEmAllLayout title="Collection" subtitle="Your fursuiter collection" :flash="flash" icon="library">
         <!-- Collection Stats -->
         <Card class="bg-white shadow-sm">
             <template #content>

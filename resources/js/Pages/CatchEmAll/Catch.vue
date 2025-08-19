@@ -104,6 +104,7 @@ const getRankIcon = (rank: number) => {
         title="Fursuit Catch em All"
         subtitle="Catch them all!"
         :flash="flash"
+        icon="target"
     >
         <!-- Recent Catch Celebration -->
         <Dialog
