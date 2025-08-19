@@ -1,6 +1,10 @@
 <script setup lang="ts">
+<<<<<<< HEAD
 import { Library, Settings, Target, Gem, Diamond, Medal } from 'lucide-vue-next'
 import { computed } from 'vue'
+=======
+import { CirclePlus } from 'lucide-vue-next'
+>>>>>>> 3b0370d (App header - remove settings, friendlier icon)
 
 const props = defineProps<{
     title?: string
@@ -35,7 +39,11 @@ const currentIcon = computed(() => {
         <div class="px-4 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+<<<<<<< HEAD
                     <component :is="currentIcon" class="w-5 h-5 text-white" />
+=======
+                    <CirclePlus class="w-5 h-5 text-white" />
+>>>>>>> 3b0370d (App header - remove settings, friendlier icon)
                 </div>
                 <div>
                     <h1 class="text-lg font-bold text-gray-100">
