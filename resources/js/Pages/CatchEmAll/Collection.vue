@@ -222,50 +222,30 @@ const rarityStats = computed(() => {
 
                 <!-- Rarity Distribution -->
                 <div class="grid grid-cols-5 gap-2 mb-4">
-                    <div
-                        class="text-center p-2 bg-yellow-50 rounded-lg border border-yellow-200"
-                    >
+                    <div class="icon-box text-center bg-yellow-50 rounded-lg border border-yellow-200 rarity-tile">
                         <Crown class="w-5 h-5 mx-auto mb-1 text-yellow-600" />
-                        <div class="text-sm font-bold text-yellow-600">
-                            {{ rarityStats.legendary }}
-                        </div>
-                        <div class="text-xs text-yellow-700">Legendary</div>
+                        <div class="text-sm font-bold text-yellow-600">{{ rarityStats.legendary }}</div>
+                        <div class="icon-text text-yellow-700">Legendary</div>
                     </div>
-                    <div
-                        class="text-center p-2 bg-purple-50 rounded-lg border border-purple-200"
-                    >
+                    <div class="icon-box text-center bg-purple-50 rounded-lg border border-purple-200 rarity-tile">
                         <Gem class="w-5 h-5 mx-auto mb-1 text-purple-600" />
-                        <div class="text-sm font-bold text-purple-600">
-                            {{ rarityStats.epic }}
-                        </div>
-                        <div class="text-xs text-purple-700">Epic</div>
+                        <div class="text-sm font-bold text-purple-600">{{ rarityStats.epic }}</div>
+                        <div class="icon-text text-purple-700">Epic</div>
                     </div>
-                    <div
-                        class="text-center p-2 bg-blue-50 rounded-lg border border-blue-200"
-                    >
+                    <div class="icon-box text-center bg-blue-50 rounded-lg border border-blue-200 rarity-tile">
                         <Sparkles class="w-5 h-5 mx-auto mb-1 text-blue-600" />
-                        <div class="text-sm font-bold text-blue-600">
-                            {{ rarityStats.rare }}
-                        </div>
-                        <div class="text-xs text-blue-700">Rare</div>
+                        <div class="text-sm font-bold text-blue-600">{{ rarityStats.rare }}</div>
+                        <div class="icon-text text-blue-700">Rare</div>
                     </div>
-                    <div
-                        class="text-center p-2 bg-green-50 rounded-lg border border-green-200"
-                    >
+                    <div class="icon-box text-center bg-green-50 rounded-lg border border-green-200 rarity-tile">
                         <Star class="w-5 h-5 mx-auto mb-1 text-green-600" />
-                        <div class="text-sm font-bold text-green-600">
-                            {{ rarityStats.uncommon }}
-                        </div>
-                        <div class="text-xs text-green-700">Uncommon</div>
+                        <div class="text-sm font-bold text-green-600">{{ rarityStats.uncommon }}</div>
+                        <div class="icon-text text-green-700">Uncommon</div>
                     </div>
-                    <div
-                        class="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"
-                    >
+                    <div class="icon-box text-center bg-gray-50 rounded-lg border border-gray-200 rarity-tile">
                         <BookOpen class="w-5 h-5 mx-auto mb-1 text-gray-600" />
-                        <div class="text-sm font-bold text-gray-600">
-                            {{ rarityStats.common }}
-                        </div>
-                        <div class="text-xs text-gray-700">Common</div>
+                        <div class="text-sm font-bold text-gray-600">{{ rarityStats.common }}</div>
+                        <div class="icon-text text-gray-700">Common</div>
                     </div>
                 </div>
             </template>
