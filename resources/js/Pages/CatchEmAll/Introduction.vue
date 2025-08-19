@@ -7,7 +7,8 @@ import {
     Star,
     ArrowRight,
     Play,
-    Search
+    Search,
+    Trophy,
 } from 'lucide-vue-next'
 
 const form = useForm({
@@ -33,28 +34,28 @@ const steps = [
     {
         icon: Search,
         title: "Find Fursuiters",
-        description: "Look for fursuiters wearing badges with 5-letter codes like 'ABC12'",
+        description: "Look for fursuiters wearing badges with a 5-letter code like 'ABC12'.",
         color: "text-blue-600",
         bg: "bg-blue-50"
     },
     {
         icon: Target,
         title: "Enter the Code",
-        description: "Type the code into the app to 'catch' that fursuiter",
+        description: "Type the code into the app to 'catch' that fursuiter.",
         color: "text-green-600",
         bg: "bg-green-50"
     },
     {
         icon: Star,
-        title: "Collect Species",
-        description: "Different species have different rarities - collect them all!",
+        title: "Collect Them All",
+        description: "Complete your collection by catching all fursuiters at the event.",
         color: "text-purple-600",
         bg: "bg-purple-50"
     },
     {
-        icon: Star,
+        icon: Trophy,
         title: "Compete & Win",
-        description: "Climb the leaderboard and unlock achievements",
+        description: "Climb the leaderboard and unlock achievements!",
         color: "text-yellow-600",
         bg: "bg-yellow-50"
     }
@@ -71,7 +72,7 @@ const steps = [
                     Welcome to the Fursuit Catch 'Em All
                 </h1>
                 <p class="text-gray-300 text-lg leading-relaxed">
-                    Collect all the furry animals roaming around the convention.
+                    Collect all the fursuiters roaming around the convention.
                 </p>
             </div>
 
@@ -85,7 +86,7 @@ const steps = [
         <div class="px-4 pb-8">
             <Card class="bg-gray-800 border border-gray-700 shadow-xl">
                 <template #title>
-                    <span class="text-white">How it works</span>
+                    <h2 class="text-xl font-bold mb-6 text-white">How it works:</h2>
                 </template>
                 <template #content>
 
@@ -113,7 +114,7 @@ const steps = [
         <div class="px-4 pb-8">
             <Card class="bg-gray-800 border border-gray-700 shadow-xl">
                 <template #content>
-                    <h2 class="text-xl font-bold text-center mb-6 text-white">Important Rules</h2>
+                    <h2 class="text-xl font-bold mb-6 text-white">Always remember:</h2>
 
                     <div class="space-y-4">
                         <div class="flex items-start space-x-3">
@@ -122,17 +123,7 @@ const steps = [
                             </div>
                             <div>
                                 <div class="font-medium text-white">Be Respectful</div>
-                                <div class="text-sm text-gray-300">Always ask before taking photos or approaching fursuiters</div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start space-x-3">
-                            <div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <div class="w-2 h-2 bg-white rounded-full"></div>
-                            </div>
-                            <div>
-                                <div class="font-medium text-white">No Self-Catching</div>
-                                <div class="text-sm text-gray-300">You cannot catch your own fursuit characters</div>
+                                <div class="text-sm text-gray-300">Always ask before taking photos or approaching fursuiters.</div>
                             </div>
                         </div>
 
@@ -142,7 +133,7 @@ const steps = [
                             </div>
                             <div>
                                 <div class="font-medium text-white">Have Fun!</div>
-                                <div class="text-sm text-gray-300">Enjoy meeting new people and discovering amazing fursuits</div>
+                                <div class="text-sm text-gray-300">Enjoy meeting new people and discovering amazing fursuits!</div>
                             </div>
                         </div>
                     </div>
@@ -155,7 +146,7 @@ const steps = [
             <Button
                 @click="submit"
                 :loading="form.processing"
-                class="w-full py-4 text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-xl shadow-lg"
+                class="w-full py-4 text-lg font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-xl shadow-lg"
             >
                 <Play class="w-6 h-6 mr-3" />
                 {{ form.processing ? 'Getting Ready...' : 'Start collecting!' }}
