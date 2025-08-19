@@ -51,7 +51,9 @@ const props = defineProps<{
     fursuits: Fursuit[],
     ranking: Ranking[],
     has_more: boolean,
-    total: number,
+    totalResult: number,
+    totalFursuit: number, // Count of All registered Fursuits
+    totalFursuiter: number, // Count of Fursuiter - as of a user with at leats one Fursuit
     filters: Filters,
     species_options: SpeciesOption[],
     event_options: EventOption[],
@@ -78,7 +80,7 @@ const sortOptions = computed(() => {
         { value: 'name_asc', label: 'Name A-Z' },
         { value: 'name_desc', label: 'Name Z-A' },
     ];
-    
+
     // Only show catch-related sorting for non-historical events
     if (!props.is_historical_event) {
         options.unshift(
@@ -86,7 +88,7 @@ const sortOptions = computed(() => {
             { value: 'catches_asc', label: 'Least Caught' }
         );
     }
-    
+
     return options;
 });
 
@@ -97,7 +99,7 @@ function applyFilters() {
     // Reset fursuits and load from beginning
     allFursuits.value = [];
     hasMore.value = true;
-    
+
     router.get(route('gallery.index'), {
         query: searchQuery.value,
         species: selectedSpecies.value,
@@ -112,7 +114,7 @@ function applyFilters() {
             // Update fursuits from the response
             allFursuits.value = page.props.fursuits as Fursuit[];
             hasMore.value = page.props.has_more as boolean;
-            
+
             // Re-setup intersection observer after DOM update
             nextTick(() => {
                 setupIntersectionObserver();
@@ -131,9 +133,9 @@ function resetFilters() {
 
 async function loadMoreFursuits() {
     if (isLoading.value || !hasMore.value) return;
-    
+
     isLoading.value = true;
-    
+
     try {
         const params = new URLSearchParams({
             query: searchQuery.value || '',
@@ -142,7 +144,7 @@ async function loadMoreFursuits() {
             sort: selectedSort.value || 'catches_desc',
             offset: allFursuits.value.length.toString(),
         });
-        
+
         const response = await fetch(`${route('gallery.load-more')}?${params}`, {
             method: 'GET',
             headers: {
@@ -151,15 +153,15 @@ async function loadMoreFursuits() {
                 'X-Requested-With': 'XMLHttpRequest',
             },
         });
-        
+
         if (!response.ok) throw new Error('Failed to load more fursuits');
-        
+
         const data = await response.json();
-        
+
         // Append new fursuits to existing ones
         allFursuits.value.push(...data.fursuits);
         hasMore.value = data.has_more;
-        
+
     } catch (error) {
         console.error('Error loading more fursuits:', error);
     } finally {
@@ -171,9 +173,9 @@ function setupIntersectionObserver() {
     if (observer) {
         observer.disconnect();
     }
-    
+
     if (!loadingTrigger.value) return;
-    
+
     observer = new IntersectionObserver(
         (entries) => {
             const entry = entries[0];
@@ -187,7 +189,7 @@ function setupIntersectionObserver() {
             threshold: 0.1
         }
     );
-    
+
     observer.observe(loadingTrigger.value);
 }
 
@@ -225,7 +227,7 @@ onMounted(() => {
             toggleImageView();
         }
     });
-    
+
     nextTick(() => {
         setupIntersectionObserver();
     });
@@ -244,7 +246,7 @@ onUnmounted(() => {
 <template>
     <div class="min-h-screen bg-gray-50">
         <Head title="Fursuit Gallery" />
-        
+
         <!-- Enhanced Ranking Banner -->
         <div v-if="!is_historical_event" class="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -256,8 +258,14 @@ onUnmounted(() => {
             <!-- Header Section -->
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900 mb-2">Fursuit Gallery</h1>
-                <p class="text-gray-600">
-                    Discover amazing fursuits from Eurofurence - {{ total }} total attendees
+                <p v-if="selected_event && totalFursuiter" class="text-gray-600">
+                    Discover amazing fursuits from Eurofurence - {{ totalFursuiter }} total fursuiter with {{ totalFursuit }} fursuits of {{ selected_event.name }}
+                </p>
+                <p v-else-if="selected_event" class="text-gray-600">
+                    Discover amazing fursuits from Eurofurence - {{ totalFursuit }} total fursuits of {{ selected_event.name }}
+                </p>
+                <p v-else class="text-gray-600">
+                    Discover amazing fursuits from Eurofurence - {{ totalFursuit }} total fursuits
                 </p>
             </div>
 
@@ -348,7 +356,7 @@ onUnmounted(() => {
                 <!-- Filter Actions -->
                 <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
                     <div class="text-sm text-gray-600">
-                        Showing {{ allFursuits.length }} of {{ total }} fursuits
+                        Showing {{ allFursuits.length }} of {{ totalResult }} fursuits
                         <span v-if="hasMore" class="text-blue-600">(scroll for more)</span>
                     </div>
                     <button
@@ -381,7 +389,7 @@ onUnmounted(() => {
                 >
                     <GalleryItem :fursuit="fursuit" />
                     <div class="mt-3 text-center">
-                        <div v-if="!is_historical_event && fursuit.scoring > 0" class="flex items-center justify-center gap-2 text-sm text-gray-600">
+                        <div v-if="fursuit.scoring > 0" class="flex items-center justify-center gap-2 text-sm text-gray-600">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                             </svg>
@@ -428,7 +436,7 @@ onUnmounted(() => {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
-                
+
                 <img
                     v-if="viewFursuit"
                     :src="viewFursuit.image"
@@ -436,7 +444,7 @@ onUnmounted(() => {
                     @click="openImageInNewTab"
                     class="max-w-full max-h-[80vh] object-contain rounded-lg cursor-pointer"
                 />
-                
+
                 <div v-if="viewFursuit" class="bg-black bg-opacity-50 rounded-lg mt-4 p-4 text-white">
                     <h3 class="text-2xl font-bold mb-2">{{ viewFursuit.name }}</h3>
                     <div class="flex flex-wrap gap-4 text-sm">
@@ -446,7 +454,7 @@ onUnmounted(() => {
                             </svg>
                             <span>{{ viewFursuit.species }}</span>
                         </div>
-                        <div v-if="!is_historical_event && viewFursuit.scoring > 0" class="flex items-center gap-2">
+                        <div v-if="viewFursuit.scoring > 0" class="flex items-center gap-2">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                             </svg>

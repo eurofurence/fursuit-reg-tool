@@ -8,11 +8,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
-// Model to manage Logging for the Catch feature. Attempts/Successful/Duplicates. Allows to detect Cheating/Bruteforcing.
+// Model to manage Logging for the Catch feature. Attempts/Successful/Duplicates. Allows detecting Cheating/Bruteforce.
 class UserCatchLog extends Model
 {
     // Simple caching so save database lookups
     protected ?Fursuit $fursuit = null;
+
+    protected $fillable = [
+        'event_id',
+        'user_id',
+        'catch_code',
+        'is_successful',
+        'already_caught',
+    ];
 
     protected $casts = [
         'is_successful' => 'boolean',

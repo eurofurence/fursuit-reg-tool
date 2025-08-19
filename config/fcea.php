@@ -25,6 +25,7 @@ return [
 
     'fursuit_catch_code_length' => env('FURSUIT_CATCH_CODE_LENGTH', 5),
 
+
     /*
     |--------------------------------------------------------------------------
     | Fursuit Catch Attempts per Minute
@@ -32,9 +33,44 @@ return [
     |
     | Amount of times per 60 seconds a user can submit a Fursuit Catch Code
     | in attempt to catch a fursuiter. Will respond "429 Too Many Requests" if triggered.
-    | Used to prevent bruteforcing attempts.
+    | Used to prevent bruteforce attempts.
     |
     */
 
     'fursuit_catch_attempts_per_minute' => env('FURSUIT_CATCH_ATTEMPTS_PER_MINUTE', 20),
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fursuit Species Rarity Threshold
+    |--------------------------------------------------------------------------
+    |
+    | Fursuit Species is given a rarity based on the amount it appears among all fursuiter
+    | If a species appear more often than the threshold, it is considered this rarity
+    |
+    */
+
+    'species_rarity_threshold_common' => env('SPECIES_RARITY_THRESHOLD_COMMON', 100),
+    'species_rarity_threshold_uncommon' => env('SPECIES_RARITY_THRESHOLD_UNCOMMON', 50),
+    'species_rarity_threshold_rare' => env('SPECIES_RARITY_THRESHOLD_RARE', 20),
+    'species_rarity_threshold_epic' => env('SPECIES_RARITY_THRESHOLD_EPIC', 5),
+    // If none of this applies, the species is considered legendary
+    //'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 1),
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fursuit Species Value on catch
+    |--------------------------------------------------------------------------
+    |
+    | Sets the points granted when catching a fursuiter.
+    | The rarer the fursuit species exists among all registered fursuits the more points it shall grant
+    |
+    */
+
+    'species_rarity_value_common' => env('SPECIES_RARITY_VALUE_COMMON', 1),
+    'species_rarity_value_uncommon' => env('SPECIES_RARITY_VALUE_UNCOMMON', 2),
+    'species_rarity_value_rare' => env('SPECIES_RARITY_VALUE_RARE', 5),
+    'species_rarity_value_epic' => env('SPECIES_RARITY_VALUE_EPIC', 10),
+    'species_rarity_value_legendary' => env('SPECIES_RARITY_VALUE_LEGENDARY', 25),
 ];

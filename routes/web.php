@@ -1,13 +1,13 @@
 <?php
 
 use App\Http\Controllers\WelcomeController;
+use App\Http\Controllers\DebugController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', WelcomeController::class)->name('welcome');
 Route::redirect('/auth-login', '/auth/login')->name('login');
 Route::redirect('/auth-done', '/')->name('dashboard');
 
-// Redirects to catch domain
 Route::get('/fcea', function () {
     $catchDomain = config('fcea.domain');
     $protocol = str_contains($catchDomain, 'localhost') ? 'http' : 'https';
@@ -29,8 +29,11 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
         Route::get('/frontchannel-logout', [\App\Http\Controllers\AuthController::class, 'logoutCallback'])->name('logout.callback');
     });
 
-    Route::middleware('auth')->group(function () {
+    Route::middleware(['auth', 'ensure-event-user'])->group(function () {
         Route::resource('badges', \App\Http\Controllers\BadgeController::class);
+        Route::post('/badges/refresh-prepaid', [\App\Http\Controllers\BadgeController::class, 'refreshPrepaidBadges'])
+            ->name('badges.refresh-prepaid')
+            ->middleware('throttle:3,1'); // 3 requests per minute per user
         Route::get('/statistics', [\App\Http\Controllers\StatisticsController::class, 'index'])->name('statistics');
     });
 });

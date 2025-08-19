@@ -13,10 +13,13 @@ class WelcomeController extends Controller
         // Get next event by ends_at
         $event = \App\Models\Event::getActiveEvent();
 
+
         $prepaidBadgesLeft = 0;
+        $currentEventBadgeCount = 0;
         if ($event && Auth::check()) {
             $user = Auth::user();
             $prepaidBadgesLeft = $user->getPrepaidBadgesLeft($event->id);
+            $currentEventBadgeCount = $user->badges()->where('event_id', $event->id)->count();
         }
 
         return Inertia::render('Welcome', [
@@ -26,10 +29,11 @@ class WelcomeController extends Controller
                 'name' => $event->name,
                 'state' => $event->state->value,
                 'allowsOrders' => $event->allowsOrders(),
-                'orderStartsAt' => $event->order_starts_at,
-                'orderEndsAt' => $event->order_ends_at,
+                'orderStartsAt' => $event->order_starts_at?->toISOString(),
+                'orderEndsAt' => $event->order_ends_at?->toISOString(),
             ] : null,
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
+            'currentEventBadgeCount' => $currentEventBadgeCount,
         ]);
     }
 }
