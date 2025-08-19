@@ -3,7 +3,7 @@
 namespace App\Domain\CatchEmAll\Services;
 
 use App\Domain\CatchEmAll\Enums\Achievement;
-use App\Domain\CatchEmAll\Enums\SpeciesRarity;
+use App\Domain\CatchEmAll\Enums\FursuitRarity;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\User;
@@ -74,22 +74,22 @@ class AchievementService
 
     private function checkRarityAchievements(User $user, UserCatch $newCatch): void
     {
-        $rarity = $newCatch->getSpeciesRarity();
+        $rarity = $newCatch->getFursuitRarity();
 
         // Check for rare catches
-        if ($rarity === SpeciesRarity::RARE) {
-            $rareCount = $this->getRarityCatchCount($user, SpeciesRarity::RARE);
+        if ($rarity === FursuitRarity::RARE) {
+            $rareCount = $this->getRarityCatchCount($user, FursuitRarity::RARE);
             $this->updateProgressAchievement($user, Achievement::RARE_HUNTER, $rareCount, 5);
         }
 
         // Check for epic catches
-        if ($rarity === SpeciesRarity::EPIC) {
-            $epicCount = $this->getRarityCatchCount($user, SpeciesRarity::EPIC);
+        if ($rarity === FursuitRarity::EPIC) {
+            $epicCount = $this->getRarityCatchCount($user, FursuitRarity::EPIC);
             $this->updateProgressAchievement($user, Achievement::EPIC_SEEKER, $epicCount, 3);
         }
 
         // Check for legendary catches
-        if ($rarity === SpeciesRarity::LEGENDARY) {
+        if ($rarity === FursuitRarity::LEGENDARY) {
             $this->grantAchievement($user, Achievement::LEGENDARY_MASTER);
         }
     }
@@ -135,14 +135,14 @@ class AchievementService
         }
     }
 
-    private function getRarityCatchCount(User $user, SpeciesRarity $rarity): int
+    private function getRarityCatchCount(User $user, FursuitRarity $rarity): int
     {
         $catches = UserCatch::where('user_id', $user->id)
             ->with(['fursuit.species'])
             ->get();
 
         return $catches->filter(function ($catch) use ($rarity) {
-            return $catch->getSpeciesRarity() === $rarity;
+            return $catch->getFursuitRarity() === $rarity;
         })->count();
     }
 

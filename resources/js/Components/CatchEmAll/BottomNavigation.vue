@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { usePage, Link } from '@inertiajs/vue3'
 import { 
     Trophy, 
     Award, 
@@ -16,7 +16,8 @@ const page = usePage()
 
 // Get current route name to determine active tab
 const currentRoute = computed(() => {
-    const routeName = page.props.ziggy?.route?.current || ''
+    const ziggy = page.props.ziggy as { route?: { current?: string } }
+    const routeName = ziggy?.route?.current || ''
     if (routeName.includes('leaderboard')) return 'leaderboard'
     if (routeName.includes('achievements')) return 'achievements'
     if (routeName.includes('collection')) return 'collection'
@@ -58,7 +59,7 @@ const navItems = [
         key: 'profile',
         label: 'Profile',
         icon: User,
-        route: null, // No route yet
+        route: 'catch-em-all.collection', // No route yet
         color: 'text-gray-500',
         disabled: true
     }
@@ -71,11 +72,12 @@ const navItems = [
         <div class="grid grid-cols-5 items-center py-2">
             <template v-for="item in navItems" :key="item.key">
                 <!-- Regular Navigation Item -->
-                <component 
-                    :is="item.disabled ? 'button' : 'Link'" 
-                    :href="item.route ? route(item.route) : null"
+                <Link 
+                    :href="item.route ? route(item.route) + '/' : null"
                     :disabled="item.disabled"
-                    @click="item.disabled ? null : undefined"
+                    :preserve-scroll="true"
+                    :preserve-state="true"
+                    replace
                     class="flex flex-col items-center justify-center rounded-lg transition-all transform mx-auto"
                     :class="[
                         item.isCenter ? 'p-3 rounded-xl -mt-2' : 'p-2',
@@ -96,7 +98,7 @@ const navItems = [
                     ]">
                         {{ item.label }}
                     </span>
-                </component>
+                </Link>
             </template>
         </div>
     </div>

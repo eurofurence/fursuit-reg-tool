@@ -1,4 +1,5 @@
 {
+    "name": "fursuit-reg-tool",
     "private": true,
     "type": "module",
     "scripts": {
