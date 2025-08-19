@@ -7,31 +7,47 @@ use Sentry\Laravel\Integration;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
-            \Illuminate\Support\Facades\Route::prefix('catch-em-all/')
+            // Parse domain from APP_URL
+            $mainDomain = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
+
+            // Catch-Em-All game routes (specific domain - higher priority)
+            \Illuminate\Support\Facades\Route::domain(config('fcea.domain'))
                 ->name('catch-em-all.')
                 ->middleware([
                     'web',
-                    'catch-auth:web',
                 ])
                 ->group(base_path('routes/catch-em-all.php'));
-            \Illuminate\Support\Facades\Route::middleware([
-                'pos-auth:machine',
-                'pos-auth:machine-user',
-                'web', \App\Http\Middleware\InactivityLogoutMiddleware::class,
-            ])
+
+            // Main application routes (domain-based)
+            \Illuminate\Support\Facades\Route::domain($mainDomain)
+                ->middleware('web')
+                ->group(base_path('routes/web.php'));
+
+            // POS system routes
+            \Illuminate\Support\Facades\Route::domain($mainDomain)
+                ->middleware([
+                    'pos-auth:machine',
+                    'pos-auth:machine-user',
+                    'web', \App\Http\Middleware\InactivityLogoutMiddleware::class,
+                ])
                 ->prefix('pos/')
                 ->name('pos.')
                 ->group(base_path('routes/pos.php'));
-            \Illuminate\Support\Facades\Route::prefix('pos/auth/')
+
+            // POS authentication routes
+            \Illuminate\Support\Facades\Route::domain($mainDomain)
+                ->prefix('pos/auth/')
                 ->name('pos.auth.')
                 ->middleware('web')
                 ->group(base_path('routes/pos-auth.php'));
-            \Illuminate\Support\Facades\Route::prefix('gallery')
+
+            // Gallery routes
+            \Illuminate\Support\Facades\Route::domain($mainDomain)
+                ->prefix('gallery')
                 ->name('gallery.')
                 ->middleware('web')
                 ->group(base_path('routes/gallery.php'));

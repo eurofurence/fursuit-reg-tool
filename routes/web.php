@@ -8,8 +8,17 @@ Route::get('/', WelcomeController::class)->name('welcome');
 Route::redirect('/auth-login', '/auth/login')->name('login');
 Route::redirect('/auth-done', '/')->name('dashboard');
 
-// Debug endpoint - only available in non-production
-Route::get('/debug/login', [DebugController::class, 'debugLogin'])->name('debug.login');
+Route::get('/fcea', function () {
+    $catchDomain = config('fcea.domain');
+    $protocol = str_contains($catchDomain, 'localhost') ? 'http' : 'https';
+    return redirect($protocol . '://' . $catchDomain);
+});
+
+Route::get('/catch-em-all', function () {
+    $catchDomain = config('fcea.domain');
+    $protocol = str_contains($catchDomain, 'localhost') ? 'http' : 'https';
+    return redirect($protocol . '://' . $catchDomain);
+});
 
 Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(function () {
     Route::prefix('/auth')->name('auth.')->group(function () {
@@ -28,5 +37,3 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
         Route::get('/statistics', [\App\Http\Controllers\StatisticsController::class, 'index'])->name('statistics');
     });
 });
-
-Route::permanentRedirect('/fcea/', '/catch-em-all');

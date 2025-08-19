@@ -3,6 +3,18 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Catch-Em-All Domain
+    |--------------------------------------------------------------------------
+    |
+    | The domain where the Catch-Em-All game is hosted. This allows the game
+    | to be served from a separate subdomain with its own authentication flow.
+    |
+    */
+
+    'domain' => env('CATCH_DOMAIN', 'catch.localhost'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Fursuit Catch Code Length
     |--------------------------------------------------------------------------
     |

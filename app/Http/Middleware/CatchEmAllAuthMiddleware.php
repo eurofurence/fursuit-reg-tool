@@ -10,8 +10,7 @@ class CatchEmAllAuthMiddleware extends Authenticate
 {
     protected function redirectTo(Request $request)
     {
-        Session::put('catch-em-all-redirect', true);
-
-        return route('auth.login.redirect');
+        // Redirect to the Catch-Em-All domain login
+        return route('catch-em-all.auth.login');
     }
 }
