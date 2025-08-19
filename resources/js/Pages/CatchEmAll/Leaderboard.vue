@@ -68,6 +68,7 @@ const getPodiumIcon = (rank: number) => {
         title="Leaderboard"
         subtitle="Top Fursuit Catch em Alls"
         :flash="flash"
+        icon="medal"
     >
         <!-- Event Filter -->
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
