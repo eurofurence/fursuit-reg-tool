@@ -290,12 +290,8 @@ class GameStatsService
             }
 
             $catches = $query->get();
-
-
-            // Group by species
-            $speciesGrouped = $catches->groupBy('fursuit.species.name');
-            $speciesArray = [];
-
+            $fursuits = [];
+            $speciesIndex = [];
 
             foreach ($speciesGrouped as $speciesName => $speciesCatches) {
                 $firstCatch = $speciesCatches->first();
@@ -321,11 +317,16 @@ class GameStatsService
                         'color' => $rarity->getColor(),
                         'icon' => $rarity->getIcon(),
                     ],
-                    'firstCaught' => $speciesCatches->sortBy('created_at')->first()->created_at,
+                    'gallery' => [
+                        'id' => $catch->fursuit->id,
+                        'name' => $catch->fursuit->name,
+                        'species' => $catch->fursuit->species->name,
+                        'image' => $catch->fursuit->image_webp_url,
+                        'scoring' => $catch_count,
+                    ]
                 ];
+                $speciesIndex[$specie] = ($speciesIndex[$specie] ?? 0) + 1;
             }
-
-            // Sort by total points descending
 
             // Sort by total catches descending
             usort($speciesArray, function ($a, $b) {

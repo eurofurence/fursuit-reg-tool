@@ -11,6 +11,7 @@ import {
     Sparkles,
     Crown,
     Filter,
+    Gem,
     Grid3X3,
     List,
     Info,
@@ -158,8 +159,8 @@ const collectionByRarity = computed(() => {
         epic: [],
         rare: [],
         uncommon: [],
-        common: []
-    }
+        common: [],
+    };
 
     props.collection.species.forEach(species => {
         const rarity = species.rarity.level
