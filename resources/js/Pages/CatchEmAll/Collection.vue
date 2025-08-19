@@ -224,33 +224,35 @@ const rarityStats = computed(() => {
                         />
                     </div>
 
-                    <!-- Rarity Filter -->
-                    <div class="flex-1 min-w-0">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Rarity:</label>
-                        <Dropdown
-                            v-model="selectedRarity"
-                            :options="rarityOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            class="w-full"
-                            fluid
-                        />
-                    </div>
+                    <div class="flex">
+                        <!-- Rarity Filter -->
+                        <div class="flex-1 m-2 min-w-0">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Rarity:</label>
+                           <Dropdown
+                               v-model="selectedRarity"
+                                :options="rarityOptions"
+                               optionLabel="label"
+                                optionValue="value"
+                               class="w-full"
+                               fluid
+                           />
+                       </div>
 
-                    <!-- View Mode Toggle -->
-                    <div class="flex-shrink-0">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">View:</label>
-                        <div class="flex rounded-lg border border-gray-300 overflow-hidden">
-                            <button @click="viewMode = 'list'"
-                                    class="px-3 py-2 transition-colors"
-                                    :class="viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">
-                                <List class="w-5 h-5" />
-                            </button>
-                            <button @click="viewMode = 'grid'"
-                                    class="px-3 py-2 transition-colors"
-                                    :class="viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">
-                                <Grid3X3 class="w-5 h-5" />
-                            </button>
+                        <!-- View Mode Toggle -->
+                        <div class="m-2 flex-shrink-0">
+                           <label class="block text-sm font-medium text-gray-700 mb-2">View:</label>
+                            <div class="flex rounded-lg border border-gray-300 overflow-hidden">
+                                <button @click="viewMode = 'list'"
+                                        class="px-3 py-2 transition-colors"
+                                        :class="viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">
+                                    <List class="w-5 h-5" />
+                                </button>
+                                <button @click="viewMode = 'grid'"
+                                        class="px-3 py-2 transition-colors"
+                                        :class="viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">
+                                    <Grid3X3 class="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
