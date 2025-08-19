@@ -27,13 +27,14 @@ class AuthController extends Controller
 
         if ($isCatchEmAll) {
             $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-            $callbackUrl = $protocol.'://'.$currentHost.'/auth/callback';
+            $callbackUrl = $protocol . '://' . $currentHost . '/auth/callback';
         } else {
-            $callbackUrl = rtrim(config('app.url'), '/').'/auth/callback';
+            $callbackUrl = rtrim(config('app.url'), '/') . '/auth/callback';
         }
 
         $url = Socialite::driver('identity')
             ->scopes(['openid', 'profile', 'email', 'groups', 'offline', 'offline_access'])
+            ->redirectUrl($callbackUrl)
             ->redirectUrl($callbackUrl)
             ->redirect();
 
@@ -50,9 +51,9 @@ class AuthController extends Controller
 
             if ($isCatchEmAll) {
                 $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-                $callbackUrl = $protocol.'://'.$currentHost.'/auth/callback';
+                $callbackUrl = $protocol . '://' . $currentHost . '/auth/callback';
             } else {
-                $callbackUrl = rtrim(config('app.url'), '/').'/auth/callback';
+                $callbackUrl = rtrim(config('app.url'), '/') . '/auth/callback';
             }
 
             $socialLiteUser = Socialite::driver('identity')
@@ -65,8 +66,7 @@ class AuthController extends Controller
 
             if ($isCatchEmAll) {
                 $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-
-                return redirect($protocol.'://'.$currentHost.'/auth/login');
+                return redirect($protocol . '://' . $currentHost . '/auth/login');
             } else {
                 return redirect()->route('auth.login');
             }
@@ -80,6 +80,16 @@ class AuthController extends Controller
         $regId = $attendeeListResponse['ids'][0] ?? null;
 
         if (isset($attendeeListResponse['ids'][0]) === false) {
+            $currentHost = request()->getHost();
+            $isCatchEmAll = $currentHost === config('fcea.domain');
+
+            if ($isCatchEmAll) {
+                return redirect()->route('catch-em-all.introduction')->with('message',
+                    'Please register for the Convention first before trying to play Catch-Em-All.');
+            } else {
+                return redirect()->route('welcome')->with('message',
+                    'Please register for the Convention first before trying to obtain a fursuit badge.');
+            }
             $currentHost = request()->getHost();
             $isCatchEmAll = $currentHost === config('fcea.domain');
 
@@ -184,6 +194,17 @@ class AuthController extends Controller
         } else {
             return redirect()->route('dashboard');
         }
+
+        // Redirect based on current domain
+        $currentHost = request()->getHost();
+        $isCatchEmAll = $currentHost === config('fcea.domain');
+
+        if ($isCatchEmAll) {
+            // Redirect to introduction page for new users, or home for returning users
+            return redirect()->route('catch-em-all.introduction');
+        } else {
+            return redirect()->route('dashboard');
+        }
     }
 
     public function logout()
@@ -194,9 +215,8 @@ class AuthController extends Controller
         if ($isCatchEmAll) {
             // Include post logout redirect for Catch-Em-All
             $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-            $returnUrl = $protocol.'://'.$currentHost;
-
-            return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout?post_logout_redirect_uri='.urlencode($returnUrl));
+            $returnUrl = $protocol . '://' . $currentHost;
+            return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout?post_logout_redirect_uri=' . urlencode($returnUrl));
         } else {
             return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout');
         }
@@ -214,8 +234,7 @@ class AuthController extends Controller
 
         if ($isCatchEmAll) {
             $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-
-            return redirect($protocol.'://'.$currentHost);
+            return redirect($protocol . '://' . $currentHost);
         }
 
         // For main domain, just complete the logout (no redirect needed)

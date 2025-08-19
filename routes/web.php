@@ -10,15 +10,13 @@ Route::redirect('/auth-done', '/')->name('dashboard');
 Route::get('/fcea', function () {
     $catchDomain = config('fcea.domain');
     $protocol = str_contains($catchDomain, 'localhost') ? 'http' : 'https';
-
-    return redirect($protocol.'://'.$catchDomain);
+    return redirect($protocol . '://' . $catchDomain);
 });
 
 Route::get('/catch-em-all', function () {
     $catchDomain = config('fcea.domain');
     $protocol = str_contains($catchDomain, 'localhost') ? 'http' : 'https';
-
-    return redirect($protocol.'://'.$catchDomain);
+    return redirect($protocol . '://' . $catchDomain);
 });
 
 Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(function () {
@@ -38,7 +36,3 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
         Route::get('/statistics', [\App\Http\Controllers\StatisticsController::class, 'index'])->name('statistics');
     });
 });
-
-// have consistent backslash for catch-em-all
-Route::permanentRedirect('/fcea/', '/catch-em-all/');
-Route::permanentRedirect('/catch-em-all', '/catch-em-all/');
