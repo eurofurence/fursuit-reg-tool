@@ -275,10 +275,13 @@ const rarityStats = computed(() => {
         <Card class="bg-white shadow-sm">
             <template #content>
                 <div
-                    class="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
+                    class="flex flex-col gap-4 items-start sm:items-center justify-between"
+                    :class="
+                        eventOptions.length > 1 ? 'sm:flex-row' : 'xs:flex-row'
+                    "
                 >
                     <!-- Event Filter -->
-                    <div v-if="eventOptions.length > 1" class="flex-1 min-w-0">
+                    <div v-if="eventOptions.length > 1" class="flex-1 min-w-20">
                         <label
                             class="block text-sm font-medium text-gray-700 mb-2"
                             >Event:</label
@@ -295,7 +298,7 @@ const rarityStats = computed(() => {
                     </div>
 
                     <!-- Rarity Filter -->
-                    <div class="flex-1 min-w-0">
+                    <div class="flex-1 min-w-20">
                         <label
                             class="block text-sm font-medium text-gray-700 mb-2"
                             >Rarity:</label
