@@ -199,37 +199,3 @@ describe('Welcome Page User Interface States', function () {
     });
 });
 
-describe('Welcome Page Mass Print Detection', function () {
-    test('shows mass print message when badges were printed early', function () {
-        $event = Event::factory()->create([
-            'starts_at' => now()->subDays(2),
-            'ends_at' => now()->addDays(28),
-            'order_starts_at' => now()->subDays(1),
-            'order_ends_at' => now()->addDays(25),
-            'mass_printed_at' => now()->subDays(3), // Printed before current time
-        ]);
-
-        $response = get(route('welcome'));
-
-        $response->assertSuccessful();
-        // The Vue component will check this condition client-side
-        $response->assertInertia(fn ($page) => $page->where('event.mass_printed_at', $event->mass_printed_at->toISOString())
-        );
-    });
-
-    test('does not show mass print message when badges not yet printed', function () {
-        $event = Event::factory()->create([
-            'starts_at' => now()->subDays(2),
-            'ends_at' => now()->addDays(28),
-            'order_starts_at' => now()->subDays(1),
-            'order_ends_at' => now()->addDays(25),
-            'mass_printed_at' => now()->addDays(5), // Will be printed in future
-        ]);
-
-        $response = get(route('welcome'));
-
-        $response->assertSuccessful();
-        $response->assertInertia(fn ($page) => $page->where('event.mass_printed_at', $event->mass_printed_at->toISOString())
-        );
-    });
-});

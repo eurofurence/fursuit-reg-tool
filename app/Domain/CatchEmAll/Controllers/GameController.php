@@ -2,22 +2,19 @@
 
 namespace App\Domain\CatchEmAll\Controllers;
 
-use App\Domain\CatchEmAll\Enums\Achievement;
-use App\Domain\CatchEmAll\Enums\SpeciesRarity;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Domain\CatchEmAll\Services\AchievementService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserCatchRequest;
+use App\Models\Event;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
-use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 
@@ -26,7 +23,8 @@ class GameController extends Controller
     public function __construct(
         private AchievementService $achievementService,
         private GameStatsService $gameStatsService
-    ) {}
+    ) {
+    }
 
     public function index(Request $request)
     {
@@ -129,7 +127,7 @@ class GameController extends Controller
         $this->achievementService->processAchievements($user, $userCatch);
 
         // Clear caches
-        $this->clearGameCaches($event->id);
+        $this->clearGameCaches($event->id, $user->id);
 
         return to_route('catch-em-all.catch')->with('caught_fursuit', $fursuit->id);
     }
@@ -217,9 +215,9 @@ class GameController extends Controller
         return redirect()->route('catch-em-all.catch')->with('success', 'Welcome to Fursuit Catch em All! Happy hunting!');
     }
 
-    private function getCurrentEvent(): ?\App\Models\Event
+    private function getCurrentEvent(): ?Event
     {
-        return \App\Models\Event::latest('starts_at')->first();
+        return Event::latest('starts_at')->first();
     }
 
     private function getFilterEvent($selectedEventId, bool $isGlobal, $currentEvent)
@@ -228,7 +226,7 @@ class GameController extends Controller
             return $isGlobal ? null : $currentEvent;
         }
 
-        return \App\Models\Event::find($selectedEventId);
+        return Event::find($selectedEventId);
     }
 
     private function getUserAchievements(User $user, bool $detailed = false)
@@ -262,7 +260,7 @@ class GameController extends Controller
 
     private function getEventsWithEntries()
     {
-        return \App\Models\Event::whereHas('fursuits.catchedByUsers')
+        return Event::whereHas('fursuits.catchedByUsers')
             ->orderByDesc('starts_at')
             ->get(['id', 'name', 'starts_at']);
     }
@@ -270,16 +268,18 @@ class GameController extends Controller
     private function getRecentCatchData($fursuitId)
     {
         $fursuit = Fursuit::with(['species', 'user'])->find($fursuitId);
-        if (!$fursuit) return null;
+        if (!$fursuit)
+            return null;
 
         $userCatch = new UserCatch(['fursuit_id' => $fursuitId]);
-        $rarity = $userCatch->getSpeciesRarity();
+        $rarity = $userCatch->getFursuitRarity();
 
         return [
+            'id' => $fursuit->id,
             'name' => $fursuit->name,
             'species' => $fursuit->species->name ?? 'Unknown',
             'user' => $fursuit->user->name ?? 'Anonymous',
-            'image' => $fursuit->image,
+            'image' => $fursuit->image_webp_url,
             'rarity' => [
                 'level' => $rarity->value,
                 'label' => $rarity->getLabel(),
@@ -321,15 +321,20 @@ class GameController extends Controller
         return 0;
     }
 
-    private function clearGameCaches(int $eventId): void
+    private function clearGameCaches(int $eventId, int $userId): void
     {
         $keys = [
             "game_stats_global",
             "game_stats_{$eventId}",
+            "game_stats_global_{$userId}",
+            "game_stats_{$eventId}_{$userId}",
             "leaderboard_global_10",
             "leaderboard_{$eventId}_10",
             "collection_global",
             "collection_{$eventId}",
+            "collection_global_{$userId}",
+            "collection_{$eventId}_{$userId}",
+            "total_fursuiters_{$eventId}", // TODO: Forget when new fursuit gets approved and not here
         ];
 
         foreach ($keys as $key) {

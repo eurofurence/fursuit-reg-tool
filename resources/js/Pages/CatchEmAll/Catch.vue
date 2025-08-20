@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { useForm } from "@inertiajs/vue3";
-import { ref, onMounted, nextTick } from "vue";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import Button from "primevue/button";
-import InputText from "primevue/inputtext";
-import Card from "primevue/card";
-import Dialog from "primevue/dialog";
+import { useForm } from "@inertiajs/vue3";
 import {
-    Trophy,
     Award,
     BookOpen,
-    Target,
-    User,
-    TrendingUp,
-    Star,
-    Zap,
     Crown,
+    Star,
+    Target,
+    TrendingUp,
+    Trophy,
+    User,
+    Zap,
 } from "lucide-vue-next";
+import Button from "primevue/button";
+import Card from "primevue/card";
+import Dialog from "primevue/dialog";
+import InputText from "primevue/inputtext";
+import { computed, nextTick, onMounted, ref } from "vue";
 
 const form = useForm({ catch_code: "" });
 
@@ -34,19 +34,32 @@ const props = defineProps<{
     flash?: any;
 }>();
 
-const showRecentCatch = ref(!!props.recentCatch);
+const closedID = ref(null);
+const showRecentCatch = computed({
+    get: () => {
+        if (closedID.value === props.recentCatch?.id) {
+            return false;
+        }
+        return !!props.recentCatch;
+    },
+    set: (value) => {
+        if (value == false) {
+            closedID.value = props.recentCatch?.id;
+        }
+    },
+});
 
 const submit = () => {
-    if (form.processing) return; // Prevent multiple submissions
+    if (form.processing) return // Prevent multiple submissions
 
-    form.catch_code = form.catch_code.toUpperCase();
-    form.post(route("catch-em-all.catch.submit"), {
+    form.catch_code = form.catch_code.toUpperCase()
+    form.post(route('catch-em-all.catch.submit'), {
         onSuccess: () => {
-            form.reset();
+            form.reset()
         },
-        preserveScroll: true, // Preserve scroll position
-    });
-};
+        preserveScroll: true // Preserve scroll position
+    })
+}
 
 const formatCode = (value: string) => {
     return value
@@ -62,20 +75,20 @@ const onCodeInput = (event: any) => {
 };
 
 // Auto-focus input on mount and handle cleanup
-const codeInput = ref();
+const codeInput = ref()
 onMounted(() => {
     // Use nextTick to ensure component is mounted
     nextTick(() => {
         if (codeInput.value?.$el) {
-            codeInput.value.$el.focus();
+            codeInput.value.$el.focus()
         }
-    });
+    })
 
     // Reset form when navigating away
-    window.addEventListener("beforeunload", () => {
-        form.reset();
-    });
-});
+    window.addEventListener('beforeunload', () => {
+        form.reset()
+    })
+})
 
 const getRankIcon = (rank: number) => {
     if (rank === 1) return Crown;
@@ -91,6 +104,7 @@ const getRankIcon = (rank: number) => {
         title="Fursuit Catch em All"
         subtitle="Catch them all!"
         :flash="flash"
+        icon="target"
     >
         <!-- Recent Catch Celebration -->
         <Dialog
@@ -98,6 +112,7 @@ const getRankIcon = (rank: number) => {
             :modal="true"
             class="mx-4 dark-dialog"
             :style="{ width: '90vw', maxWidth: '400px' }"
+            dismissableMask
         >
             <template #header>
                 <div class="text-center w-full">
@@ -157,9 +172,6 @@ const getRankIcon = (rank: number) => {
                     :class="recentCatch.rarity.gradient"
                 >
                     <div class="font-bold">{{ recentCatch.rarity.label }}</div>
-                    <div class="text-sm">
-                        +{{ recentCatch.rarity.points }} points!
-                    </div>
                 </div>
 
                 <Button

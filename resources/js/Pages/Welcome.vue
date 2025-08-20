@@ -22,7 +22,8 @@ defineOptions({
 const props = defineProps({
     showState: String,
     event: Object,
-    prepaidBadgesLeft: Number
+    prepaidBadgesLeft: Number,
+    currentEventBadgeCount: Number
 });
 
 const currentTime = ref(dayjs());
@@ -47,7 +48,7 @@ const prepaidBadgesLeft = computed(() => props.prepaidBadgesLeft || 0);
 
 const userBadgeOrderedCount = computed(() => {
     if (!user.value) return null;
-    return user.value.badges?.length || 0;
+    return props.currentEventBadgeCount || 0;
 });
 
 const orderStatus = computed(() => {
@@ -100,7 +101,7 @@ const orderStatus = computed(() => {
 const userBadgeStatus = computed(() => {
     if (!user.value) return null;
 
-    const badgeCount = user.value.badges?.length || 0;
+    const badgeCount = props.currentEventBadgeCount || 0;
     const prepaidLeft = prepaidBadgesLeft.value;
 
     if (prepaidLeft > 0) {
@@ -174,7 +175,7 @@ const shouldShowRegMessage = computed(() => {
 
                             <!-- Secondary Action Button -->
                             <Button
-                                v-if="user.badges?.length > 0"
+                                v-if="currentEventBadgeCount > 0"
                                 @click="router.visit(route('badges.index'))"
                                 icon="pi pi-list"
                                 class="flex-1 font-semibold"
@@ -199,7 +200,7 @@ const shouldShowRegMessage = computed(() => {
 
                             <!-- Secondary Action Button -->
                             <Button
-                                v-if="user.badges?.length > 0"
+                                v-if="currentEventBadgeCount > 0"
                                 @click="router.visit(route('badges.index'))"
                                 icon="pi pi-list"
                                 class="flex-1 font-semibold"
@@ -225,10 +226,10 @@ const shouldShowRegMessage = computed(() => {
                         </div>
 
                         <!-- Status Info -->
-                        <div v-if="user.badges?.length > 0" class="flex justify-center mt-6">
+                        <div v-if="currentEventBadgeCount > 0" class="flex justify-center mt-6">
                             <div class="bg-green-500/90 backdrop-blur-sm rounded-lg px-6 py-2 text-white shadow-lg">
                                 <i class="pi pi-check mr-2"></i>
-                                {{ user.badges.length }} Badge{{ user.badges.length > 1 ? 's' : '' }} Ordered
+                                {{ currentEventBadgeCount }} Badge{{ currentEventBadgeCount > 1 ? 's' : '' }} Ordered
                             </div>
                         </div>
                     </div>
@@ -239,7 +240,7 @@ const shouldShowRegMessage = computed(() => {
                             Login to customize your fursuit badge that you have bought with your ticket. Additional badges can be ordered at a fee from {{ dayjs(event.orderStartsAt).format('D.M.YYYY') }}.
                         </p>
                         <Link
-                            v-if="user.badges?.length > 0"
+                            v-if="currentEventBadgeCount > 0"
                             :href="route('badges.index')"
                             class="w-full">
                             <Button
@@ -266,7 +267,7 @@ const shouldShowRegMessage = computed(() => {
                             />
                         </a>
                         <Link
-                            v-if="user.badges?.length > 0"
+                            v-if="currentEventBadgeCount > 0"
                             :href="route('badges.index')"
                             class="w-full">
                             <Button
@@ -283,7 +284,7 @@ const shouldShowRegMessage = computed(() => {
                     <div v-else class="text-center space-y-6">
                         <p class="text-2xl mb-6 opacity-90">Badge orders are currently closed</p>
                         <Link
-                            v-if="user.badges?.length > 0"
+                            v-if="currentEventBadgeCount > 0"
                             :href="route('badges.index')"
                             class="w-full">
                             <Button

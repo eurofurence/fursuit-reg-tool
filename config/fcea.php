@@ -3,6 +3,18 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Catch-Em-All Domain
+    |--------------------------------------------------------------------------
+    |
+    | The domain where the Catch-Em-All game is hosted. This allows the game
+    | to be served from a separate subdomain with its own authentication flow.
+    |
+    */
+
+    'domain' => env('CATCH_DOMAIN', 'catch.localhost'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Fursuit Catch Code Length
     |--------------------------------------------------------------------------
     |
@@ -43,21 +55,4 @@ return [
     'species_rarity_threshold_epic' => env('SPECIES_RARITY_THRESHOLD_EPIC', 20),
     'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 50),
     // If none of this applies, the species is considered common
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Fursuit Species Value on catch
-    |--------------------------------------------------------------------------
-    |
-    | Sets the points granted when catching a fursuiter.
-    | The rarer the fursuit species exists among all registered fursuits the more points it shall grant
-    |
-    */
-
-    'species_rarity_value_common' => env('SPECIES_RARITY_VALUE_COMMON', 1),
-    'species_rarity_value_uncommon' => env('SPECIES_RARITY_VALUE_UNCOMMON', 2),
-    'species_rarity_value_rare' => env('SPECIES_RARITY_VALUE_RARE', 5),
-    'species_rarity_value_epic' => env('SPECIES_RARITY_VALUE_EPIC', 10),
-    'species_rarity_value_legendary' => env('SPECIES_RARITY_VALUE_LEGENDARY', 25),
 ];
