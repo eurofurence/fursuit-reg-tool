@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { router } from '@inertiajs/vue3'
-import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
-import Card from 'primevue/card'
-import Dropdown from 'primevue/dropdown'
+import { ref, computed, watch } from "vue";
+import { router } from "@inertiajs/vue3";
+import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
+import Card from "primevue/card";
+import Dropdown from "primevue/dropdown";
 import {
     BookOpen,
     Star,
@@ -11,15 +11,9 @@ import {
     Sparkles,
     Crown,
     Filter,
-    Gem,
     Grid3X3,
     List,
-    Sparkles,
-    Star,
 } from "lucide-vue-next";
-import Card from "primevue/card";
-import Dropdown from "primevue/dropdown";
-import { computed, ref, watch } from "vue";
 
 const props = defineProps<{
     collection: {
@@ -140,11 +134,11 @@ const collectionByRarity = computed(() => {
         epic: [],
         rare: [],
         uncommon: [],
-        common: []
-    }
+        common: [],
+    };
 
-    props.collection.species.forEach(species => {
-        const rarity = species.rarity.level
+    props.collection.suits.forEach((suit) => {
+        const rarity = suit.rarity.level;
         if (grouped[rarity]) {
             grouped[rarity].push(suit);
         }
@@ -178,18 +172,18 @@ const rarityStats = computed(() => {
         epic: 0,
         rare: 0,
         uncommon: 0,
-        common: 0
-    }
+        common: 0,
+    };
 
-    props.collection.species.forEach(species => {
-        const rarity = species.rarity.level
+    props.collection.suits.forEach((suit) => {
+        const rarity = suit.rarity.level;
         if (stats[rarity] !== undefined) {
-            stats[rarity] += species.count
+            stats[rarity] += suit.count;
         }
-    })
+    });
 
-    return stats
-})
+    return stats;
+});
 </script>
 
 <template>
