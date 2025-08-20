@@ -6,6 +6,8 @@ use App\Filament\Resources\FursuitResource\Pages;
 use App\Filament\Resources\FursuitResource\RelationManagers;
 use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
+use App\Models\Fursuit\States\Rejected;
+use App\Models\Fursuit\States\Transitions\RejectedToApproved;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Group;
@@ -13,12 +15,11 @@ use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class FursuitResource extends Resource
 {
@@ -38,16 +39,6 @@ class FursuitResource extends Resource
                             ->width('100%')
                             ->visibility('private')
                             ->alignCenter(),
-                        TextEntry::make('rules')
-                            ->listWithLineBreaks()
-                            ->getStateUsing(fn() => [
-                                'Fursuits in your possession.',
-                                'No humans in the photos.',
-                                'No explicit content.',
-                                'No drawings or illustrations.',
-                                'No AI-generated images.',
-                            ])
-                            ->bulleted(),
                     ])->columnSpan(3),
                     Group::make([
                         TextEntry::make('name')
@@ -65,19 +56,19 @@ class FursuitResource extends Resource
                         Group::make([
                             IconEntry::make('published')
                                 ->size(IconEntry\IconEntrySize::Large)
-                                ->hint('Share this fursuit on the website.')
+                                ->hint('Publish your fursuit in our online gallery for everyone to see.')
                                 ->boolean(),
                             IconEntry::make('catch_em_all')
                                 ->size(IconEntry\IconEntrySize::Large)
-                                ->hint('Partakes in the Catch-em-All.')
+                                ->hint('Participate in the convention game to be catchable by other attendees.')
                                 ->boolean(),
                         ])->columns(),
                         // Status Badge
                         TextEntry::make('status')
                             ->badge()
                             ->hint('Current status of the fursuit.')
-                            ->color(fn(Fursuit $fursuit) => $fursuit->status->color())
-                            ->formatStateUsing(fn($state) => ucfirst($state)),
+                            ->color(fn (Fursuit $fursuit) => $fursuit->status->color())
+                            ->formatStateUsing(fn ($state) => ucfirst($state)),
                     ])->columnSpan(9),
                 ])->columns(12)->columnSpanFull(),
             ]);
@@ -127,8 +118,8 @@ class FursuitResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->color(fn(Fursuit $fursuit) => $fursuit->status->color())
-                    ->formatStateUsing(fn($state) => ucfirst($state))
+                    ->color(fn (Fursuit $fursuit) => $fursuit->status->color())
+                    ->formatStateUsing(fn ($state) => ucfirst($state))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
@@ -153,18 +144,18 @@ class FursuitResource extends Resource
                         'approved' => 'Approved',
                         'rejected' => 'Rejected',
                     ])
-                ->default('pending'),
+                    ->default('pending'),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                //Tables\Actions\EditAction::make(),
+                // Tables\Actions\EditAction::make(),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            RelationManagers\ActivitiesRelationManager::class
+            RelationManagers\ActivitiesRelationManager::class,
         ];
     }
 

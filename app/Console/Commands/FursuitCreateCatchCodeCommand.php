@@ -20,18 +20,21 @@ class FursuitCreateCatchCodeCommand extends Command
         $purgeCodesOfNonParticipants = false; // disabled as you might want to keep codes if users reenter the system at later time
 
         // to purge all codes and build new
-        if ($purgeAllCodes)
+        if ($purgeAllCodes) {
             Fursuit::query()->update(['catch_code' => null]);
+        }
 
         // removing of codes of these who unregistered from the system
-        if ($purgeCodesOfNonParticipants)
+        if ($purgeCodesOfNonParticipants) {
             Fursuit::where('catch_em_all', 0)->update(['catch_code' => null]);
+        }
 
         $counter = 0;
         // Iterate and save manually to trigger Fursuit::saving()
         foreach (Fursuit::all() as $fursuit) {
-            if (!$fursuit->catch_em_all || $fursuit->catch_code <> null)
+            if (! $fursuit->catch_em_all || $fursuit->catch_code != null) {
                 continue;
+            }
 
             $counter++;
             $fursuit->save();

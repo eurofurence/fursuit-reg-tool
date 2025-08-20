@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\EventResource\Pages;
-use App\Filament\Resources\EventResource\RelationManagers;
 use App\Models\Event;
 use Filament\Forms;
 use Filament\Forms\Components\Group;
@@ -45,7 +44,7 @@ class EventResource extends Resource
                         ->helperText('When the badges were mass printed, if applicable')
                         ->required(),
                 ])->columns()->columnSpanFull()->label('Order Management'),
-                
+
                 Group::make([
                     Forms\Components\Toggle::make('catch_em_all_enabled')
                         ->label('Catch-Em-All Enabled')

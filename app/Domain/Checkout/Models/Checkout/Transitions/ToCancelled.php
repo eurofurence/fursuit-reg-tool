@@ -10,9 +10,7 @@ use Spatie\ModelStates\Transition;
 
 class ToCancelled extends Transition
 {
-    public function __construct(public Checkout $checkout)
-    {
-    }
+    public function __construct(public Checkout $checkout) {}
 
     public function handle()
     {
@@ -20,13 +18,14 @@ class ToCancelled extends Transition
             $this->checkout->status = new Cancelled($this->checkout);
             $this->checkout->save();
 
-            $fiskalyService = new FiskalyService();
+            $fiskalyService = new FiskalyService;
             $fiskalyService->updateOrCreateTransaction($this->checkout);
 
             activity()
                 ->performedOn($this->checkout)
                 ->causedBy(auth('machine-user')->user())
                 ->log('Checkout cancelled');
+
             return $this->checkout;
         });
     }

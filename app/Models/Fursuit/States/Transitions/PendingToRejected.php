@@ -3,7 +3,6 @@
 namespace App\Models\Fursuit\States\Transitions;
 
 use App\Models\Fursuit\Fursuit;
-use App\Models\Fursuit\States\Approved;
 use App\Models\Fursuit\States\Rejected;
 use App\Models\User;
 use App\Notifications\FursuitRejectedNotification;
@@ -12,9 +11,7 @@ use Spatie\ModelStates\Transition;
 
 class PendingToRejected extends Transition
 {
-    public function __construct(public Fursuit $fursuit, public User $reviewer, public string $reason)
-    {
-    }
+    public function __construct(public Fursuit $fursuit, public User $reviewer, public string $reason) {}
 
     public function handle()
     {
@@ -28,7 +25,12 @@ class PendingToRejected extends Transition
                 ->by($this->reviewer)
                 ->withProperties(['reason' => $this->reason])
                 ->log('Fursuit rejected');
-            $this->fursuit->user->notify(new FursuitRejectedNotification($this->fursuit, $this->reason));
+            // Only notify if we are reviewing before the event has ended (i.e., notification is still relevant)
+            $eventEndsAt = $this->fursuit->event->ends_at ?? null;
+            if ($eventEndsAt && now()->lt($eventEndsAt)) {
+                $this->fursuit->user->notify(new FursuitRejectedNotification($this->fursuit, $this->reason));
+            }
+
             return $this->fursuit;
         });
     }

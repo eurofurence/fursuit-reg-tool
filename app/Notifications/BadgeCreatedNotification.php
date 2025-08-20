@@ -3,16 +3,12 @@
 namespace App\Notifications;
 
 use App\Models\Badge\Badge;
-use App\Models\Fursuit\Fursuit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class BadgeCreatedNotification extends Notification
 {
-
-    public function __construct(public Badge $badge)
-    {
-    }
+    public function __construct(public Badge $badge) {}
 
     public function via($notifiable): array
     {
@@ -25,7 +21,7 @@ class BadgeCreatedNotification extends Notification
             ->salutation('')
             ->subject('[NO ACTION REQUIRED] Fursuit Badge Pending Review')
             ->line('Thank you for submitting your badge for review. We will notify you once your badge has been approved or if we need any additional information.')
-            ->line('Please do not reply to this email. If you have any questions, please contact us at conops@eurofurence.org')
+            ->line('Please do not reply to this email. If you have any questions, please contact us at fursuit-team@eurofurence.org')
             ->action('Edit Badge', route('badges.edit', [
                 'badge' => $this->badge->id,
             ]))

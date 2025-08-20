@@ -13,6 +13,7 @@ use Spatie\ModelStates\HasStates;
 class Checkout extends Model
 {
     use HasStates;
+
     protected $guarded = [];
 
     protected function casts(): array
@@ -23,6 +24,7 @@ class Checkout extends Model
             'status' => CheckoutStatusState::class,
         ];
     }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

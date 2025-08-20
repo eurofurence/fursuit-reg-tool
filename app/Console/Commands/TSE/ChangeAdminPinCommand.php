@@ -17,11 +17,11 @@ class ChangeAdminPinCommand extends Command
         $oldPin = $this->ask('Please enter the old admin pin');
         $newPin = Str::random();
 
-        $fiskalyService = new FiskalyService();
+        $fiskalyService = new FiskalyService;
         if ($fiskalyService->changeAdminPin($oldPin, $newPin)) {
             $this->info('Admin pin changed successfully.');
             $this->info('------------------------------------------------');
-            $this->info('New Admin PIN: ' . $newPin);
+            $this->info('New Admin PIN: '.$newPin);
             $this->info('------------------------------------------------');
             $this->info('Please update the new admin pin in your .env file.');
         } else {

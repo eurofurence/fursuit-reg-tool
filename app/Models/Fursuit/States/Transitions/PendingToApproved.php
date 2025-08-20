@@ -6,15 +6,12 @@ use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
 use App\Models\User;
 use App\Notifications\FursuitApprovedNotification;
-use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
 class PendingToApproved extends Transition
 {
-    public function __construct(public Fursuit $fursuit, public User $reviewer)
-    {
-    }
+    public function __construct(public Fursuit $fursuit, public User $reviewer) {}
 
     public function handle()
     {
@@ -27,7 +24,14 @@ class PendingToApproved extends Transition
                 ->performedOn($this->fursuit)
                 ->causedBy($this->reviewer)
                 ->log('Fursuit approved');
-            $this->fursuit->user->notify(new FursuitApprovedNotification($this->fursuit));
+
+
+            // Only notify if we are reviewing before the event has ended (i.e., notification is still relevant)
+            $eventEndsAt = $this->fursuit->event->ends_at ?? null;
+            if ($eventEndsAt && now()->lt($eventEndsAt)) {
+                $this->fursuit->user->notify(new FursuitApprovedNotification($this->fursuit));
+            }
+
             return $this->fursuit;
         });
     }

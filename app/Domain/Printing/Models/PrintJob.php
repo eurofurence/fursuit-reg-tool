@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class PrintJob extends Model
 {
     protected $guarded = [];
+
     public function printable()
     {
         return $this->morphTo();

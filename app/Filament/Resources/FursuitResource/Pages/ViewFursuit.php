@@ -6,13 +6,15 @@ use App\Filament\Resources\FursuitResource;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
 use App\Models\Fursuit\States\Rejected;
+use App\Models\Fursuit\States\Transitions\RejectedToApproved;
+use App\Notifications\FursuitApprovedNotification;
+use App\Notifications\FursuitRejectedNotification;
 use Filament\Actions;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ViewFursuit extends ViewRecord
@@ -33,12 +35,13 @@ class ViewFursuit extends ViewRecord
             'The name of the fursuit is not appropriate.',
             'The species of the fursuit is not appropriate.',
         ];
+
         return [
             Actions\Action::make('Claim')
-                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Approved::$name, auth()->user()) && !$record->isClaimedBySelf(auth()->user()))
+                ->visible(fn (Fursuit $record) => $record->status->canTransitionTo(Approved::$name, auth()->user()) && ! $record->isClaimedBySelf(auth()->user()))
                 ->color('primary')
                 ->action(function (Fursuit $record) {
-                    if($record->isClaimed() && $record->isClaimedBySelf(auth()->user()) === false) {
+                    if ($record->isClaimed() && $record->isClaimedBySelf(auth()->user()) === false) {
                         return $this->toNextFursuit($record);
                     }
                     $record->claim(auth()->user());
@@ -46,7 +49,7 @@ class ViewFursuit extends ViewRecord
                 }),
             // Unclaim if self
             Actions\Action::make('Unclaim')
-                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Approved::$name, auth()->user()) && $record->isClaimedBySelf(auth()->user()))
+                ->visible(fn (Fursuit $record) => $record->status->canTransitionTo(Approved::$name, auth()->user()) && $record->isClaimedBySelf(auth()->user()))
                 ->color('danger')
                 ->action(function (Fursuit $record) {
                     $record->unclaim(auth()->user());
@@ -56,14 +59,15 @@ class ViewFursuit extends ViewRecord
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
-                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Approved::class, auth()->user()) && $record->isClaimedBySelf(auth()->user()))
+                ->visible(fn (Fursuit $record) => $record->status->canTransitionTo(Approved::class, auth()->user()) && $record->isClaimedBySelf(auth()->user()))
                 ->action(function (Fursuit $record) {
-                    if($record === null) {
+                    if ($record === null) {
                         return;
                     }
                     // Check Claim
-                    if($record->isClaimed() === false) {
+                    if ($record->isClaimed() === false) {
                         Log::error('Fursuit is not claimed, but user tried to approve it.', ['fursuit' => $record]);
+
                         return;
                     }
                     $record->status->transitionTo(Approved::class, auth()->user());
@@ -71,6 +75,7 @@ class ViewFursuit extends ViewRecord
                     if ($nextFursuit) {
                         return redirect()->route('filament.admin.resources.fursuits.view', $nextFursuit);
                     }
+
                     return redirect()->route('filament.admin.resources.fursuits.index');
                 }),
             Actions\Action::make('Reject')
@@ -80,18 +85,19 @@ class ViewFursuit extends ViewRecord
                 ->form([
                     Select::make('reason')
                         ->live()
-                        ->afterStateUpdated(fn(Set $set, ?string $state) => $set('custom_reason',
+                        ->afterStateUpdated(fn (Set $set, ?string $state) => $set('custom_reason',
                             $errorOptions[$state]))
                         ->options($errorOptions),
                     Textarea::make('custom_reason')
                         ->label('Reason Sent to the User!')
                         ->required(),
                 ])
-                ->visible(fn(Fursuit $record) => $record->status->canTransitionTo(Rejected::class, auth()->user(), "") && $record->isClaimedBySelf(auth()->user()))
+                ->visible(fn (Fursuit $record) => $record->status->canTransitionTo(Rejected::class, auth()->user(), '') && $record->isClaimedBySelf(auth()->user()))
                 ->action(function (Fursuit $record, array $data) {
                     // Check Claim
-                    if($record->isClaimed() === false) {
+                    if ($record->isClaimed() === false) {
                         Log::error('Fursuit is not claimed, but user tried to reject it.', ['fursuit' => $record]);
+
                         return;
                     }
                     $record->status->transitionTo(Rejected::class, auth()->user(), $data['custom_reason']);
@@ -100,7 +106,57 @@ class ViewFursuit extends ViewRecord
                     if ($nextFursuit) {
                         return redirect()->route('filament.admin.resources.fursuits.view', $nextFursuit);
                     }
+
                     return redirect()->route('filament.admin.resources.fursuits.index');
+                }),
+            Actions\Action::make('Approve Rejected')
+                ->label('Approve (Rejected)')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->visible(fn (Fursuit $record) => $record->status instanceof Rejected)
+                ->requiresConfirmation()
+                ->modalHeading('Approve Rejected Fursuit')
+                ->modalDescription('This will send an apology email to the user and approve the fursuit.')
+                ->modalSubmitActionLabel('Yes, approve it')
+                ->action(function (Fursuit $record) {
+                    $record->status->transitionTo(Approved::class, auth()->user());
+                    
+                    Notification::make()
+                        ->title('Rejected fursuit approved successfully')
+                        ->success()
+                        ->send();
+                }),
+            Actions\Action::make('Send Notification')
+                ->label('Send Notification')
+                ->icon('heroicon-o-envelope')
+                ->color('info')
+                ->form([
+                    Select::make('notification_type')
+                        ->label('Notification Type')
+                        ->options([
+                            'approved' => 'Approval Notification',
+                            'rejected' => 'Rejection Notification',
+                        ])
+                        ->required(),
+                    Textarea::make('rejection_reason')
+                        ->label('Rejection Reason (Required for Rejection)')
+                        ->visible(fn ($get) => $get('notification_type') === 'rejected')
+                        ->required(fn ($get) => $get('notification_type') === 'rejected'),
+                ])
+                ->action(function (Fursuit $record, array $data) {
+                    if ($data['notification_type'] === 'approved') {
+                        $record->user->notify(new FursuitApprovedNotification($record));
+                        $message = 'Approval notification sent successfully';
+                    } else {
+                        $reason = $data['rejection_reason'] ?? 'No reason provided';
+                        $record->user->notify(new FursuitRejectedNotification($record, $reason));
+                        $message = 'Rejection notification sent successfully';
+                    }
+                    
+                    Notification::make()
+                        ->title($message)
+                        ->success()
+                        ->send();
                 }),
             // NEXT FURSUIT
             Actions\Action::make('Next Fursuit')
@@ -131,6 +187,7 @@ class ViewFursuit extends ViewRecord
         if ($nextFursuit) {
             return redirect()->route('filament.admin.resources.fursuits.view', $nextFursuit);
         }
+
         return redirect()->route('filament.admin.resources.fursuits.index');
     }
 }

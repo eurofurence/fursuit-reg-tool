@@ -4,19 +4,18 @@ namespace App\Filament\Resources;
 
 use App\Domain\Printing\Models\Printer;
 use App\Filament\Resources\PrinterResource\Pages;
-use App\Filament\Resources\PrinterResource\RelationManagers;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PrinterResource extends Resource
 {
     protected static ?string $model = Printer::class;
+
     protected static ?string $navigationGroup = 'POS';
+
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function form(Form $form): Form
@@ -40,7 +39,7 @@ class PrinterResource extends Resource
                     ->required()
                     ->columnSpanFull(),
                 Forms\Components\Select::make('default_paper_size')
-                    ->options(fn(Printer $record) => collect($record->paper_sizes)->pluck('name', 'name'))
+                    ->options(fn (Printer $record) => collect($record->paper_sizes)->pluck('name', 'name'))
                     ->columnSpanFull(),
                 // Json paper_sizes only view
                 Forms\Components\Textarea::make('paper_sizes')

@@ -17,7 +17,7 @@ class FursuitResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            "reg_id" => $this->user->attendee_id,
+            'reg_id' => $this->user->attendee_id,
             'status' => $this->status,
             'name' => $this->name,
             'published' => $this->published,
@@ -25,7 +25,7 @@ class FursuitResource extends JsonResource
             'image_url' => $this->image_url,
             'badges_count' => $this->badges_count,
 
-            "species" => $this->species->only(["id", "name", "type"]),
+            'species' => $this->species->only(['id', 'name', 'type']),
         ];
     }
 }

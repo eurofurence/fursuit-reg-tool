@@ -25,8 +25,8 @@ class RegistrationSubmitDataCommand extends Command
                 ->withCookies([
                     'AUTH' => config('services.attsrv.cookies.AUTH'),
                     'JWT' => config('services.attsrv.cookies.JWT'),
-                ],config('services.attsrv.cookies.domain'))
-                ->post('/attendees/'.$user->attendee_id.'/additional-info/fursuitbadge',[
+                ], config('services.attsrv.cookies.domain'))
+                ->post('/attendees/'.$user->eventUser()->attendee_id.'/additional-info/fursuitbadge', [
                     'has_fursuit_badge' => $user->badges()->exists(),
                 ]);
             // Get and dd
@@ -35,9 +35,9 @@ class RegistrationSubmitDataCommand extends Command
                 ->withCookies([
                     'AUTH' => config('services.attsrv.cookies.AUTH'),
                     'JWT' => config('services.attsrv.cookies.JWT'),
-                ],config('services.attsrv.cookies.domain'))
+                ], config('services.attsrv.cookies.domain'))
                 ->throw()
-                ->get('/attendees/'.$user->attendee_id.'/additional-info/fursuitbadge');
+                ->get('/attendees/'.$user->eventUser()->attendee_id.'/additional-info/fursuitbadge');
             // Return info
             dump($response->json());
         });

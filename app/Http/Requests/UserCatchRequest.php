@@ -10,7 +10,7 @@ class UserCatchRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'catch_code' => ['required','string', 'min:'.config("fcea.fursuit_catch_code_length"), 'max:'.config("fcea.fursuit_catch_code_length"), new FursuitCatchCodeRule()]
+            'catch_code' => ['required', 'string', 'min:'.config('fcea.fursuit_catch_code_length'), 'max:'.config('fcea.fursuit_catch_code_length'), new FursuitCatchCodeRule],
         ];
     }
 }

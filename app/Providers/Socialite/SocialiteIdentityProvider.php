@@ -10,11 +10,17 @@ use Laravel\Socialite\Two\User;
 class SocialiteIdentityProvider extends AbstractProvider
 {
     private mixed $issuer;
+
     private mixed $userinfoEndpoint;
+
     private mixed $tokenEndpoint;
+
     private mixed $authorizationEndpoint;
+
     private mixed $jwksUri;
+
     private mixed $endSessionEndpoint;
+
     private mixed $revocationEndpoint;
 
     /**
@@ -48,6 +54,7 @@ class SocialiteIdentityProvider extends AbstractProvider
         $this->jwksUri = $config['jwks_uri'];
         $this->endSessionEndpoint = $config['end_session_endpoint'];
         $this->revocationEndpoint = $config['revocation_endpoint'];
+
         return $this;
     }
 
@@ -76,7 +83,7 @@ class SocialiteIdentityProvider extends AbstractProvider
 
     protected function mapUserToObject(array $user)
     {
-        return (new User())->setRaw($user)->map([
+        return (new User)->setRaw($user)->map([
             'id' => $user['sub'],
             'email' => $user['email'],
             'email_verified' => $user['email_verified'],

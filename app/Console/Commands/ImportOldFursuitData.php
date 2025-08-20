@@ -9,8 +9,8 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class ImportOldFursuitData extends Command
 {
@@ -34,7 +34,7 @@ class ImportOldFursuitData extends Command
         'EF16' => [
             'name' => 'EF16',
             'theme' => 'Serengeti',
-            'location' => 'Magdeburg, Germany', 
+            'location' => 'Magdeburg, Germany',
             'year' => 2010,
             'starts_at' => '2010-08-25',
             'ends_at' => '2010-08-29',
@@ -160,9 +160,13 @@ class ImportOldFursuitData extends Command
     ];
 
     private int $importedCount = 0;
+
     private int $skippedCount = 0;
+
     private int $errorCount = 0;
+
     private array $createdEvents = [];
+
     private array $createdSpecies = [];
 
     public function handle(): int
@@ -171,15 +175,17 @@ class ImportOldFursuitData extends Command
         $this->info('=====================================');
 
         $dataPath = base_path('dataimport');
-        
-        if (!is_dir($dataPath)) {
+
+        if (! is_dir($dataPath)) {
             $this->error("❌ Data import directory not found: {$dataPath}");
+
             return Command::FAILURE;
         }
 
-        $csvPath = $dataPath . '/old.csv';
-        if (!file_exists($csvPath)) {
+        $csvPath = $dataPath.'/old.csv';
+        if (! file_exists($csvPath)) {
             $this->error("❌ CSV file not found: {$csvPath}");
+
             return Command::FAILURE;
         }
 
@@ -193,7 +199,7 @@ class ImportOldFursuitData extends Command
             $this->importCsvData($csvPath);
 
             // Step 3: Process HTML files for additional data
-            if (!$this->option('skip-images')) {
+            if (! $this->option('skip-images')) {
                 $this->processHtmlFiles($dataPath);
             }
 
@@ -209,8 +215,9 @@ class ImportOldFursuitData extends Command
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error("❌ Import failed: " . $e->getMessage());
+            $this->error('❌ Import failed: '.$e->getMessage());
             Log::error('Fursuit import failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
             return Command::FAILURE;
         }
 
@@ -230,15 +237,15 @@ class ImportOldFursuitData extends Command
                 [
                     'starts_at' => $eventData['starts_at'],
                     'ends_at' => $eventData['ends_at'],
-                    'order_starts_at' => $eventData['starts_at'] . ' 09:00:00',
-                    'order_ends_at' => $eventData['ends_at'] . ' 18:00:00',
+                    'order_starts_at' => $eventData['starts_at'].' 09:00:00',
+                    'order_ends_at' => $eventData['ends_at'].' 18:00:00',
                     'archival_notice' => $eventData['archival_notice'] ?? null,
                     'catch_em_all_enabled' => false, // All historical imports have catch_em_all disabled
                 ]
             );
 
             $this->createdEvents[$eventCode] = $event;
-            
+
             if ($event->wasRecentlyCreated) {
                 $this->line("  ✅ Created: {$eventData['name']} ({$eventData['theme']})");
             } else {
@@ -250,9 +257,9 @@ class ImportOldFursuitData extends Command
     private function importCsvData(string $csvPath): void
     {
         $this->info('📊 Processing CSV Data...');
-        
+
         $handle = fopen($csvPath, 'r');
-        if (!$handle) {
+        if (! $handle) {
             throw new \Exception("Cannot open CSV file: {$csvPath}");
         }
 
@@ -261,13 +268,14 @@ class ImportOldFursuitData extends Command
 
         $bar = $this->output->createProgressBar();
         $bar->setFormat(' %current%/%max% [%bar%] %percent:3s%% | %message%');
-        
+
         $limit = $this->option('limit') ? (int) $this->option('limit') : null;
         $processed = 0;
 
-        while (($data = fgetcsv($handle)) !== false && (!$limit || $processed < $limit)) {
+        while (($data = fgetcsv($handle)) !== false && (! $limit || $processed < $limit)) {
             if (count($data) < 4) {
                 $this->skippedCount++;
+
                 continue;
             }
 
@@ -280,14 +288,15 @@ class ImportOldFursuitData extends Command
             // Skip if specific event filter and doesn't match
             if ($this->option('event') && $eventCode !== $this->option('event')) {
                 $this->skippedCount++;
+
                 continue;
             }
 
-            $bar->setMessage("Processing: {$fursuitName}" . ($imageFile ? " (with image)" : ""));
+            $bar->setMessage("Processing: {$fursuitName}".($imageFile ? ' (with image)' : ''));
             $bar->advance();
 
             try {
-                $this->processFursuitEntry($eventCode, $fursuitName, $speciesName, $imageFile, !$dontPublish);
+                $this->processFursuitEntry($eventCode, $fursuitName, $speciesName, $imageFile, ! $dontPublish);
                 $this->importedCount++;
             } catch (\Exception $e) {
                 $this->errorCount++;
@@ -295,7 +304,7 @@ class ImportOldFursuitData extends Command
                     'event' => $eventCode,
                     'name' => $fursuitName,
                     'species' => $speciesName,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
 
@@ -314,7 +323,7 @@ class ImportOldFursuitData extends Command
         }
 
         // Get or create event
-        if (!isset($this->createdEvents[$eventCode])) {
+        if (! isset($this->createdEvents[$eventCode])) {
             throw new \Exception("Event not found: {$eventCode}");
         }
         $event = $this->createdEvents[$eventCode];
@@ -325,7 +334,7 @@ class ImportOldFursuitData extends Command
 
         // Process image if available
         $imagePaths = null;
-        if (!empty($imageFile) && $imageFile !== '""') {
+        if (! empty($imageFile) && $imageFile !== '""') {
             $imagePaths = $this->determineImagePath($eventCode, $imageFile);
         }
 
@@ -346,13 +355,13 @@ class ImportOldFursuitData extends Command
                 'status' => 'approved', // Old system data is assumed approved
                 'catch_em_all' => $enableCatchEmAll,
             ];
-            
+
             // Add image paths if available
             if ($imagePaths) {
                 $updateData['image'] = $imagePaths['image'];
                 $updateData['image_webp'] = $imagePaths['image_webp'];
             }
-            
+
             $existingFursuit->update($updateData);
         } else {
             // Create new fursuit without user (historical data)
@@ -367,7 +376,7 @@ class ImportOldFursuitData extends Command
                 'image' => $imagePaths ? $imagePaths['image'] : null,
                 'image_webp' => $imagePaths ? $imagePaths['image_webp'] : null,
             ];
-            
+
             Fursuit::create($createData);
         }
     }
@@ -376,7 +385,7 @@ class ImportOldFursuitData extends Command
     {
         $species = trim($species);
         $lowered = strtolower($species);
-        
+
         return $this->speciesNormalization[$lowered] ?? ucfirst($species);
     }
 
@@ -391,7 +400,6 @@ class ImportOldFursuitData extends Command
 
         return $species;
     }
-
 
     private function determineImagePath(string $eventCode, string $imageFile): ?array
     {
@@ -408,7 +416,7 @@ class ImportOldFursuitData extends Command
 
         foreach ($localPaths as $localPath) {
             $fullPath = base_path($localPath);
-            
+
             if (file_exists($fullPath)) {
                 try {
                     return $this->processAndUploadImage($fullPath, $eventCode, $imageFile);
@@ -418,9 +426,9 @@ class ImportOldFursuitData extends Command
                         'event' => $eventCode,
                         'image_file' => $imageFile,
                         'local_path' => $fullPath,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
-                    throw new \Exception("Image processing failed for {$imageFile}: " . $e->getMessage());
+                    throw new \Exception("Image processing failed for {$imageFile}: ".$e->getMessage());
                 }
             }
         }
@@ -429,7 +437,7 @@ class ImportOldFursuitData extends Command
         Log::info('Image file not found during import', [
             'event' => $eventCode,
             'image_file' => $imageFile,
-            'searched_paths' => $localPaths
+            'searched_paths' => $localPaths,
         ]);
 
         return null;
@@ -437,51 +445,51 @@ class ImportOldFursuitData extends Command
 
     private function processAndUploadImage(string $fullPath, string $eventCode, string $imageFile): array
     {
-        $manager = new ImageManager(new Driver());
-        
+        $manager = new ImageManager(new Driver);
+
         // Read the original image
         $image = $manager->read($fullPath);
-        
+
         // Target max dimensions (576x768)
         $maxWidth = 576;
         $maxHeight = 768;
-        
+
         // Resize image to fit within max dimensions without stretching
         // This maintains aspect ratio and scales down if needed
         $image = $image->cover($maxWidth, $maxHeight, 'center');
-        
+
         // Generate filenames
-        $baseFilename = pathinfo($imageFile, PATHINFO_FILENAME) . '_' . time();
-        
+        $baseFilename = pathinfo($imageFile, PATHINFO_FILENAME).'_'.time();
+
         // Original file (keep original format for compatibility)
-        $originalFilename = 'imported/' . $eventCode . '/' . $baseFilename . '.' . pathinfo($imageFile, PATHINFO_EXTENSION);
-        $originalS3Path = 'fursuits/' . $originalFilename;
-        
-        // WebP version 
-        $webpFilename = 'imported/' . $eventCode . '/' . $baseFilename . '.webp';
-        $webpS3Path = 'fursuits/' . $webpFilename;
-        
+        $originalFilename = 'imported/'.$eventCode.'/'.$baseFilename.'.'.pathinfo($imageFile, PATHINFO_EXTENSION);
+        $originalS3Path = 'fursuits/'.$originalFilename;
+
+        // WebP version
+        $webpFilename = 'imported/'.$eventCode.'/'.$baseFilename.'.webp';
+        $webpS3Path = 'fursuits/'.$webpFilename;
+
         // Upload original (processed) image
         $originalContent = (string) $image->encode();
         $originalUploaded = Storage::put($originalS3Path, $originalContent);
-        
-        if (!$originalUploaded) {
+
+        if (! $originalUploaded) {
             throw new \Exception("Failed to upload original image to S3: {$originalS3Path}");
         }
-        
+
         // Upload WebP version
         $webpContent = (string) $image->toWebp(80); // 80% quality for good compression
         $webpUploaded = Storage::put($webpS3Path, $webpContent);
-        
-        if (!$webpUploaded) {
+
+        if (! $webpUploaded) {
             throw new \Exception("Failed to upload WebP image to S3: {$webpS3Path}");
         }
-        
+
         $this->line("  📁 Processed & Uploaded: {$imageFile} → {$originalS3Path} & {$webpS3Path} ({$image->width()}x{$image->height()})");
-        
+
         return [
             'image' => $originalS3Path,
-            'image_webp' => $webpS3Path
+            'image_webp' => $webpS3Path,
         ];
     }
 
@@ -493,17 +501,17 @@ class ImportOldFursuitData extends Command
         $eventCodes = $specificEvent ? [$specificEvent] : array_keys($this->eventMapping);
 
         foreach ($eventCodes as $eventCode) {
-            $eventDir = $dataPath . '/' . $eventCode;
-            if (!is_dir($eventDir)) {
+            $eventDir = $dataPath.'/'.$eventCode;
+            if (! is_dir($eventDir)) {
                 continue;
             }
 
-            $htmlFiles = glob($eventDir . '/details*.html');
+            $htmlFiles = glob($eventDir.'/details*.html');
             if (empty($htmlFiles)) {
                 continue;
             }
 
-            $this->line("  📂 Processing {$eventCode}: " . count($htmlFiles) . ' HTML files');
+            $this->line("  📂 Processing {$eventCode}: ".count($htmlFiles).' HTML files');
 
             foreach ($htmlFiles as $htmlFile) {
                 try {
@@ -511,7 +519,7 @@ class ImportOldFursuitData extends Command
                 } catch (\Exception $e) {
                     Log::warning('Failed to process HTML file', [
                         'file' => $htmlFile,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -521,18 +529,18 @@ class ImportOldFursuitData extends Command
     private function extractDataFromHtml(string $htmlFile, string $eventCode): void
     {
         $content = file_get_contents($htmlFile);
-        if (!$content) {
+        if (! $content) {
             return;
         }
 
         // Extract fursuit name from title or content
         preg_match('/Fursuit Details Page for (.+?)(?:<|\n|$)/i', $content, $nameMatches);
-        if (!$nameMatches) {
+        if (! $nameMatches) {
             return;
         }
 
         $fursuitName = trim($nameMatches[1]);
-        
+
         // Extract additional information if needed
         preg_match('/Species:<\/font>.*?<td[^>]*>([^<]+)/is', $content, $speciesMatches);
         preg_match('/Worn by:<\/font>.*?<td[^>]*>([^<]+)/is', $content, $ownerMatches);
@@ -541,21 +549,21 @@ class ImportOldFursuitData extends Command
         $owner = isset($ownerMatches[1]) ? trim(strip_tags($ownerMatches[1])) : null;
 
         // Update fursuit with additional data if found
-        if (!empty($fursuitName) && isset($this->createdEvents[$eventCode])) {
+        if (! empty($fursuitName) && isset($this->createdEvents[$eventCode])) {
             $fursuit = Fursuit::where('name', $fursuitName)
                 ->where('event_id', $this->createdEvents[$eventCode]->id)
                 ->first();
 
             if ($fursuit && ($species || $owner)) {
                 $updates = [];
-                
+
                 if ($species && $species !== $fursuit->species->name) {
                     $normalizedSpecies = $this->normalizeSpecies($species);
                     $speciesModel = $this->getOrCreateSpecies($normalizedSpecies);
                     $updates['species_id'] = $speciesModel->id;
                 }
 
-                if (!empty($updates)) {
+                if (! empty($updates)) {
                     $fursuit->update($updates);
                 }
             }
@@ -570,15 +578,15 @@ class ImportOldFursuitData extends Command
         $this->line("✅ Imported: {$this->importedCount} fursuits");
         $this->line("⏭️  Skipped: {$this->skippedCount} entries");
         $this->line("❌ Errors: {$this->errorCount} entries");
-        $this->line("📅 Events: " . count($this->createdEvents));
-        $this->line("🏷️  Species: " . count($this->createdSpecies));
+        $this->line('📅 Events: '.count($this->createdEvents));
+        $this->line('🏷️  Species: '.count($this->createdSpecies));
 
         if ($this->errorCount > 0) {
-            $this->warn("⚠️  Check logs for error details");
+            $this->warn('⚠️  Check logs for error details');
         }
 
         if ($this->option('dry-run')) {
-            $this->warn("🔄 This was a DRY RUN - no data was actually imported");
+            $this->warn('🔄 This was a DRY RUN - no data was actually imported');
         }
     }
 }

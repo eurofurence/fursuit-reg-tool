@@ -1,0 +1,18 @@
+{
+  "connections": [
+    {
+      "id": "mysql1",
+      "type": "mysql",
+      "host": "127.0.0.1",
+      "port": 3306,
+      "name": "laravel",
+      "user": "sail",
+      "password": "password",
+      "query_timeout": 60,
+      "max_open_conns": 20,
+      "max_idle_conns": 5,
+      "conn_max_lifetime_seconds": 300,
+      "conn_max_idle_time_seconds": 60
+    }
+  ]
+}

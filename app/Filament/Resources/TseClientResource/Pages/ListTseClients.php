@@ -18,14 +18,14 @@ class ListTseClients extends ListRecords
             Actions\Action::make('createnew')
                 ->label('Create TSE Client')
                 ->icon('heroicon-o-plus-circle')
-            ->action(function () {
-                $uuid = Str::uuid();
-                TseClient::create([
-                    'remote_id' => $uuid,
-                    'serial_number' => $uuid,
-                    'state' => 'REGISTERED',
-                ]);
-            }),
+                ->action(function () {
+                    $uuid = Str::uuid();
+                    TseClient::create([
+                        'remote_id' => $uuid,
+                        'serial_number' => $uuid,
+                        'state' => 'REGISTERED',
+                    ]);
+                }),
         ];
     }
 }

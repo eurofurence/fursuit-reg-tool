@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Inertia\Response;
 
 class CheckoutController extends Controller
 {
@@ -29,7 +28,8 @@ class CheckoutController extends Controller
         }
         // transaction needs to be in state Active to be shown
         if ($checkout->status->equals(Cancelled::class)) {
-            return redirect()->route('pos.attendee.show', ['attendeeId' => $checkout->user->attendee_id])->with('error', 'Checkout is cancelled.');
+            $attendeeId = $checkout->user->eventUser()?->attendee_id;
+            return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId])->with('error', 'Checkout is cancelled.');
         }
         $transactionData = $this->getTransactionData($checkout);
 
@@ -38,7 +38,6 @@ class CheckoutController extends Controller
             $checkout->save();
             $checkout->status->transitionTo(Finished::class);
         }
-
 
         return Inertia::render('POS/Checkout/Show', [
             'checkout' => $checkout->load('items'),
@@ -51,6 +50,7 @@ class CheckoutController extends Controller
         $checkout->payment_method = 'cash';
         $checkout->save();
         $checkout->status->transitionTo(Finished::class);
+
         return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id]);
     }
 
@@ -111,11 +111,12 @@ class CheckoutController extends Controller
                     'subtotal' => $badge->subtotal,
                 ]);
             }
+
             return $checkout;
         });
 
         // Fiskaly
-        $fiskalyService = new FiskalyService();
+        $fiskalyService = new FiskalyService;
         $fiskalyService->updateOrCreateTransaction($checkout);
 
         return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id]);
@@ -125,16 +126,17 @@ class CheckoutController extends Controller
     public function destroy(Checkout $checkout)
     {
         $checkout->status->transitionTo(Cancelled::class);
-        return redirect()->route('pos.attendee.show', ['attendeeId' => $checkout->user->attendee_id]);
-    }
 
+        $attendeeId = $checkout->user->eventUser()?->attendee_id;
+        return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId]);
+    }
 
     public function startCardPayment(Checkout $checkout)
     {
         $reader = $checkout->machine->sumupReader;
         $checkout->payment_method = 'card';
         $uuid = Str::uuid();
-        $response = Http::sumup()->post("/v0.1/merchants/" . config('services.sumup.merchant_code') . "/readers/" . $reader->remote_id . '/checkout', [
+        $response = Http::sumup()->post('/v0.1/merchants/'.config('services.sumup.merchant_code').'/readers/'.$reader->remote_id.'/checkout', [
             'affiliate' => [
                 'app_id' => config('services.sumup.app_id'),
                 'foreign_transaction_id' => $uuid,
@@ -147,11 +149,12 @@ class CheckoutController extends Controller
                 'currency' => 'EUR',
                 'value' => $checkout->total,
                 'minor_unit' => 2,
-            ]
+            ],
         ])->throw();
         $data = $response->json('data');
         $checkout->payment_method_remote_id = $uuid;
         $checkout->save();
+
         return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id]);
     }
 
@@ -164,6 +167,7 @@ class CheckoutController extends Controller
         if ($badge->extra_copy_of) {
             $features[] = 'Extra Copy';
         }
+
         return $features;
     }
 
@@ -173,8 +177,8 @@ class CheckoutController extends Controller
     }
 
     /**
-     * @param Checkout $checkout
      * @return array|mixed
+     *
      * @throws \Illuminate\Http\Client\ConnectionException
      */
     public function getTransactionData(Checkout $checkout): mixed
@@ -183,12 +187,13 @@ class CheckoutController extends Controller
         // Get the transaction
 
         if ($checkout->payment_method_remote_id) {
-            $response = Http::sumup()->get("/v0.1/me/transactions", [
-                "foreign_transaction_id" => $checkout->payment_method_remote_id,
+            $response = Http::sumup()->get('/v0.1/me/transactions', [
+                'foreign_transaction_id' => $checkout->payment_method_remote_id,
             ]);
             $transactionData = $response->json();
             if (isset($transactionData['error_code']) && $transactionData['error_code'] === 'NOT_FOUND') {
                 sleep(2);
+
                 return $this->getTransactionData($checkout);
             }
             $response->throw();
