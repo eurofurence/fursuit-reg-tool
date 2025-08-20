@@ -3,7 +3,6 @@
 namespace App\Badges\Components;
 
 use Imagine\Gd\Font;
-use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
 use Imagine\Image\Palette\Color\ColorInterface;
 use Imagine\Image\Palette\RGB;
@@ -16,35 +15,35 @@ use Imagine\Image\PointInterface;
  */
 class TextField
 {
-    private string $text;                 // Der Text, der in das Bild gezeichnet werden soll
+    private string $text;                 // The text to be drawn in the image
 
-    private int $width;                   // Die Breite des Bereichs, in den der Text gezeichnet wird
+    private int $width;                   // The width of the area in which the text is drawn
 
-    private int $height;                  // Die Höhe des Bereichs, in den der Text gezeichnet wird
+    private int $height;                  // The height of the area in which the text is drawn
 
-    private int $minFontSize;             // Die minimale Schriftgröße, die verwendet werden darf
+    private int $minFontSize;             // The minimum font size that may be used
 
-    private int $startFontSize;           // Die anfängliche Schriftgröße, die verwendet wird
+    private int $startFontSize;           // The initial font size that will be used
 
-    private string $font_path;            // Der Pfad zur Schriftartdatei
+    private string $font_path;            // The path to the font file
 
-    private ColorInterface $font_color;   // Die Farbe des Textes
+    private ColorInterface $font_color;   // The color of the text
 
-    private string $alignment;            // Die Ausrichtung des Textes (links, zentriert, rechts)
+    private string $alignment;            // The alignment of the text (left, centered, right)
 
-    private int $maxRows;                 // Die maximale Anzahl der Zeilen, die der Text haben darf
+    private int $maxRows;                 // The maximum number of lines the text may have
 
-    private ?ColorInterface $backgroundColor;  // Hintergrundfarbe der Textbox
+    private ?ColorInterface $backgroundColor;  // Background color of the text box
 
-    private ?ColorInterface $borderColor;      // Farbe des Rahmens
+    private ?ColorInterface $borderColor;      // Color of the frame
 
-    private int $borderThickness;             // Dicke des Rahmens
+    private int $borderThickness;             // Thickness of the frame
 
-    private int $borderRadius;                // Radius der abgerundeten Ecken
+    private int $borderRadius;                // Radius of the rounded corners
 
-    private ?ColorInterface $textStrokeColor; // Farbe der Textumrahmung
+    private ?ColorInterface $textStrokeColor; // Color of the text frame
 
-    private int $textStrokeThickness;         // Dicke der Textumrahmung
+    private int $textStrokeThickness;         // Thickness of the text frame
 
     /**
      * Constructor for the TextField class.
@@ -79,12 +78,12 @@ class TextField
         PointInterface $position,
         string $alignment, // Standardmäßig linksbündig
         int $maxRows,
-        ?ColorInterface $backgroundColor = null, // Standardmäßig kein Hintergrund
-        ?ColorInterface $borderColor = null,     // Standardmäßig keine Umrandung
-        int $borderThickness = 0,                // Standardmäßig keine Umrandung
-        int $borderRadius = 0,                   // Standardmäßig keine abgerundeten Ecken
-        ?ColorInterface $textStrokeColor = null, // Standardmäßig keine Textumrahmung
-        float $textStrokeThickness = 0             // Standardmäßig keine Textumrahmung
+        ?ColorInterface $backgroundColor = null, // No background by default
+        ?ColorInterface $borderColor = null, // No border by default
+        int $borderThickness = 0, // No border by default
+        int $borderRadius = 0, // No rounded corners by default
+        ?ColorInterface $textStrokeColor = null, // No text border by default
+        float $textStrokeThickness = 0 // No text border by default
     ) {
         $this->text = $text;
         $this->width = $width;
@@ -102,7 +101,7 @@ class TextField
         $this->textStrokeColor = $textStrokeColor;
         $this->textStrokeThickness = $textStrokeThickness;
 
-        // Zeichne den Text beim Erstellen des Objekts
+        // Draw the text when creating the object
         return $this->drawTextInBox($image, $position);
     }
 
@@ -116,28 +115,28 @@ class TextField
      */
     protected function drawTextInBox(ImageInterface $image, PointInterface $position): ImageInterface
     {
-        $fontSize = $this->startFontSize;  // Startet mit der anfänglichen Schriftgröße
-        $palette = new RGB;              // Erzeuge eine RGB-Palette
+        $fontSize = $this->startFontSize;  // Starts with the initial font size
+        $palette = new RGB;              // Create an RGB palette
 
         do {
-            // Berechne die Box-Größe mit der aktuellen Schriftgröße
+            // Calculate the box size with the current font size
             $font = new Font($this->font_path, $fontSize, $this->font_color);
             $textBox = $font->box($this->text);
 
-            // Überprüft, ob der Text in die Box passt
+            // Checks whether the text fits into the box
             if ($textBox->getWidth() > $this->width || $textBox->getHeight() > $this->height) {
-                $fontSize--;  // Reduziert die Schriftgröße, wenn der Text zu groß ist
+                $fontSize--;  // Reduces the font size if the text is too large
             } else {
-                break;  // Passt, keine weiteren Änderungen erforderlich
+                break;  // Fits, no further changes required
             }
         } while ($fontSize >= $this->minFontSize);
 
-        // Berechne die vertikale Position, um den Text zentriert zu platzieren
+        // Calculate the vertical position to center the text
         $y = $position->getY() + ($this->height - $textBox->getHeight()) / 2;
-        // Berechne die horizontale Position basierend auf der Ausrichtung (zentriert, links oder rechts)
+        // Calculate the horizontal position based on the orientation (centered, left or right)
         $x = $this->calculateXPosition($textBox->getWidth(), $position);
 
-        // Zeichnet den Textumriss, falls angegeben
+        // Draws the text outline, if specified
         if ($this->textStrokeColor && $this->textStrokeThickness > 0) {
             for ($offsetX = -$this->textStrokeThickness; $offsetX <= $this->textStrokeThickness; $offsetX++) {
                 for ($offsetY = -$this->textStrokeThickness; $offsetY <= $this->textStrokeThickness; $offsetY++) {
@@ -152,14 +151,14 @@ class TextField
             }
         }
 
-        // Zeichnet den Text auf das Bild an der berechneten Position
+        // Draws the text on the image at the calculated position
         $image->draw()->text($this->text, $font, new Point($x, $y));
 
         return $image;
     }
 
     /**
-     * Berechnet die X-Position des Textes basierend auf der Ausrichtung.
+     * Calculates the X-position of the text based on the alignment.
      */
     private function calculateXPosition(int $textWidth, PointInterface $position): int
     {
@@ -170,7 +169,7 @@ class TextField
                 return $position->getX() + ($this->width - $textWidth);
             case TextAlignment::LEFT:
             default:
-                return $position->getX(); // Linksbündig
+                return $position->getX(); // Left-aligned
         }
     }
 }
