@@ -81,13 +81,6 @@ const formatDate = (dateString: string) => {
         <!-- Stats Overview -->
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
-                <div class="text-center mb-4">
-                    <div class="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
-                        <Award class="w-8 h-8 text-white" />
-                    </div>
-                    <h2 class="text-xl font-bold text-gray-100">Achievement Progress</h2>
-                </div>
-
                 <div class="grid grid-cols-3 gap-4">
                     <div class="text-center pt-4 pb-4 p-0.5 bg-green-900/20 rounded-lg border border-green-700 achievement-icon">
                         <CheckCircle class="w-8 h-8 mx-auto mb-2 text-green-600" />
