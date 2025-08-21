@@ -257,11 +257,11 @@ const rarityStats = computed(() => {
                 <div
                     class="flex flex-col gap-4 items-start sm:items-center justify-between"
                     :class="
-                        eventOptions.length > 1 ? 'sm:flex-row' : 'xs:flex-row'
+                        eventOptions.length > 2 ? 'sm:flex-row' : 'xs:flex-row'
                     "
                 >
                     <!-- Event Filter -->
-                    <div v-if="eventOptions.length > 1" class="flex-1 min-w-20">
+                    <div v-if="eventOptions.length > 2" class="flex-1 min-w-20">
                         <label
                             class="block text-sm font-medium text-gray-700 mb-2"
                             >Event:</label
