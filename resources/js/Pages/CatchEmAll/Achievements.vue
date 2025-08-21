@@ -119,10 +119,10 @@ const formatDate = (dateString: string) => {
                             <!-- Achievement Info -->
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
-                                    <h4 class="font-semibold text-gray-800">{{ achievement.title }}</h4>
+                                    <h4 class="font-semibold text-gray-200">{{ achievement.title }}</h4>
                                     <Star class="w-5 h-5 text-yellow-500 fill-current" />
                                 </div>
-                                <p class="text-sm text-gray-600 mb-2">{{ achievement.description }}</p>
+                                <p class="text-sm text-gray-300 mb-2">{{ achievement.description }}</p>
                                 <div class="flex items-center justify-between">
                                     <div class="text-xs text-green-600 font-medium">
                                         ✅ Completed on {{ formatDate(achievement.earnedAt) }}
@@ -141,7 +141,7 @@ const formatDate = (dateString: string) => {
         <!-- In Progress Achievements -->
         <div v-if="inProgressAchievements.length > 0">
             <h3 class="text-lg font-bold text-gray-100 mb-3 flex items-center">
-                <Clock class="w-6 h-6 mr-2 text-blue-400" />
+                <Clock class="w-6 h-6 mr-2 text-blue-600" />
                 In Progress ({{ inProgressAchievements.length }})
             </h3>
             <div class="space-y-3 mb-6">
@@ -156,14 +156,14 @@ const formatDate = (dateString: string) => {
 
                             <!-- Achievement Info -->
                             <div class="flex-1">
-                                <h4 class="font-semibold text-gray-800 mb-1">{{ achievement.title }}</h4>
-                                <p class="text-sm text-gray-600 mb-3">{{ achievement.description }}</p>
+                                <h4 class="font-semibold text-gray-200 mb-1">{{ achievement.title }}</h4>
+                                <p class="text-sm text-gray-300 mb-3">{{ achievement.description }}</p>
 
                                 <!-- Progress Bar -->
                                 <div class="space-y-2">
                                     <div class="flex justify-between text-sm">
-                                        <span class="text-gray-600">Progress</span>
-                                        <span class="font-medium text-blue-600">
+                                        <span class="text-gray-300">Progress</span>
+                                        <span class="font-medium text-blue-500">
                                             {{ achievement.progress }}/{{ achievement.maxProgress }} ({{ achievement.progressPercentage }}%)
                                         </span>
                                     </div>
@@ -196,8 +196,8 @@ const formatDate = (dateString: string) => {
 
                             <!-- Achievement Info -->
                             <div class="flex-1">
-                                <h4 class="font-semibold text-gray-600 mb-1">{{ achievement.title }}</h4>
-                                <p class="text-sm text-gray-500 mb-2">{{ achievement.description }}</p>
+                                <h4 class="font-semibold text-gray-200 mb-1">{{ achievement.title }}</h4>
+                                <p class="text-sm text-gray-300 mb-2">{{ achievement.description }}</p>
                                 <div class="text-xs text-gray-400 font-medium">
                                     🔒 Start hunting to unlock!
                                 </div>
@@ -211,8 +211,8 @@ const formatDate = (dateString: string) => {
         <!-- Empty State -->
         <div v-if="achievements.length === 0" class="text-center py-12">
             <Award class="w-20 h-20 mx-auto mb-4 text-gray-300" />
-            <h3 class="text-xl font-medium text-gray-600 mb-2">No achievements available</h3>
-            <p class="text-gray-500">Start catching fursuiters to unlock achievements!</p>
+            <h3 class="text-xl font-medium text-gray-200 mb-2">No achievements available</h3>
+            <p class="text-gray-300">Start catching fursuiters to unlock achievements!</p>
         </div>
     </CatchEmAllLayout>
 </template>
