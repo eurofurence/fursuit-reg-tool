@@ -71,7 +71,7 @@ const getPodiumIcon = (rank: number) => {
         icon="medal"
     >
         <!-- Event Filter -->
-        <Card v-if="eventOptions.length > 1" class="bg-gray-800 border border-gray-700 shadow-sm">
+        <Card v-if="eventOptions.length > 2" class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
                 <div class="space-y-3">
                     <label class="block text-sm font-medium text-gray-300"
