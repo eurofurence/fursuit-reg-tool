@@ -28,7 +28,7 @@ class FursuitApprovedNotification extends Notification
             ->line('We are happy to inform you that your badge has been approved.')
             ->line('We will print the badge and have it ready for you at the convention.')
             ->lineIf($this->badge->total > 0, 'We will ask you to pay the Badge fee when you pickup the Badge.')
-            ->lineIf($this->badge->total > 0, 'We accept Cash (Preferred), Credit Card and EC Card. Please note that we do not accept American Express.')
+            ->lineIf($this->badge->total > 0, 'Card (EC, Debit and Credit) Payments are highly preferred, we also offer cash payments.')
             ->line('To make changes or cancel the badge (possible until we print it), please click the button below.')
             ->action('Edit Badge', route('badges.edit', [
                 'badge' => $this->badge->id,
