@@ -21,8 +21,20 @@ class AuthController extends Controller
 
     public function login()
     {
+        // Determine callback URL based on current domain
+        $currentHost = request()->getHost();
+        $isCatchEmAll = $currentHost === config('fcea.domain');
+
+        if ($isCatchEmAll) {
+            $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
+            $callbackUrl = $protocol . '://' . $currentHost . '/auth/callback';
+        } else {
+            $callbackUrl = rtrim(config('app.url'), '/') . '/auth/callback';
+        }
+
         $url = Socialite::driver('identity')
             ->scopes(['openid', 'profile', 'email', 'groups', 'offline', 'offline_access'])
+            ->redirectUrl($callbackUrl)
             ->redirect();
 
         // Use Interia location instead
@@ -32,9 +44,31 @@ class AuthController extends Controller
     public function loginCallback()
     {
         try {
-            $socialLiteUser = Socialite::driver('identity')->user();
+            // Ensure callback URL matches the one used during login redirect
+            $currentHost = request()->getHost();
+            $isCatchEmAll = $currentHost === config('fcea.domain');
+            
+            if ($isCatchEmAll) {
+                $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
+                $callbackUrl = $protocol . '://' . $currentHost . '/auth/callback';
+            } else {
+                $callbackUrl = rtrim(config('app.url'), '/') . '/auth/callback';
+            }
+            
+            $socialLiteUser = Socialite::driver('identity')
+                ->redirectUrl($callbackUrl)
+                ->user();
         } catch (\Exception $e) {
-            return redirect()->route('auth.login');
+            // Redirect to login on the same domain
+            $currentHost = request()->getHost();
+            $isCatchEmAll = $currentHost === config('fcea.domain');
+
+            if ($isCatchEmAll) {
+                $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
+                return redirect($protocol . '://' . $currentHost . '/auth/login');
+            } else {
+                return redirect()->route('auth.login');
+            }
         }
 
         $attendeeListResponse = \Illuminate\Support\Facades\Http::attsrv()
@@ -45,8 +79,16 @@ class AuthController extends Controller
         $regId = $attendeeListResponse['ids'][0] ?? null;
 
         if (isset($attendeeListResponse['ids'][0]) === false) {
-            return redirect()->route('welcome')->with('message',
-                'Please register for the Convention first before trying to obtain a fursuit badge.');
+            $currentHost = request()->getHost();
+            $isCatchEmAll = $currentHost === config('fcea.domain');
+
+            if ($isCatchEmAll) {
+                return redirect()->route('catch-em-all.introduction')->with('message',
+                    'Please register for the Convention first before trying to play Catch-Em-All.');
+            } else {
+                return redirect()->route('welcome')->with('message',
+                    'Please register for the Convention first before trying to obtain a fursuit badge.');
+            }
         }
 
         $isNewUser = User::where('remote_id', $socialLiteUser->getId())->doesntExist();
@@ -130,18 +172,32 @@ class AuthController extends Controller
         }
 
         Auth::login($user, true);
-        if (Session::exists('catch-em-all-redirect')) {
-            Session::forget('catch-em-all-redirect');
 
-            return redirect()->route('catch-em-all.catch');
+        // Redirect based on current domain
+        $currentHost = request()->getHost();
+        $isCatchEmAll = $currentHost === config('fcea.domain');
+
+        if ($isCatchEmAll) {
+            // Redirect to introduction page for new users, or home for returning users
+            return redirect()->route('catch-em-all.introduction');
+        } else {
+            return redirect()->route('dashboard');
         }
-
-        return redirect()->route('dashboard');
     }
 
     public function logout()
     {
-        return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout');
+        $currentHost = request()->getHost();
+        $isCatchEmAll = $currentHost === config('fcea.domain');
+
+        if ($isCatchEmAll) {
+            // Include post logout redirect for Catch-Em-All
+            $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
+            $returnUrl = $protocol . '://' . $currentHost;
+            return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout?post_logout_redirect_uri=' . urlencode($returnUrl));
+        } else {
+            return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout');
+        }
     }
 
     // Frontchannel Logout
@@ -149,5 +205,16 @@ class AuthController extends Controller
     {
         Auth::logout();
         Session::flush();
+
+        // Optional: redirect based on domain
+        $currentHost = request()->getHost();
+        $isCatchEmAll = $currentHost === config('fcea.domain');
+
+        if ($isCatchEmAll) {
+            $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
+            return redirect($protocol . '://' . $currentHost);
+        }
+
+        // For main domain, just complete the logout (no redirect needed)
     }
 }
