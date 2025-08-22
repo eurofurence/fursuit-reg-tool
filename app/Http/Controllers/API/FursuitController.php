@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\FursuitSearchRequest;
 use App\Http\Resources\FursuitCollection;
+use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
 use App\Models\User;
@@ -26,13 +27,24 @@ class FursuitController extends Controller
         $name = $request->validated('name');
         $status = $request->validated('status') ?? Approved::$name;
 
-        // start building Query
-        $query = Fursuit::query()->withCount('badges')->with('species')->with('user');
+        // Get the active event
+        $activeEvent = Event::getActiveEvent();
+        if (! $activeEvent) {
+            return new FursuitCollection(collect([]));
+        }
+
+        // start building Query - filter by active event
+        $query = Fursuit::query()
+            ->where('event_id', $activeEvent->id)
+            ->withCount('badges')
+            ->with('species')
+            ->with('user');
 
         // Search for reg_id
         if ($request->exists('reg_id')) {
-            $query->whereHas('user.eventUsers', function (Builder $query) use ($regID) {
-                $query->where('attendee_id', '=', $regID);
+            $query->whereHas('user.eventUsers', function (Builder $query) use ($regID, $activeEvent) {
+                $query->where('attendee_id', '=', $regID)
+                      ->where('event_id', '=', $activeEvent->id);
             });
         }
 

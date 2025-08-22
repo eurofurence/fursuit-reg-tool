@@ -59,7 +59,16 @@ class Fursuit extends Model
     {
         return Attribute::make(
             get: function ($value) {
-                return Storage::temporaryUrl($this->image, now()->addMinutes(5));
+                if (! $this->image) {
+                    return null;
+                }
+                
+                try {
+                    return Storage::temporaryUrl($this->image, now()->addMinutes(5));
+                } catch (\Exception $e) {
+                    // Fallback for when temporary URLs aren't supported (e.g., testing)
+                    return Storage::url($this->image);
+                }
             },
         );
     }
@@ -79,13 +88,21 @@ class Fursuit extends Model
                         Storage::put($path, $webp);
                         $this->update(['image_webp' => $path]);
 
-                        return Storage::temporaryUrl($path, now()->addMinutes(5));
+                        try {
+                            return Storage::temporaryUrl($path, now()->addMinutes(5));
+                        } catch (\Exception $e2) {
+                            return Storage::url($path);
+                        }
                     } catch (\Exception $e) {
                         // Log the error for debugging
                         \Log::warning('Failed to generate WebP for fursuit '.$this->id.': '.$e->getMessage());
 
                         // Fallback to original image if WebP generation fails
-                        return Storage::temporaryUrl($this->image, now()->addMinutes(5));
+                        try {
+                            return Storage::temporaryUrl($this->image, now()->addMinutes(5));
+                        } catch (\Exception $e2) {
+                            return Storage::url($this->image);
+                        }
                     }
                 }
 
@@ -96,6 +113,11 @@ class Fursuit extends Model
                     } catch (\Exception $e) {
                         // If webp URL generation fails, fall back to original
                         \Log::warning('Failed to generate WebP URL for fursuit '.$this->id.': '.$e->getMessage());
+                        try {
+                            return Storage::url($this->image_webp);
+                        } catch (\Exception $e2) {
+                            // Fall back to regular image
+                        }
                     }
                 }
 
@@ -105,8 +127,11 @@ class Fursuit extends Model
                         return Storage::temporaryUrl($this->image, now()->addMinutes(5));
                     } catch (\Exception $e) {
                         \Log::error('Failed to generate image URL for fursuit '.$this->id.': '.$e->getMessage());
-
-                        return null;
+                        try {
+                            return Storage::url($this->image);
+                        } catch (\Exception $e2) {
+                            return null;
+                        }
                     }
                 }
 

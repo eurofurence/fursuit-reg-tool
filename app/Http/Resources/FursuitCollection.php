@@ -11,7 +11,7 @@ class FursuitCollection extends ResourceCollection
     public function toArray(Request $request): array
     {
         return [
-            'data' => $this->collection,
+            'data' => FursuitResource::collection($this->collection),
         ];
     }
 }
