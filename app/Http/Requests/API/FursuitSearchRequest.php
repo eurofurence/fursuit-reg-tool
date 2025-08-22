@@ -18,7 +18,7 @@ class FursuitSearchRequest extends FormRequest
     {
         return [
             'name' => ['max:64', 'string', 'nullable'],
-            'reg_id' => ['integer', 'nullable', 'exists:users,attendee_id'],
+            'reg_id' => ['string', 'nullable', 'exists:event_users,attendee_id'],
             'status' => ['string', 'nullable', Rule::in([Pending::$name, Approved::$name, Rejected::$name, 'any'])],
         ];
     }
