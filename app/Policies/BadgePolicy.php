@@ -75,9 +75,9 @@ class BadgePolicy
             return false;
         }
 
-        // Cannot edit when no active event
+        // Cannot edit when no active event or event has ended
         $event = \App\Models\Event::getActiveEvent();
-        if ($event === null) {
+        if ($event === null || !$event->allowsOrders()) {
             return false;
         }
 
