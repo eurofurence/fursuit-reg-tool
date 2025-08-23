@@ -37,16 +37,14 @@ class BadgePrintedNotification extends Notification implements ShouldQueue
         $fursuitName = $this->badge->fursuit->name;
         $badgeId = $this->badge->custom_id;
         $eventName = $this->badge->fursuit->event->name;
-        
+
         return (new MailMessage)
                     ->subject("Your {$fursuitName} badge is ready for pickup!")
                     ->greeting("Hello {$notifiable->name},")
                     ->line("Great news! Your fursuit badge for **{$fursuitName}** (Badge ID: {$badgeId}) has been printed and is ready for pickup.")
-                    ->line("📍 **Pickup Location:** Fursuit Lounge")
-                    ->line("🕐 **Opening Hours:** Available on the {$eventName} Schedule")
-                    ->line("💳 **Payment Preference:** Card payments are highly preferred for faster processing!")
-                    ->line("Please bring your attendee badge or ID when collecting your fursuit badge.")
-                    ->line("Thank you for participating in {$eventName}!");
+                    ->line("**Pickup Location:** Fursuit Lounge")
+                    ->line("**Opening Hours:** Available on the Eurofurence Schedule")
+                    ->line("Card payments are highly preferred for faster processing!");
     }
 
     /**
