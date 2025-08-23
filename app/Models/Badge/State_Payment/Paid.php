@@ -6,8 +6,13 @@ class Paid extends BadgePaymentStatusState
 {
     public static string $name = 'paid';
 
-    public function color(): string
+    public function getColor(): string|array|null
     {
-        // TODO: Implement color() method.
+        return 'success';
+    }
+
+    public function getIcon(): ?string
+    {
+        return 'heroicon-m-check-circle';
     }
 }

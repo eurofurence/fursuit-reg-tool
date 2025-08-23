@@ -1,0 +1,8 @@
+/* Custom Filament Styles - Ultra Condensed Layout */
+
+/* Ultra condensed table cells and form inputs */
+.fi-ta-cell,
+.fi-ta-cell div {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+}

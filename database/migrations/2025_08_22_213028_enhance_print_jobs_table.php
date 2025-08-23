@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('retry_count')->default(0)->after('error_message');
             $table->unsignedTinyInteger('priority')->default(5)->after('retry_count');
             $table->foreignId('processing_machine_id')->nullable()->constrained('machines')->nullOnDelete()->after('printer_id');
-            
+
             // Add indexes for performance
             $table->index('status');
             $table->index(['status', 'priority', 'created_at']);
@@ -39,7 +39,7 @@ return new class extends Migration
                 'error_message',
                 'retry_count',
                 'priority',
-                'processing_machine_id'
+                'processing_machine_id',
             ]);
         });
     }

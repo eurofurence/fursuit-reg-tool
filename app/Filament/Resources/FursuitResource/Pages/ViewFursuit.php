@@ -6,7 +6,6 @@ use App\Filament\Resources\FursuitResource;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
 use App\Models\Fursuit\States\Rejected;
-use App\Models\Fursuit\States\Transitions\RejectedToApproved;
 use App\Notifications\FursuitApprovedNotification;
 use App\Notifications\FursuitRejectedNotification;
 use Filament\Actions;
@@ -120,7 +119,7 @@ class ViewFursuit extends ViewRecord
                 ->modalSubmitActionLabel('Yes, approve it')
                 ->action(function (Fursuit $record) {
                     $record->status->transitionTo(Approved::class, auth()->user());
-                    
+
                     Notification::make()
                         ->title('Rejected fursuit approved successfully')
                         ->success()
@@ -152,7 +151,7 @@ class ViewFursuit extends ViewRecord
                         $record->user->notify(new FursuitRejectedNotification($record, $reason));
                         $message = 'Rejection notification sent successfully';
                     }
-                    
+
                     Notification::make()
                         ->title($message)
                         ->success()

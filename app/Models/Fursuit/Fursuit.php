@@ -62,7 +62,7 @@ class Fursuit extends Model
                 if (! $this->image) {
                     return null;
                 }
-                
+
                 try {
                     return Storage::temporaryUrl($this->image, now()->addMinutes(5));
                 } catch (\Exception $e) {

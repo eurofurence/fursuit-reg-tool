@@ -76,7 +76,7 @@ class GameController extends Controller
     public function catch(UserCatchRequest $request)
     {
         $event = $this->getCurrentEvent();
-        if (!$event) {
+        if (! $event) {
             return to_route('catch-em-all.catch')->with('error', 'No Event Available for Catch Em All');
         }
 
@@ -104,6 +104,7 @@ class GameController extends Controller
         // If neither exists, it's an invalid code
         if (!$specialCode && !$fursuit) {
             $logEntry->save();
+
             return to_route('catch-em-all.catch')->with('error', 'Invalid Code - Try Again!');
         }
 
@@ -275,7 +276,7 @@ class GameController extends Controller
         $user = Auth::user();
         $currentEvent = Event::latest('starts_at')->first();
 
-        if (!$currentEvent) {
+        if (! $currentEvent) {
             return redirect()->route('catch-em-all.introduction')->with('error', 'No active event found.');
         }
 
@@ -290,7 +291,7 @@ class GameController extends Controller
             'user_id' => $user->id,
             'event_id' => $currentEvent->id,
             'event_user_id' => $eventUser->id,
-            'introduced' => $eventUser->fresh()->catch_em_all_introduced
+            'introduced' => $eventUser->fresh()->catch_em_all_introduced,
         ]);
 
         return redirect()->route('catch-em-all.catch')->with('success', 'Welcome to Fursuit Catch em All! Happy hunting!');
@@ -303,7 +304,7 @@ class GameController extends Controller
 
     private function getFilterEvent($selectedEventId, bool $isGlobal, $currentEvent)
     {
-        if ($isGlobal || !$selectedEventId) {
+        if ($isGlobal || ! $selectedEventId) {
             return $isGlobal ? null : $currentEvent;
         }
 
@@ -370,19 +371,20 @@ class GameController extends Controller
         }
 
         RateLimiter::increment($key);
+
         return 0;
     }
 
     private function clearGameCaches(int $eventId, int $userId): void
     {
         $keys = [
-            "game_stats_global",
+            'game_stats_global',
             "game_stats_{$eventId}",
             "game_stats_global_{$userId}",
             "game_stats_{$eventId}_{$userId}",
             "leaderboard_global_10",
             "leaderboard_{$eventId}_10",
-            "collection_global",
+            'collection_global',
             "collection_{$eventId}",
             "collection_global_{$userId}",
             "collection_{$eventId}_{$userId}",

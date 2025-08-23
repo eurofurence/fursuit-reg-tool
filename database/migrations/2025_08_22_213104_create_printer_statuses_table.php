@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('message')->nullable();
             $table->json('metadata')->nullable(); // Additional status data
             $table->timestamps();
-            
+
             $table->index(['printer_id', 'created_at']);
             $table->unique(['printer_id', 'machine_id']);
         });

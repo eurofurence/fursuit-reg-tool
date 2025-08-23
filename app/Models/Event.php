@@ -77,6 +77,12 @@ class Event extends Model
         return $orderStarted && $orderNotEnded;
     }
 
+    public function isDuringEvent(): bool
+    {
+        $now = now();
+        return $this->starts_at <= $now && $this->ends_at >= $now;
+    }
+
     public function fursuits()
     {
         return $this->hasMany(\App\Models\Fursuit\Fursuit::class);

@@ -3,13 +3,37 @@
 namespace App\Http\Controllers\POS;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\Printing\PrintBadgeJob;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\PickedUp;
+use App\Models\Badge\State_Fulfillment\Printed;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use Illuminate\Http\Request;
 
 class BadgeController extends Controller
 {
+    public function printBulk(Request $request)
+    {
+        $badgeIds = $request->input('badge_ids');
+        $badges = Badge::whereIn('id', $badgeIds)->get();
+
+        $printedCount = 0;
+        $badges->each(function ($badge, $index) use (&$printedCount) {
+            if ($badge->status_fulfillment->canTransitionTo(Printed::class)) {
+                $badge->status_fulfillment->transitionTo(Printed::class);
+                $printedCount++;
+            }
+            // Add delay for mass printing so they are generated in order
+            PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($index * 15));
+        });
+
+        if ($printedCount === 0) {
+            return back()->with('error', 'No badges could be printed');
+        }
+
+        return back()->with('success', "{$printedCount} badge(s) have been added to the print queue");
+    }
+
     public function handoutBulk(Request $request)
     {
         $someError = false;

@@ -13,7 +13,7 @@ class MachineFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->unique()->company . ' POS Terminal',
+            'name' => $this->faker->unique()->company.' POS Terminal',
             'should_discover_printers' => $this->faker->boolean(70),
             'is_print_server' => $this->faker->boolean(50),
             'qz_connection_status' => $this->faker->randomElement(QzConnectionStatusEnum::cases()),

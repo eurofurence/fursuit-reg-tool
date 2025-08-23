@@ -15,7 +15,9 @@ class PrinterResource extends Resource
     protected static ?string $model = Printer::class;
 
     protected static ?string $navigationGroup = 'POS';
+
     protected static ?string $navigationIcon = 'heroicon-o-printer';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
@@ -76,7 +78,9 @@ class PrinterResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->searchable(false)
+            ->paginated(false);
     }
 
     public static function getRelations(): array

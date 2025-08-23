@@ -6,8 +6,13 @@ class PickedUp extends BadgeFulfillmentStatusState
 {
     public static string $name = 'picked_up';
 
-    public function color(): string
+    public function getColor(): string|array|null
     {
-        // TODO: Implement color() method.
+        return 'warning';
+    }
+
+    public function getIcon(): ?string
+    {
+        return 'heroicon-m-hand-raised';
     }
 }

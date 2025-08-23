@@ -314,7 +314,7 @@ class BadgeController extends Controller
         $user = $request->user();
         $activeEvent = Event::getActiveEvent();
 
-        if (!$activeEvent) {
+        if (! $activeEvent) {
             return response()->json(['error' => 'No active event found'], 400);
         }
 
@@ -323,7 +323,7 @@ class BadgeController extends Controller
             $tokenService = new TokenRefreshService($user);
             $accessToken = $tokenService->getValidAccessToken();
 
-            if (!$accessToken) {
+            if (! $accessToken) {
                 return response()->json(['error' => 'Unable to get authentication token'], 401);
             }
 
@@ -345,14 +345,14 @@ class BadgeController extends Controller
 
             $regId = $attendeeListResponse['ids'][0] ?? null;
 
-            if (!$regId) {
+            if (! $regId) {
                 return response()->json(['error' => 'No registration found'], 404);
             }
 
             // Get registration status
             $statusResponse = Http::attsrv()
                 ->withToken($accessToken)
-                ->get('/attendees/' . $regId . '/status');
+                ->get('/attendees/'.$regId.'/status');
 
             // Update EventUser with attendee info
             $eventUser->update([
@@ -363,7 +363,7 @@ class BadgeController extends Controller
             // Check for fursuit packages
             $fursuit = Http::attsrv()
                 ->withToken($accessToken)
-                ->get('/attendees/' . $regId . '/packages/fursuit')
+                ->get('/attendees/'.$regId.'/packages/fursuit')
                 ->json();
 
             $totalPrepaidBadges = 0;
@@ -372,7 +372,7 @@ class BadgeController extends Controller
                 // Get additional fursuit badges
                 $fursuitAdditional = Http::attsrv()
                     ->withToken($accessToken)
-                    ->get('/attendees/' . $regId . '/packages/fursuitadd')
+                    ->get('/attendees/'.$regId.'/packages/fursuitadd')
                     ->json();
 
                 $additionalCopies = $fursuitAdditional['present'] ? $fursuitAdditional['count'] : 0;
@@ -386,7 +386,7 @@ class BadgeController extends Controller
                 // Mark as not created in reg system
                 Http::attsrv()
                     ->withToken($accessToken)
-                    ->post('/attendees/' . $regId . '/additional-info/fursuitbadge', [
+                    ->post('/attendees/'.$regId.'/additional-info/fursuitbadge', [
                         'created' => false,
                     ]);
             } else {

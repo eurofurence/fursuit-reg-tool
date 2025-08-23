@@ -30,7 +30,7 @@ class RefreshFceaRankingsCommand extends Command
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error('FCEA rankings refresh failed: ' . $e->getMessage());
+            $this->error('FCEA rankings refresh failed: '.$e->getMessage());
             Log::error('FCEA rankings refresh failed via console command', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

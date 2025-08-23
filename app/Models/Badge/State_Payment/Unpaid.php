@@ -6,8 +6,13 @@ class Unpaid extends BadgePaymentStatusState
 {
     public static string $name = 'unpaid';
 
-    public function color(): string
+    public function getColor(): string|array|null
     {
-        // TODO: Implement color() method.
+        return 'danger';
+    }
+
+    public function getIcon(): ?string
+    {
+        return 'heroicon-m-x-circle';
     }
 }

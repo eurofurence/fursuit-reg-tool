@@ -84,7 +84,7 @@ function submit() {
                 @click="router.visit(route('pos.auth.user.select'))" 
                 severity="secondary" 
                 class="p-button-lg" 
-                label="Select Different User"
+                label="Back to Login"
             />
         </div>
 
@@ -137,13 +137,6 @@ function submit() {
                         <SimpleKeyboard @onKeyPress="keyPress" :options='keyboardOptions'></SimpleKeyboard>
                     </div>
 
-                    <!-- Security Notice -->
-                    <div class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div class="flex items-center justify-center text-amber-800">
-                            <i class="pi pi-shield mr-2"></i>
-                            <span class="text-sm font-medium">Your PIN is encrypted and secure</span>
-                        </div>
-                    </div>
                 </div>
             </template>
         </Card>

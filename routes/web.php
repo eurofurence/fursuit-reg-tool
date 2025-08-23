@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\WelcomeController;
-use App\Http\Controllers\DebugController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', WelcomeController::class)->name('welcome');
@@ -11,13 +10,15 @@ Route::redirect('/auth-done', '/')->name('dashboard');
 Route::get('/fcea', function () {
     $catchDomain = config('fcea.domain');
     $protocol = str_contains($catchDomain, 'localhost') ? 'http' : 'https';
-    return redirect($protocol . '://' . $catchDomain);
+
+    return redirect($protocol.'://'.$catchDomain);
 });
 
 Route::get('/catch-em-all', function () {
     $catchDomain = config('fcea.domain');
     $protocol = str_contains($catchDomain, 'localhost') ? 'http' : 'https';
-    return redirect($protocol . '://' . $catchDomain);
+
+    return redirect($protocol.'://'.$catchDomain);
 });
 
 Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(function () {

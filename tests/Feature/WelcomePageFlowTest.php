@@ -198,4 +198,3 @@ describe('Welcome Page User Interface States', function () {
         );
     });
 });
-

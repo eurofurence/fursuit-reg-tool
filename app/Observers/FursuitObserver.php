@@ -21,6 +21,8 @@ class FursuitObserver
             $fursuit->catch_code = $this->generateCatchCode();
             $fursuit->save();
         }
+
+        // Note: Fursuit layers are no longer cached, so no cache clearing needed
     }
 
     private function generateCatchCode(): string

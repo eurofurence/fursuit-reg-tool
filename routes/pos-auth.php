@@ -33,10 +33,18 @@ Route::middleware('auth:machine')->group(function () {
     // Cashier / Checkout stuff
     Route::post('/printers/store', [PrinterController::class, 'store'])->name('printers.store');
     Route::get('/printers/jobs', [PrinterController::class, 'jobIndex'])->name('printers.jobs');
+    Route::get('/printers/jobs/{job}', [PrinterController::class, 'jobShow'])->name('printers.jobs.show');
     Route::post('/printers/jobs/{job}/printed', [PrinterController::class, 'jobPrinted'])->name('printers.jobs.printed');
     Route::post('/printers/jobs/{job}/failed', [PrinterController::class, 'jobFailed'])->name('printers.jobs.failed');
+    Route::post('/printers/jobs/{job}/status', [PrinterController::class, 'jobStatusUpdate'])->name('printers.jobs.status');
+    Route::post('/printers/jobs/{job}/qz-status', [PrinterController::class, 'qzJobStatusUpdate'])->name('printers.jobs.qz-status');
+    Route::post('/printers/status', [PrinterController::class, 'printerStatusUpdate'])->name('printers.status');
+    
+    // Printer State Management API (Machine-level only - used by QZPrintService)
+    Route::get('/printer-states/api', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'getStates'])->name('printer-states.api');
+    Route::post('/printer-states/update', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'updateState'])->name('printer-states.update');
+    
     // Machine Status API
-    Route::get('/machine/status', [\App\Http\Controllers\POS\MachineStatusController::class, 'status'])->name('machine.status');
     Route::post('/machine/status/update', [\App\Http\Controllers\POS\MachineStatusController::class, 'updateStatus'])->name('machine.status.update');
 
 });

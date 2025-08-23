@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Enum\EventStateEnum;
 use App\Models\Event;
 use Illuminate\Console\Command;
 
@@ -33,18 +32,18 @@ class CreateOrUpdateEventForStateCommand extends Command
         }
 
         $event = Event::getActiveEvent();
-        
+
         if ($event) {
             $this->info("Modifying existing event: {$event->name} (ID: {$event->id})");
         } else {
-            $this->info("No existing event found, will create a new one");
+            $this->info('No existing event found, will create a new one');
         }
 
         switch ($state) {
             case 'pre-order':
                 // Orders haven't started yet, event in future
                 $this->createOrUpdateEvent(
-                    $event, 
+                    $event,
                     now()->addDays(20), // Event starts in 20 days
                     now()->addDays(25), // Event ends in 25 days
                     now()->addDays(2),  // Orders start in 2 days
@@ -52,7 +51,7 @@ class CreateOrUpdateEventForStateCommand extends Command
                 );
                 $this->info('Event set to PRE-ORDER state: Orders start in 2 days, event in 20 days');
                 break;
-                
+
             case 'order':
                 // Orders are currently open, event in future
                 $this->createOrUpdateEvent(
@@ -64,7 +63,7 @@ class CreateOrUpdateEventForStateCommand extends Command
                 );
                 $this->info('Event set to ORDER state: Orders are currently open, event in 15 days');
                 break;
-                
+
             case 'event-order':
                 // Event is currently happening, orders still open
                 $this->createOrUpdateEvent(
@@ -76,7 +75,7 @@ class CreateOrUpdateEventForStateCommand extends Command
                 );
                 $this->info('Event set to EVENT-ORDER state: Event is happening now, orders still open');
                 break;
-                
+
             case 'closed':
                 // Everything is closed/finished
                 $this->createOrUpdateEvent(
@@ -88,14 +87,15 @@ class CreateOrUpdateEventForStateCommand extends Command
                 );
                 $this->info('Event set to CLOSED state: Event and orders have ended');
                 break;
-                
+
             case 'open': // Legacy support
                 $this->createOrUpdateEvent($event, now()->subDays(1), now()->addDays(30), now()->subDays(1), now()->addDays(25));
                 $this->info('Event set to legacy OPEN state');
                 break;
-                
+
             default:
                 $this->error('Invalid state provided. Valid states: pre-order, order, event-order, closed');
+
                 return;
         }
 

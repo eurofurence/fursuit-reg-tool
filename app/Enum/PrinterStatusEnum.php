@@ -16,7 +16,7 @@ enum PrinterStatusEnum: string
 
     public static function fromQzStatusCode(string $code): self
     {
-        return match($code) {
+        return match ($code) {
             'online' => self::Online,
             'offline' => self::Offline,
             'media-empty' => self::MediaEmpty,

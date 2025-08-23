@@ -1,9 +1,9 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Domain\CatchEmAll\Controllers\GameController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PWAController;
+use Illuminate\Support\Facades\Route;
 
 /**
  * CATCH EM ALL GAME ROUTES - Mobile-first fursuiter hunting game

@@ -25,7 +25,6 @@ class PendingToApproved extends Transition
                 ->causedBy($this->reviewer)
                 ->log('Fursuit approved');
 
-
             // Only notify if we are reviewing before the event has ended (i.e., notification is still relevant)
             $eventEndsAt = $this->fursuit->event->ends_at ?? null;
             if ($eventEndsAt && now()->lt($eventEndsAt)) {

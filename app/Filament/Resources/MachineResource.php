@@ -15,7 +15,9 @@ class MachineResource extends Resource
     protected static ?string $model = Machine::class;
 
     protected static ?string $navigationGroup = 'POS';
+
     protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form

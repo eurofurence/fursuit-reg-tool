@@ -4,10 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\FursuitResource\Pages;
 use App\Filament\Resources\FursuitResource\RelationManagers;
-use App\Models\Event;
+use App\Filament\Traits\HasEventFilter;
 use App\Models\Fursuit\Fursuit;
-use App\Models\Fursuit\States\Rejected;
-use App\Models\Fursuit\States\Transitions\RejectedToApproved;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Group;
@@ -15,7 +13,6 @@ use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
-use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
@@ -23,11 +20,39 @@ use Filament\Tables\Table;
 
 class FursuitResource extends Resource
 {
+    use HasEventFilter;
+
     protected static ?string $model = Fursuit::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
+
     protected static ?string $navigationGroup = 'Events & Registration';
+
     protected static ?int $navigationSort = 3;
+
+    public static function getNavigationBadge(): ?string
+    {
+        $eventId = static::getSelectedEventId();
+        if (! $eventId) {
+            return null;
+        }
+
+        return (string) Fursuit::where('event_id', $eventId)->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        $eventId = static::getSelectedEventId();
+        if (! $eventId) {
+            return null;
+        }
+
+        $pendingCount = Fursuit::where('event_id', $eventId)
+            ->where('status', 'pending')
+            ->count();
+
+        return $pendingCount > 0 ? 'warning' : 'success';
+    }
 
     public static function infolist(Infolist $infolist): Infolist
     {
@@ -110,6 +135,7 @@ class FursuitResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => static::applyEventFilter($query))
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('By')
@@ -136,9 +162,6 @@ class FursuitResource extends Resource
                     ->boolean(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('event_id')
-                    ->relationship('event', 'name')
-                    ->default(Event::getActiveEvent()?->id),
                 // Status Filter
                 Tables\Filters\SelectFilter::make('status')
                     ->options([

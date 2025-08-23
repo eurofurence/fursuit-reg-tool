@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
 
 class CatchEmAllAuthMiddleware extends Authenticate
 {

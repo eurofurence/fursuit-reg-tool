@@ -16,7 +16,9 @@ class EventResource extends Resource
     protected static ?string $model = Event::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+
     protected static ?string $navigationGroup = 'Events & Registration';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -79,7 +81,8 @@ class EventResource extends Resource
                 Tables\Columns\TextColumn::make('badge_class')
                     ->label('Badge Class')
                     ->placeholder('Not set')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('starts_at')
                     ->date()
                     ->description(fn (Event $record) => $record->starts_at?->diffForHumans())
@@ -104,12 +107,14 @@ class EventResource extends Resource
                     ->sortable(),
                 Tables\Columns\IconColumn::make('catch_em_all_enabled')
                     ->label('Catch-Em-All')
-                    ->boolean(),
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('archival_notice')
                     ->label('Archival Notice')
                     ->limit(50)
                     ->tooltip(fn (Event $record) => $record->archival_notice)
-                    ->placeholder('None'),
+                    ->placeholder('None')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
@@ -122,7 +127,8 @@ class EventResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultSort('starts_at', 'desc');
     }
 
     public static function getPages(): array

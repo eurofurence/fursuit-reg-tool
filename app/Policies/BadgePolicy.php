@@ -77,12 +77,12 @@ class BadgePolicy
 
         // Cannot edit when no active event or event has ended
         $event = \App\Models\Event::getActiveEvent();
-        if ($event === null || !$event->allowsOrders()) {
+        if ($event === null || ! $event->allowsOrders()) {
             return false;
         }
 
         // Cannot edit a badge that has already been printed
-        if (!$badge->status_fulfillment->equals(Pending::class)) {
+        if (! $badge->status_fulfillment->equals(Pending::class)) {
             return false;
         }
 
@@ -104,7 +104,7 @@ class BadgePolicy
         }
 
         // Cannot delete a badge that has already been printed
-        if (!$badge->status_fulfillment->equals(Pending::class)) {
+        if (! $badge->status_fulfillment->equals(Pending::class)) {
             return false;
         }
 

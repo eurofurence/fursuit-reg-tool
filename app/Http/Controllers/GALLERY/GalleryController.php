@@ -58,8 +58,9 @@ class GalleryController extends Controller
         }
 
         $totalFursuiterCount = 0;
-        if (! $isHistoricalEvent && $selectedEvent) // When searching specifically for an EF with Catch-em-all data
-            $totalFursuiterCount = $query->clone()->distinct()->count('user_id'); // Assume that fursuits are linked to a user
+        if (! $isHistoricalEvent && $selectedEvent) { // When searching specifically for an EF with Catch-em-all data
+            $totalFursuiterCount = $query->clone()->distinct()->count('user_id');
+        } // Assume that fursuits are linked to a user
 
         $totalFursuitCount = $query->count(); // Get total Fursuiter count of this event filter
 
@@ -266,10 +267,11 @@ class GalleryController extends Controller
         if (! $isHistoricalEvent) {
             $query->withCount('catchedByUsers'); // Always adding Catch Values if event can contain these
 
-            if ($sortBy === 'catches_asc')
+            if ($sortBy === 'catches_asc') {
                 $query->orderBy('catched_by_users_count');
-            else if($sortBy === 'catches_desc')
+            } elseif ($sortBy === 'catches_desc') {
                 $query->orderByDesc('catched_by_users_count');
+            }
         }
 
         // Name base sorting at 2nd place
@@ -284,6 +286,6 @@ class GalleryController extends Controller
         }
 
         // Event base sorting at 3rd place (unfortunately event_id is not suitable)
-        $query->orderByLeftPowerJoins('event.name','desc');
+        $query->orderByLeftPowerJoins('event.name', 'desc');
     }
 }

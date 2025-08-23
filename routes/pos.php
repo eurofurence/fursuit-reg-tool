@@ -20,8 +20,11 @@ Route::prefix('/wallet')->name('wallet.')->group(function () {
     Route::get('/remove', [\App\Http\Controllers\POS\CashRegisterController::class, 'moneyRemoveForm'])->name('money.remove');
     Route::post('/remove', [\App\Http\Controllers\POS\CashRegisterController::class, 'moneyRemove'])->name('money.remove.submit');
 });
+// Badge Management
+Route::get('/badges', [\App\Http\Controllers\POS\BadgeManagementController::class, 'index'])->name('badges.index');
 // Print Badge
 Route::post('/badges/{badge}/print', \App\Http\Controllers\POS\Printing\PrintBadgeController::class)->name('badges.print');
+Route::post('/badges/print/bulk', [\App\Http\Controllers\POS\BadgeController::class, 'printBulk'])->name('badges.print.bulk');
 // Print QZ Cert
 Route::post('/badges/{badge}/handout', [\App\Http\Controllers\POS\BadgeController::class, 'handout'])->name('badges.handout');
 Route::post('/badges/{badge}/handout/undo', [\App\Http\Controllers\POS\BadgeController::class, 'handoutUndo'])->name('badges.handout.undo');
@@ -41,3 +44,10 @@ Route::prefix('/print-queue')->name('print-queue.')->group(function () {
 });
 // Statistics
 Route::get('/statistics', [\App\Http\Controllers\POS\StatisticsController::class, 'index'])->name('statistics');
+// Printer State Management (User-facing UI + management actions)
+Route::prefix('/printers')->name('printers.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'index'])->name('index');
+    Route::post('/{printerName}/retry', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'retryJob'])->name('retry');
+    Route::post('/{printerName}/skip', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'skipJob'])->name('skip');
+    Route::post('/{printerName}/clear', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'clearError'])->name('clear');
+});

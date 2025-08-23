@@ -13,7 +13,6 @@ class WelcomeController extends Controller
         // Get next event by ends_at
         $event = \App\Models\Event::getActiveEvent();
 
-
         $prepaidBadgesLeft = 0;
         $currentEventBadgeCount = 0;
         if ($event && Auth::check()) {

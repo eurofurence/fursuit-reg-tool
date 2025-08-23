@@ -5,7 +5,6 @@ namespace App\Http\Controllers\POS;
 use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class PrintQueueController extends Controller
@@ -14,7 +13,7 @@ class PrintQueueController extends Controller
     {
         $printJobs = PrintJob::with(['printable', 'printer'])
             ->orderBy('created_at', 'desc')
-            ->paginate(50);
+            ->paginate(15);
 
         return Inertia::render('POS/PrintQueue/Index', [
             'printJobs' => $printJobs,

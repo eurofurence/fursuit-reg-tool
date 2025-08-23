@@ -14,7 +14,7 @@ enum PrintJobStatusEnum: string
 
     public function canTransitionTo(self $newStatus): bool
     {
-        return match($this) {
+        return match ($this) {
             self::Pending => in_array($newStatus, [self::Queued, self::Cancelled]),
             self::Queued => in_array($newStatus, [self::Printing, self::Cancelled, self::Failed]),
             self::Printing => in_array($newStatus, [self::Printed, self::Failed]),

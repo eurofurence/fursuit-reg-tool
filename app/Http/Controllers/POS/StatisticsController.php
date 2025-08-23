@@ -8,7 +8,6 @@ use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\EventUser;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class StatisticsController extends Controller
@@ -56,7 +55,7 @@ class StatisticsController extends Controller
     {
         $query = Badge::query();
         if ($currentEvent) {
-            $query->whereHas('fursuit', function($q) use ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             });
         }
@@ -85,10 +84,10 @@ class StatisticsController extends Controller
     private function getPrintingStats(?Event $currentEvent): array
     {
         $printJobs = PrintJob::with('printable');
-        
+
         if ($currentEvent) {
-            $printJobs->whereHasMorph('printable', [Badge::class], function($q) use ($currentEvent) {
-                $q->whereHas('fursuit', function($subQ) use ($currentEvent) {
+            $printJobs->whereHasMorph('printable', [Badge::class], function ($q) use ($currentEvent) {
+                $q->whereHas('fursuit', function ($subQ) use ($currentEvent) {
                     $subQ->where('event_id', $currentEvent->id);
                 });
             });
@@ -116,7 +115,7 @@ class StatisticsController extends Controller
 
         $query = Badge::query();
         if ($currentEvent) {
-            $query->whereHas('fursuit', function($q) use ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             });
         }
@@ -136,7 +135,7 @@ class StatisticsController extends Controller
     private function getDailyStats(?Event $currentEvent): array
     {
         $last7Days = collect();
-        
+
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i);
             $dayStart = $date->copy()->startOfDay();
@@ -144,7 +143,7 @@ class StatisticsController extends Controller
 
             $query = Badge::query();
             if ($currentEvent) {
-                $query->whereHas('fursuit', function($q) use ($currentEvent) {
+                $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                     $q->where('event_id', $currentEvent->id);
                 });
             }
@@ -173,7 +172,7 @@ class StatisticsController extends Controller
     {
         $query = Badge::query();
         if ($currentEvent) {
-            $query->whereHas('fursuit', function($q) use ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             });
         }
@@ -185,7 +184,7 @@ class StatisticsController extends Controller
     {
         $query = Badge::query();
         if ($currentEvent) {
-            $query->whereHas('fursuit', function($q) use ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             });
         }
@@ -197,7 +196,7 @@ class StatisticsController extends Controller
     {
         $query = Badge::query();
         if ($currentEvent) {
-            $query->whereHas('fursuit', function($q) use ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             });
         }
@@ -211,7 +210,7 @@ class StatisticsController extends Controller
     {
         $query = Badge::query();
         if ($currentEvent) {
-            $query->whereHas('fursuit', function($q) use ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             });
         }
@@ -229,12 +228,12 @@ class StatisticsController extends Controller
     private function calculateAveragePrintTime($jobs)
     {
         $printedJobs = $jobs->where('status', 'printed')->where('printed_at', '!=', null);
-        
+
         if ($printedJobs->isEmpty()) {
             return null;
         }
 
-        $totalSeconds = $printedJobs->map(function($job) {
+        $totalSeconds = $printedJobs->map(function ($job) {
             return $job->printed_at->diffInSeconds($job->created_at);
         })->avg();
 
@@ -244,14 +243,14 @@ class StatisticsController extends Controller
     private function getHourlySales(?Event $currentEvent): array
     {
         $hours = collect();
-        
+
         for ($hour = 0; $hour < 24; $hour++) {
             $hourStart = now()->startOfDay()->addHours($hour);
             $hourEnd = $hourStart->copy()->addHour();
 
             $query = Badge::query();
             if ($currentEvent) {
-                $query->whereHas('fursuit', function($q) use ($currentEvent) {
+                $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                     $q->where('event_id', $currentEvent->id);
                 });
             }

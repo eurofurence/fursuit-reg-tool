@@ -89,8 +89,8 @@ const submitRfidLogin = () => {
 const submitPinLogin = () => {
     if (pinCode.value.length < 6) return;
     
-    const myBitArray = sjcl.hash.sha256.hash(pinCode.value + props.salt);
-    form.code = sjcl.codec.hex.fromBits(myBitArray);
+    // Send PIN directly without hashing
+    form.code = pinCode.value;
     form.is_rfid = false;
     form.submit();
     pinCode.value = '';

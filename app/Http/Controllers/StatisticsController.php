@@ -9,10 +9,8 @@ use App\Models\FCEA\UserCatch;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Species;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class StatisticsController extends Controller
@@ -24,16 +22,19 @@ class StatisticsController extends Controller
             return $this->generateStatistics();
         });
 
-        if (!Auth::user()?->is_admin ?? true)
+        if (! Auth::user()?->is_admin ?? true) {
             $statistics = $this->removePrivateData($statistics);
+        }
 
         return Inertia::render('Statistics/Index', $statistics);
     }
+
     private function removePrivateData(array $statistics): array
     {
         $statistics['fursuits']['top_owners'] = [];
         $statistics['fcea']['top_catchers'] = [];
         $statistics['users']['most_active_users'] = [];
+
         return $statistics;
     }
 
@@ -62,7 +63,7 @@ class StatisticsController extends Controller
             'total_fursuits' => Fursuit::count(),
             'total_catches' => UserCatch::count(),
             'total_events' => Event::count(),
-            'current_event_badges' => $currentEvent ? Badge::whereHas('fursuit', function($q) use ($currentEvent) {
+            'current_event_badges' => $currentEvent ? Badge::whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             })->count() : 0,
             'current_event_participants' => $currentEvent ? EventUser::where('event_id', $currentEvent->id)->count() : 0,
@@ -72,7 +73,7 @@ class StatisticsController extends Controller
     private function getEventStats($events): array
     {
         return $events->map(function ($event) {
-            $badges = Badge::whereHas('fursuit', function($q) use ($event) {
+            $badges = Badge::whereHas('fursuit', function ($q) use ($event) {
                 $q->where('event_id', $event->id);
             });
             $fursuits = Fursuit::where('event_id', $event->id);
@@ -98,7 +99,7 @@ class StatisticsController extends Controller
     {
         $query = Badge::query();
         if ($currentEvent) {
-            $query->whereHas('fursuit', function($q) use ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             });
         }
@@ -128,9 +129,9 @@ class StatisticsController extends Controller
 
         // Calculate unique fursuiters by name and species combination, but only if more than one unique
         $uniqueFursuiters = $fursuits
-            ->filter(fn($f) => !empty($f->name) && $f->species && !empty($f->species->name))
+            ->filter(fn ($f) => ! empty($f->name) && $f->species && ! empty($f->species->name))
             ->groupBy(function ($fursuit) {
-                return trim(mb_strtolower($fursuit->name)) . '|' . trim(mb_strtolower($fursuit->species->name));
+                return trim(mb_strtolower($fursuit->name)).'|'.trim(mb_strtolower($fursuit->species->name));
             })->count();
 
         return [
@@ -186,10 +187,11 @@ class StatisticsController extends Controller
 
         return [
             'total' => $species->count(),
-            'most_popular' => $species->map(function ($species) use ($currentEvent) {
+            'most_popular' => $species->map(function ($species) {
                 $fursuits = $species->fursuits;
                 // Calculate badges count through fursuits relationship
                 $badgeCount = $fursuits->load('badges')->pluck('badges')->flatten()->count();
+
                 return [
                     'name' => $species->name,
                     'fursuits_count' => $fursuits->count(),
@@ -207,7 +209,7 @@ class StatisticsController extends Controller
 
         if ($currentEvent) {
             $participatingUsers = EventUser::where('event_id', $currentEvent->id)->count();
-            $totalBadges = Badge::whereHas('fursuit', function($q) use ($currentEvent) {
+            $totalBadges = Badge::whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             })->count();
             $averageBadgesPerUser = $participatingUsers > 0 ? round($totalBadges / $participatingUsers, 2) : 0;
@@ -221,7 +223,6 @@ class StatisticsController extends Controller
             'most_active_users' => $this->getMostActiveUsers($currentEvent, 5),
         ];
     }
-
 
     private function getTimelineStats(?Event $currentEvent): array
     {
@@ -255,7 +256,7 @@ class StatisticsController extends Controller
         $totalParticipants = EventUser::where('event_id', $event->id)->count();
         $participantsWithBadges = EventUser::where('event_id', $event->id)
             ->whereHas('user.fursuits.badges', function ($q) use ($event) {
-                $q->whereHas('fursuit', function($subQ) use ($event) {
+                $q->whereHas('fursuit', function ($subQ) use ($event) {
                     $subQ->where('event_id', $event->id);
                 });
             })->count();
@@ -272,7 +273,6 @@ class StatisticsController extends Controller
 
         return $total > 0 ? round(($approved / $total) * 100, 2) : 0;
     }
-
 
     private function getFursuitsBySpecies(?Event $currentEvent): array
     {
@@ -356,30 +356,34 @@ class StatisticsController extends Controller
 
     private function getFceaCompletionStats(?Event $currentEvent): array
     {
-        if (!$currentEvent) return [];
+        if (! $currentEvent) {
+            return [];
+        }
 
         $totalCatchable = Fursuit::where('event_id', $currentEvent->id)
             ->where('catch_em_all', true)
             ->count();
 
-        if ($totalCatchable === 0) return [];
+        if ($totalCatchable === 0) {
+            return [];
+        }
 
         $completionRates = User::whereHas('fursuitsCatched', function ($q) use ($currentEvent) {
             $q->where('event_id', $currentEvent->id);
         })
-        ->withCount(['fursuitsCatched' => function ($q) use ($currentEvent) {
-            $q->where('event_id', $currentEvent->id);
-        }])
-        ->get()
-        ->map(function ($user) use ($totalCatchable) {
-            return round(($user->fursuits_catched_count / $totalCatchable) * 100, 1);
-        });
+            ->withCount(['fursuitsCatched' => function ($q) use ($currentEvent) {
+                $q->where('event_id', $currentEvent->id);
+            }])
+            ->get()
+            ->map(function ($user) use ($totalCatchable) {
+                return round(($user->fursuits_catched_count / $totalCatchable) * 100, 1);
+            });
 
         return [
             'average_completion' => round($completionRates->avg() ?? 0, 2),
             'median_completion' => $completionRates->median(),
-            'players_with_100_percent' => $completionRates->filter(fn($rate) => $rate >= 100)->count(),
-            'players_with_50_percent' => $completionRates->filter(fn($rate) => $rate >= 50)->count(),
+            'players_with_100_percent' => $completionRates->filter(fn ($rate) => $rate >= 100)->count(),
+            'players_with_50_percent' => $completionRates->filter(fn ($rate) => $rate >= 50)->count(),
         ];
     }
 
@@ -396,7 +400,6 @@ class StatisticsController extends Controller
 
         return $mostActive ? $mostActive->date : null;
     }
-
 
     private function getMostActiveUsers(?Event $currentEvent, int $limit = 5): array
     {
@@ -419,7 +422,6 @@ class StatisticsController extends Controller
             ->toArray();
     }
 
-
     private function getPeakCatchActivity(?Event $currentEvent): array
     {
         $hourlyStats = UserCatch::selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
@@ -439,7 +441,7 @@ class StatisticsController extends Controller
             ->first();
 
         return [
-            'peak_hour' => $hourlyStats ? $hourlyStats->hour . ':00' : null,
+            'peak_hour' => $hourlyStats ? $hourlyStats->hour.':00' : null,
             'peak_day' => $dayStats ? $dayStats->day : null,
         ];
     }

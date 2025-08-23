@@ -6,8 +6,13 @@ class Printed extends BadgeFulfillmentStatusState
 {
     public static string $name = 'printed';
 
-    public function color(): string
+    public function getColor(): string|array|null
     {
-        // TODO: Implement color() method.
+        return 'info';
+    }
+
+    public function getIcon(): ?string
+    {
+        return 'heroicon-m-printer';
     }
 }
