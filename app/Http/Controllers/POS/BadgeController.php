@@ -15,16 +15,30 @@ class BadgeController extends Controller
     public function printBulk(Request $request)
     {
         $badgeIds = $request->input('badge_ids');
+        $printerId = $request->input('printer_id');
         $badges = Badge::whereIn('id', $badgeIds)->get();
 
         $printedCount = 0;
-        $badges->each(function ($badge, $index) use (&$printedCount) {
+        $badges->each(function ($badge, $index) use (&$printedCount, $printerId) {
             if ($badge->status_fulfillment->canTransitionTo(Printed::class)) {
                 $badge->status_fulfillment->transitionTo(Printed::class);
                 $printedCount++;
             }
-            // Add delay for mass printing so they are generated in order
-            PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($index * 15));
+
+            if ($printerId) {
+                // Create print job directly with specific printer
+                \App\Domain\Printing\Models\PrintJob::create([
+                    'printer_id' => $printerId,
+                    'printable_type' => Badge::class,
+                    'printable_id' => $badge->id,
+                    'type' => \App\Enum\PrintJobTypeEnum::Badge,
+                    'status' => \App\Enum\PrintJobStatusEnum::Pending,
+                    'priority' => 1,
+                ]);
+            } else {
+                // Use default PrintBadgeJob dispatch
+                PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($index * 15));
+            }
         });
 
         if ($printedCount === 0) {

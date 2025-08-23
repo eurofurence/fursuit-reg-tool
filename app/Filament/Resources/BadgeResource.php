@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources;
 
+use App\Domain\Printing\Models\Printer;
+use App\Enum\PrintJobTypeEnum;
 use App\Filament\Resources\BadgeResource\Pages;
 use App\Filament\Traits\HasEventFilter;
 use App\Jobs\Printing\PrintBadgeJob;
@@ -341,6 +343,37 @@ class BadgeResource extends Resource
                     ->placeholder('All Badges')
                     ->trueLabel('Free Badges Only')
                     ->falseLabel('Paid Badges Only'),
+
+                Tables\Filters\Filter::make('badge_number_range')
+                    ->form([
+                        Forms\Components\TextInput::make('from_number')
+                            ->label('From Badge Number')
+                            ->numeric()
+                            ->placeholder('e.g., 1'),
+                        Forms\Components\TextInput::make('to_number')
+                            ->label('To Badge Number')
+                            ->numeric()
+                            ->placeholder('e.g., 1000'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['from_number'], function ($query, $fromNumber) {
+                                return $query->whereRaw('CAST(SUBSTRING_INDEX(custom_id, "-", -1) AS UNSIGNED) >= ?', [$fromNumber]);
+                            })
+                            ->when($data['to_number'], function ($query, $toNumber) {
+                                return $query->whereRaw('CAST(SUBSTRING_INDEX(custom_id, "-", -1) AS UNSIGNED) <= ?', [$toNumber]);
+                            });
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['from_number']) {
+                            $indicators[] = 'From badge #' . $data['from_number'];
+                        }
+                        if ($data['to_number']) {
+                            $indicators[] = 'To badge #' . $data['to_number'];
+                        }
+                        return $indicators;
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -358,11 +391,26 @@ class BadgeResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
                 Tables\Actions\BulkAction::make('printBadgeBulk')
-                    ->label('Print Badge')
+                    ->label('Print Badges')
+                    ->icon('heroicon-o-printer')
+                    ->color('warning')
+                    ->form([
+                        Forms\Components\Select::make('printer_id')
+                            ->label('Select Printer')
+                            ->options(
+                                Printer::where('type', PrintJobTypeEnum::Badge)
+                                    ->where('is_active', true)
+                                    ->pluck('name', 'id')
+                            )
+                            ->placeholder('Use default printer assignment')
+                            ->helperText('Optional: Select a specific printer for all badges. Leave empty for automatic assignment.'),
+                    ])
                     ->requiresConfirmation()
-                    ->action(function (Collection $records) {
-                        return $records->reverse()->each(fn (Badge $record, $index) => static::printBadge($record,
-                            $index));
+                    ->modalHeading('Print Selected Badges')
+                    ->modalDescription('This will print all selected badges.')
+                    ->action(function (Collection $records, array $data) {
+                        $printerId = $data['printer_id'] ?? null;
+                        return $records->reverse()->each(fn (Badge $record, $index) => static::printBadge($record, $index, $printerId));
                     }),
             ])
             ->selectCurrentPageOnly()
@@ -370,16 +418,30 @@ class BadgeResource extends Resource
             ->defaultSort('custom_id', 'asc');
     }
 
-    public static function printBadge(Badge $badge, $mass = 0): Badge
+    public static function printBadge(Badge $badge, $mass = 0, ?int $printerId = null): Badge
     {
         if ($badge->status_fulfillment->canTransitionTo(Printed::class)) {
             $badge->status_fulfillment->transitionTo(Printed::class);
         }
-        // Add delay for mass printing so they are generated in order
-        PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($mass * 15));
+
+        if ($printerId) {
+            // Create print job directly with specific printer
+            \App\Domain\Printing\Models\PrintJob::create([
+                'printer_id' => $printerId,
+                'printable_type' => Badge::class,
+                'printable_id' => $badge->id,
+                'type' => PrintJobTypeEnum::Badge,
+                'status' => \App\Enum\PrintJobStatusEnum::Pending,
+                'priority' => 1,
+            ]);
+        } else {
+            // Use default PrintBadgeJob dispatch
+            PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($mass * 15));
+        }
 
         return $badge;
     }
+
 
     public static function getRelations(): array
     {

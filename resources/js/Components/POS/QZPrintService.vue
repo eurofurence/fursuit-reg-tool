@@ -1,6 +1,6 @@
 <script setup>
 import {usePage} from "@inertiajs/vue3";
-import {onMounted} from "vue";
+import {onMounted, onUnmounted} from "vue";
 import { useToast } from 'primevue/usetoast';
 import qz from "qz-tray";
 
@@ -32,7 +32,35 @@ function safeEmit(event, data) {
     }
 }
 
+// Cleanup function to prevent memory leaks during hot reload
+function cleanup() {
+    console.log('🧹 Cleaning up QZPrintService intervals...');
+
+    if (jobProcessingInterval) {
+        clearInterval(jobProcessingInterval);
+        jobProcessingInterval = null;
+    }
+
+    if (printerStatesSyncInterval) {
+        clearInterval(printerStatesSyncInterval);
+        printerStatesSyncInterval = null;
+    }
+
+    if (healthCheckInterval) {
+        clearInterval(healthCheckInterval);
+        healthCheckInterval = null;
+    }
+
+    // Clear any active job tracking
+    activePrintJobs.clear();
+    availablePrinters.clear();
+    printerPreviousStatus.clear();
+}
+
 onMounted(function() {
+    // Clean up any existing intervals from hot reloads first
+    cleanup();
+
     // Enhanced printer callbacks with full status reporting for both printer and job events
     qz.printers.setPrinterCallbacks(async (evt) => {
         console.log('🔔 QZ Event Received:', {
@@ -98,12 +126,22 @@ onMounted(function() {
     }
 })
 
+// Cleanup on unmount to prevent memory leaks during hot reloads
+onUnmounted(() => {
+    cleanup();
+})
+
 // Periodic health check to ensure status accuracy
 let lastKnownStatus = null;
 let healthCheckCounter = 0;
 
 function startHealthCheck() {
-    setInterval(() => {
+    // Clear any existing health check interval
+    if (healthCheckInterval) {
+        clearInterval(healthCheckInterval);
+    }
+
+    healthCheckInterval = setInterval(() => {
         const isActive = qz.websocket.isActive();
         const currentStatus = isActive ? 'connected' : 'disconnected';
         healthCheckCounter++;
@@ -140,6 +178,7 @@ let printerPreviousStatus = new Map(); // Track previous printer status for comp
 let availablePrinters = new Set(); // Set of printer names
 let jobProcessingInterval = null;
 let printerStatesSyncInterval = null;
+let healthCheckInterval = null;
 const machineName = page.props.auth.machine?.name || 'Unknown';
 
 // Report job status events to backend
@@ -630,6 +669,11 @@ function startPrinterMonitoring() {
 
 // Multi-printer job processing - check for jobs for all printers frequently
 function startJobProcessing() {
+    // Clear any existing job processing interval to prevent duplicates
+    if (jobProcessingInterval) {
+        clearInterval(jobProcessingInterval);
+    }
+
     // Start continuous job checking every 4 seconds
     jobProcessingInterval = setInterval(() => {
         checkForJobsForAllPrinters();
@@ -773,7 +817,17 @@ async function processSingleJob(job) {
 
         console.log('Printer options:', printerOptions);
 
-        const config = qz.configs.create(job.printer, printerOptions);
+        // Generate unique job name for QZ-Tray tracking
+        const qzJobName = `Job_${job.id}_${Date.now()}`;
+        console.log(`🏷️  Generated job name: ${qzJobName} for job ${job.id}`);
+
+        // Add job name to printer options for QZ config
+        const configOptions = {
+            ...printerOptions,
+            jobName: qzJobName
+        };
+
+        const config = qz.configs.create(job.printer, configOptions);
         const data = [{
             type: 'pixel',
             format: 'pdf',
@@ -781,13 +835,7 @@ async function processSingleJob(job) {
             data: job.file
         }];
 
-        // Generate unique job name for QZ-Tray tracking
-        const qzJobName = `Job_${job.id}_${Date.now()}`;
-        console.log(`🏷️  Generated job name: ${qzJobName} for job ${job.id}`);
-
-        // Add job name to print data for QZ-Tray tracking
-        data[0].jobName = qzJobName;
-        console.log(`📄 Added job name to print data:`, data[0]);
+        console.log(`📄 Created QZ config with job name: ${qzJobName}`, configOptions);
 
         // Track this job for matching with QZ events
         activePrintJobs.set(job.printer, {

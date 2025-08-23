@@ -170,7 +170,7 @@ class FiskalyService
                             ],
                             'amounts_per_payment_type' => [
                                 [
-                                    'payment_type' => 'CASH',
+                                    'payment_type' => strtoupper($checkout->payment_method ?? 'CASH'),
                                     'amount' => number_format(round($checkout->total / 100, 2), 2),
                                     'currency_code' => 'EUR',
                                 ],
@@ -180,10 +180,83 @@ class FiskalyService
                 ],
             ])
             ->throw();
+
         $checkout->increment('remote_rev_count');
 
-        $checkout->fiskaly_data = $response->json();
-        $checkout->fiskaly_id = $response->json()['_id'];
+        // Store complete Fiskaly response
+        $fiskalyData = $response->json();
+        $checkout->fiskaly_data = $fiskalyData;
+        $checkout->fiskaly_id = $fiskalyData['_id'];
+
+        // Extract required TSE compliance fields from Fiskaly response
+        $this->extractTseComplianceData($checkout, $fiskalyData);
+
         $checkout->save();
+
+        return $fiskalyData;
+    }
+
+    /**
+     * Extract TSE compliance data from Fiskaly response
+     */
+    private function extractTseComplianceData(Checkout $checkout, array $fiskalyData): void
+    {
+        // Extract TSE serial number from TSS info
+        $checkout->tse_serial_number = $fiskalyData['tss_id'] ?? config('services.fiskaly.tss_id');
+
+        // Extract transaction number from Fiskaly
+        $checkout->tse_transaction_number = $fiskalyData['number'] ?? null;
+
+        // Extract signature information
+        if (isset($fiskalyData['signature'])) {
+            $signature = $fiskalyData['signature'];
+            $checkout->tse_signature_counter = $signature['counter'] ?? null;
+            $checkout->tse_start_signature = $signature['value'] ?? null;
+
+            // For completed transactions, there might be an end signature
+            if (isset($signature['end_signature'])) {
+                $checkout->tse_end_signature = $signature['end_signature'];
+            }
+        }
+
+        // Extract TSE timestamp (convert from Fiskaly format)
+        if (isset($fiskalyData['time_start'])) {
+            $checkout->tse_timestamp = Carbon::parse($fiskalyData['time_start'])->toDateTimeString();
+        }
+
+        // Set process type for KassenSichV compliance
+        $checkout->tse_process_type = 'Kassenbeleg-V1';
+
+        // Store process data for audit trail (simplified)
+        $checkout->tse_process_data = json_encode([
+            'receipt_id' => "FSB-{$checkout->created_at->year}-{$checkout->id}",
+            'total_amount' => $checkout->total,
+            'payment_method' => $checkout->payment_method,
+            'items_count' => $checkout->items()->count(),
+        ]);
+    }
+
+    /**
+     * Get TSS info for compliance reporting
+     */
+    public function getTssInfo(): array
+    {
+        $response = $this->request()
+            ->get('tss/'.config('services.fiskaly.tss_id'))
+            ->throw();
+
+        return $response->json();
+    }
+
+    /**
+     * Get transaction details for audit purposes
+     */
+    public function getTransaction(string $transactionId): array
+    {
+        $response = $this->request()
+            ->get('tss/'.config('services.fiskaly.tss_id').'/tx/'.$transactionId)
+            ->throw();
+
+        return $response->json();
     }
 }

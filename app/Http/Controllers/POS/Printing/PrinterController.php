@@ -33,15 +33,16 @@ class PrinterController extends Controller
     {
         $machine = auth('machine')->user();
 
-        // Get jobs that are ready to be printed (pending or queued) 
+        // Get jobs that are ready to be printed (pending or queued)
         // BUT only for printers that are IDLE (one job at a time per printer)
         return PrintJob::whereHas('printer', function ($query) use ($machine) {
                 $query->where('machine_id', $machine->id)
                       ->where('status', PrinterStatusEnum::IDLE->value); // Only idle printers
             })
             ->whereIn('status', [PrintJobStatusEnum::Pending, PrintJobStatusEnum::Queued])
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'asc')
             ->limit(5)
-            ->prioritized()
             ->get()
             ->map(fn (PrintJob $printJob) => [
                 'id' => $printJob->id,
@@ -135,6 +136,21 @@ class PrinterController extends Controller
 
         if ($job->status->canTransitionTo($newStatus)) {
             $job->transitionTo($newStatus);
+
+            // Update printer status when job transitions to printing
+            if ($newStatus === PrintJobStatusEnum::Printing) {
+                $printerName = $request->input('printer_name') ?? $job->printer->name;
+
+                Printer::updatePrinterState(
+                    $printerName,
+                    PrinterStatusEnum::PROCESSING,
+                    $job->id,
+                    null,
+                    $machine->name
+                );
+
+                \Log::info("Printer {$printerName} status updated to processing when job {$job->id} started");
+            }
         }
 
         // Store additional QZ-specific metadata
@@ -232,7 +248,7 @@ class PrinterController extends Controller
         if ($printerStatus) {
             $printerName = $request->input('printer_name') ?? $job->printer->name;
             $machine = auth('machine')->user();
-            
+
             Printer::updatePrinterState(
                 $printerName,
                 $printerStatus,
@@ -240,7 +256,7 @@ class PrinterController extends Controller
                 ($printerStatus === PrinterStatusEnum::PAUSED) ? $request->input('message') : null,
                 $machine->name
             );
-            
+
             \Log::info("Printer {$printerName} status updated to {$printerStatus->value} via QZ callback");
         }
 
