@@ -9,7 +9,7 @@ import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
 import ConfirmModal from "@/Components/POS/ConfirmModal.vue";
 import Dialog from 'primevue/dialog';
-import Select from 'primevue/select';
+import Dropdown from 'primevue/dropdown';
 import { ref, computed, watchEffect, onMounted, onUnmounted } from "vue";
 import { useForm } from "laravel-precognition-vue-inertia";
 import { router } from "@inertiajs/vue3";
@@ -165,7 +165,7 @@ watchEffect(() => {
 
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">Printer</label>
-                    <Select
+                    <Dropdown
                         v-model="selectedPrinter"
                         :options="props.printers"
                         optionLabel="name"
