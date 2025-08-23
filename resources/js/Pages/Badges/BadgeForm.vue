@@ -346,7 +346,12 @@ const canEditFields = computed(() => {
 
                 <Message v-if="!isEditMode && new Date(usePage().props.event.mass_printed_at) < new Date()"
                          severity="info" :closable="false" class="mb-4">
-                    Late badge orders can be picked up starting from the 2nd convention day.
+                    <template v-if="new Date() >= new Date(new Date(usePage().props.event.starts_at).getTime() + 24 * 60 * 60 * 1000)">
+                        We will send you an email once your badge is ready. Processing usually takes ~30 minutes.
+                    </template>
+                    <template v-else>
+                        Late badge orders can be picked up from the 2nd convention day.
+                    </template>
                 </Message>
             </div>
 

@@ -14,6 +14,9 @@ const qzStatus = ref({
     last_seen: null
 });
 
+// Printer states management
+const printerStates = ref({});
+
 // Handle QZ status updates from QZPrintService
 const handleQzStatusChange = (status) => {
     qzStatus.value = { ...qzStatus.value, ...status };
@@ -21,6 +24,12 @@ const handleQzStatusChange = (status) => {
 
 const handlePendingJobsUpdate = (count) => {
     qzStatus.value.pending_jobs = count;
+};
+
+const handlePrinterStatesUpdate = (states) => {
+    console.log('🎯 POSLayout received printer states update:', states);
+    printerStates.value = states;
+    console.log('📊 POSLayout printer states updated to:', printerStates.value);
 };
 import QZPrintService from "@/Components/POS/QZPrintService.vue";
 import ToastService from "@/Components/POS/ToastService.vue";
@@ -30,6 +39,8 @@ import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 const cashier = computed(() => page.props.auth.user);
+const machine = computed(() => page.props.auth.machine);
+const printerStatus = computed(() => page.props.printerStatus);
 
 // Responsive breakpoint detection
 const isMobile = ref(false);
@@ -56,6 +67,19 @@ const userMenuItems = ref([
     { label: 'Keyboard Shortcuts', icon: 'pi pi-keyboard', command: () => showShortcutsDialog.value = true },
 ]);
 const showShortcutsDialog = ref(false);
+
+// Computed properties for printer status
+const printerStatusSummary = computed(() => {
+    const states = Object.values(printerStates.value);
+    return {
+        total: states.length,
+        idle: states.filter(s => s.status === 'idle').length,
+        working: states.filter(s => s.status === 'working').length,
+        paused: states.filter(s => s.status === 'paused').length
+    };
+});
+
+const hasPausedPrinters = computed(() => printerStatusSummary.value.paused > 0);
 
 // Keyboard Shortcuts
 function handleGlobalShortcuts(e) {
@@ -110,10 +134,12 @@ const props = defineProps({
 
 <template>
     <ToastService/>
-    <!-- Keep this, responsible for printing! -->
+    <!-- Only load QZPrintService for devices that should discover printers -->
     <QZPrintService 
+        v-if="machine?.should_discover_printers"
         @qz-status-changed="handleQzStatusChange"
         @pending-jobs-updated="handlePendingJobsUpdate"
+        @printer-states-updated="handlePrinterStatesUpdate"
     />
     <div class="min-h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
         <!-- Modern Header -->
@@ -139,6 +165,21 @@ const props = defineProps({
                     <div class="hidden md:block">
                         <QzStatusIndicator :qz-status="qzStatus" />
                     </div>
+                    <div class="hidden md:block">
+                        <!-- Full Printers button for devices that can discover printers -->
+                        <Link v-if="machine?.should_discover_printers" :href="route('pos.printers.index')">
+                            <Button 
+                                label="Printers" 
+                                icon="pi pi-print" 
+                                size="small"
+                                :severity="hasPausedPrinters ? 'danger' : 'secondary'"
+                                :outlined="!hasPausedPrinters"
+                                :badge="hasPausedPrinters ? printerStatusSummary.paused.toString() : ''"
+                                badgeSeverity="danger"
+                                class="relative"
+                            />
+                        </Link>
+                    </div>
                 </div>
                 
                 <!-- Right Section - User Menu -->
@@ -147,9 +188,27 @@ const props = defineProps({
                     <div class="block md:hidden">
                         <QzStatusIndicator :qz-status="qzStatus" :show-pending-jobs="false" />
                     </div>
-                    <div class="text-right hidden sm:block">
-                        <div class="text-sm text-slate-500">Cashier</div>
-                        <div class="font-medium text-slate-800">{{ cashier.name }}</div>
+                    <div class="text-right hidden sm:block space-y-1">
+                        <div class="flex items-center justify-end space-x-3">
+                            <!-- Printer status indicator for non-printing devices -->
+                            <div v-if="!machine?.should_discover_printers && printerStatus" class="flex items-center">
+                                <i 
+                                    class="pi pi-print text-lg"
+                                    :class="printerStatus.has_issues ? 'text-red-500' : 'text-green-500'"
+                                    :title="printerStatus.has_issues ? 
+                                        `${printerStatus.paused_count} of ${printerStatus.total_count} printers paused` : 
+                                        'All printers operational'"
+                                ></i>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xs text-slate-400 uppercase tracking-wide">Machine</div>
+                                <div class="font-medium text-slate-700 text-sm">{{ machine?.name || 'Unknown' }}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xs text-slate-400 uppercase tracking-wide">Cashier</div>
+                                <div class="font-medium text-slate-800 text-sm">{{ cashier?.name || 'Unknown' }}</div>
+                            </div>
+                        </div>
                     </div>
                     <Button 
                         type="button" 

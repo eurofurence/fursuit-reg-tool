@@ -30,11 +30,11 @@ class PrintBadgeJob implements ShouldQueue
 
         // Determine badge class based on event badge_class column
         $badgeClass = $this->badge->fursuit->event->badge_class ?? 'EF28_Badge';
-        
-        $printer = match($badgeClass) {
-            'EF29_Badge' => new EF29_Badge(),
-            'EF28_Badge' => new EF28_Badge(),
-            default => new EF28_Badge(), // Fallback to EF28 for safety
+
+        $printer = match ($badgeClass) {
+            'EF29_Badge' => new EF29_Badge,
+            'EF28_Badge' => new EF28_Badge,
+            default => new EF28_Badge, // Fallback to EF28 for safety
         };
         $pdfContent = $printer->getPdf($this->badge);
         // Store PDF Content in PrintJobs Storage

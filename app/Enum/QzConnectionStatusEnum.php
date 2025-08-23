@@ -12,7 +12,7 @@ enum QzConnectionStatusEnum: string
 
     public function getColor(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Connected => 'green',
             self::Disconnected => 'red',
             self::Connecting => 'yellow',
@@ -23,7 +23,7 @@ enum QzConnectionStatusEnum: string
 
     public function getLabel(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Connected => 'Connected',
             self::Disconnected => 'Disconnected',
             self::Connecting => 'Connecting...',

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\POS\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\Staff;
 use App\Models\RfidTag;
+use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,15 +14,14 @@ class MachineUserAuthController extends Controller
 {
     public function selectUser()
     {
-        return Inertia::render('POS/Auth/PinLogin', [
-            'salt' => $this->generateSalt(),
-        ]);
+        return Inertia::render('POS/Auth/PinLogin');
     }
 
     private function generateSalt()
     {
         $salt = bin2hex(random_bytes(32));
         session(['user_login_salt' => $salt]);
+
         return $salt;
     }
 
@@ -44,11 +43,6 @@ class MachineUserAuthController extends Controller
             'is_rfid' => 'boolean',
         ]);
 
-        // Load salt
-        $salt = session('user_login_salt');
-        if (!$salt) {
-            return redirect()->back()->withErrors(['code' => 'Session expired. Please try again.']);
-        }
 
         $staff = null;
         $rfidTag = null;
@@ -60,33 +54,26 @@ class MachineUserAuthController extends Controller
                 ->where('content', $data['code'])
                 ->with('staff')
                 ->first();
-            
-            if (!$rfidTag || !$rfidTag->staff->is_active) {
+
+            if (! $rfidTag || ! $rfidTag->staff->is_active) {
                 return redirect()->back()->withErrors(['code' => 'Invalid or inactive RFID badge']);
             }
-            
+
             $staff = $rfidTag->staff;
-            
+
             // Update RFID tag last login
             $rfidTag->updateLastLogin();
         } else {
-            // PIN authentication - find staff by hashed PIN
-            $allStaff = Staff::active()->get();
-            
-            foreach ($allStaff as $staffMember) {
-                if (hash_equals(hash('sha256', $staffMember->pin_code.$salt), $data['code'])) {
-                    $staff = $staffMember;
-                    break;
-                }
-            }
-            
-            if (!$staff) {
+            // PIN authentication - find staff by direct PIN comparison
+            $staff = Staff::active()
+                ->where('pin_code', $data['code'])
+                ->first();
+
+            if (! $staff) {
                 return redirect()->back()->withErrors(['code' => 'Invalid PIN code']);
             }
         }
 
-        // Clear salt
-        session()->forget('user_login_salt');
 
         // Update staff last login
         $staff->updateLastLogin();
@@ -115,8 +102,6 @@ class MachineUserAuthController extends Controller
             return redirect()->back()->withErrors(['code' => 'Invalid code']);
         }
 
-        // Clear salt
-        session()->forget('user_login_salt');
 
         // Authenticate user
         Auth::guard('machine-user')->login($user);

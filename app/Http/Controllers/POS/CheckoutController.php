@@ -29,6 +29,7 @@ class CheckoutController extends Controller
         // transaction needs to be in state Active to be shown
         if ($checkout->status->equals(Cancelled::class)) {
             $attendeeId = $checkout->user->eventUser()?->attendee_id;
+
             return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId])->with('error', 'Checkout is cancelled.');
         }
         $transactionData = $this->getTransactionData($checkout);
@@ -128,6 +129,7 @@ class CheckoutController extends Controller
         $checkout->status->transitionTo(Cancelled::class);
 
         $attendeeId = $checkout->user->eventUser()?->attendee_id;
+
         return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId]);
     }
 

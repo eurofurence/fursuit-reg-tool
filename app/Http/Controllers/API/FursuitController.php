@@ -44,7 +44,7 @@ class FursuitController extends Controller
         if ($request->exists('reg_id')) {
             $query->whereHas('user.eventUsers', function (Builder $query) use ($regID, $activeEvent) {
                 $query->where('attendee_id', '=', $regID)
-                      ->where('event_id', '=', $activeEvent->id);
+                    ->where('event_id', '=', $activeEvent->id);
             });
         }
 

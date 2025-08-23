@@ -61,8 +61,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'pos/auth/machine/status/update',
             'pos/auth/machine/status',
-            'pos/auth/printers/store',
-            'pos/auth/printers/jobs/*/printed',
+            'pos/auth/printer**',
+            'pos/printers/**'
         ]);
         $middleware->alias([
             'pos-auth' => \App\Http\Middleware\PosAuthMiddleware::class,

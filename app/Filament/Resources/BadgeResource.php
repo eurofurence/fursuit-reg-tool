@@ -3,16 +3,12 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BadgeResource\Pages;
+use App\Filament\Traits\HasEventFilter;
 use App\Jobs\Printing\PrintBadgeJob;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\BadgeFulfillmentStatusState;
-use App\Models\Badge\State_Fulfillment\Pending;
-use App\Models\Badge\State_Fulfillment\PickedUp;
 use App\Models\Badge\State_Fulfillment\Printed;
-use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use App\Models\Badge\State_Payment\BadgePaymentStatusState;
-use App\Models\Badge\State_Payment\Paid;
-use App\Models\Badge\State_Payment\Unpaid;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -22,85 +18,329 @@ use Illuminate\Support\Collection;
 
 class BadgeResource extends Resource
 {
+    use HasEventFilter;
+
     protected static ?string $model = Badge::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-identification';
+
     protected static ?string $navigationGroup = 'Events & Registration';
+
     protected static ?int $navigationSort = 2;
+
+    public static function getNavigationBadge(): ?string
+    {
+        $eventId = static::getSelectedEventId();
+        if (! $eventId) {
+            return null;
+        }
+
+        return (string) Badge::whereHas('fursuit', fn ($q) => $q->where('event_id', $eventId))->count();
+    }
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('fursuit_id')
-                    ->label('Fursuit')
-                    ->disabled()
-                    ->relationship('fursuit', 'name')
-                    ->required(),
-                // Status
-                Forms\Components\Select::make('status_fulfillment')
-                    ->label('status_fulfillment')
-                    ->options(BadgeFulfillmentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key) => [$key => ucfirst($key)]))
-                    ->required(),
-                Forms\Components\Select::make('status_payment')
-                    ->label('status_payment')
-                    ->options(BadgePaymentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key) => [$key => ucfirst($key)]))
-                    ->required(),
-                Forms\Components\Group::make([
-                    // Total
-                    Forms\Components\TextInput::make('total')
-                        ->label('Total'),
-                    // Tax
-                    Forms\Components\TextInput::make('tax')
-                        ->label('Tax')
-                        ->disabled(),
-                    // Subtotal
-                    Forms\Components\TextInput::make('subtotal')
-                        ->label('Sub-Total')
-                        ->disabled(),
-                ])->columnSpanFull()->columns(3),
-            ]);
+                Forms\Components\Section::make('Badge Information')
+                    ->description('Basic badge details and associated fursuit')
+                    ->icon('heroicon-o-identification')
+                    ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('fursuit_id')
+                                    ->label('Fursuit')
+                                    ->disabled()
+                                    ->relationship('fursuit', 'name')
+                                    ->required()
+                                    ->helperText('The fursuit this badge belongs to (cannot be changed)')
+                                    ->columnSpan(1),
+
+                                Forms\Components\TextInput::make('custom_id')
+                                    ->label('Badge ID')
+                                    ->disabled()
+                                    ->helperText('Unique badge identifier (auto-generated)')
+                                    ->columnSpan(1),
+                            ]),
+
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('fursuit.species.name')
+                                    ->label('Species')
+                                    ->disabled()
+                                    ->helperText('The fursuit species')
+                                    ->columnSpan(1),
+
+                                Forms\Components\TextInput::make('fursuit.user.name')
+                                    ->label('Owner')
+                                    ->disabled()
+                                    ->helperText('The fursuit owner')
+                                    ->columnSpan(1),
+                            ]),
+                    ]),
+
+                Forms\Components\Section::make('Status Management')
+                    ->description('Current fulfillment and payment status of the badge')
+                    ->icon('heroicon-o-flag')
+                    ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('status_fulfillment')
+                                    ->label('Fulfillment Status')
+                                    ->options(BadgeFulfillmentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key
+                                    ) => [$key => match ($key) {
+                                        'pending' => 'Pending',
+                                        'printed' => 'Printed',
+                                        'ready_for_pickup' => 'Ready for Pickup',
+                                        'picked_up' => 'Picked Up',
+                                        default => ucfirst($key)
+                                    }]))
+                                    ->required()
+                                    ->helperText('Current fulfillment stage of the badge')
+                                    ->columnSpan(1),
+
+                                Forms\Components\Select::make('status_payment')
+                                    ->label('Payment Status')
+                                    ->options(BadgePaymentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key
+                                    ) => [$key => ucfirst($key)]))
+                                    ->required()
+                                    ->helperText('Current payment status')
+                                    ->columnSpan(1),
+                            ]),
+                    ]),
+
+                Forms\Components\Section::make('Pricing Details')
+                    ->description('Badge pricing breakdown and financial information')
+                    ->icon('heroicon-o-banknotes')
+                    ->schema([
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('total')
+                                    ->label('Total (€)')
+                                    ->prefix('€')
+                                    ->numeric()
+                                    ->step(0.01)
+                                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2))
+                                    ->helperText('Total amount in euros')
+                                    ->columnSpan(1),
+
+                                Forms\Components\TextInput::make('subtotal')
+                                    ->label('Subtotal (€)')
+                                    ->prefix('€')
+                                    ->disabled()
+                                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2))
+                                    ->helperText('Amount before tax')
+                                    ->columnSpan(1),
+
+                                Forms\Components\TextInput::make('tax')
+                                    ->label('Tax (€)')
+                                    ->prefix('€')
+                                    ->disabled()
+                                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2))
+                                    ->helperText('Tax amount')
+                                    ->columnSpan(1),
+                            ]),
+
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Toggle::make('is_free_badge')
+                                    ->label('Free Badge')
+                                    ->disabled()
+                                    ->helperText('Whether this badge was provided for free')
+                                    ->inline(false),
+
+                                Forms\Components\Toggle::make('extra_copy')
+                                    ->label('Extra Copy')
+                                    ->disabled()
+                                    ->helperText('Whether this is an additional copy of another badge')
+                                    ->inline(false),
+                            ]),
+                    ]),
+
+                Forms\Components\Section::make('Badge Features & Upgrades')
+                    ->description('Special features and upgrade options applied to this badge')
+                    ->icon('heroicon-o-star')
+                    ->collapsed()
+                    ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Toggle::make('dual_side_print')
+                                    ->label('Double-Sided Print')
+                                    ->disabled()
+                                    ->helperText('Whether the badge is printed on both sides')
+                                    ->inline(false),
+
+                                Forms\Components\Toggle::make('apply_late_fee')
+                                    ->label('Late Fee Applied')
+                                    ->disabled()
+                                    ->helperText('Whether a late fee was applied to this badge')
+                                    ->inline(false),
+                            ]),
+                    ]),
+
+                Forms\Components\Section::make('Timeline & Processing')
+                    ->description('Key dates and processing timestamps')
+                    ->icon('heroicon-o-clock')
+                    ->collapsed()
+                    ->schema([
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\DateTimePicker::make('created_at')
+                                    ->label('Created At')
+                                    ->disabled()
+                                    ->helperText('When the badge was initially created')
+                                    ->columnSpan(1),
+
+                                Forms\Components\DateTimePicker::make('printed_at')
+                                    ->label('Printed At')
+                                    ->disabled()
+                                    ->helperText('When the badge was printed')
+                                    ->columnSpan(1),
+
+                                Forms\Components\DateTimePicker::make('picked_up_at')
+                                    ->label('Picked Up At')
+                                    ->disabled()
+                                    ->helperText('When the badge was collected by the owner')
+                                    ->columnSpan(1),
+                            ]),
+                    ]),
+            ])
+            ->columns(1);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => static::applyEventFilter($query, 'fursuit'))
             ->columns([
-                Tables\Columns\TextColumn::make('custom_id')
-                    ->sortable()
-                    ->searchable()
-                    ->label('Custom ID'),
-                Tables\Columns\TextColumn::make('attendee_id')
-                    ->sortable()
-                    ->searchable()
-                    ->label('Attendee ID')
-                    ->getStateUsing(function (Badge $record) {
-                        return $record->fursuit->user->eventUser()?->attendee_id ?? 'N/A';
-                    }),
+                // Fursuit Image as first column
+                Tables\Columns\ImageColumn::make('fursuit.image')
+                    ->label('Image')
+                    ->disk('s3')
+                    ->visibility('private')
+                    ->circular()
+                    ->size(40)
+                    ->defaultImageUrl(url('/images/placeholder.png'))
+                    ->checkFileExistence(false),
+
+                // Fursuit Name
                 Tables\Columns\TextColumn::make('fursuit.name')
                     ->searchable()
-                    ->label('Fursuit'),
-                Tables\Columns\TextColumn::make('status_fulfillment')->badge()->colors([
-                    Pending::$name => 'default',
-                    Printed::$name => 'success',
-                    ReadyForPickup::$name => 'success',
-                    PickedUp::$name => 'warning',
-                ]),
-                Tables\Columns\TextColumn::make('status_payment')->badge()->colors([
-                    Unpaid::$name => 'warning',
-                    Paid::$name => 'success',
-                ]),
+                    ->label('Fursuit')
+                    ->sortable()
+                    ->url(fn (Badge $record): string => route('filament.admin.resources.fursuits.view', ['record' => $record->fursuit->id])),
+
+                // Species
+                Tables\Columns\TextColumn::make('fursuit.species.name')
+                    ->label('Species')
+                    ->color('gray')
+                    ->toggleable(),
+
+                // User Info
+                Tables\Columns\TextColumn::make('fursuit.user.name')
+                    ->label('Owner')
+                    ->searchable()
+                    ->toggleable()
+                    ->url(fn (Badge $record): string => '/admin/users?tableSearch='.urlencode($record->fursuit->user->name)),
+
+                // Badge ID
+                Tables\Columns\TextColumn::make('custom_id')
+                    ->label('Badge ID')
+                    ->searchable()
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                // Attendee ID
+                Tables\Columns\TextColumn::make('attendee_id')
+                    ->label('Attendee ID')
+                    ->getStateUsing(function (Badge $record) {
+                        $eventUser = $record->fursuit?->user?->eventUsers?->where('event_id', $record->fursuit->event_id)->first();
+
+                        return $eventUser?->attendee_id ?? 'N/A';
+                    })
+                    ->searchable(query: function ($query, $search) {
+                        return $query->whereHas('fursuit.user.eventUsers', function ($q) use ($search) {
+                            $q->where('attendee_id', 'like', "%{$search}%");
+                        });
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // Status Badges
+                Tables\Columns\TextColumn::make('status_fulfillment')
+                    ->label('Fulfillment')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'Pending',
+                        'printed' => 'Printed',
+                        'ready_for_pickup' => 'Ready for Pickup',
+                        'picked_up' => 'Picked Up',
+                        default => ucfirst($state)
+                    }),
+
+                Tables\Columns\TextColumn::make('status_payment')
+                    ->label('Payment')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state)),
+
+                // Badge Features
+                Tables\Columns\IconColumn::make('extra_copy')
+                    ->label('Extra Copy')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-document-plus')
+                    ->falseIcon(null)
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // Pricing Info
+                Tables\Columns\TextColumn::make('total')
+                    ->label('Total')
+                    ->money('EUR')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // Timestamps
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Created')
+                    ->dateTime('M j, Y')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('printed_at')
+                    ->label('Printed At')
+                    ->dateTime('M j, Y H:i')
+                    ->placeholder('Not printed')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('picked_up_at')
+                    ->label('Picked Up')
+                    ->dateTime('M j, Y H:i')
+                    ->placeholder('Not picked up')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status_fulfillment')
-                    ->options(BadgeFulfillmentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key) => [ucfirst($key) => $key]))
-                    ->label('Badge Fulfillment Status'),
+                    ->options([
+                        'pending' => 'Pending',
+                        'printed' => 'Printed',
+                        'ready_for_pickup' => 'Ready for Pickup',
+                        'picked_up' => 'Picked Up',
+                    ])
+                    ->label('Fulfillment Status')
+                    ->multiple()
+                    ->placeholder('All Statuses'),
+
                 Tables\Filters\SelectFilter::make('status_payment')
-                    ->options(BadgePaymentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key) => [ucfirst($key) => $key]))
-                    ->label('Badge Payment Status'),
-                // Duplex Bool Filter
-                Tables\Filters\TernaryFilter::make('dual_side_print')
-                    ->label('Double Sided'),
+                    ->options([
+                        'unpaid' => 'Unpaid',
+                        'paid' => 'Paid',
+                    ])
+                    ->label('Payment Status')
+                    ->multiple()
+                    ->placeholder('All Payments'),
+
+                Tables\Filters\TernaryFilter::make('is_free_badge')
+                    ->label('Free Badge')
+                    ->placeholder('All Badges')
+                    ->trueLabel('Free Badges Only')
+                    ->falseLabel('Paid Badges Only'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -121,7 +361,8 @@ class BadgeResource extends Resource
                     ->label('Print Badge')
                     ->requiresConfirmation()
                     ->action(function (Collection $records) {
-                        return $records->reverse()->each(fn (Badge $record, $index) => static::printBadge($record, $index));
+                        return $records->reverse()->each(fn (Badge $record, $index) => static::printBadge($record,
+                            $index));
                     }),
             ])
             ->selectCurrentPageOnly()

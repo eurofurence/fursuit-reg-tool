@@ -25,7 +25,6 @@ return [
 
     'fursuit_catch_code_length' => env('FURSUIT_CATCH_CODE_LENGTH', 5),
 
-
     /*
     |--------------------------------------------------------------------------
     | Fursuit Catch Attempts per Minute
@@ -38,7 +37,6 @@ return [
     */
 
     'fursuit_catch_attempts_per_minute' => env('FURSUIT_CATCH_ATTEMPTS_PER_MINUTE', 20),
-
 
     /*
     |--------------------------------------------------------------------------
@@ -55,8 +53,7 @@ return [
     'species_rarity_threshold_rare' => env('SPECIES_RARITY_THRESHOLD_RARE', 20),
     'species_rarity_threshold_epic' => env('SPECIES_RARITY_THRESHOLD_EPIC', 5),
     // If none of this applies, the species is considered legendary
-    //'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 1),
-
+    // 'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 1),
 
     /*
     |--------------------------------------------------------------------------

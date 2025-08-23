@@ -6,8 +6,13 @@ class Pending extends BadgeFulfillmentStatusState
 {
     public static string $name = 'pending';
 
-    public function color(): string
+    public function getColor(): string|array|null
     {
-        // TODO: Implement color() method.
+        return 'gray';
+    }
+
+    public function getIcon(): ?string
+    {
+        return 'heroicon-m-clock';
     }
 }

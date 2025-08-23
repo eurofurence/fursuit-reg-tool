@@ -6,8 +6,13 @@ class ReadyForPickup extends BadgeFulfillmentStatusState
 {
     public static string $name = 'ready_for_pickup';
 
-    public function color(): string
+    public function getColor(): string|array|null
     {
-        // TODO: Implement color() method.
+        return 'success';
+    }
+
+    public function getIcon(): ?string
+    {
+        return 'heroicon-m-check-circle';
     }
 }

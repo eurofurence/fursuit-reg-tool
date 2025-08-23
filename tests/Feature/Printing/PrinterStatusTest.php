@@ -89,7 +89,7 @@ class PrinterStatusTest extends TestCase
         $metadata = [
             'ink_level' => 25,
             'paper_count' => 0,
-            'temperature' => 45
+            'temperature' => 45,
         ];
 
         $status = PrinterStatus::updateOrCreateForPrinter(

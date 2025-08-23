@@ -16,14 +16,14 @@ class EnsureEventUserMiddleware
     public function handle(Request $request, Closure $next)
     {
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return $next($request);
         }
 
         $activeEvent = Event::getActiveEvent();
-        
-        if (!$activeEvent) {
+
+        if (! $activeEvent) {
             return $next($request);
         }
 
@@ -42,9 +42,10 @@ class EnsureEventUserMiddleware
             $tokenService = new TokenRefreshService($user);
             $accessToken = $tokenService->getValidAccessToken();
 
-            if (!$accessToken) {
+            if (! $accessToken) {
                 Log::warning('User missing access token, logging out', ['user_id' => $user->id]);
                 Auth::logout();
+
                 return redirect()->route('welcome')->with('message', 'Your session has expired. Please log in again to access your registration.');
             }
 
@@ -53,38 +54,42 @@ class EnsureEventUserMiddleware
                 ->withToken($accessToken)
                 ->get('/attendees');
 
-            if (!$attendeeListResponse->successful()) {
+            if (! $attendeeListResponse->successful()) {
                 Log::warning('Failed to get attendee list', ['user_id' => $user->id, 'status' => $attendeeListResponse->status()]);
                 Auth::logout();
+
                 return redirect()->route('welcome')->with('message', 'Unable to verify your registration. Please log in again.');
             }
 
             $attendeeData = $attendeeListResponse->json();
             $regId = $attendeeData['ids'][0] ?? null;
 
-            if (!$regId) {
+            if (! $regId) {
                 Log::info('User has no active registration', ['user_id' => $user->id]);
                 Auth::logout();
+
                 return redirect()->route('welcome')->with('message', 'Please register for the convention first before trying to obtain a fursuit badge.');
             }
 
             // Get registration status
             $statusResponse = Http::attsrv()
                 ->withToken($accessToken)
-                ->get('/attendees/' . $regId . '/status');
+                ->get('/attendees/'.$regId.'/status');
 
-            if (!$statusResponse->successful()) {
+            if (! $statusResponse->successful()) {
                 Log::warning('Failed to get registration status', ['user_id' => $user->id, 'reg_id' => $regId]);
                 Auth::logout();
+
                 return redirect()->route('welcome')->with('message', 'Unable to verify your registration status. Please log in again.');
             }
 
             $statusData = $statusResponse->json();
             $validRegistration = in_array($statusData['status'], ['paid', 'checked in']);
 
-            if (!$validRegistration) {
+            if (! $validRegistration) {
                 Log::info('User has invalid registration', ['user_id' => $user->id, 'status' => $statusData['status']]);
                 Auth::logout();
+
                 return redirect()->route('welcome')->with('message', 'Please complete your convention registration payment before accessing fursuit badges.');
             }
 
@@ -101,13 +106,13 @@ class EnsureEventUserMiddleware
             try {
                 $fursuit = Http::attsrv()
                     ->withToken($accessToken)
-                    ->get('/attendees/' . $regId . '/packages/fursuit')
+                    ->get('/attendees/'.$regId.'/packages/fursuit')
                     ->json();
 
                 if ($fursuit['present'] && $fursuit['count'] > 0) {
                     $fursuitAdditional = Http::attsrv()
                         ->withToken($accessToken)
-                        ->get('/attendees/' . $regId . '/packages/fursuitadd')
+                        ->get('/attendees/'.$regId.'/packages/fursuitadd')
                         ->json();
 
                     $additionalCopies = $fursuitAdditional['present'] ? $fursuitAdditional['count'] : 0;
@@ -118,7 +123,7 @@ class EnsureEventUserMiddleware
                     // Mark as not created in reg system
                     Http::attsrv()
                         ->withToken($accessToken)
-                        ->post('/attendees/' . $regId . '/additional-info/fursuitbadge', [
+                        ->post('/attendees/'.$regId.'/additional-info/fursuitbadge', [
                             'created' => false,
                         ]);
                 }
@@ -137,6 +142,7 @@ class EnsureEventUserMiddleware
             ]);
 
             Auth::logout();
+
             return redirect()->route('welcome')->with('message', 'An error occurred while verifying your registration. Please log in again.');
         }
     }

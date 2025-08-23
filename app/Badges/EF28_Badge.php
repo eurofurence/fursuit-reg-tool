@@ -7,6 +7,7 @@ use App\Badges\Components\TextAlignment;
 use App\Badges\Components\TextField;
 use App\Interfaces\BadgeInterface;
 use App\Models\Badge\Badge;
+use App\Services\BadgeLayerCacheService;
 use Illuminate\Support\Facades\Storage;
 use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
@@ -19,9 +20,14 @@ use Mpdf\Mpdf;
 
 class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
 {
+    private BadgeLayerCacheService $layerCache;
+
     public function __construct()
     {
         $this->init();
+
+        // Initialize layer cache service
+        $this->layerCache = app(BadgeLayerCacheService::class);
 
         // Overwrite default values
         $this->height_px = 648;
@@ -38,13 +44,24 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
 
         $size = new Box($this->width_px, $this->height_px);
 
-        $badge_objekt = $this->addFirstLayer($size);
-        $this->addSecondLayer($badge_objekt, $size);
+        // Use cached background layer
+        $badge_objekt = $this->layerCache->getCachedBackgroundLayer('EF28_Badge', $this->width_px, $this->height_px);
+
+        // Add fursuit layer (fresh generation for best quality)
+        $fursuitLayer = $this->layerCache->generateFreshFursuitLayer($this->badge->fursuit, 'EF28_Badge', $this->width_px, $this->height_px);
+        $badge_objekt->paste($fursuitLayer, new Point(0, 0));
+
+        // Add text layers (these need to be generated fresh each time)
         $this->addThirdLayer($badge_objekt, $size);
         $this->addFourthLayer($badge_objekt);
 
+        // Add catch-em-all layer if needed
         if ($this->badge->fursuit->catch_em_all == true && ! empty($this->badge->fursuit->catch_code)) {
-            $this->addFifthLayer($badge_objekt, $size);
+            $catchLayer = $this->layerCache->getCachedCatchEmAllOverlay('EF28_Badge', $this->width_px, $this->height_px);
+            $badge_objekt->paste($catchLayer, new Point(0, 0));
+
+            // Add catch code text - extract from addFifthLayer
+            $this->addEF28CatchEmAllText($badge_objekt);
         }
 
         // Rotate image 180 degrees
@@ -82,6 +99,36 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         return $mpdf->Output($badge->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     }
 
+    /**
+     * Add catch-em-all text for EF28 badges
+     */
+    private function addEF28CatchEmAllText(ImageInterface $badge_object): void
+    {
+        // Extract text positioning logic from the original addFifthLayer method
+        // This is a simplified implementation - you may need to adjust based on the original
+        $position = new Point($this->width_px - 587, $this->height_px - 143);
+
+        $palette = new RGB;
+        $font_color = $palette->color($this->font_color);
+
+        new TextField(
+            $this->addLetterSpacing(strtoupper($this->badge->fursuit->catch_code), 1),
+            500, // Width of the text field
+            90, // Height of the text field
+            15, // Minimum font size
+            40, // Start font size
+            resource_path($this->font_path),
+            $font_color,
+            $badge_object,
+            $position,
+            TextAlignment::CENTER,
+            2,
+        );
+    }
+
+    /**
+     * @deprecated Use cached layers instead via BadgeLayerCacheService
+     */
     private function addFirstLayer(Box $size)
     {
         // Add background

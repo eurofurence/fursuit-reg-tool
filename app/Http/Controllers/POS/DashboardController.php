@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\POS;
 
-use App\Http\Controllers\Controller;
 use App\Domain\Printing\Models\PrintJob;
+use App\Http\Controllers\Controller;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use Inertia\Inertia;
@@ -13,7 +13,7 @@ class DashboardController extends Controller
     public function __invoke()
     {
         $currentEvent = Event::getActiveEvent();
-        
+
         // Get real-time stats
         $stats = [
             'badges_today' => $this->getBadgesToday($currentEvent),
@@ -30,7 +30,7 @@ class DashboardController extends Controller
     {
         $query = Badge::query();
         if ($currentEvent) {
-            $query->whereHas('fursuit', function($q) use ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             });
         }
@@ -47,7 +47,7 @@ class DashboardController extends Controller
     {
         $query = Badge::query();
         if ($currentEvent) {
-            $query->whereHas('fursuit', function($q) use ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
                 $q->where('event_id', $currentEvent->id);
             });
         }

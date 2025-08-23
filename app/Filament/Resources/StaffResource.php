@@ -16,7 +16,9 @@ class StaffResource extends Resource
     protected static ?string $model = Staff::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
     protected static ?string $navigationGroup = 'POS';
+
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
@@ -77,7 +79,8 @@ class StaffResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->paginated(false);
     }
 
     public static function getRelations(): array

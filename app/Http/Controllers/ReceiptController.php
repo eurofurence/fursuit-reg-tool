@@ -34,12 +34,12 @@ class ReceiptController extends Controller
     public function printReceipt(Checkout $checkout)
     {
         $this->generateReceipt($checkout);
-        
+
         // Find active receipt printer
         $receiptPrinter = \App\Domain\Printing\Models\Printer::where('is_active', true)
             ->where('type', 'receipt')
             ->first();
-            
+
         if ($receiptPrinter) {
             $checkout->printJobs()->create([
                 'printer_id' => $receiptPrinter->id,

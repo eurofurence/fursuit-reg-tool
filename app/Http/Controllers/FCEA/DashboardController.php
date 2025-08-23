@@ -199,9 +199,9 @@ class DashboardController extends Controller
 
         // Clear relevant cached data immediately for responsive UI
         $eventId = $event->id;
-        Cache::forget("user_ranking_global_10");
+        Cache::forget('user_ranking_global_10');
         Cache::forget("user_ranking_{$eventId}_10");
-        Cache::forget("fursuit_ranking_global_10");
+        Cache::forget('fursuit_ranking_global_10');
         Cache::forget("fursuit_ranking_{$eventId}_10");
         Cache::forget("total_fursuiters_{$eventId}");
 
@@ -438,11 +438,11 @@ class DashboardController extends Controller
         $usersWithMoreCatches = User::whereHas('fursuitsCatched', function ($query) use ($eventId) {
             $query->where('event_id', $eventId);
         })
-        ->withCount(['fursuitsCatched' => function ($query) use ($eventId) {
-            $query->where('event_id', $eventId);
-        }])
-        ->having('fursuits_catched_count', '>', $eventCatches)
-        ->count();
+            ->withCount(['fursuitsCatched' => function ($query) use ($eventId) {
+                $query->where('event_id', $eventId);
+            }])
+            ->having('fursuits_catched_count', '>', $eventCatches)
+            ->count();
 
         $rank = $usersWithMoreCatches + 1;
 
@@ -574,10 +574,10 @@ class DashboardController extends Controller
 
     private function getMyFursuitInfos(UserCatchRanking $myUserInfo): Collection
     {
-        if (!$myUserInfo->user) {
-            return new Collection();
+        if (! $myUserInfo->user) {
+            return new Collection;
         }
-        
+
         $myFursuitIDs = $myUserInfo->user->fursuits->pluck('id')->toArray();  // Get all own Fursuit IDs
 
         return UserCatchRanking::getInfoOfFursuits($myFursuitIDs); // Get Ranking info of my fursuits

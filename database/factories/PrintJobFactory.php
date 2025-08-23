@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Domain\Printing\Models\PrintJob;
 use App\Domain\Printing\Models\Printer;
+use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Models\Badge\Badge;
@@ -21,7 +21,7 @@ class PrintJobFactory extends Factory
             'printable_id' => Badge::factory(),
             'type' => $this->faker->randomElement(PrintJobTypeEnum::cases()),
             'status' => PrintJobStatusEnum::Pending,
-            'file' => 'badges/' . $this->faker->uuid . '.pdf',
+            'file' => 'badges/'.$this->faker->uuid.'.pdf',
             'priority' => $this->faker->numberBetween(1, 10),
             'retry_count' => 0,
         ];

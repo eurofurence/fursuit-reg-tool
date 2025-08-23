@@ -132,7 +132,7 @@ class PrintJobTransitionTest extends TestCase
         // Transition to printed
         $this->assertTrue($job->transitionTo(PrintJobStatusEnum::Printed));
         $job->refresh();
-        
+
         // Previous timestamps should be preserved
         $this->assertEquals($queuedAt->format('Y-m-d H:i:s'), $job->queued_at->format('Y-m-d H:i:s'));
         $this->assertEquals($startedAt->format('Y-m-d H:i:s'), $job->started_at->format('Y-m-d H:i:s'));

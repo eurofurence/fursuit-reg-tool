@@ -2,22 +2,19 @@
 
 namespace App\Domain\CatchEmAll\Controllers;
 
-use App\Domain\CatchEmAll\Enums\Achievement;
-use App\Domain\CatchEmAll\Enums\SpeciesRarity;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Domain\CatchEmAll\Services\AchievementService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserCatchRequest;
+use App\Models\Event;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
-use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 
@@ -74,7 +71,7 @@ class GameController extends Controller
     public function catch(UserCatchRequest $request)
     {
         $event = $this->getCurrentEvent();
-        if (!$event) {
+        if (! $event) {
             return to_route('catch-em-all.catch')->with('error', 'No Event Available for Catch Em All');
         }
 
@@ -91,14 +88,16 @@ class GameController extends Controller
 
         // Validate fursuit exists
         $fursuit = $this->findFursuitByCode($catchCode);
-        if (!$fursuit) {
+        if (! $fursuit) {
             $logEntry->save();
+
             return to_route('catch-em-all.catch')->with('error', 'Invalid Code - Try Again!');
         }
 
         // Check if user is trying to catch themselves
         if ($user->id === $fursuit->user_id) {
             $logEntry->save();
+
             return to_route('catch-em-all.catch')->with('error', "You can't catch yourself!");
         }
 
@@ -111,6 +110,7 @@ class GameController extends Controller
 
         if ($alreadyCaught) {
             $logEntry->save();
+
             return to_route('catch-em-all.catch')->with('error', 'Already caught this fursuiter!');
         }
 
@@ -197,7 +197,7 @@ class GameController extends Controller
         $user = Auth::user();
         $currentEvent = Event::latest('starts_at')->first();
 
-        if (!$currentEvent) {
+        if (! $currentEvent) {
             return redirect()->route('catch-em-all.introduction')->with('error', 'No active event found.');
         }
 
@@ -212,7 +212,7 @@ class GameController extends Controller
             'user_id' => $user->id,
             'event_id' => $currentEvent->id,
             'event_user_id' => $eventUser->id,
-            'introduced' => $eventUser->fresh()->catch_em_all_introduced
+            'introduced' => $eventUser->fresh()->catch_em_all_introduced,
         ]);
 
         return redirect()->route('catch-em-all.catch')->with('success', 'Welcome to Fursuit Catch em All! Happy hunting!');
@@ -225,7 +225,7 @@ class GameController extends Controller
 
     private function getFilterEvent($selectedEventId, bool $isGlobal, $currentEvent)
     {
-        if ($isGlobal || !$selectedEventId) {
+        if ($isGlobal || ! $selectedEventId) {
             return $isGlobal ? null : $currentEvent;
         }
 
@@ -236,7 +236,7 @@ class GameController extends Controller
     {
         $query = UserAchievement::where('user_id', $user->id);
 
-        if (!$detailed) {
+        if (! $detailed) {
             $query->where('earned_at', '!=', null);
         }
 
@@ -271,7 +271,9 @@ class GameController extends Controller
     private function getRecentCatchData($fursuitId)
     {
         $fursuit = Fursuit::with(['species', 'user'])->find($fursuitId);
-        if (!$fursuit) return null;
+        if (! $fursuit) {
+            return null;
+        }
 
         $userCatch = new UserCatch(['fursuit_id' => $fursuitId]);
         $rarity = $userCatch->getSpeciesRarity();
@@ -295,6 +297,7 @@ class GameController extends Controller
     private function calculatePoints(Fursuit $fursuit): int
     {
         $tempCatch = new UserCatch(['fursuit_id' => $fursuit->id]);
+
         return $tempCatch->calculatePoints();
     }
 
@@ -326,17 +329,18 @@ class GameController extends Controller
         }
 
         RateLimiter::increment($key);
+
         return 0;
     }
 
     private function clearGameCaches(int $eventId): void
     {
         $keys = [
-            "game_stats_global",
+            'game_stats_global',
             "game_stats_{$eventId}",
-            "leaderboard_global_10",
+            'leaderboard_global_10',
             "leaderboard_{$eventId}_10",
-            "collection_global",
+            'collection_global',
             "collection_{$eventId}",
         ];
 

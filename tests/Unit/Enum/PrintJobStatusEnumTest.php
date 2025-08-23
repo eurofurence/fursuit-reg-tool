@@ -10,7 +10,7 @@ class PrintJobStatusEnumTest extends TestCase
     public function test_can_transition_from_pending()
     {
         $status = PrintJobStatusEnum::Pending;
-        
+
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Queued));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Printed));
@@ -20,7 +20,7 @@ class PrintJobStatusEnumTest extends TestCase
     public function test_can_transition_from_queued()
     {
         $status = PrintJobStatusEnum::Queued;
-        
+
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Printing));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Failed));
@@ -31,7 +31,7 @@ class PrintJobStatusEnumTest extends TestCase
     public function test_can_transition_from_printing()
     {
         $status = PrintJobStatusEnum::Printing;
-        
+
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Printed));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Failed));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Queued));
@@ -41,7 +41,7 @@ class PrintJobStatusEnumTest extends TestCase
     public function test_can_transition_from_failed()
     {
         $status = PrintJobStatusEnum::Failed;
-        
+
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Retrying));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Printed));
@@ -51,7 +51,7 @@ class PrintJobStatusEnumTest extends TestCase
     public function test_can_transition_from_retrying()
     {
         $status = PrintJobStatusEnum::Retrying;
-        
+
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Queued));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Printed));
@@ -62,10 +62,10 @@ class PrintJobStatusEnumTest extends TestCase
     {
         $printed = PrintJobStatusEnum::Printed;
         $cancelled = PrintJobStatusEnum::Cancelled;
-        
+
         $this->assertTrue($printed->isTerminal());
         $this->assertTrue($cancelled->isTerminal());
-        
+
         foreach (PrintJobStatusEnum::cases() as $status) {
             $this->assertFalse($printed->canTransitionTo($status));
             $this->assertFalse($cancelled->canTransitionTo($status));
@@ -77,7 +77,7 @@ class PrintJobStatusEnumTest extends TestCase
         $this->assertTrue(PrintJobStatusEnum::Queued->isActive());
         $this->assertTrue(PrintJobStatusEnum::Printing->isActive());
         $this->assertTrue(PrintJobStatusEnum::Retrying->isActive());
-        
+
         $this->assertFalse(PrintJobStatusEnum::Pending->isActive());
         $this->assertFalse(PrintJobStatusEnum::Printed->isActive());
         $this->assertFalse(PrintJobStatusEnum::Failed->isActive());
@@ -88,7 +88,7 @@ class PrintJobStatusEnumTest extends TestCase
     {
         $this->assertTrue(PrintJobStatusEnum::Printed->isTerminal());
         $this->assertTrue(PrintJobStatusEnum::Cancelled->isTerminal());
-        
+
         $this->assertFalse(PrintJobStatusEnum::Pending->isTerminal());
         $this->assertFalse(PrintJobStatusEnum::Queued->isTerminal());
         $this->assertFalse(PrintJobStatusEnum::Printing->isTerminal());

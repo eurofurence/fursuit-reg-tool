@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from "@inertiajs/vue3";
+import { Head, router } from "@inertiajs/vue3";
 import POSLayout from "@/Layouts/POSLayout.vue";
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -7,6 +7,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import Card from 'primevue/card';
 import { useForm } from 'laravel-precognition-vue-inertia';
+import { useToast } from 'primevue/usetoast';
 import dayjs from 'dayjs';
 
 defineOptions({
@@ -17,24 +18,85 @@ const props = defineProps({
     printJobs: Object,
 });
 
+const toast = useToast();
+
 function markAsPrinted(printJobId) {
-    useForm('POST', route('pos.print-queue.mark-printed', { printJob: printJobId }), {}).submit();
+    useForm('POST', route('pos.print-queue.mark-printed', { printJob: printJobId }), {})
+        .submit({
+            onSuccess: () => {
+                toast.add({
+                    severity: 'success', 
+                    summary: 'Success', 
+                    detail: `Print job #${printJobId} marked as printed`, 
+                    life: 3000
+                });
+            },
+            onError: () => {
+                toast.add({
+                    severity: 'error', 
+                    summary: 'Error', 
+                    detail: `Failed to mark print job #${printJobId} as printed`, 
+                    life: 5000
+                });
+            }
+        });
 }
 
 function retryPrintJob(printJobId) {
-    useForm('POST', route('pos.print-queue.retry', { printJob: printJobId }), {}).submit();
+    useForm('POST', route('pos.print-queue.retry', { printJob: printJobId }), {})
+        .submit({
+            onSuccess: () => {
+                toast.add({
+                    severity: 'info', 
+                    summary: 'Retry Queued', 
+                    detail: `Print job #${printJobId} queued for retry`, 
+                    life: 3000
+                });
+            },
+            onError: () => {
+                toast.add({
+                    severity: 'error', 
+                    summary: 'Retry Failed', 
+                    detail: `Failed to retry print job #${printJobId}`, 
+                    life: 5000
+                });
+            }
+        });
 }
 
 function deletePrintJob(printJobId) {
     if (confirm('Are you sure you want to delete this print job?')) {
-        useForm('DELETE', route('pos.print-queue.delete', { printJob: printJobId }), {}).submit();
+        useForm('DELETE', route('pos.print-queue.delete', { printJob: printJobId }), {})
+            .submit({
+                onSuccess: () => {
+                    toast.add({
+                        severity: 'success', 
+                        summary: 'Deleted', 
+                        detail: `Print job #${printJobId} deleted successfully`, 
+                        life: 3000
+                    });
+                },
+                onError: () => {
+                    toast.add({
+                        severity: 'error', 
+                        summary: 'Delete Failed', 
+                        detail: `Failed to delete print job #${printJobId}`, 
+                        life: 5000
+                    });
+                }
+            });
     }
 }
 
 function getStatusSeverity(status) {
     switch (status) {
-        case 'pending': return 'warning';
+        case 'pending': return 'secondary';
+        case 'queued': return 'warning';
+        case 'printing': return 'info';
         case 'printed': return 'success';
+        case 'failed': return 'danger';
+        case 'cancelled': return 'secondary';
+        case 'retrying': return 'warning';
         default: return 'info';
     }
 }
@@ -46,6 +108,16 @@ function getTypeSeverity(type) {
         default: return 'info';
     }
 }
+
+function onPageChange(event) {
+    router.get(route('pos.print-queue.index'), {
+        page: event.page + 1  // PrimeVue pages are 0-indexed, Laravel expects 1-indexed
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true
+    });
+}
 </script>
 
 <template>
@@ -54,6 +126,17 @@ function getTypeSeverity(type) {
     </Head>
     
     <div class="p-4">
+        <!-- Back Button at Top -->
+        <div class="mb-6">
+            <Button 
+                label="Back to Dashboard" 
+                icon="pi pi-arrow-left" 
+                severity="secondary"
+                @click="router.visit(route('pos.dashboard'))"
+                class="mb-4"
+            />
+        </div>
+
         <!-- Header -->
         <div class="mb-6">
             <Card class="shadow-lg border-0 bg-gradient-to-r from-purple-600 to-purple-700 text-white">
@@ -86,6 +169,8 @@ function getTypeSeverity(type) {
                     :rows="printJobs.per_page"
                     :totalRecords="printJobs.total"
                     :lazy="true"
+                    :first="(printJobs.current_page - 1) * printJobs.per_page"
+                    @page="onPageChange"
                     tableStyle="min-width: 50rem"
                     class="p-datatable-sm"
                 >
@@ -160,20 +245,21 @@ function getTypeSeverity(type) {
                         <template #body="slotProps">
                             <div class="flex gap-2">
                                 <Button 
-                                    v-if="slotProps.data.status === 'pending'"
+                                    v-if="slotProps.data.status === 'pending' || slotProps.data.status === 'queued'"
                                     label="Mark Printed" 
                                     size="small" 
                                     severity="success"
                                     @click="markAsPrinted(slotProps.data.id)"
                                 />
                                 <Button 
-                                    v-if="slotProps.data.status === 'printed'"
+                                    v-if="slotProps.data.status === 'failed' || slotProps.data.status === 'printed'"
                                     label="Retry" 
                                     size="small" 
                                     severity="warning"
                                     @click="retryPrintJob(slotProps.data.id)"
                                 />
                                 <Button 
+                                    v-if="slotProps.data.status !== 'cancelled' && slotProps.data.status !== 'printed'"
                                     label="Delete" 
                                     size="small" 
                                     severity="danger"
@@ -193,9 +279,7 @@ function getTypeSeverity(type) {
                 label="Back to Dashboard" 
                 icon="pi pi-arrow-left" 
                 severity="secondary"
-                :route="route('pos.dashboard')"
-                tag="a"
-                :href="route('pos.dashboard')"
+                @click="router.visit(route('pos.dashboard'))"
             />
         </div>
     </div>

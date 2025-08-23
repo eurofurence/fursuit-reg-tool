@@ -15,7 +15,9 @@ class SumUpReaderResource extends Resource
     protected static ?string $model = SumUpReader::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+
     protected static ?string $navigationGroup = 'POS';
+
     protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form

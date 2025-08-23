@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Staff;
 use App\Models\RfidTag;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Staff;
 use Illuminate\Database\Seeder;
 
 class StaffAndRfidTagSeeder extends Seeder
@@ -62,6 +61,6 @@ class StaffAndRfidTagSeeder extends Seeder
             'is_active' => false, // Inactive badge
         ]);
 
-        $this->command->info('Created ' . Staff::count() . ' staff members with ' . RfidTag::count() . ' RFID tags');
+        $this->command->info('Created '.Staff::count().' staff members with '.RfidTag::count().' RFID tags');
     }
 }

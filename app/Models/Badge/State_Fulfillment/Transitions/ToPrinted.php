@@ -6,6 +6,7 @@ use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\Printed;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use App\Models\Badge\State_Payment\Paid;
+use App\Notifications\BadgePrintedNotification;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
@@ -42,6 +43,13 @@ class ToPrinted extends Transition
             activity()
                 ->performedOn($this->badge)
                 ->log('Fursuit Printed');
+
+            // Send notification only during the event (not for mass printing before con)
+            $event = $this->badge->fursuit->event;
+            if ($event && $event->isDuringEvent()) {
+                $user = $this->badge->fursuit->user;
+                $user->notify(new BadgePrintedNotification($this->badge));
+            }
 
             return $this->badge;
         });

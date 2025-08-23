@@ -156,7 +156,7 @@ class AchievementService
             return false; // Already earned
         }
 
-        if (!$existing) {
+        if (! $existing) {
             $existing = new UserAchievement([
                 'user_id' => $user->id,
                 'achievement' => $achievement,
@@ -184,13 +184,15 @@ class AchievementService
 
         $existing->progress = min($progress, $maxProgress);
 
-        if ($existing->progress >= $maxProgress && !$existing->earned_at) {
+        if ($existing->progress >= $maxProgress && ! $existing->earned_at) {
             $existing->earned_at = now();
             $existing->save();
+
             return true; // Achievement earned
         }
 
         $existing->save();
+
         return false;
     }
 }

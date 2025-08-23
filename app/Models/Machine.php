@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use App\Domain\Printing\Models\Printer;
-use App\Domain\Printing\Models\PrintJob;
 use App\Domain\Printing\Models\PrinterStatus;
-use App\Enum\QzConnectionStatusEnum;
+use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
+use App\Enum\QzConnectionStatusEnum;
 use Bavix\Wallet\Traits\HasWalletFloat;
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,7 +18,7 @@ use Illuminate\Foundation\Auth\Access\Authorizable;
  */
 class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatable
 {
-    use Authenticatable, Authorizable, HasWalletFloat, HasFactory;
+    use Authenticatable, Authorizable, HasFactory, HasWalletFloat;
 
     public $timestamps = false;
 
@@ -31,7 +31,6 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
         'qz_last_seen_at' => 'datetime',
         'pending_print_jobs_count' => 'integer',
     ];
-
 
     // generic printers
     public function printers()

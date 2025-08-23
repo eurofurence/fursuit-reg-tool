@@ -43,7 +43,7 @@ class UserCatch extends Model
 
     public function getSpeciesRarity(): SpeciesRarity
     {
-        if (!$this->fursuit || !$this->fursuit->species) {
+        if (! $this->fursuit || ! $this->fursuit->species) {
             return SpeciesRarity::COMMON;
         }
 

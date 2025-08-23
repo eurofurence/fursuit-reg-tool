@@ -18,19 +18,19 @@ class PrinterFactory extends Factory
                 'name' => 'A4',
                 'width' => 210,
                 'height' => 297,
-                'mm' => [210, 297]
+                'mm' => [210, 297],
             ],
             [
                 'name' => 'Letter',
                 'width' => 216,
                 'height' => 279,
-                'mm' => [216, 279]
-            ]
+                'mm' => [216, 279],
+            ],
         ];
 
         return [
             'machine_id' => Machine::factory(),
-            'name' => $this->faker->company . ' Printer',
+            'name' => $this->faker->company.' Printer',
             'type' => $this->faker->randomElement(PrintJobTypeEnum::cases()),
             'paper_sizes' => $paperSizes,
             'default_paper_size' => 'A4',
@@ -54,8 +54,8 @@ class PrinterFactory extends Factory
                     'name' => '80mm',
                     'width' => 80,
                     'height' => 200,
-                    'mm' => [80, 200]
-                ]
+                    'mm' => [80, 200],
+                ],
             ],
             'default_paper_size' => '80mm',
         ]);

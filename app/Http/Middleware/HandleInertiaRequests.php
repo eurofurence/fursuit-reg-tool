@@ -39,6 +39,7 @@ class HandleInertiaRequests extends Middleware
             ],
             // Get event that did not end yet and is the next one
             'event' => \App\Models\Event::latest('starts_at')->first(),
+            'printerStatus' => $this->getPrinterStatus($request),
         ];
     }
 
@@ -54,6 +55,26 @@ class HandleInertiaRequests extends Middleware
         return [
             'user' => $request->user()?->load('badges'),
             'balance' => $request->user()?->balanceInt,
+        ];
+    }
+
+    private function getPrinterStatus(Request $request): ?array
+    {
+        // Only provide printer status for POS routes
+        if (!$request->routeIs('pos.*') || !$request->user('machine-user')) {
+            return null;
+        }
+
+        // Get overall printer status - check if any printers are paused
+        $pausedCount = \App\Models\PrinterState::where('status', 'paused')->count();
+        $totalCount = \App\Models\PrinterState::count();
+        $lastUpdated = \App\Models\PrinterState::max('updated_at');
+        
+        return [
+            'has_issues' => $pausedCount > 0,
+            'paused_count' => $pausedCount,
+            'total_count' => $totalCount,
+            'last_updated' => $lastUpdated,
         ];
     }
 }

@@ -11,7 +11,7 @@ enum PrinterStatusSeverityEnum: string
 
     public function getLevel(): int
     {
-        return match($this) {
+        return match ($this) {
             self::Fatal => 4,
             self::Error => 3,
             self::Warning => 2,

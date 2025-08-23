@@ -63,14 +63,21 @@ class PrintJob extends Model
 
     public function scopePrioritized($query)
     {
-        return $query->orderBy('priority', 'desc')
-                     ->orderBy('created_at', 'asc');
+        return $query->leftJoin('badges', function ($join) {
+                $join->on('badges.id', '=', 'print_jobs.printable_id')
+                     ->where('print_jobs.printable_type', '=', 'App\\Models\\Badge\\Badge');
+            })
+            ->orderBy('print_jobs.priority', 'desc')
+            ->orderByRaw('CAST(SUBSTRING_INDEX(badges.custom_id, "-", 1) AS UNSIGNED) ASC')
+            ->orderByRaw('CAST(SUBSTRING_INDEX(badges.custom_id, "-", -1) AS UNSIGNED) ASC')
+            ->orderBy('print_jobs.created_at', 'asc')
+            ->select('print_jobs.*');
     }
 
     // State transition methods
     public function transitionTo(PrintJobStatusEnum $newStatus, ?string $errorMessage = null): bool
     {
-        if (!$this->status->canTransitionTo($newStatus)) {
+        if (! $this->status->canTransitionTo($newStatus)) {
             return false;
         }
 

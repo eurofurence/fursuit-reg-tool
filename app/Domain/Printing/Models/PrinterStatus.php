@@ -28,7 +28,7 @@ class PrinterStatus extends Model
     }
 
     public static function updateOrCreateForPrinter(
-        Printer $printer, 
+        Printer $printer,
         Machine $machine,
         PrinterStatusEnum $status,
         ?string $statusCode = null,

@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Printing;
 
-use App\Domain\Printing\Models\PrintJob;
 use App\Domain\Printing\Models\Printer;
+use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\QzConnectionStatusEnum;
 use App\Models\Machine;
@@ -24,7 +24,7 @@ class MachineQzStatusTest extends TestCase
         // Update to connected
         $machine->updateQzStatus(QzConnectionStatusEnum::Connected);
         $machine->refresh();
-        
+
         $this->assertEquals(QzConnectionStatusEnum::Connected, $machine->qz_connection_status);
         $this->assertNotNull($machine->qz_last_seen_at);
         $this->assertTrue($machine->isQzConnected());
@@ -88,7 +88,7 @@ class MachineQzStatusTest extends TestCase
     {
         $machine1 = Machine::factory()->create(['is_print_server' => true]);
         $machine2 = Machine::factory()->create(['is_print_server' => true]);
-        
+
         $printer1 = Printer::factory()->create(['machine_id' => $machine1->id]);
         $printer2 = Printer::factory()->create(['machine_id' => $machine2->id]);
 

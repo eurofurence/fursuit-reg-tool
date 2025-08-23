@@ -39,11 +39,25 @@ const primaryActions = [
 // Secondary actions
 const secondaryActions = [
     { 
+        label: "Badge Management", 
+        subtitle: "View & print badges",
+        route: route('pos.badges.index'), 
+        icon: 'pi pi-id-card',
+        color: 'primary'
+    },
+    { 
         label: "Print Queue", 
         subtitle: "Manage print jobs",
         route: route('pos.print-queue.index'), 
         icon: 'pi pi-print',
         color: 'info'
+    },
+    { 
+        label: "Printer Management", 
+        subtitle: "Monitor & control printers",
+        route: route('pos.printers.index'), 
+        icon: 'pi pi-cog',
+        color: 'warning'
     },
     { 
         label: "Statistics", 

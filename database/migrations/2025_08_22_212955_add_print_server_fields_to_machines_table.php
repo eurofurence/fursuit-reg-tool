@@ -23,7 +23,7 @@ return new class extends Migration
                 'is_print_server',
                 'qz_connection_status',
                 'qz_last_seen_at',
-                'pending_print_jobs_count'
+                'pending_print_jobs_count',
             ]);
         });
     }

@@ -27,7 +27,7 @@ class PrinterStatusEnumTest extends TestCase
         $this->assertTrue(PrinterStatusEnum::MediaEmpty->requiresAttention());
         $this->assertTrue(PrinterStatusEnum::MediaJam->requiresAttention());
         $this->assertTrue(PrinterStatusEnum::CoverOpen->requiresAttention());
-        
+
         // States that don't require attention
         $this->assertFalse(PrinterStatusEnum::Online->requiresAttention());
         $this->assertFalse(PrinterStatusEnum::Busy->requiresAttention());

@@ -16,7 +16,9 @@ class TseClientResource extends Resource
     protected static ?string $model = TseClient::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+
     protected static ?string $navigationGroup = 'POS';
+
     protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form

@@ -2,21 +2,26 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Traits\HasEventFilter;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use Filament\Widgets\ChartWidget;
 
 class BadgeStatusChart extends ChartWidget
 {
+    use HasEventFilter;
+
     protected static ?string $heading = 'Current Event Badge Status';
+
     protected static ?int $sort = 3;
-    
+
     protected function getData(): array
     {
-        // Get current event based on starts_at
-        $currentEvent = Event::orderBy('starts_at', 'desc')->first();
-        
-        if (!$currentEvent) {
+        // Get selected event or default to the latest
+        $selectedEventId = static::getSelectedEventId();
+        $currentEvent = $selectedEventId ? Event::find($selectedEventId) : Event::orderBy('starts_at', 'desc')->first();
+
+        if (! $currentEvent) {
             return [
                 'datasets' => [
                     [
@@ -27,15 +32,15 @@ class BadgeStatusChart extends ChartWidget
                 'labels' => ['No Active Event'],
             ];
         }
-        
+
         // Get badge status counts for current event
         $badgeStatusCounts = Badge::whereHas('fursuit', function ($query) use ($currentEvent) {
             $query->where('event_id', $currentEvent->id);
         })
-        ->selectRaw('status_payment, status_fulfillment, COUNT(*) as count')
-        ->groupBy(['status_payment', 'status_fulfillment'])
-        ->get();
-        
+            ->selectRaw('status_payment, status_fulfillment, COUNT(*) as count')
+            ->groupBy(['status_payment', 'status_fulfillment'])
+            ->get();
+
         $statusLabels = [];
         $statusData = [];
         $colors = [
@@ -45,13 +50,13 @@ class BadgeStatusChart extends ChartWidget
             'rgb(16, 185, 129)',  // emerald
             'rgb(139, 92, 246)',  // violet
         ];
-        
+
         foreach ($badgeStatusCounts as $index => $status) {
-            $label = ucfirst($status->status_payment) . ' / ' . ucfirst($status->status_fulfillment);
+            $label = ucfirst($status->status_payment).' / '.ucfirst($status->status_fulfillment);
             $statusLabels[] = $label;
             $statusData[] = $status->count;
         }
-        
+
         return [
             'datasets' => [
                 [
@@ -67,7 +72,7 @@ class BadgeStatusChart extends ChartWidget
     {
         return 'doughnut';
     }
-    
+
     protected function getOptions(): array
     {
         return [

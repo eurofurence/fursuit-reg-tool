@@ -4,8 +4,8 @@ namespace App\Http\Controllers\POS;
 
 use App\Domain\Checkout\Models\Checkout\Checkout;
 use App\Http\Controllers\Controller;
-use App\Models\EventUser;
 use App\Models\Event;
+use App\Models\EventUser;
 use App\Models\Fursuit\States\Rejected;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -25,15 +25,15 @@ class AttendeeController extends Controller
     public function lookupSubmit(Request $request): RedirectResponse
     {
         $activeEvent = Event::getActiveEvent();
-        if (!$activeEvent) {
+        if (! $activeEvent) {
             return redirect()->back()->withErrors(['attendeeId' => 'No active event found']);
         }
 
         $eventUser = EventUser::where('attendee_id', $request->get('attendeeId'))
             ->where('event_id', $activeEvent->id)
             ->first();
-            
-        if (!$eventUser) {
+
+        if (! $eventUser) {
             return redirect()->back()->withErrors(['attendeeId' => 'Could not find attendee']);
         } else {
             return redirect()->route('pos.attendee.show', ['attendeeId' => $request->get('attendeeId')]);
@@ -43,7 +43,7 @@ class AttendeeController extends Controller
     public function show(string $attendeeId, Request $request): Response
     {
         $activeEvent = Event::getActiveEvent();
-        if (!$activeEvent) {
+        if (! $activeEvent) {
             abort(404, 'No active event found');
         }
 
@@ -51,13 +51,13 @@ class AttendeeController extends Controller
             ->where('event_id', $activeEvent->id)
             ->with('user')
             ->first();
-            
-        if (!$eventUser) {
+
+        if (! $eventUser) {
             abort(404, 'Attendee not found');
         }
 
         $user = $eventUser->user;
-        
+
         // Get all badges for the user
         $allBadges = $user->badges()
             ->whereHas('fursuit', function ($query) {
@@ -69,10 +69,10 @@ class AttendeeController extends Controller
 
         // Group badges by event
         $badgesByEvent = $allBadges->groupBy('fursuit.event.id');
-        
+
         // Current event badges
         $currentEventBadges = $badgesByEvent->get($activeEvent->id, collect());
-        
+
         // Past event badges (only events with unclaimed badges)
         $pastEventBadges = [];
         foreach ($badgesByEvent as $eventId => $badges) {
@@ -80,7 +80,7 @@ class AttendeeController extends Controller
                 $unclaimedBadges = $badges->filter(function ($badge) {
                     return $badge->status_fulfillment !== 'picked_up';
                 });
-                
+
                 if ($unclaimedBadges->isNotEmpty()) {
                     $event = $badges->first()->fursuit->event;
                     $pastEventBadges[] = [
