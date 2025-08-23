@@ -160,7 +160,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         // Position of the texts in the image
         $position_attendee_id = new Point(
             $this->width_px - 602, // X-Position (adapted)
-            78 // Y-Position
+            191 // Y-Position
         );
 
         $position_species = new Point(
@@ -234,8 +234,6 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         // Create color palette - Text color
         $palette = new RGB;
         $font_color = $palette->color($this->font_color);
-        // Create color palette - Frame
-        $border_color = $palette->color('#9579aa');
 
         // Add to badge
         $badge_object->paste($overlayImage, new Point(0, 0));
