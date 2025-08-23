@@ -66,7 +66,7 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn (): string => \Illuminate\Support\Facades\Blade::render('@vite(["resources/css/filament-custom.css"])')
+                fn (): string => '<link rel="stylesheet" href="' . asset('css/filament-custom.css') . '">'
             );
     }
 }
