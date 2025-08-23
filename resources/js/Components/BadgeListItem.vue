@@ -84,7 +84,12 @@ function getBadgeTooltipText(status) {
     <div class="py-3 hover:bg-gray-50 duration-200 rounded cursor-pointer">
         <div class="flex flex-col md:flex-row text-center md:text-left">
             <div class="flex flex-col justify-center items-center">
-                <img :src="badge.fursuit.image_url" alt="Badge Image" class="h-32 object-cover rounded-lg" />
+                <img 
+                    :src="badge.fursuit.image_url" 
+                    :alt="`${badge.fursuit.name} badge image`"
+                    class="h-32 object-cover rounded-lg" 
+                    loading="lazy"
+                />
             </div>
             <div class="flex flex-col justify-center p-4 flex-1">
                 <h2 class="text-lg font-semibold font-main">{{ badge.fursuit.name }}</h2>

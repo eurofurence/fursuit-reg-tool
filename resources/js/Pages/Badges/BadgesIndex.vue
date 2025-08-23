@@ -169,6 +169,7 @@ function getFursuitSeverity(status) {
                                 :src="slotProps.data.fursuit.image_url"
                                 :alt="`${slotProps.data.fursuit.name} badge`"
                                 class="w-16 h-16 object-cover rounded-lg border"
+                                loading="lazy"
                             />
                         </template>
                     </Column>
@@ -315,6 +316,7 @@ function getFursuitSeverity(status) {
                                 :src="slotProps.data.fursuit.image_url"
                                 :alt="`${slotProps.data.fursuit.name} badge`"
                                 class="w-16 h-16 object-cover rounded-lg border opacity-75"
+                                loading="lazy"
                             />
                         </template>
                     </Column>
