@@ -15,8 +15,8 @@ class MachineResource extends Resource
     protected static ?string $model = Machine::class;
 
     protected static ?string $navigationGroup = 'POS';
-
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -26,14 +26,6 @@ class MachineResource extends Resource
                     ->required()
                     ->columnSpanFull()
                     ->maxLength(255),
-                Forms\Components\Select::make('receipt_printer_id')
-                    ->label('Receipt Printer')
-                    ->relationship('receiptPrinter', 'name')
-                    ->columnSpanFull(),
-                Forms\Components\Select::make('badge_printer_id')
-                    ->label('Badge Printer')
-                    ->relationship('badgePrinter', 'name')
-                    ->columnSpanFull(),
                 // TSE Client
                 Forms\Components\Select::make('tse_client_id')
                     ->label('TSE Client')

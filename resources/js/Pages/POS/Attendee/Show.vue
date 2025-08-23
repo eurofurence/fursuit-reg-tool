@@ -123,7 +123,7 @@ function startPayment() {
             <div class="bg-white p-4 mb-4 rounded-lg shadow">
                 <h1 class="text-2xl font-bold">
                     <!-- <span class="text-gray-500">Attendee</span>  -->
-                    {{ attendee.name }}<span class="text-gray-400">#</span>{{ eventUser.attendee_id }}
+                    {{ attendee.name }}<span class="text-gray-400">#</span>{{ eventUser?.attendee_id || 'N/A' }}
                 </h1>
                 <div class="text-sm text-gray-500 mt-1">
                     Current Event: {{ currentEvent.name }}

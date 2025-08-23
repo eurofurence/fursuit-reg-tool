@@ -15,8 +15,8 @@ class PrinterResource extends Resource
     protected static ?string $model = Printer::class;
 
     protected static ?string $navigationGroup = 'POS';
-
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-printer';
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
@@ -52,8 +52,6 @@ class PrinterResource extends Resource
                     ->columnSpanFull(),
                 Forms\Components\Checkbox::make('is_active')
                     ->columnSpanFull(),
-                Forms\Components\Checkbox::make('is_double')
-                    ->columnSpanFull(),
             ]);
     }
 
@@ -65,7 +63,8 @@ class PrinterResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('type'),
                 Tables\Columns\TextColumn::make('machine.name')->label('Machine'),
-
+                Tables\Columns\CheckboxColumn::make('is_active')
+                    ->label('Active'),
             ])
             ->filters([
                 //

@@ -1,13 +1,31 @@
 <script setup>
 import Button from "primevue/button";
 import Menu from "primevue/menu";
-import { Link } from "@inertiajs/vue3";
+import { Link, router } from "@inertiajs/vue3";
 import DigitalClock from "@/Components/POS/DigitalClock.vue";
 import Badge from "primevue/badge";
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+
+// QZ Status management
+const qzStatus = ref({
+    qz_status: 'disconnected',
+    is_connected: false,
+    pending_jobs: 0,
+    last_seen: null
+});
+
+// Handle QZ status updates from QZPrintService
+const handleQzStatusChange = (status) => {
+    qzStatus.value = { ...qzStatus.value, ...status };
+};
+
+const handlePendingJobsUpdate = (count) => {
+    qzStatus.value.pending_jobs = count;
+};
 import QZPrintService from "@/Components/POS/QZPrintService.vue";
 import ToastService from "@/Components/POS/ToastService.vue";
 import ShortcutsDialog from "@/Components/POS/ShortcutsDialog.vue";
+import QzStatusIndicator from "@/Components/POS/QzStatusIndicator.vue";
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
@@ -44,8 +62,8 @@ function handleGlobalShortcuts(e) {
     // Ctrl+K: Search Attendee
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        // Route to attendee search
-        window.location.href = route('pos.attendee.lookup');
+        // Route to attendee search using Inertia router
+        router.visit(route('pos.attendee.lookup'));
     }
     // Ctrl+P: Start Payment for All
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
@@ -85,6 +103,7 @@ const toggleUserMenu = (event) => {
 
 const props = defineProps({
     attendee: Object || undefined, // from backend
+    eventUser: Object || undefined, // event-specific user data
     backToRoute: String || undefined
 });
 </script>
@@ -92,7 +111,10 @@ const props = defineProps({
 <template>
     <ToastService/>
     <!-- Keep this, responsible for printing! -->
-    <QZPrintService/>
+    <QZPrintService 
+        @qz-status-changed="handleQzStatusChange"
+        @pending-jobs-updated="handlePendingJobsUpdate"
+    />
     <div class="min-h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
         <!-- Modern Header -->
         <header class="bg-white shadow-sm border-b border-slate-200" v-if="page.props.auth.user">
@@ -107,17 +129,24 @@ const props = defineProps({
                         />
                     </Link>
                     <div v-if="attendee" class="hidden sm:flex items-center space-x-2">
-                        <Badge :value="attendee.name + ' #' + attendee.attendee_id" size="large" severity="success" class="font-medium"/>
+                        <Badge :value="attendee.name + ' #' + (eventUser?.attendee_id || 'N/A')" size="large" severity="success" class="font-medium"/>
                     </div>
                 </div>
                 
-                <!-- Center Section - Clock -->
-                <div class="flex-1 text-center">
+                <!-- Center Section - Clock & QZ Status -->
+                <div class="flex-1 flex items-center justify-center space-x-6">
                     <DigitalClock class="text-slate-600 font-semibold text-xl"/>
+                    <div class="hidden md:block">
+                        <QzStatusIndicator :qz-status="qzStatus" />
+                    </div>
                 </div>
                 
                 <!-- Right Section - User Menu -->
                 <div class="flex items-center space-x-3">
+                    <!-- Mobile QZ Status -->
+                    <div class="block md:hidden">
+                        <QzStatusIndicator :qz-status="qzStatus" :show-pending-jobs="false" />
+                    </div>
                     <div class="text-right hidden sm:block">
                         <div class="text-sm text-slate-500">Cashier</div>
                         <div class="font-medium text-slate-800">{{ cashier.name }}</div>
@@ -133,12 +162,16 @@ const props = defineProps({
                     />
                     <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" class="mt-2">
                         <template #item="{ item }">
-                            <Link :href="item.route" :method="item.method" v-ripple>
+                            <Link v-if="item.route" :href="item.route" :method="item.method" class="w-full">
                                 <div class="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors">
                                     <span :class="item.icon" class="text-slate-600"></span>
                                     <span class="ml-3 font-medium">{{ item.label }}</span>
                                 </div>
                             </Link>
+                            <a v-else @click="item.command" class="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer">
+                                <span :class="item.icon" class="text-slate-600"></span>
+                                <span class="ml-3 font-medium">{{ item.label }}</span>
+                            </a>
                         </template>
                     </Menu>
                 </div>

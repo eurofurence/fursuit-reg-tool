@@ -61,7 +61,6 @@ import progressbar from './progressbar';
 import progressspinner from './progressspinner';
 import radiobutton from './radiobutton';
 import rating from './rating';
-import ripple from './ripple';
 import scrollpanel from './scrollpanel';
 import scrolltop from './scrolltop';
 import selectbutton from './selectbutton';
@@ -94,7 +93,6 @@ export default {
     global,
     directives: {
         badge: badgedirective,
-        ripple,
         tooltip
     },
 

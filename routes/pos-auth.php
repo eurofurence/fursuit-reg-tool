@@ -34,5 +34,9 @@ Route::middleware('auth:machine')->group(function () {
     Route::post('/printers/store', [PrinterController::class, 'store'])->name('printers.store');
     Route::get('/printers/jobs', [PrinterController::class, 'jobIndex'])->name('printers.jobs');
     Route::post('/printers/jobs/{job}/printed', [PrinterController::class, 'jobPrinted'])->name('printers.jobs.printed');
+    Route::post('/printers/jobs/{job}/failed', [PrinterController::class, 'jobFailed'])->name('printers.jobs.failed');
+    // Machine Status API
+    Route::get('/machine/status', [\App\Http\Controllers\POS\MachineStatusController::class, 'status'])->name('machine.status');
+    Route::post('/machine/status/update', [\App\Http\Controllers\POS\MachineStatusController::class, 'updateStatus'])->name('machine.status.update');
 
 });
