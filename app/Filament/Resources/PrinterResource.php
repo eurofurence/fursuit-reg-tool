@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Domain\Printing\Models\Printer;
 use App\Filament\Resources\PrinterResource\Pages;
+use App\Filament\Resources\PrintJobResource;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -65,8 +66,40 @@ class PrinterResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('type'),
                 Tables\Columns\TextColumn::make('machine.name')->label('Machine'),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->getStateUsing(fn (Printer $record): string => $record->status->value ?? 'unknown')
+                    ->colors([
+                        'success' => 'idle',
+                        'warning' => 'working',
+                        'danger' => 'paused',
+                        'secondary' => 'offline',
+                        'info' => 'processing',
+                        'gray' => 'unknown',
+                    ]),
+                Tables\Columns\TextColumn::make('pending_jobs')
+                    ->label('Pending Jobs')
+                    ->getStateUsing(fn (Printer $record): int => $record->printJobs()->where('status', 'pending')->count())
+                    ->url(fn (Printer $record): string => PrintJobResource::getUrl('index', ['printer' => $record->id]))
+                    ->color('warning')
+                    ->badge(),
+                Tables\Columns\TextColumn::make('active_jobs')
+                    ->label('Active Jobs')
+                    ->getStateUsing(fn (Printer $record): int => $record->printJobs()->whereIn('status', ['queued', 'printing', 'retrying'])->count())
+                    ->url(fn (Printer $record): string => PrintJobResource::getUrl('index', ['printer' => $record->id]))
+                    ->color('info')
+                    ->badge(),
+                Tables\Columns\TextColumn::make('failed_jobs')
+                    ->label('Failed Jobs')
+                    ->getStateUsing(fn (Printer $record): int => $record->printJobs()->where('status', 'failed')->count())
+                    ->url(fn (Printer $record): string => PrintJobResource::getUrl('index', ['printer' => $record->id]))
+                    ->color('danger')
+                    ->badge(),
                 Tables\Columns\CheckboxColumn::make('is_active')
                     ->label('Active'),
+                Tables\Columns\TextColumn::make('last_state_update')
+                    ->label('Last Update')
+                    ->dateTime()
+                    ->since(),
             ])
             ->filters([
                 //

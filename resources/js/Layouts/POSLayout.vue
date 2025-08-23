@@ -35,6 +35,7 @@ import QZPrintService from "@/Components/POS/QZPrintService.vue";
 import ToastService from "@/Components/POS/ToastService.vue";
 import ShortcutsDialog from "@/Components/POS/ShortcutsDialog.vue";
 import QzStatusIndicator from "@/Components/POS/QzStatusIndicator.vue";
+import PrinterStatusIndicator from "@/Components/POS/PrinterStatusIndicator.vue";
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
@@ -135,7 +136,7 @@ const props = defineProps({
 <template>
     <ToastService/>
     <!-- Only load QZPrintService for devices that should discover printers -->
-    <QZPrintService 
+    <QZPrintService
         v-if="machine?.should_discover_printers"
         @qz-status-changed="handleQzStatusChange"
         @pending-jobs-updated="handlePendingJobsUpdate"
@@ -148,17 +149,17 @@ const props = defineProps({
                 <!-- Left Section -->
                 <div class="flex items-center space-x-4">
                     <Link :href="route(backToRoute)" v-if="backToRoute">
-                        <Button 
-                            icon="pi pi-arrow-left" 
-                            class="p-button-text p-button-lg hover:bg-slate-100" 
-                            :label="isMobile ? '' : 'Back'" 
+                        <Button
+                            icon="pi pi-arrow-left"
+                            class="p-button-text p-button-lg hover:bg-slate-100"
+                            :label="isMobile ? '' : 'Back'"
                         />
                     </Link>
                     <div v-if="attendee" class="hidden sm:flex items-center space-x-2">
                         <Badge :value="attendee.name + ' #' + (eventUser?.attendee_id || 'N/A')" size="large" severity="success" class="font-medium"/>
                     </div>
                 </div>
-                
+
                 <!-- Center Section - Clock & QZ Status -->
                 <div class="flex-1 flex items-center justify-center space-x-6">
                     <DigitalClock class="text-slate-600 font-semibold text-xl"/>
@@ -168,9 +169,9 @@ const props = defineProps({
                     <div class="hidden md:block">
                         <!-- Full Printers button for devices that can discover printers -->
                         <Link v-if="machine?.should_discover_printers" :href="route('pos.printers.index')">
-                            <Button 
-                                label="Printers" 
-                                icon="pi pi-print" 
+                            <Button
+                                label="Printers"
+                                icon="pi pi-print"
                                 size="small"
                                 :severity="hasPausedPrinters ? 'danger' : 'secondary'"
                                 :outlined="!hasPausedPrinters"
@@ -181,7 +182,7 @@ const props = defineProps({
                         </Link>
                     </div>
                 </div>
-                
+
                 <!-- Right Section - User Menu -->
                 <div class="flex items-center space-x-3">
                     <!-- Mobile QZ Status -->
@@ -189,33 +190,25 @@ const props = defineProps({
                         <QzStatusIndicator :qz-status="qzStatus" :show-pending-jobs="false" />
                     </div>
                     <div class="text-right hidden sm:block space-y-1">
-                        <div class="flex items-center justify-end space-x-3">
-                            <!-- Printer status indicator for non-printing devices -->
-                            <div v-if="!machine?.should_discover_printers && printerStatus" class="flex items-center">
-                                <i 
-                                    class="pi pi-print text-lg"
-                                    :class="printerStatus.has_issues ? 'text-red-500' : 'text-green-500'"
-                                    :title="printerStatus.has_issues ? 
-                                        `${printerStatus.paused_count} of ${printerStatus.total_count} printers paused` : 
-                                        'All printers operational'"
-                                ></i>
-                            </div>
-                            <div class="text-center">
+                        <div class="flex items-center justify-end space-x-4">
+                            <!-- Real-time printer status indicators -->
+                            <PrinterStatusIndicator />
+                            <div class="text-left">
                                 <div class="text-xs text-slate-400 uppercase tracking-wide">Machine</div>
                                 <div class="font-medium text-slate-700 text-sm">{{ machine?.name || 'Unknown' }}</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-left">
                                 <div class="text-xs text-slate-400 uppercase tracking-wide">Cashier</div>
                                 <div class="font-medium text-slate-800 text-sm">{{ cashier?.name || 'Unknown' }}</div>
                             </div>
                         </div>
                     </div>
-                    <Button 
-                        type="button" 
-                        icon="pi pi-user" 
-                        @click="toggleUserMenu" 
-                        aria-haspopup="true" 
-                        aria-controls="overlay_menu" 
+                    <Button
+                        type="button"
+                        icon="pi pi-user"
+                        @click="toggleUserMenu"
+                        aria-haspopup="true"
+                        aria-controls="overlay_menu"
                         class="p-button-rounded p-button-lg"
                         :label="isMobile ? '' : 'Menu'"
                     />
@@ -236,7 +229,7 @@ const props = defineProps({
                 </div>
             </div>
         </header>
-        
+
         <!-- Main Content -->
         <main class="flex-1 p-6">
             <slot></slot>

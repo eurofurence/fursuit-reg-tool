@@ -22,7 +22,7 @@ class PrinterStatusTest extends TestCase
         $status = PrinterStatus::updateOrCreateForPrinter(
             $printer,
             $machine,
-            PrinterStatusEnum::Online,
+            PrinterStatusEnum::ONLINE,
             null,
             PrinterStatusSeverityEnum::Info,
             'Printer ready'
@@ -36,7 +36,7 @@ class PrinterStatusTest extends TestCase
             'message' => 'Printer ready',
         ]);
 
-        $this->assertEquals(PrinterStatusEnum::Online, $status->status);
+        $this->assertEquals(PrinterStatusEnum::ONLINE, $status->status);
         $this->assertEquals(PrinterStatusSeverityEnum::Info, $status->severity);
         $this->assertEquals('Printer ready', $status->message);
     }
@@ -50,7 +50,7 @@ class PrinterStatusTest extends TestCase
         $status = PrinterStatus::updateOrCreateForPrinter(
             $printer,
             $machine,
-            PrinterStatusEnum::Online,
+            PrinterStatusEnum::ONLINE,
             null,
             PrinterStatusSeverityEnum::Info,
             'Printer ready'
@@ -62,7 +62,7 @@ class PrinterStatusTest extends TestCase
         $updatedStatus = PrinterStatus::updateOrCreateForPrinter(
             $printer,
             $machine,
-            PrinterStatusEnum::MediaEmpty,
+            PrinterStatusEnum::MEDIA_EMPTY,
             'media-empty',
             PrinterStatusSeverityEnum::Error,
             'Out of paper'
@@ -70,7 +70,7 @@ class PrinterStatusTest extends TestCase
 
         // Should be the same record
         $this->assertEquals($status->id, $updatedStatus->id);
-        $this->assertEquals(PrinterStatusEnum::MediaEmpty, $updatedStatus->status);
+        $this->assertEquals(PrinterStatusEnum::MEDIA_EMPTY, $updatedStatus->status);
         $this->assertEquals('media-empty', $updatedStatus->status_code);
         $this->assertEquals(PrinterStatusSeverityEnum::Error, $updatedStatus->severity);
         $this->assertEquals('Out of paper', $updatedStatus->message);
@@ -95,7 +95,7 @@ class PrinterStatusTest extends TestCase
         $status = PrinterStatus::updateOrCreateForPrinter(
             $printer,
             $machine,
-            PrinterStatusEnum::MediaEmpty,
+            PrinterStatusEnum::MEDIA_EMPTY,
             'media-empty',
             PrinterStatusSeverityEnum::Warning,
             'Low ink and out of paper',
@@ -115,7 +115,7 @@ class PrinterStatusTest extends TestCase
         $status = PrinterStatus::updateOrCreateForPrinter(
             $printer,
             $machine,
-            PrinterStatusEnum::Online
+            PrinterStatusEnum::ONLINE
         );
 
         $this->assertEquals($printer->id, $status->printer->id);
@@ -132,7 +132,7 @@ class PrinterStatusTest extends TestCase
         $status1 = PrinterStatus::updateOrCreateForPrinter(
             $printer,
             $machine1,
-            PrinterStatusEnum::Online,
+            PrinterStatusEnum::ONLINE,
             null,
             PrinterStatusSeverityEnum::Info,
             'Online from machine 1'
@@ -141,15 +141,15 @@ class PrinterStatusTest extends TestCase
         $status2 = PrinterStatus::updateOrCreateForPrinter(
             $printer,
             $machine2,
-            PrinterStatusEnum::Offline,
+            PrinterStatusEnum::OFFLINE,
             'offline',
             PrinterStatusSeverityEnum::Error,
             'Offline from machine 2'
         );
 
         $this->assertNotEquals($status1->id, $status2->id);
-        $this->assertEquals(PrinterStatusEnum::Online, $status1->status);
-        $this->assertEquals(PrinterStatusEnum::Offline, $status2->status);
+        $this->assertEquals(PrinterStatusEnum::ONLINE, $status1->status);
+        $this->assertEquals(PrinterStatusEnum::OFFLINE, $status2->status);
         $this->assertEquals('Online from machine 1', $status1->message);
         $this->assertEquals('Offline from machine 2', $status2->message);
 
@@ -171,7 +171,7 @@ class PrinterStatusTest extends TestCase
 
         $this->assertInstanceOf(PrinterStatusEnum::class, $status->status);
         $this->assertInstanceOf(PrinterStatusSeverityEnum::class, $status->severity);
-        $this->assertEquals(PrinterStatusEnum::MediaJam, $status->status);
+        $this->assertEquals(PrinterStatusEnum::MEDIA_JAM, $status->status);
         $this->assertEquals(PrinterStatusSeverityEnum::Error, $status->severity);
     }
 }

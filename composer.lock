@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3052a18e8cefee7d59652feb825f6490",
+    "content-hash": "e4cc9c401f006e8f415c2f5f95c4584f",
     "packages": [
         {
             "name": "amphp/amp",
