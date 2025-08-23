@@ -165,12 +165,12 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
 
         $position_species = new Point(
             $this->width_px - 321 - 310, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 151 // Y-Position
+            $this->height_px - 67 - 142 // Y-Position
         );
 
         $position_name = new Point(
             $this->width_px - 321 - 310, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 257 // Y-Position
+            $this->height_px - 67 - 246 // Y-Position
         );
 
         // Create TextField objects and draw text on the image
@@ -191,7 +191,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         new TextField(
             $text_species,
             321, // Width of the text field
-            60, // Height of the text field
+            42, // Height of the text field
             18, // Minimum font size
             40, // Start font size
             $font_path,
@@ -205,7 +205,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         new TextField(
             $text_name,
             321, // Width of the text field
-            60, // Height of the text field
+            42, // Height of the text field
             18, // Minimum font size
             40, // Start font size
             $font_path,
