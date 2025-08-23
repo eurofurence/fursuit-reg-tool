@@ -7,7 +7,6 @@ use App\Badges\Components\TextAlignment;
 use App\Badges\Components\TextField;
 use App\Interfaces\BadgeInterface;
 use App\Models\Badge\Badge;
-use App\Services\BadgeLayerCacheService;
 use Illuminate\Support\Facades\Storage;
 use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
@@ -20,14 +19,9 @@ use Mpdf\Mpdf;
 
 class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
 {
-    private BadgeLayerCacheService $layerCache;
-
     public function __construct()
     {
         $this->init();
-
-        // Initialize layer cache service
-        $this->layerCache = app(BadgeLayerCacheService::class);
 
         // Overwrite default values
         $this->height_px = 648;
@@ -44,23 +38,12 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
 
         $size = new Box($this->width_px, $this->height_px);
 
-        // Use cached layers for better performance
-        $badge_objekt = $this->layerCache->getCachedBackgroundLayer('EF29_Badge', $this->width_px, $this->height_px);
-
-        // Add fursuit layer (fresh generation for best quality)
-        $fursuitLayer = $this->layerCache->generateFreshFursuitLayer($this->badge->fursuit, 'EF29_Badge', $this->width_px, $this->height_px);
-        $badge_objekt->paste($fursuitLayer, new Point(0, 0));
-
-        // Add text layer (this needs to be generated fresh each time)
+        $badge_objekt = $this->addFirstLayer($size);
+        $this->addSecondLayer($badge_objekt, $size);
         $this->addThirdLayer($badge_objekt);
 
-        // Add catch-em-all layer if needed
         if ($this->badge->fursuit->catch_em_all == true && ! empty($this->badge->fursuit->catch_code)) {
-            $catchLayer = $this->layerCache->getCachedCatchEmAllOverlay('EF29_Badge', $this->width_px, $this->height_px);
-            $badge_objekt->paste($catchLayer, new Point(0, 0));
-
-            // Add catch code text
-            $this->addCatchEmAllText($badge_objekt);
+            $this->addFourthLayer($badge_objekt, $size);
         }
 
         // Rotate image 180 degrees
@@ -98,36 +81,6 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         return $mpdf->Output($badge->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     }
 
-    /**
-     * Add catch-em-all text to the badge
-     */
-    private function addCatchEmAllText(ImageInterface $badge_object): void
-    {
-        // Textposition
-        $position = new Point($this->width_px - 587, $this->height_px - 143);
-
-        // Create color palette - Text color
-        $palette = new RGB;
-        $font_color = $palette->color($this->font_color);
-
-        new TextField(
-            $this->addLetterSpacing(strtoupper($this->badge->fursuit->catch_code), 1),
-            500, // Width of the text field
-            90, // Height of the text field
-            15, // Minimum font size
-            40, // Start font size
-            $this->font_path,
-            $font_color,
-            $badge_object,
-            $position,
-            TextAlignment::CENTER, // Centered alignment
-            2, // Maximum number of lines
-        );
-    }
-
-    /**
-     * @deprecated Use cached layers instead via BadgeLayerCacheService
-     */
     private function addFirstLayer(Box $size)
     {
         // Add background
@@ -137,9 +90,6 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         return $image;
     }
 
-    /**
-     * @deprecated Use cached layers instead via BadgeLayerCacheService
-     */
     private function addSecondLayer(ImageInterface $badge_object, Box $size)
     {
         // Load the overlay image in which green is to be replaced
@@ -269,9 +219,6 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         // The text is drawn automatically when the TextField object is created.
     }
 
-    /**
-     * @deprecated Use cached layers instead via BadgeLayerCacheService
-     */
     private function addFourthLayer(ImageInterface $badge_object, Box $size)
     {
         // Add catch em all field
