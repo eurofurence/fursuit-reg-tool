@@ -45,7 +45,7 @@ onMounted(function() {
             severity: evt.severity,
             fullEvent: evt
         });
-        
+
         // Handle different event types - both printer and job events come through this callback
         if (evt.eventType === 'JOB' && evt.jobName) {
             // Handle job-specific events
@@ -93,7 +93,7 @@ onMounted(function() {
         startHealthCheck();
         // start periodic printer states syncing
         startPrinterStatesSync();
-        
+
         // QZ doesn't have setStatusCallbacks, we'll rely on connection promises and health checks
     }
 })
@@ -107,23 +107,23 @@ function startHealthCheck() {
         const isActive = qz.websocket.isActive();
         const currentStatus = isActive ? 'connected' : 'disconnected';
         healthCheckCounter++;
-        
+
         // Only emit and update backend if status actually changed
         if (lastKnownStatus !== currentStatus) {
             console.log(`QZ status changed from ${lastKnownStatus} to ${currentStatus}`);
             lastKnownStatus = currentStatus;
-            
+
             safeEmit('qz-status-changed', {
                 qz_status: currentStatus,
                 is_connected: isActive,
                 last_seen: new Date().toISOString()
             });
-            
+
             // Only update backend when status actually changes
             updateConnectionStatus(currentStatus);
         }
         // No more periodic backend updates - only when status changes!
-        
+
         // Try to reconnect if disconnected and should be connected
         if (!isActive && page.props.auth.machine.should_discover_printers) {
             console.log('QZ disconnected, attempting reconnect...');
@@ -142,7 +142,7 @@ let jobProcessingInterval = null;
 let printerStatesSyncInterval = null;
 const machineName = page.props.auth.machine?.name || 'Unknown';
 
-// Report job status events to backend  
+// Report job status events to backend
 async function reportJobStatus(evt) {
     if (!evt.jobName) {
         console.warn('Job event missing job name:', evt);
@@ -160,7 +160,7 @@ async function reportJobStatus(evt) {
     } else {
         // Handle QZ-Tray default job names like "Java Printing"
         console.log(`⚠️  QZ using default job name: ${evt.jobName}, attempting to match by printer and timing`);
-        
+
         // Look for active jobs on this printer (most recent within 30 seconds)
         const activeJob = activePrintJobs.get(evt.printerName);
         if (activeJob && (Date.now() - activeJob.timestamp) < 30000) {
@@ -202,7 +202,7 @@ async function reportJobStatus(evt) {
             console.error('Failed to report job status:', response.status, response.statusText);
         } else {
             console.log('Job status reported successfully:', statusData);
-            
+
             // Clean up tracking for completed/failed jobs to prevent memory leaks
             if (['COMPLETE', 'FINISHED', 'ERROR', 'FAILED', 'ABORTED'].includes(evt.statusText?.toUpperCase())) {
                 // Find and remove the tracking entry for this job
@@ -227,7 +227,7 @@ async function reportPrinterStatus(evt) {
         return;
     }
 
-    const statusData = {
+    const eventData = {
         printer_name: evt.printerName,
         status: evt.statusText || evt.status || 'UNKNOWN',
         event_type: evt.eventType || 'PRINTER',
@@ -236,24 +236,49 @@ async function reportPrinterStatus(evt) {
     };
 
     try {
-        const response = await fetch(route('pos.auth.printers.status'), {
+        // Send to the NEW printer events webhook for immediate handling
+        const eventResponse = await fetch(route('pos.auth.printers.events'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             },
-            body: JSON.stringify(statusData)
+            body: JSON.stringify(eventData)
         });
 
-        if (!response.ok) {
-            console.error('Failed to report printer status:', response.status, response.statusText);
+        if (!eventResponse.ok) {
+            console.error('Failed to report printer event:', eventResponse.status, eventResponse.statusText);
         } else {
-            console.log('Printer status reported successfully:', statusData);
-            
-            // Check for printer status transitions that indicate job completion
-            await checkPrinterStatusCompletion(evt);
+            const eventResult = await eventResponse.json();
+            console.log('Printer event reported successfully:', eventData);
+            console.log('Event handling result:', eventResult);
+
+            // Show toast if printer was paused due to this event
+            if (eventResult.handled) {
+                toast.add({
+                    severity: 'error',
+                    summary: `Printer ${evt.printerName} Paused`,
+                    detail: eventResult.action_taken,
+                    life: 0 // Sticky toast
+                });
+            }
         }
+
+        // Also send to legacy status endpoint for compatibility
+        await fetch(route('pos.auth.printers.status'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(eventData)
+        });
+
+        // Check for printer status transitions that indicate job completion
+        await checkPrinterStatusCompletion(evt);
+
     } catch (error) {
         console.error('Error reporting printer status:', error);
     }
@@ -290,25 +315,25 @@ async function updateJobStatus(jobId, status, additionalData = {}) {
 async function checkPrinterStatusCompletion(evt) {
     const currentStatus = (evt.statusText || evt.status || '').toUpperCase();
     const previousStatus = printerPreviousStatus.get(evt.printerName);
-    
+
     // Update the previous status for next time
     printerPreviousStatus.set(evt.printerName, currentStatus);
-    
+
     // Check if printer went from processing/busy state to idle/ok state
     const processingStates = ['PROCESSING', 'BUSY', 'PRINTING', 'RENDERING'];
     const idleStates = ['OK', 'IDLE', 'READY'];
-    
+
     const wasProcessing = previousStatus && processingStates.includes(previousStatus);
     const nowIdle = idleStates.includes(currentStatus);
-    
+
     if (wasProcessing && nowIdle) {
         console.log(`🔄 Printer ${evt.printerName} transitioned from ${previousStatus} to ${currentStatus} - checking for job completion`);
-        
+
         // Look for active jobs on this printer
         const activeJob = activePrintJobs.get(evt.printerName);
         if (activeJob && (Date.now() - activeJob.timestamp) < 60000) { // Within last 60 seconds
             console.log(`🎯 Found active job ${activeJob.jobId} on printer ${evt.printerName}, marking as complete based on printer status`);
-            
+
             try {
                 // Mark job as completed using the manual completion endpoint
                 const response = await fetch(route('pos.auth.printers.jobs.printed', {job: activeJob.jobId}), {
@@ -325,18 +350,18 @@ async function checkPrinterStatusCompletion(evt) {
                         qz_job_name: activeJob.qzJobName
                     })
                 });
-                
+
                 if (response.ok) {
                     console.log(`✅ Successfully marked job ${activeJob.jobId} as printed based on printer status`);
-                    
+
                     // Show success toast for job completion
                     toast.add({
-                        severity: 'success', 
-                        summary: 'Print Completed', 
-                        detail: `Job #${activeJob.jobId} printed successfully`, 
+                        severity: 'success',
+                        summary: 'Print Completed',
+                        detail: `Job #${activeJob.jobId} printed successfully`,
                         life: 4000
                     });
-                    
+
                     // Clean up tracking
                     activePrintJobs.delete(evt.printerName);
                 } else {
@@ -356,7 +381,7 @@ async function checkPrinterStatusCompletion(evt) {
 // Fallback mechanism for job completion when QZ-Tray doesn't report status
 function startJobCompletionFallback(jobId, qzJobName, timeoutMs) {
     console.log(`⏰ Starting fallback timer for job ${jobId} (${qzJobName}) - ${timeoutMs}ms`);
-    
+
     setTimeout(async () => {
         try {
             // Check if job is still in printing state
@@ -367,14 +392,14 @@ function startJobCompletionFallback(jobId, qzJobName, timeoutMs) {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             });
-            
+
             if (response.ok) {
                 const jobData = await response.json();
-                
+
                 if (jobData.status === 'printing') {
                     console.log(`⚠️  Fallback triggered: Job ${jobId} still in printing state after ${timeoutMs}ms`);
                     console.log(`🔄 Attempting to mark job ${jobId} as printed via fallback`);
-                    
+
                     // Use the manual completion endpoint
                     const completionResponse = await fetch(route('pos.auth.printers.jobs.printed', {job: jobId}), {
                         method: 'POST',
@@ -389,15 +414,15 @@ function startJobCompletionFallback(jobId, qzJobName, timeoutMs) {
                             timeout_ms: timeoutMs
                         })
                     });
-                    
+
                     if (completionResponse.ok) {
                         console.log(`✅ Fallback successful: Job ${jobId} marked as printed`);
-                        
+
                         // Show success toast for fallback completion
                         toast.add({
-                            severity: 'success', 
-                            summary: 'Print Completed', 
-                            detail: `Job #${jobId} printed successfully (timeout fallback)`, 
+                            severity: 'success',
+                            summary: 'Print Completed',
+                            detail: `Job #${jobId} printed successfully (timeout fallback)`,
                             life: 4000
                         });
                     } else {
@@ -416,7 +441,7 @@ function startJobCompletionFallback(jobId, qzJobName, timeoutMs) {
 // Backend-synced printer state management functions
 async function updatePrinterState(printerName, status, currentJob = null, error = null) {
     console.log(`📊 Updating printer ${printerName} state to '${status}' in backend`);
-    
+
     try {
         const response = await fetch(route('pos.auth.printer-states.update'), {
             method: 'POST',
@@ -451,34 +476,34 @@ async function syncPrinterStates() {
         const headers = {
             'Accept': 'application/json'
         };
-        
+
         // Add If-Modified-Since header if we have a timestamp
         if (lastPrinterStatesTimestamp) {
             headers['If-Modified-Since'] = lastPrinterStatesTimestamp;
         }
-        
+
         const response = await fetch(route('pos.auth.printer-states.api'), { headers });
-        
+
         // 304 Not Modified - nothing changed
         if (response.status === 304) {
             console.log('📡 Printer states unchanged (304), skipping update');
             return {}; // Return empty to avoid further processing
         }
-        
+
         if (response.ok) {
             const data = await response.json();
             const statesArray = data.states || data; // Handle both new and old formats
             const newTimestamp = response.headers.get('Last-Modified') || data.last_updated;
-            
+
             lastPrinterStatesTimestamp = newTimestamp;
             console.log(`📡 Synced printer states from backend (timestamp: ${newTimestamp}):`, statesArray);
-            
+
             // Convert array to keyed object for easier lookup in job processing
             const statesObject = {};
             statesArray.forEach(printer => {
                 statesObject[printer.name] = printer;
             });
-            
+
             safeEmit('printer-states-updated', statesObject);
             return statesObject;
         } else {
@@ -495,7 +520,7 @@ async function syncPrinterStates() {
 async function initializePrinter(printerName) {
     availablePrinters.add(printerName);
     console.log(`🖨️  Initializing printer: ${printerName}`);
-    
+
     // Initialize as idle in backend if not exists
     await updatePrinterState(printerName, 'idle');
 }
@@ -518,14 +543,14 @@ function isErrorRecoverable(error) {
         'BUSY', 'PRINTER_BUSY',
         'WARMING_UP', 'INITIALIZING'
     ];
-    
+
     const errorMessage = (error.message || error.toString()).toUpperCase();
     return recoverableMessages.some(msg => errorMessage.includes(msg));
 }
 
 function getRetryReason(error) {
     const errorMessage = (error.message || error.toString()).toUpperCase();
-    
+
     if (errorMessage.includes('PAPER')) return 'Paper issue detected';
     if (errorMessage.includes('OFFLINE')) return 'Printer offline';
     if (errorMessage.includes('INTERVENTION')) return 'User intervention required';
@@ -533,7 +558,7 @@ function getRetryReason(error) {
     if (errorMessage.includes('TONER') || errorMessage.includes('INK')) return 'Low consumables';
     if (errorMessage.includes('BUSY')) return 'Printer busy';
     if (errorMessage.includes('WARMING')) return 'Printer warming up';
-    
+
     return 'Recoverable printer error';
 }
 
@@ -549,7 +574,7 @@ async function updateConnectionStatus(status) {
             },
             body: JSON.stringify({ status })
         });
-        
+
         if (response.ok) {
             console.log(`QZ status updated to: ${status}`);
             // Emit status change to parent component
@@ -609,7 +634,7 @@ function startJobProcessing() {
     jobProcessingInterval = setInterval(() => {
         checkForJobsForAllPrinters();
     }, 4000);
-    
+
     // Initial job check
     checkForJobsForAllPrinters();
 }
@@ -617,7 +642,7 @@ function startJobProcessing() {
 async function checkForJobsForAllPrinters() {
     try {
         console.log('🔍 Checking for jobs for all printers...');
-        
+
         // Fetch all pending jobs
         const response = await fetch(route('pos.auth.printers.jobs'), {
             cache: 'no-store',
@@ -633,22 +658,22 @@ async function checkForJobsForAllPrinters() {
 
         const printJobs = await response.json();
         const jobs = Array.isArray(printJobs) ? printJobs : (printJobs.data || []);
-        
+
         // Emit pending jobs count update
         safeEmit('pending-jobs-updated', jobs.length);
-        
+
         // Process jobs for each available printer
         for (const job of jobs) {
             const printerName = job.printer;
-            
+
             // Only process if printer exists and is available locally
             if (availablePrinters.has(printerName)) {
-                
+
                 console.log(`📋 Found job ${job.id} for idle printer ${printerName}`);
-                
+
                 // Claim and process this job for this printer
                 processPrinterJob(printerName, job);
-                
+
                 // Only process one job per printer per cycle
                 break;
             }
@@ -662,28 +687,28 @@ async function checkForJobsForAllPrinters() {
 // Process a job for a specific printer
 async function processPrinterJob(printerName, job) {
     console.log(`🔄 Processing job ${job.id} for printer ${printerName}`);
-    
+
     // Update printer state to working
     updatePrinterState(printerName, 'working', job);
-    
+
     try {
         // Claim the job
         await claimJob(job.id);
-        
+
         // Process the job
         await processSingleJob(job);
-        
+
         console.log(`✅ Completed job ${job.id} for printer ${printerName}`);
-        
+
         // Mark printer as idle again
         updatePrinterState(printerName, 'idle', null);
-        
+
     } catch (error) {
         console.error(`❌ Job ${job.id} failed on printer ${printerName}:`, error);
-        
+
         // Pause the printer and store the error
         updatePrinterState(printerName, 'paused', job, error);
-        
+
         // Show toast notification for printer pause
         toast.add({
             severity: 'error',
@@ -696,7 +721,7 @@ async function processPrinterJob(printerName, job) {
 
 async function claimJob(jobId) {
     console.log(`🔒 Claiming job ${jobId}...`);
-    
+
     try {
         const response = await fetch(route('pos.auth.printers.jobs.status', {job: jobId}), {
             method: 'POST',
@@ -709,7 +734,7 @@ async function claimJob(jobId) {
                 status: 'queued' // Mark as queued/claimed by this machine
             })
         });
-        
+
         if (response.ok) {
             console.log(`✅ Successfully claimed job ${jobId}`);
         } else {
@@ -747,7 +772,7 @@ async function processSingleJob(job) {
         };
 
         console.log('Printer options:', printerOptions);
-        
+
         const config = qz.configs.create(job.printer, printerOptions);
         const data = [{
             type: 'pixel',
@@ -776,14 +801,14 @@ async function processSingleJob(job) {
         console.log(`🖨️  Sending job ${job.id} (${qzJobName}) to printer: ${job.printer}`);
         await qz.print(config, data);
         console.log(`✅ Job ${job.id} successfully sent to printer with name: ${qzJobName}`);
-        
+
         // Start a fallback timer to check job status if QZ doesn't report completion
         // This helps handle cases where QZ-Tray doesn't generate completion events
         startJobCompletionFallback(job.id, qzJobName, 10000); // 10 second timeout
 
     } catch (error) {
         console.error(`Failed to print job ${job.id}:`, error);
-        
+
         // Re-throw error to be handled by processPrinterJob (which will pause the printer)
         throw error;
     }
@@ -792,12 +817,12 @@ async function processSingleJob(job) {
 function findPrinters() {
     qz.printers.details().then((printers) => {
         console.log(`🔍 Found ${printers.length} printers:`, printers.map(p => p.name));
-        
+
         // Initialize all discovered printers
         printers.forEach(printer => {
             initializePrinter(printer.name);
         });
-        
+
         // Send printer details to backend
         fetch(route('pos.auth.printers.store'), {
             method: "POST",

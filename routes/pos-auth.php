@@ -19,10 +19,6 @@ Route::middleware('auth:machine')->group(function () {
         ->name('user.select');
     Route::post('/login', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'submitPinLogin'])
         ->name('user.pin.submit');
-    Route::get('/login/{user}', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'showLogin'])
-        ->name('user.login.show');
-    Route::post('/login/{user}', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'submitLogin'])
-        ->name('user.login.submit');
 
     /**
      * CONTAINS ALL ROUTES FOR POS SYSTEM - AUTHENTICATED
@@ -39,11 +35,12 @@ Route::middleware('auth:machine')->group(function () {
     Route::post('/printers/jobs/{job}/status', [PrinterController::class, 'jobStatusUpdate'])->name('printers.jobs.status');
     Route::post('/printers/jobs/{job}/qz-status', [PrinterController::class, 'qzJobStatusUpdate'])->name('printers.jobs.qz-status');
     Route::post('/printers/status', [PrinterController::class, 'printerStatusUpdate'])->name('printers.status');
-    
+    Route::post('/printers/events', [PrinterController::class, 'printerEventWebhook'])->name('printers.events');
+
     // Printer State Management API (Machine-level only - used by QZPrintService)
     Route::get('/printer-states/api', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'getStates'])->name('printer-states.api');
     Route::post('/printer-states/update', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'updateState'])->name('printer-states.update');
-    
+
     // Machine Status API
     Route::post('/machine/status/update', [\App\Http\Controllers\POS\MachineStatusController::class, 'updateStatus'])->name('machine.status.update');
 

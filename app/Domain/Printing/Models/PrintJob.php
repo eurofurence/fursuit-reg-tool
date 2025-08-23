@@ -14,6 +14,13 @@ class PrintJob extends Model
     use HasFactory;
 
     protected $guarded = [];
+    
+    protected $fillable = [
+        'printer_id', 'printable_type', 'printable_id', 'type', 'status', 'file',
+        'priority', 'retry_count', 'retry_of', 'processing_machine_id',
+        'qz_job_name', 'last_qz_status', 'last_qz_message', 'error_message',
+        'printed_at', 'queued_at', 'started_at', 'failed_at'
+    ];
 
     protected static function newFactory()
     {
@@ -44,6 +51,71 @@ class PrintJob extends Model
     public function processingMachine()
     {
         return $this->belongsTo(Machine::class, 'processing_machine_id');
+    }
+
+    public function originalJob()
+    {
+        return $this->belongsTo(self::class, 'retry_of');
+    }
+
+    public function retryJobs()
+    {
+        return $this->hasMany(self::class, 'retry_of');
+    }
+
+    /**
+     * Create a retry job from this failed job
+     */
+    public function createRetryJob(bool $reassignPrinter = false): self
+    {
+        $printerId = $this->printer_id;
+        
+        // If reassigning, find an available printer of the same type
+        if ($reassignPrinter) {
+            $printerId = $this->findAvailablePrinter();
+        }
+
+        // Create a new job with the same data but referencing this as the original
+        $retryJob = self::create([
+            'printer_id' => $printerId,
+            'printable_type' => $this->printable_type,
+            'printable_id' => $this->printable_id,
+            'type' => $this->type,
+            'status' => PrintJobStatusEnum::Pending,
+            'file' => $this->file,
+            'priority' => 1, // High priority for retries
+            'retry_count' => 0, // Reset retry count for new job
+            'retry_of' => $this->id, // Reference to original job
+            'processing_machine_id' => null,
+            'qz_job_name' => null,
+            'last_qz_status' => null,
+            'last_qz_message' => null,
+            'error_message' => null,
+            'printed_at' => null,
+            'queued_at' => null,
+            'started_at' => null,
+            'failed_at' => null,
+        ]);
+
+        return $retryJob;
+    }
+
+    /**
+     * Find an available printer for retry (not offline/paused and same type)
+     */
+    private function findAvailablePrinter(): int
+    {
+        $originalPrinter = $this->printer;
+        
+        // Find a printer of the same type that's not in error state
+        $availablePrinter = Printer::where('type', $originalPrinter->type)
+            ->where('is_active', true)
+            ->whereNotIn('status', ['offline', 'paused'])
+            ->orderBy('status') // Prefer idle printers over working ones
+            ->first();
+
+        // If no available printer found, fall back to original printer
+        return $availablePrinter ? $availablePrinter->id : $this->printer_id;
     }
 
     // Scopes

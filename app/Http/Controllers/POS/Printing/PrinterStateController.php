@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\POS\Printing;
 
 use App\Http\Controllers\Controller;
-use App\Models\PrinterState;
+use App\Domain\Printing\Models\Printer;
+use App\Enum\PrinterStatusEnum;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,10 +13,23 @@ class PrinterStateController extends Controller
 {
     public function index(): Response
     {
-        $printerStates = PrinterState::with('currentJob')->orderBy('name')->get()->values();
-        
+        // Only show printer states for active printers
+        $printerStates = Printer::with(['currentJob', 'machine'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->values();
+
+        // Get recent critical events for context
+        $recentEvents = \App\Models\PrinterEvent::whereIn('severity', ['ERROR', 'FATAL'])
+            ->orWhere('handled', true)
+            ->orderBy('event_time', 'desc')
+            ->limit(20)
+            ->get();
+
         return Inertia::render('POS/Printers/Index', [
-            'printerStates' => $printerStates
+            'printerStates' => $printerStates,
+            'recentEvents' => $recentEvents
         ]);
     }
 
@@ -23,13 +37,13 @@ class PrinterStateController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
-            'status' => 'required|in:idle,working,paused',
+            'status' => 'required|in:' . implode(',', array_column(PrinterStatusEnum::cases(), 'value')),
             'current_job_id' => 'nullable|integer|exists:print_jobs,id',
             'last_error_message' => 'nullable|string',
             'machine_name' => 'nullable|string'
         ]);
 
-        $printerState = PrinterState::updatePrinterState(
+        $printerState = Printer::updatePrinterState(
             $validated['name'],
             $validated['status'],
             $validated['current_job_id'] ?? null,
@@ -45,45 +59,47 @@ class PrinterStateController extends Controller
 
     public function retryJob(Request $request, string $printerName)
     {
-        $printer = PrinterState::where('name', $printerName)->first();
-        
-        if (!$printer || $printer->status !== 'paused') {
-            return response()->json(['error' => 'Printer not found or not paused'], 404);
+        $printer = Printer::where('name', $printerName)->where('is_active', true)->first();
+
+        if (!$printer || !in_array($printer->status, [PrinterStatusEnum::PAUSED, PrinterStatusEnum::OFFLINE])) {
+            return response()->json(['error' => 'Printer not found or not in error state'], 404);
         }
 
-        // Reset the current job to pending with priority 1 so it gets picked up first
+        // Create a new retry job from the failed job (same printer - no reassignment)
+        $retryJobId = null;
         if ($printer->current_job_id) {
-            $printJob = \App\Domain\Printing\Models\PrintJob::find($printer->current_job_id);
-            if ($printJob) {
-                $printJob->update([
-                    'status' => 'pending',
-                    'priority' => 1,
-                    'error_message' => null,
-                    'updated_at' => now()
-                ]);
+            $originalJob = \App\Domain\Printing\Models\PrintJob::find($printer->current_job_id);
+            if ($originalJob) {
+                $retryJob = $originalJob->createRetryJob(reassignPrinter: false);
+                $retryJobId = $retryJob->id;
             }
         }
 
-        // Mark printer as idle and ready for retry
+        // Mark printer as idle and ready to pick up the retry job
         $printer->update([
             'status' => 'idle',
-            'current_job_id' => null, // Clear the current job so it can be reclaimed
+            'current_job_id' => null, // Clear the current job so retry job can be claimed
             'last_error_message' => null,
-            'last_update' => now()
+            'last_state_update' => now()
         ]);
+
+        $message = $retryJobId 
+            ? "Printer {$printerName} ready for retry. New job #{$retryJobId} created."
+            : "Printer {$printerName} cleared and ready.";
 
         return response()->json([
             'success' => true,
-            'message' => "Printer {$printerName} ready for retry, job reset to pending"
+            'message' => $message,
+            'retry_job_id' => $retryJobId
         ]);
     }
 
     public function skipJob(Request $request, string $printerName)
     {
-        $printer = PrinterState::where('name', $printerName)->first();
-        
-        if (!$printer || $printer->status !== 'paused') {
-            return response()->json(['error' => 'Printer not found or not paused'], 404);
+        $printer = Printer::where('name', $printerName)->where('is_active', true)->first();
+
+        if (!$printer || !in_array($printer->status, [PrinterStatusEnum::PAUSED, PrinterStatusEnum::OFFLINE])) {
+            return response()->json(['error' => 'Printer not found or not in error state'], 404);
         }
 
         // Mark the current job as failed if it exists
@@ -103,7 +119,7 @@ class PrinterStateController extends Controller
             'status' => 'idle',
             'current_job_id' => null,
             'last_error_message' => null,
-            'last_update' => now()
+            'last_state_update' => now()
         ]);
 
         return response()->json([
@@ -114,8 +130,8 @@ class PrinterStateController extends Controller
 
     public function clearError(Request $request, string $printerName)
     {
-        $success = PrinterState::clearPrinterError($printerName);
-        
+        $success = Printer::clearPrinterError($printerName);
+
         if ($success) {
             return response()->json([
                 'success' => true,
@@ -123,21 +139,27 @@ class PrinterStateController extends Controller
             ]);
         }
 
-        return response()->json(['error' => 'Printer not found or not paused'], 404);
+        return response()->json(['error' => 'Printer not found or not in error state'], 404);
     }
 
     public function getStates(Request $request)
     {
-        $lastUpdated = PrinterState::max('updated_at');
+        // Only check timestamps for active printers
+        $lastUpdated = Printer::where('is_active', true)->max('updated_at');
         $clientLastUpdated = $request->header('If-Modified-Since');
-        
+
         // If client has the same timestamp, return 304 Not Modified
         if ($clientLastUpdated && $clientLastUpdated === $lastUpdated) {
             return response('', 304);
         }
-        
-        $states = PrinterState::with('currentJob')->orderBy('name')->get()->values();
-        
+
+        // Only return states for active printers
+        $states = Printer::with('currentJob')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->values();
+
         return response()->json([
             'states' => $states,
             'last_updated' => $lastUpdated

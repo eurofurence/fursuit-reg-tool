@@ -65,11 +65,15 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        // Get overall printer status - check if any printers are paused
-        $pausedCount = \App\Models\PrinterState::where('status', 'paused')->count();
-        $totalCount = \App\Models\PrinterState::count();
-        $lastUpdated = \App\Models\PrinterState::max('updated_at');
-        
+        // Get overall printer status - only count active printers
+        $pausedCount = \App\Domain\Printing\Models\Printer::whereIn('status', [\App\Enum\PrinterStatusEnum::PAUSED->value, \App\Enum\PrinterStatusEnum::OFFLINE->value])
+            ->where('is_active', true)
+            ->count();
+        $totalCount = \App\Domain\Printing\Models\Printer::where('is_active', true)
+            ->count();
+        $lastUpdated = \App\Domain\Printing\Models\Printer::where('is_active', true)
+            ->max('updated_at');
+
         return [
             'has_issues' => $pausedCount > 0,
             'paused_count' => $pausedCount,

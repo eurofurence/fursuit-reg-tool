@@ -16,7 +16,12 @@ defineProps({
     <DataTable dataKey="id" :value="fursuits" scrollable scrollHeight="400px" class="-m-5" tableStyle="min-width: 50rem">
         <Column field="image_url" header="Icon">
             <template #body="slotProps">
-                <Avatar :image="slotProps.data.image_url" size="large" :pt="{ image: { class: 'object-contain rounded-lg' }}" />
+                <img 
+                    :src="slotProps.data.image_url" 
+                    :alt="`${slotProps.data.name} fursuit image`"
+                    class="w-16 h-16 object-contain rounded-lg"
+                    loading="lazy"
+                />
             </template>
         </Column>
         <Column field="name" header="Name" />

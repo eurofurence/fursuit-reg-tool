@@ -34,10 +34,23 @@ function refreshPrinterStates() {
 
 function getStatusSeverity(status) {
     switch (status) {
-        case 'idle': return 'secondary';
+        case 'idle': return 'success';
         case 'working': return 'info';
-        case 'paused': return 'danger';
+        case 'processing': return 'info';
+        case 'paused': return 'warning';
+        case 'offline': return 'danger';
         default: return 'secondary';
+    }
+}
+
+function getStatusLabel(status) {
+    switch (status) {
+        case 'idle': return 'READY';
+        case 'working': return 'WORKING';
+        case 'processing': return 'PROCESSING';
+        case 'paused': return 'PAUSED';
+        case 'offline': return 'OFFLINE';
+        default: return 'UNKNOWN';
     }
 }
 
@@ -45,7 +58,9 @@ function getStatusIcon(status) {
     switch (status) {
         case 'idle': return 'pi pi-check-circle';
         case 'working': return 'pi pi-spin pi-spinner';
+        case 'processing': return 'pi pi-spin pi-spinner';
         case 'paused': return 'pi pi-pause-circle';
+        case 'offline': return 'pi pi-exclamation-triangle';
         default: return 'pi pi-question-circle';
     }
 }
@@ -268,7 +283,7 @@ async function clearError(printerName) {
                     <Column field="status" header="Status" style="width: 120px">
                         <template #body="slotProps">
                             <Tag 
-                                :value="slotProps.data.status?.toUpperCase() || 'UNKNOWN'" 
+                                :value="getStatusLabel(slotProps.data.status)" 
                                 :severity="getStatusSeverity(slotProps.data.status)"
                             />
                         </template>
@@ -283,10 +298,10 @@ async function clearError(printerName) {
                         </template>
                     </Column>
 
-                    <Column field="machine_name" header="Machine">
+                    <Column field="machine.name" header="Machine">
                         <template #body="slotProps">
-                            <span v-if="slotProps.data.machine_name" class="text-sm">
-                                {{ slotProps.data.machine_name }}
+                            <span v-if="slotProps.data.machine?.name" class="text-sm">
+                                {{ slotProps.data.machine.name }}
                             </span>
                             <span v-else class="text-gray-400">Unknown</span>
                         </template>
@@ -303,32 +318,36 @@ async function clearError(printerName) {
                         </template>
                     </Column>
 
-                    <Column field="last_update" header="Last Update" style="width: 140px">
+                    <Column field="last_state_update" header="Last Update" style="width: 140px">
                         <template #body="slotProps">
                             <span class="text-sm text-gray-600">
-                                {{ slotProps.data.last_update ? dayjs(slotProps.data.last_update).format('DD.MM HH:mm:ss') : 'Never' }}
+                                {{ slotProps.data.last_state_update ? dayjs(slotProps.data.last_state_update).format('DD.MM HH:mm:ss') : 'Never' }}
                             </span>
                         </template>
                     </Column>
 
                     <Column header="Actions" style="width: 200px">
                         <template #body="slotProps">
-                            <div v-if="slotProps.data.status === 'paused'" class="flex gap-2">
-                                <Button 
-                                    label="Retry" 
-                                    size="small" 
-                                    severity="success"
-                                    icon="pi pi-refresh"
-                                    @click="retryPrinter(slotProps.data.name)"
-                                />
-                                <Button 
-                                    label="Skip" 
-                                    size="small" 
-                                    severity="warning"
-                                    icon="pi pi-step-forward"
-                                    outlined
-                                    @click="skipPrinter(slotProps.data.name)"
-                                />
+                            <div v-if="slotProps.data.status === 'paused' || slotProps.data.status === 'offline'" class="flex gap-2">
+                                <!-- Only show Retry/Skip if there's a current job -->
+                                <template v-if="slotProps.data.current_job_id">
+                                    <Button 
+                                        label="Retry" 
+                                        size="small" 
+                                        severity="success"
+                                        icon="pi pi-refresh"
+                                        @click="retryPrinter(slotProps.data.name)"
+                                    />
+                                    <Button 
+                                        label="Skip" 
+                                        size="small" 
+                                        severity="warning"
+                                        icon="pi pi-step-forward"
+                                        outlined
+                                        @click="skipPrinter(slotProps.data.name)"
+                                    />
+                                </template>
+                                <!-- Always show Clear for debugging -->
                                 <Button 
                                     label="Clear" 
                                     size="small" 

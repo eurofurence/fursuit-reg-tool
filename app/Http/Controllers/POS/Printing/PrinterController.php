@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\POS\Printing;
 
 use App\Domain\Printing\Models\PrintJob;
+use App\Domain\Printing\Models\Printer;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
+use App\Enum\PrinterStatusEnum;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -31,8 +33,12 @@ class PrinterController extends Controller
     {
         $machine = auth('machine')->user();
 
-        // Get jobs that are ready to be printed (pending or queued)
-        return PrintJob::whereHas('printer', fn ($query) => $query->where('machine_id', $machine->id))
+        // Get jobs that are ready to be printed (pending or queued) 
+        // BUT only for printers that are IDLE (one job at a time per printer)
+        return PrintJob::whereHas('printer', function ($query) use ($machine) {
+                $query->where('machine_id', $machine->id)
+                      ->where('status', PrinterStatusEnum::IDLE->value); // Only idle printers
+            })
             ->whereIn('status', [PrintJobStatusEnum::Pending, PrintJobStatusEnum::Queued])
             ->limit(5)
             ->prioritized()
@@ -75,7 +81,7 @@ class PrinterController extends Controller
         // Manual override: Force job to printed state
         // This should only be used for manual intervention, not automatic completion
         // Automatic completion should happen via QZ-Tray callbacks in qzJobStatusUpdate()
-        
+
         // Transition through proper states if needed
         if ($job->status === PrintJobStatusEnum::Pending) {
             $job->transitionTo(PrintJobStatusEnum::Queued);
@@ -168,24 +174,31 @@ class PrinterController extends Controller
         // Map QZ job status to our job status
         $qzStatus = strtoupper($request->input('status'));
         $newStatus = null;
+        $printerStatus = null;
 
         switch ($qzStatus) {
             case 'SPOOLING':
             case 'PRINTING':
             case 'RENDERING_LOCALLY':
+            case 'RETAINED':
                 $newStatus = PrintJobStatusEnum::Printing;
+                $printerStatus = PrinterStatusEnum::PROCESSING;
                 break;
 
             case 'COMPLETE':
             case 'FINISHED':
+            case 'DELETING':
+            case 'DELETED':
                 // Job actually completed - mark as printed
                 $newStatus = PrintJobStatusEnum::Printed;
+                $printerStatus = PrinterStatusEnum::IDLE;
                 break;
 
             case 'ERROR':
             case 'ABORTED':
             case 'FAILED':
                 $newStatus = PrintJobStatusEnum::Failed;
+                $printerStatus = PrinterStatusEnum::IDLE; // Free up printer for next job
                 break;
 
             case 'CANCELED':
@@ -194,11 +207,13 @@ class PrinterController extends Controller
             case 'USER_INTERVENTION':
             case 'OFFLINE':
                 $newStatus = PrintJobStatusEnum::Retrying;
+                $printerStatus = PrinterStatusEnum::PAUSED; // Pause printer due to intervention needed
                 break;
 
             case 'QUEUED':
             case 'WAITING':
                 $newStatus = PrintJobStatusEnum::Queued;
+                // Keep current printer status
                 break;
         }
 
@@ -211,6 +226,22 @@ class PrinterController extends Controller
             $job->transitionTo($newStatus, $errorMessage);
 
             \Log::info("Job {$job->id} transitioned from {$job->status->value} to {$newStatus->value} via QZ callback");
+        }
+
+        // Update printer status if we have a mapping
+        if ($printerStatus) {
+            $printerName = $request->input('printer_name') ?? $job->printer->name;
+            $machine = auth('machine')->user();
+            
+            Printer::updatePrinterState(
+                $printerName,
+                $printerStatus,
+                ($printerStatus === PrinterStatusEnum::IDLE) ? null : $job->id,
+                ($printerStatus === PrinterStatusEnum::PAUSED) ? $request->input('message') : null,
+                $machine->name
+            );
+            
+            \Log::info("Printer {$printerName} status updated to {$printerStatus->value} via QZ callback");
         }
 
         // Update QZ-specific metadata
@@ -246,7 +277,7 @@ class PrinterController extends Controller
         \App\Domain\Printing\Models\PrinterStatus::updateOrCreateForPrinter(
             $printer,
             $machine,
-            \App\Enum\PrinterStatusEnum::tryFrom($request->input('status')) ?? \App\Enum\PrinterStatusEnum::Unknown,
+            \App\Enum\PrinterStatusEnum::tryFrom($request->input('status')) ?? \App\Enum\PrinterStatusEnum::UNKNOWN,
             null, // status_code
             \App\Enum\PrinterStatusSeverityEnum::tryFrom($request->input('severity')) ?? \App\Enum\PrinterStatusSeverityEnum::Info,
             $request->input('message')
@@ -307,6 +338,55 @@ class PrinterController extends Controller
                     $job->transitionTo(PrintJobStatusEnum::Retrying);
                 }
                 break;
+
+            case 'DELETED':
+                // CRITICAL: Don't delete jobs, pause the printer queue instead
+                \Log::warning("Job {$job->id} was DELETED by printer {$request->input('printer_name')} - pausing printer queue");
+
+                // Mark job as failed (don't delete from system)
+                if ($job->status->canTransitionTo(PrintJobStatusEnum::Failed)) {
+                    $job->transitionTo(PrintJobStatusEnum::Failed, 'Job was deleted by printer - requires manual intervention');
+                }
+
+                // Pause the printer queue via printer state
+                \App\Domain\Printing\Models\Printer::updatePrinterState(
+                    $request->input('printer_name'),
+                    'paused',
+                    $job->id,
+                    'Printer deleted job - manual intervention required',
+                    auth('machine')->user()->name ?? 'Unknown'
+                );
+                break;
         }
+    }
+
+    public function printerEventWebhook(Request $request)
+    {
+        $request->validate([
+            'printer_name' => 'required|string',
+            'event_type' => 'required|string',
+            'status' => 'required|string',
+            'severity' => 'required|string|in:INFO,WARN,ERROR,FATAL',
+            'message' => 'required|string',
+        ]);
+
+        $machine = auth('machine')->user();
+
+        // Log and handle the printer event (this will auto-pause if needed)
+        $event = \App\Models\PrinterEvent::logAndHandle([
+            'printer_name' => $request->input('printer_name'),
+            'event_type' => $request->input('event_type'),
+            'status' => $request->input('status'),
+            'severity' => $request->input('severity'),
+            'message' => $request->input('message'),
+            'machine_name' => $machine->name ?? 'Unknown'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'event_id' => $event->id,
+            'handled' => $event->handled,
+            'action_taken' => $event->handled ? 'Printer paused due to critical event' : 'Event logged'
+        ]);
     }
 }
