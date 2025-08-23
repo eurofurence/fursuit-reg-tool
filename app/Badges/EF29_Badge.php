@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Storage;
 use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
 use Imagine\Image\Palette\Color\ColorInterface;
-use Imagine\Image\Palette\RGB;
+use Imagine\Image\Palette\RGB;;
+
 use Imagine\Image\Point;
 use Mpdf\Mpdf;
 
@@ -78,7 +79,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             $mpdf->Image('var:badgeImageBack', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
         }
 
-        return $mpdf->Output($badge->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN);
+        return $mpdf->Output($badge->id . '.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     }
 
     private function addFirstLayer(Box $size)
@@ -99,14 +100,22 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         $overlayImage->resize($size);
 
         // Load the image to be used as a replacement for green
-        $replacementImage = $this->imagine->open(Storage::temporaryUrl($this->badge->fursuit->image, now()->addMinutes(1)));
+        $replacementImageUrl = Storage::temporaryUrl($this->badge->fursuit->image, now()->addMinutes(1));
+        $replacementImage = $this->imagine->open($replacementImageUrl);
         $replacementImage->resize(new Box(350, 455));
 
         $replacementSize = $replacementImage->getSize();
 
         // Define the offsets for the shift
-        $xOffset = 35; // For example, move it 30 pixels to the right
-        $yOffset = 35; // For example, move it down by 100 pixels
+        $xOffset = 30; // For example, move it 30 pixels to the right
+        $yOffset = 35; // For example, move it down by 35 pixels
+
+        // Check whether the file is a PNG
+        $isPng = false;
+        if (!empty($replacementImage)) {
+            $imageInfo = getimagesize($replacementImageUrl);
+            $isPng = ($imageInfo[2] === IMAGETYPE_PNG);
+        }
 
         // Replace green areas in the overlay image with the replacement image
         for ($x = 35; $x < $size->getWidth() - 600; $x++) {
@@ -131,8 +140,14 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
                         $replacementY >= 0 && $replacementY < $replacementSize->getHeight()
                     ) {
 
-                        // Replace the green pixel with the corresponding pixel from the replacement image
                         $replacementColor = $replacementImage->getColorAt(new Point($replacementX, $replacementY));
+
+                        if ($isPng) {
+                            if ($replacementColor->getAlpha() <= 80) {
+                                $replacementColor = $badge_object->getColorAt(new Point($replacementX + 30, $replacementY + 35));
+                            }
+                        }
+
                         $overlayImage->draw()->dot(new Point($x, $y), $replacementColor);
                     }
                 }
@@ -159,17 +174,17 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
 
         // Position of the texts in the image
         $position_attendee_id = new Point(
-            $this->width_px - 602, // X-Position (adapted)
+            $this->width_px - 608, // X-Position (adapted)
             191 // Y-Position
         );
 
         $position_species = new Point(
-            $this->width_px - 321 - 310, // X-Position (adapted for the width of the text box)
+            $this->width_px - 321 - 316, // X-Position (adapted for the width of the text box)
             $this->height_px - 67 - 142 // Y-Position
         );
 
         $position_name = new Point(
-            $this->width_px - 321 - 310, // X-Position (adapted for the width of the text box)
+            $this->width_px - 321 - 316, // X-Position (adapted for the width of the text box)
             $this->height_px - 67 - 246 // Y-Position
         );
 
@@ -229,7 +244,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         $overlayImage->resize($size);
 
         // Textposition
-        $position = new Point($this->width_px - 587, $this->height_px - 143);
+        $position = new Point($this->width_px - 595, $this->height_px - 143);
 
         // Create color palette - Text color
         $palette = new RGB;
