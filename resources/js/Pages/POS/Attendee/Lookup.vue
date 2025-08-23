@@ -3,7 +3,7 @@ import { Head, Link } from "@inertiajs/vue3";
 import POSLayout from "@/Layouts/POSLayout.vue";
 import InputText from "primevue/inputtext";
 import SimpleKeyboard from "@/Components/SimpleKeyboard.vue";
-import {ref} from "vue";
+import {ref, onMounted} from "vue";
 import {useForm} from "laravel-precognition-vue-inertia";
 import Message from "primevue/message";
 
@@ -16,6 +16,7 @@ const form = useForm('POST', route('pos.attendee.lookup.submit'), {
 });
 
 const attendeeId = ref('');
+const attendeeIdInput = ref(null);
 const maxAttendeeIdLength = 5;
 
 const keyboardOptions = {
@@ -52,12 +53,24 @@ const submit = () => {
     form.submit();
 };
 
+const handleKeydown = (event) => {
+    if (event.key === 'Enter') {
+        submit();
+    }
+};
+
+onMounted(() => {
+    if (attendeeIdInput.value) {
+        attendeeIdInput.value.$el.focus();
+    }
+});
+
 </script>
 
 <template>
     <div class="flex-grow w-full max-w-xl mx-auto p-10 flex flex-col gap-4 justify-center">
         <Message v-if="form.invalid('attendeeId')" severity="error">{{ form.errors.attendeeId }}</Message>
-        <InputText v-model="attendeeId" class="w-full text-2xl" type="text" size="large" placeholder="Attendee ID" :maxlength="maxAttendeeIdLength" />
+        <InputText ref="attendeeIdInput" v-model="attendeeId" class="w-full text-2xl" type="text" size="large" placeholder="Attendee ID" :maxlength="maxAttendeeIdLength" @keydown="handleKeydown" />
         <SimpleKeyboard @onKeyPress="keyPress" :options='keyboardOptions'></SimpleKeyboard>
     </div>
 </template>

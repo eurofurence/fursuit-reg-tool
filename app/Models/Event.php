@@ -13,7 +13,15 @@ class Event extends Model
 
     public $timestamps = false;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'name',
+        'badge_class',
+        'starts_at',
+        'ends_at',
+        'order_starts_at',
+        'order_ends_at',
+        'mass_printed_at',
+    ];
 
     protected $appends = ['state'];
 

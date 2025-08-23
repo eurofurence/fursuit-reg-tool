@@ -15,7 +15,9 @@ class EventResource extends Resource
 {
     protected static ?string $model = Event::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+    protected static ?string $navigationGroup = 'Events & Registration';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -23,6 +25,14 @@ class EventResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
+                    ->columnSpanFull(),
+                Forms\Components\Select::make('badge_class')
+                    ->label('Badge Class')
+                    ->helperText('PHP class used for badge generation')
+                    ->options([
+                        'EF28_Badge' => 'EF28 Badge',
+                        'EF29_Badge' => 'EF29 Badge',
+                    ])
                     ->columnSpanFull(),
                 Group::make([
                     Forms\Components\DatePicker::make('starts_at')
@@ -65,6 +75,10 @@ class EventResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('badge_class')
+                    ->label('Badge Class')
+                    ->placeholder('Not set')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('starts_at')
                     ->date()

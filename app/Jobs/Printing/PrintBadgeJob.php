@@ -3,6 +3,7 @@
 namespace App\Jobs\Printing;
 
 use App\Badges\EF28_Badge;
+use App\Badges\EF29_Badge;
 use App\Domain\Printing\Models\Printer;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
@@ -27,7 +28,14 @@ class PrintBadgeJob implements ShouldQueue
             $this->badge->status_fulfillment->transitionTo(Printed::class);
         }
 
-        $printer = new EF28_Badge;
+        // Determine badge class based on event badge_class column
+        $badgeClass = $this->badge->fursuit->event->badge_class ?? 'EF28_Badge';
+        
+        $printer = match($badgeClass) {
+            'EF29_Badge' => new EF29_Badge(),
+            'EF28_Badge' => new EF28_Badge(),
+            default => new EF28_Badge(), // Fallback to EF28 for safety
+        };
         $pdfContent = $printer->getPdf($this->badge);
         // Store PDF Content in PrintJobs Storage
         $filePath = 'badges/'.$this->badge->id.'.pdf';
@@ -35,7 +43,6 @@ class PrintBadgeJob implements ShouldQueue
         // Printer to send job to
         $sendTo = Printer::where('is_active', true)
             ->where('type', 'badge')
-            ->where('is_double', (bool) $this->badge->dual_side_print)
             ->firstOrFail();
         // Create PrintJob
         $this->badge->printJobs()->create([
