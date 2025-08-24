@@ -194,7 +194,7 @@ const rarityStats = computed(() => {
         icon="library"
     >
         <!-- Collection Stats -->
-        <Card class="bg-white shadow-sm">
+        <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
                 <div class="text-center mb-4">
                     <div
@@ -252,7 +252,7 @@ const rarityStats = computed(() => {
         </Card>
 
         <!-- Filters and Controls -->
-        <Card class="bg-white shadow-sm">
+        <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
                 <div
                     class="flex flex-col gap-4 items-start sm:items-center justify-between"
@@ -330,7 +330,7 @@ const rarityStats = computed(() => {
         </Card>
 
         <!-- Collection Display -->
-        <Card class="bg-white shadow-sm">
+        <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
                 <div
                     class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8"
