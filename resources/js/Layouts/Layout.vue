@@ -9,7 +9,7 @@ const page = usePage().props;
 
 <template>
     <div class="bg-gray-100">
-        <div class="min-h-screen w-full mx-auto  flex flex-col">
+        <div class="min-h-screen w-full mx-auto flex flex-col">
             <!--- Logo -->
             <div class="bg-primary-500 relative z-10 pl-4 drop-shadow">
                 <div class="text-white max-w-screen-lg mx-auto flex gap-3">

@@ -34,8 +34,11 @@ class BadgeManagementController extends Controller
             case 'unprinted':
                 $query->where('status_fulfillment', 'pending');
                 break;
+            case 'processing':
+                $query->where('status_fulfillment', 'processing');
+                break;
             case 'printed':
-                $query->whereIn('status_fulfillment', ['printed', 'ready_for_pickup', 'picked_up']);
+                $query->whereIn('status_fulfillment', ['ready_for_pickup', 'picked_up']);
                 break;
             case 'all':
             default:
@@ -67,10 +70,23 @@ class BadgeManagementController extends Controller
             ->select('id', 'name')
             ->get();
 
+        // Get counts for each tab
+        $baseQuery = Badge::whereHas('fursuit', function ($query) use ($currentEvent) {
+            $query->where('event_id', $currentEvent->id);
+        });
+
+        $tabCounts = [
+            'unprinted' => (clone $baseQuery)->where('status_fulfillment', 'pending')->count(),
+            'processing' => (clone $baseQuery)->where('status_fulfillment', 'processing')->count(),
+            'printed' => (clone $baseQuery)->whereIn('status_fulfillment', ['ready_for_pickup', 'picked_up'])->count(),
+            'all' => (clone $baseQuery)->count(),
+        ];
+
         return Inertia::render('POS/Badges/Index', [
             'badges' => $badges,
             'currentEvent' => $currentEvent,
             'printers' => $printers,
+            'tabCounts' => $tabCounts,
             'filters' => [
                 'tab' => $tab,
             ],

@@ -8,8 +8,9 @@ use App\Filament\Resources\BadgeResource\Pages;
 use App\Filament\Traits\HasEventFilter;
 use App\Jobs\Printing\PrintBadgeJob;
 use App\Models\Badge\Badge;
+use App\Models\Event;
 use App\Models\Badge\State_Fulfillment\BadgeFulfillmentStatusState;
-use App\Models\Badge\State_Fulfillment\Printed;
+use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Payment\BadgePaymentStatusState;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -17,6 +18,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Bus;
 
 class BadgeResource extends Resource
 {
@@ -96,7 +98,7 @@ class BadgeResource extends Resource
                                     ->options(BadgeFulfillmentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key
                                     ) => [$key => match ($key) {
                                         'pending' => 'Pending',
-                                        'printed' => 'Printed',
+                                        'processing' => 'Processing',
                                         'ready_for_pickup' => 'Ready for Pickup',
                                         'picked_up' => 'Picked Up',
                                         default => ucfirst($key)
@@ -217,7 +219,18 @@ class BadgeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => static::applyEventFilter($query, 'fursuit'))
+            ->modifyQueryUsing(function ($query) {
+                $query = static::applyEventFilter($query, 'fursuit');
+
+                // Add joins for attendee_id sorting but select only badges columns to avoid conflicts
+                return $query->leftJoin('fursuits', 'badges.fursuit_id', '=', 'fursuits.id')
+                    ->leftJoin('event_users', function ($join) {
+                        $join->on('fursuits.user_id', '=', 'event_users.user_id')
+                            ->on('fursuits.event_id', '=', 'event_users.event_id');
+                    })
+                    ->select('badges.*')
+                    ->addSelect('event_users.attendee_id as sort_attendee_id');
+            })
             ->columns([
                 // Fursuit Image as first column
                 Tables\Columns\ImageColumn::make('fursuit.image')
@@ -257,19 +270,46 @@ class BadgeResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 // Attendee ID
-                Tables\Columns\TextColumn::make('attendee_id')
+                Tables\Columns\TextColumn::make('sort_attendee_id')
                     ->label('Attendee ID')
-                    ->getStateUsing(function (Badge $record) {
-                        $eventUser = $record->fursuit?->user?->eventUsers?->where('event_id', $record->fursuit->event_id)->first();
+                    ->formatStateUsing(fn ($state) => $state ?? 'N/A')
+                    ->sortable(query: function ($query, string $direction) {
+                        return $query->orderByRaw("CAST(sort_attendee_id AS UNSIGNED) $direction");
+                    })
+                    ->toggleable(isToggledHiddenByDefault: false),
 
-                        return $eventUser?->attendee_id ?? 'N/A';
+                // Print Jobs Column
+                Tables\Columns\TextColumn::make('print_jobs_count')
+                    ->label('Print Jobs')
+                    ->badge()
+                    ->url(fn (Badge $record): string => route('filament.admin.resources.print-jobs.index', [
+                        'tableFilters[printable_id][value]' => $record->id,
+                        'tableFilters[printable_type][value]' => get_class($record),
+                    ]))
+                    ->getStateUsing(function (Badge $record): string {
+                        $jobs = $record->printJobs()->get();
+                        $total = $jobs->count();
+                        $pending = $jobs->whereIn('status', ['pending', 'queued', 'printing', 'retrying'])->count();
+                        $failed = $jobs->where('status', 'failed')->count();
+                        $printed = $jobs->where('status', 'printed')->count();
+
+                        if ($total === 0) return '0';
+                        if ($failed > 0) return "{$total} ({$failed} failed)";
+                        if ($pending > 0) return "{$total} ({$pending} pending)";
+                        return "{$total}";
                     })
-                    ->searchable(query: function ($query, $search) {
-                        return $query->whereHas('fursuit.user.eventUsers', function ($q) use ($search) {
-                            $q->where('attendee_id', 'like', "%{$search}%");
-                        });
+                    ->color(function (Badge $record): string {
+                        $jobs = $record->printJobs()->get();
+                        if ($jobs->count() === 0) return 'gray';
+
+                        $hasFailed = $jobs->where('status', 'failed')->count() > 0;
+                        $hasPending = $jobs->whereIn('status', ['pending', 'queued', 'printing', 'retrying'])->count() > 0;
+
+                        if ($hasFailed) return 'warning';
+                        if ($hasPending) return 'info';
+                        return 'success';
                     })
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->alignCenter(),
 
                 // Status Badges
                 Tables\Columns\TextColumn::make('status_fulfillment')
@@ -277,7 +317,7 @@ class BadgeResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending' => 'Pending',
-                        'printed' => 'Printed',
+                        'processing' => 'Processing',
                         'ready_for_pickup' => 'Ready for Pickup',
                         'picked_up' => 'Picked Up',
                         default => ucfirst($state)
@@ -325,7 +365,7 @@ class BadgeResource extends Resource
                 Tables\Filters\SelectFilter::make('status_fulfillment')
                     ->options([
                         'pending' => 'Pending',
-                        'printed' => 'Printed',
+                        'processing' => 'Processing',
                         'ready_for_pickup' => 'Ready for Pickup',
                         'picked_up' => 'Picked Up',
                     ])
@@ -398,9 +438,6 @@ class BadgeResource extends Resource
                     }),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
                 Tables\Actions\BulkAction::make('printBadgeBulk')
                     ->label('Print Badges')
                     ->icon('heroicon-o-printer')
@@ -421,29 +458,60 @@ class BadgeResource extends Resource
                     ->modalDescription('This will print all selected badges to the specified printer.')
                     ->action(function (Collection $records, array $data) {
                         $printerId = $data['printer_id'];
+                        // sort by attendee id numerically
+                        $sortedRecords = $records->sortBy(fn (Badge $badge) => (int) $badge->sort_attendee_id);
 
-                        $records->each(function (Badge $record, $index) use ($printerId) {
-                            if ($record->status_fulfillment->canTransitionTo(Printed::class)) {
-                                $record->status_fulfillment->transitionTo(Printed::class);
+                        // Update badge states to mark them as sent for printing
+                        $sortedRecords->each(function (Badge $record) {
+                            if ($record->status_fulfillment->canTransitionTo(Processing::class)) {
+                                $record->status_fulfillment->transitionTo(Processing::class);
                             }
-
-                            // Dispatch with staggered delay to prevent overwhelming the queue
-                            PrintBadgeJob::dispatch($record, $printerId)->delay(now()->addSeconds($index * 2));
                         });
+
+                        // Create individual print jobs for batching in the correct order
+                        $printJobs = $sortedRecords->map(function (Badge $badge) use ($printerId) {
+                            return new PrintBadgeJob($badge, $printerId);
+                        })->toArray();
+
+                        // Create a Laravel batch with proper chaining
+                        Bus::batch([
+                            // wrap in array to chain!
+                            $printJobs
+                        ])
+                            ->name("Badge Bulk Print - {$records->count()} badges")
+                            ->onQueue('batch-print')
+                            ->allowFailures()
+                            ->dispatch();
 
                         return true;
                     }),
             ])
             ->selectCurrentPageOnly()
             ->paginationPageOptions([10, 25, 50, 100])
-            ->defaultSort('custom_id', 'asc');
+            ->defaultSort('sort_attendee_id', 'asc')
+            ->poll('5s');
     }
 
     public static function printBadge(Badge $badge, $mass = 0, ?int $printerId = null): Badge
     {
-        if ($badge->status_fulfillment->canTransitionTo(Printed::class)) {
-            $badge->status_fulfillment->transitionTo(Printed::class);
+        \Log::info('printBadge called', [
+            'badge_id' => $badge->id,
+            'before_fulfillment' => $badge->status_fulfillment->getValue(),
+            'before_payment' => $badge->status_payment->getValue(),
+            'can_transition' => $badge->status_fulfillment->canTransitionTo(Processing::class),
+        ]);
+
+        if ($badge->status_fulfillment->canTransitionTo(Processing::class)) {
+            $badge->status_fulfillment->transitionTo(Processing::class);
         }
+
+        $badge->refresh();
+
+        \Log::info('printBadge after transition', [
+            'badge_id' => $badge->id,
+            'after_fulfillment' => $badge->status_fulfillment->getValue(),
+            'after_payment' => $badge->status_payment->getValue(),
+        ]);
 
         // Always use PrintBadgeJob for consistency - it handles PDF generation and file storage
         PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($mass * 15));
@@ -453,8 +521,8 @@ class BadgeResource extends Resource
 
     public static function printBadgeWithPrinter(Badge $badge, int $printerId, int $delaySeconds = 0): Badge
     {
-        if ($badge->status_fulfillment->canTransitionTo(Printed::class)) {
-            $badge->status_fulfillment->transitionTo(Printed::class);
+        if ($badge->status_fulfillment->canTransitionTo(Processing::class)) {
+            $badge->status_fulfillment->transitionTo(Processing::class);
         }
 
         // Generate PDF content synchronously (like PrintBadgeJob does)

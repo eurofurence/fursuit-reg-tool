@@ -163,6 +163,41 @@ class PrintJobResource extends Resource
                     ]),
                 SelectFilter::make('printer')
                     ->relationship('printer', 'name'),
+                \Filament\Tables\Filters\Filter::make('printable_id')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('value')
+                            ->label('Printable ID')
+                            ->numeric(),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'],
+                            fn (Builder $query, $value): Builder => $query->where('printable_id', $value),
+                        );
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        if (! $data['value']) {
+                            return null;
+                        }
+                        return 'Printable ID: ' . $data['value'];
+                    }),
+                \Filament\Tables\Filters\Filter::make('printable_type')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('value')
+                            ->label('Printable Type'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'],
+                            fn (Builder $query, $value): Builder => $query->where('printable_type', $value),
+                        );
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        if (! $data['value']) {
+                            return null;
+                        }
+                        return 'Type: ' . class_basename($data['value']);
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -185,7 +220,8 @@ class PrintJobResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('id', 'desc')
+            ->poll('5s');
     }
 
     public static function getRelations(): array

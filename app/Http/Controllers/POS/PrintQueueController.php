@@ -5,6 +5,7 @@ namespace App\Http\Controllers\POS;
 use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use Inertia\Inertia;
 
 class PrintQueueController extends Controller
@@ -26,6 +27,14 @@ class PrintQueueController extends Controller
             'status' => PrintJobStatusEnum::Printed,
             'printed_at' => now(),
         ]);
+
+        // If this is a badge print job, transition the badge to ReadyForPickup
+        if ($printJob->printable_type === \App\Models\Badge\Badge::class) {
+            $badge = $printJob->printable;
+            if ($badge && $badge->status_fulfillment->canTransitionTo(ReadyForPickup::class)) {
+                $badge->status_fulfillment->transitionTo(ReadyForPickup::class);
+            }
+        }
 
         return redirect()->back()->with('success', 'Print job marked as printed');
     }

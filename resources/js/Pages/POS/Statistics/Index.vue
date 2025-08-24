@@ -94,7 +94,7 @@ const setChartOptions = () => {
 
 const statusColors = {
     pending: 'warning',
-    printed: 'info',
+    processing: 'info',
     ready_for_pickup: 'success',
     picked_up: 'secondary'
 };
@@ -289,8 +289,8 @@ const statusColors = {
                                     <span class="font-semibold text-yellow-600">{{ badges.by_fulfillment_status.pending }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-sm">Printed</span>
-                                    <span class="font-semibold text-blue-600">{{ badges.by_fulfillment_status.printed }}</span>
+                                    <span class="text-sm">Processing</span>
+                                    <span class="font-semibold text-blue-600">{{ badges.by_fulfillment_status.processing }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm">Ready for Pickup</span>

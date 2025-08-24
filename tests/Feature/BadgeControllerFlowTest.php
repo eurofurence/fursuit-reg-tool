@@ -251,7 +251,7 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
             'event_id' => $this->event->id,
             'attendee_id' => '12345',
             'valid_registration' => true,
-            'prepaid_badges' => 1,
+            'prepaid_badges' => 2, // 2 prepaid badges - 1 deducted after order_starts_at = 1 left
         ]);
 
         actingAs($this->user);
@@ -280,7 +280,7 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
             'is_free_badge' => true,
         ]);
 
-        // User should have used their free badge (prepaid badges left should be 0)
+        // User should have used their free badge (started with 2, deducted 1 after order_starts_at, used 1 for badge = 0 left)
         expect($this->user->getPrepaidBadgesLeft($this->event->id))->toBe(0);
     });
 
@@ -297,7 +297,7 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
 
         $response = get(route('badges.create'));
 
-        $response->assertInertia(fn ($page) => $page->where('prepaidBadgesLeft', 3)
+        $response->assertInertia(fn ($page) => $page->where('prepaidBadgesLeft', 2)
         );
 
         $response = post(route('badges.store'), [
@@ -325,8 +325,8 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
         $extraBadges = Badge::where('extra_copy', true)->get();
         expect($extraBadges)->toHaveCount(1);
 
-        // User should have used 2 of their 3 prepaid badges (1 main free + 1 spare copy)
-        expect($this->user->getPrepaidBadgesLeft($this->event->id))->toBe(1);
+        // User should have used 2 of their 2 remaining prepaid badges (started with 3, deducted 1 after order_starts_at, used 2 for badges = 0 left)
+        expect($this->user->getPrepaidBadgesLeft($this->event->id))->toBe(0);
     });
 
     test('user can edit pending badges during order window', function () {

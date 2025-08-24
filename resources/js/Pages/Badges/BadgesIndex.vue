@@ -29,13 +29,10 @@ const props = defineProps({
 
 const isRefreshing = ref(false);
 
-function canEditBadge(badge) {
-    return badge.canEdit;
-}
 
 async function refreshPrepaidBadges() {
     isRefreshing.value = true;
-    
+
     try {
         await axios.post(route('badges.refresh-prepaid'));
         // Refresh the page to show updated data
@@ -51,9 +48,9 @@ async function refreshPrepaidBadges() {
 function getBadgeStatusName(status) {
     switch (status) {
         case 'pending':
-            return 'Pending Printing';
-        case 'printed':
-            return 'Printed';
+            return 'Pending';
+        case 'processing':
+            return 'Printing';
         case 'ready_for_pickup':
             return 'Ready for Pickup';
         case 'picked_up':
@@ -65,35 +62,54 @@ function getBadgeSeverity(status) {
     switch (status) {
         case 'pending':
             return 'warning';
-        case 'printed':
-            return 'info';
+        case 'processing':
+            return 'info'; // Blue for printing
         case 'ready_for_pickup':
-            return 'success';
+            return 'warning'; // Orange for action needed
         case 'picked_up':
-            return 'success';
+            return 'success'; // Green - only picked up is green
     }
 }
 
-function getFursuitStatusName(status) {
-    switch (status) {
-        case 'pending':
-            return 'Pending Review';
-        case 'approved':
-            return 'Approved';
-        case 'rejected':
-            return 'Rejected';
-    }
-}
 
-function getFursuitSeverity(status) {
-    switch (status) {
-        case 'pending':
-            return 'warning';
-        case 'approved':
-            return 'success';
-        case 'rejected':
-            return 'danger';
+function getActionableStatuses(badge) {
+    const statuses = [];
+
+    // Add payment status if unpaid (actionable)
+    if (badge.status_payment === 'unpaid') {
+        statuses.push({
+            value: 'Unpaid',
+            severity: 'danger'
+        });
     }
+
+    // Add approval status if pending and fursuit not approved (actionable)
+    if (badge.status_fulfillment === 'pending' && badge.fursuit.status === 'pending') {
+        statuses.push({
+            value: 'Pending Approval',
+            severity: 'warning'
+        });
+    }
+
+    // Add fulfillment status
+    if (badge.status_fulfillment === 'processing') {
+        statuses.push({
+            value: 'Printing',
+            severity: 'info' // Blue
+        });
+    } else if (badge.status_fulfillment === 'ready_for_pickup') {
+        statuses.push({
+            value: 'Ready for Pickup',
+            severity: 'warning' // Orange - action needed
+        });
+    } else if (badge.status_fulfillment === 'picked_up') {
+        statuses.push({
+            value: 'Picked Up',
+            severity: 'success' // Green - only this is green
+        });
+    }
+
+    return statuses;
 }
 </script>
 
@@ -138,7 +154,7 @@ function getFursuitSeverity(status) {
                     />
                 </div>
             </div>
-            
+
             <!-- Orders Not Yet Open Message - Full width block with margin -->
             <Message
                 v-if="event && event.orderStartsAt && new Date(event.orderStartsAt) > new Date()"
@@ -161,6 +177,8 @@ function getFursuitSeverity(status) {
                     stripedRows
                     class="p-datatable-sm"
                     :rowHover="true"
+                    @row-click="(event) => router.visit(route('badges.show', {badge: event.data.id}))"
+                    selectionMode="single"
                 >
                     <!-- Image Column -->
                     <Column header="Image" style="width: 120px;">
@@ -191,27 +209,12 @@ function getFursuitSeverity(status) {
                     <Column header="Status">
                         <template #body="slotProps">
                             <div class="flex flex-col gap-1">
-                                <!-- Show fursuit status if pending -->
+                                <!-- Show only actionable statuses -->
                                 <Tag
-                                    v-if="slotProps.data.status_fulfillment === 'pending'"
-                                    :severity="getFursuitSeverity(slotProps.data.fursuit.status)"
-                                    :value="getFursuitStatusName(slotProps.data.fursuit.status)"
-                                    size="small"
-                                />
-
-                                <!-- Show badge status if fursuit approved -->
-                                <Tag
-                                    v-else-if="slotProps.data.fursuit.status === 'approved'"
-                                    :severity="getBadgeSeverity(slotProps.data.status_fulfillment)"
-                                    :value="getBadgeStatusName(slotProps.data.status_fulfillment)"
-                                    size="small"
-                                />
-
-                                <!-- Payment Status -->
-                                <Tag
-                                    v-if="slotProps.data.status_payment === 'unpaid'"
-                                    severity="danger"
-                                    value="Not Paid"
+                                    v-for="status in getActionableStatuses(slotProps.data)"
+                                    :key="status.value"
+                                    :severity="status.severity"
+                                    :value="status.value"
                                     size="small"
                                 />
                             </div>
@@ -227,20 +230,12 @@ function getFursuitSeverity(status) {
                         </template>
                     </Column>
 
-                    <!-- Actions Column -->
-                    <Column header="Actions" style="width: 100px;">
+                    <!-- Click to View Column -->
+                    <Column header="" style="width: 100px;">
                         <template #body="slotProps">
-                            <Button
-                                v-if="canEditBadge(slotProps.data)"
-                                @click="router.visit(route('badges.edit', {badge: slotProps.data.id}))"
-                                icon="pi pi-pencil"
-                                size="small"
-                                text
-                                severity="secondary"
-                                v-tooltip.top="'Edit Badge'"
-                            />
-                            <div v-else class="text-xs">
-                                Cannot Edit
+                            <div class="text-center">
+                                <i class="pi pi-arrow-right text-gray-400 text-sm"></i>
+                                <div class="text-xs text-gray-500 mt-1">View</div>
                             </div>
                         </template>
                     </Column>

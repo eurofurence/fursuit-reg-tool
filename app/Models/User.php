@@ -16,7 +16,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Gate;
 
-class User extends Authenticatable implements Customer, FilamentUser, Wallet, WalletFloat
+class User extends Authenticatable implements Customer, FilamentUser, WalletFloat
 {
     use CanPayFloat, HasFactory, Notifiable;
 
@@ -111,6 +111,12 @@ class User extends Authenticatable implements Customer, FilamentUser, Wallet, Wa
         }
 
         $prepaidBadges = $eventUser->prepaid_badges;
+
+        // After order start date, deduct 1 free badge (no longer honored)
+        if ($event->order_starts_at && now() > $event->order_starts_at) {
+            $prepaidBadges = max(0, $prepaidBadges - 1);
+        }
+
         $orderedBadges = $this->badges()
             ->whereHas('fursuit.event', function ($query) use ($event) {
                 $query->where('id', $event->id);

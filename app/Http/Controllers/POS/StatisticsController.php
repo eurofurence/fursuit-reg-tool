@@ -70,7 +70,7 @@ class StatisticsController extends Controller
             ],
             'by_fulfillment_status' => [
                 'pending' => $badges->where('status_fulfillment', 'pending')->count(),
-                'printed' => $badges->where('status_fulfillment', 'printed')->count(),
+                'processing' => $badges->where('status_fulfillment', 'processing')->count(),
                 'ready_for_pickup' => $badges->where('status_fulfillment', 'ready_for_pickup')->count(),
                 'picked_up' => $badges->where('status_fulfillment', 'picked_up')->count(),
             ],

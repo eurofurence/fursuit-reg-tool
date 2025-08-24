@@ -9,7 +9,8 @@ use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Models\Badge\Badge;
-use App\Models\Badge\State_Fulfillment\Printed;
+use App\Models\Badge\State_Fulfillment\Processing;
+use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,16 +21,36 @@ use Illuminate\Support\Facades\Storage;
 
 class PrintBadgeJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(private readonly Badge $badge, private readonly ?int $printerId = null) {}
+    public $timeout = 120;
+
+    public $tries = 3;
+
+    public function __construct(
+        private readonly Badge $badge,
+        private readonly ?int $printerId = null,
+        private readonly int $priority = 1
+    ) {
+        $this->onQueue('batch-print');
+    }
 
     public function handle(): void
     {
-        // Transition badge to printed state first
-        if ($this->badge->status_fulfillment->canTransitionTo(Printed::class)) {
-            $this->badge->status_fulfillment->transitionTo(Printed::class);
+        // Check if batch was cancelled
+        if ($this->batch() && $this->batch()->cancelled()) {
+            return;
         }
+
+        Log::info('Processing print badge job', [
+            'badge_id' => $this->badge->id,
+            'custom_id' => $this->badge->custom_id,
+            'priority' => $this->priority,
+            'batch_id' => $this->batch()?->id,
+        ]);
+
+        // Badge should already be in Processing state from when the job was created
+        // The transition to ReadyForPickup happens when the print job is marked as completed
 
         // Determine badge class based on event badge_class column
         $badgeClass = $this->badge->fursuit->event->badge_class ?? 'EF28_Badge';
@@ -69,12 +90,13 @@ class PrintBadgeJob implements ShouldQueue
             }
         }
 
-        // Create PrintJob with success status
+        // Create PrintJob with priority support
         $printJob = $this->badge->printJobs()->create([
             'printer_id' => $sendTo->id,
             'type' => PrintJobTypeEnum::Badge,
             'status' => PrintJobStatusEnum::Pending,
             'file' => $filePath,
+            'priority' => $this->priority,
             'queued_at' => now(),
         ]);
 

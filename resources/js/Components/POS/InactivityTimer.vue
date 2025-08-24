@@ -35,7 +35,7 @@ const resetTimer = () => {
 const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
 
 const handleActivity = () => {
-    console.log('[InactivityTimer] Activity detected, resetting timer');
+    // console.log('[InactivityTimer] Activity detected, resetting timer');
     resetTimer();
 
     // If warning was showing, cancel it and restart the timer
@@ -60,14 +60,14 @@ const isTimerActive = computed(() => {
         console.log('[InactivityTimer] Timer disabled - timeout set to Off');
         return false;
     }
-    
+
     // Timer is active on all POS routes except auth routes
     const isActive = currentRoute.value && currentRoute.value.startsWith('pos.') && !currentRoute.value.startsWith('pos.auth.');
-    console.log('[InactivityTimer] Route check:', { 
-        currentRoute: currentRoute.value, 
-        isActive, 
+    console.log('[InactivityTimer] Route check:', {
+        currentRoute: currentRoute.value,
+        isActive,
         timeout: configuredTimeout.value,
-        warningTime: INACTIVITY_WARNING_TIME.value 
+        warningTime: INACTIVITY_WARNING_TIME.value
     });
     return isActive;
 });
@@ -123,7 +123,6 @@ const startTimer = () => {
         }
 
         const elapsedSeconds = Math.floor((Date.now() - lastActivityTime.value) / 1000);
-        console.log('[InactivityTimer] Timer tick:', { elapsedSeconds, timeout: INACTIVITY_TIMEOUT.value });
 
         if (elapsedSeconds >= INACTIVITY_TIMEOUT.value) {
             console.log('[InactivityTimer] TIMEOUT REACHED - locking screen!');
@@ -214,9 +213,9 @@ let removeFinishListener = null;
 // Watch for machine prop changes to update timeout
 watch(() => machine.value?.auto_logout_timeout, (newTimeout) => {
     console.log('[InactivityTimer] Machine timeout changed to:', newTimeout);
-    
+
     configuredTimeout.value = newTimeout ?? 300;
-    
+
     // If timer is currently active, restart it with new timeout
     if (isTimerActive.value) {
         console.log('[InactivityTimer] Restarting timer with new timeout');
@@ -246,7 +245,7 @@ onMounted(() => {
 
 onUnmounted(() => {
     console.log('[InactivityTimer] Component unmounting, cleaning up');
-    
+
     // Remove Inertia router listeners using the cleanup functions
     if (removeStartListener) {
         console.log('[InactivityTimer] Removing start event listener');
@@ -256,14 +255,14 @@ onUnmounted(() => {
         console.log('[InactivityTimer] Removing finish event listener');
         removeFinishListener();
     }
-    
+
     teardownTimer();
 });
 
 // Watch for route changes and dynamically enable/disable timer
 watch(isTimerActive, (newValue, oldValue) => {
     console.log('[InactivityTimer] Timer active state changed:', { oldValue, newValue });
-    
+
     if (newValue && !oldValue) {
         // Timer should be active but wasn't - set it up
         console.log('[InactivityTimer] Route changed to POS page - activating timer');
