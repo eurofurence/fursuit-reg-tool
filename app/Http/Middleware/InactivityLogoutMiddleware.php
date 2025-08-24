@@ -15,7 +15,7 @@ class InactivityLogoutMiddleware
             $user = auth()->user();
             \Auth::guard('machine-user')->logout();
 
-            return redirect()->route('pos.auth.user.login.show', $user->id);
+            return redirect()->route('pos.auth.user.select');
         }
         $request->session()->put('lastActivityTime', time());
 

@@ -116,10 +116,60 @@
         </tr>
     </table>
     <div style="text-align:center; padding-top:5mm;">
-        <div>=============== TSE ===============</div>
+        <div>=========== TSE DATEN ===========</div>
+    </div>
+    <table width="100%">
+        <tr>
+            <td>TSE-Seriennummer:</td>
+            <td style="text-align:right;">{{ $checkout->tse_serial_number ?? 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td>Transaktions-Nr.:</td>
+            <td style="text-align:right;">{{ $checkout->tse_transaction_number ?? 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td>Signaturzähler:</td>
+            <td style="text-align:right;">{{ $checkout->tse_signature_counter ?? 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td>Start-Signatur:</td>
+            <td style="text-align:right; font-size:7pt; word-break:break-all;">{{ $checkout->tse_start_signature ? substr($checkout->tse_start_signature, 0, 20) . '...' : 'N/A' }}</td>
+        </tr>
+        @if($checkout->tse_end_signature)
+        <tr>
+            <td>End-Signatur:</td>
+            <td style="text-align:right; font-size:7pt; word-break:break-all;">{{ substr($checkout->tse_end_signature, 0, 20) . '...' }}</td>
+        </tr>
+        @endif
+        @if($checkout->tse_start_timestamp)
+        <tr>
+            <td>Vorgangsbeginn:</td>
+            <td style="text-align:right;">{{ $checkout->tse_start_timestamp->format('d.m.Y H:i:s') }}</td>
+        </tr>
+        @endif
+        @if($checkout->tse_end_timestamp)
+        <tr>
+            <td>Vorgangsende:</td>
+            <td style="text-align:right;">{{ $checkout->tse_end_timestamp->format('d.m.Y H:i:s') }}</td>
+        </tr>
+        @endif
+        @if(!$checkout->tse_start_timestamp && $checkout->tse_timestamp)
+        <tr>
+            <td>TSE-Zeitstempel:</td>
+            <td style="text-align:right;">{{ $checkout->tse_timestamp->format('d.m.Y H:i:s') }}</td>
+        </tr>
+        @endif
+        <tr>
+            <td>Verfahren:</td>
+            <td style="text-align:right;">{{ $checkout->tse_process_type ?? 'Kassenbeleg-V1' }}</td>
+        </tr>
+    </table>
+
+    <div style="text-align:center; padding-top:3mm;">
+        <div>============ QR-CODE ============</div>
     </div>
     <!-- Center Image QR Code-->
-    <div style="text-align:center; padding-top:5mm;">
+    <div style="text-align:center; padding-top:2mm;">
         <img src="{{ $qr }}" alt="QR Code" style="width: 70%;">
     </div>
 

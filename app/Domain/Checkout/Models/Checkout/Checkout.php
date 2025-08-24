@@ -22,6 +22,9 @@ class Checkout extends Model
             'fiskaly_data' => 'array',
             'remote_rev_count' => 'integer',
             'status' => CheckoutStatusState::class,
+            'tse_timestamp' => 'datetime',
+            'tse_start_timestamp' => 'datetime',
+            'tse_end_timestamp' => 'datetime',
         ];
     }
 

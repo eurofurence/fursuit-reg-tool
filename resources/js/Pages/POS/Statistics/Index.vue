@@ -19,6 +19,7 @@ const props = defineProps({
     printing: Object,
     sales: Object,
     daily: Object,
+    financial: Object,
     currentEvent: Object,
 });
 
@@ -34,18 +35,18 @@ const setChartData = () => {
     const documentStyle = getComputedStyle(document.documentElement);
     
     chartData.value = {
-        labels: props.daily.last_7_days.map(day => day.day_name),
+        labels: props.daily.event_days?.map(day => day.day_name) || [],
         datasets: [
             {
                 label: 'Revenue',
-                data: props.daily.last_7_days.map(day => day.revenue / 100), // Convert cents to euros
+                data: props.daily.event_days?.map(day => day.revenue / 100) || [], // Convert cents to euros
                 fill: false,
                 borderColor: documentStyle.getPropertyValue('--blue-500'),
                 tension: 0.4
             },
             {
                 label: 'Badges Created',
-                data: props.daily.last_7_days.map(day => day.badges_created),
+                data: props.daily.event_days?.map(day => day.badges_created) || [],
                 fill: false,
                 borderColor: documentStyle.getPropertyValue('--green-500'),
                 tension: 0.4
@@ -104,7 +105,7 @@ const statusColors = {
         <title>POS - Statistics</title>
     </Head>
     
-    <div class="p-4">
+    <div class="w-full p-4">
         <!-- Header -->
         <div class="mb-6">
             <Card class="shadow-lg border-0 bg-gradient-to-r from-green-600 to-green-700 text-white">
@@ -128,13 +129,13 @@ const statusColors = {
             </Card>
         </div>
 
-        <!-- Overview Stats -->
+        <!-- Daily Overview Stats -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
             <Card class="text-center">
                 <template #content>
                     <div class="p-4">
-                        <div class="text-2xl font-bold text-blue-600">{{ overview.badges_today }}</div>
-                        <div class="text-sm text-gray-600">Badges Today</div>
+                        <div class="text-2xl font-bold text-blue-600">{{ overview.badges_ordered_today }}</div>
+                        <div class="text-sm text-gray-600">Badges Ordered Today</div>
                     </div>
                 </template>
             </Card>
@@ -142,8 +143,35 @@ const statusColors = {
             <Card class="text-center">
                 <template #content>
                     <div class="p-4">
-                        <div class="text-2xl font-bold text-purple-600">{{ overview.pending_print_jobs }}</div>
-                        <div class="text-sm text-gray-600">Pending Print</div>
+                        <div class="text-2xl font-bold text-green-600">{{ formatEuroFromCents(overview.money_processed_today * 100) }}</div>
+                        <div class="text-sm text-gray-600">Money Today (Total)</div>
+                    </div>
+                </template>
+            </Card>
+
+            <Card class="text-center">
+                <template #content>
+                    <div class="p-4">
+                        <div class="text-2xl font-bold text-emerald-600">{{ formatEuroFromCents(overview.cash_processed_today * 100) }}</div>
+                        <div class="text-sm text-gray-600">Cash Today</div>
+                    </div>
+                </template>
+            </Card>
+
+            <Card class="text-center">
+                <template #content>
+                    <div class="p-4">
+                        <div class="text-2xl font-bold text-cyan-600">{{ formatEuroFromCents(overview.card_processed_today * 100) }}</div>
+                        <div class="text-sm text-gray-600">Card Today</div>
+                    </div>
+                </template>
+            </Card>
+
+            <Card class="text-center">
+                <template #content>
+                    <div class="p-4">
+                        <div class="text-2xl font-bold text-orange-600">{{ overview.badges_picked_up_today }}</div>
+                        <div class="text-sm text-gray-600">Badges Picked Up Today</div>
                     </div>
                 </template>
             </Card>
@@ -151,35 +179,75 @@ const statusColors = {
             <Card class="text-center">
                 <template #content>
                     <div class="p-4">
-                        <div class="text-2xl font-bold text-green-600">{{ formatEuroFromCents(overview.total_sales_today) }}</div>
-                        <div class="text-sm text-gray-600">Today's Sales</div>
+                        <div class="text-2xl font-bold text-purple-600">{{ overview.badges_printed_today }}</div>
+                        <div class="text-sm text-gray-600">Badges Printed Today</div>
                     </div>
                 </template>
             </Card>
-            
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-2xl font-bold text-orange-600">{{ overview.badges_printed_today }}</div>
-                        <div class="text-sm text-gray-600">Printed Today</div>
-                    </div>
+        </div>
+
+        <!-- Financial Overview -->
+        <div v-if="financial" class="mb-6">
+            <Card>
+                <template #title>
+                    <h3 class="text-lg font-semibold">Financial Overview</h3>
                 </template>
-            </Card>
-            
-            <Card class="text-center">
                 <template #content>
-                    <div class="p-4">
-                        <div class="text-2xl font-bold text-teal-600">{{ overview.badges_handed_out_today }}</div>
-                        <div class="text-sm text-gray-600">Handed Out</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="text-center p-4">
+                            <div class="text-2xl font-bold text-green-600">€{{ financial.total_revenue.toFixed(2) }}</div>
+                            <div class="text-sm text-gray-600">Total Revenue</div>
+                            <div class="text-xs text-gray-500">Prepaid + Late</div>
+                        </div>
+                        <div class="text-center p-4">
+                            <div class="text-2xl font-bold text-cyan-600">€{{ financial.actual_revenue.toFixed(2) }}</div>
+                            <div class="text-sm text-gray-600">Actual Revenue</div>
+                            <div class="text-xs text-gray-500">POS + Prepaid</div>
+                        </div>
+                        <div class="text-center p-4">
+                            <div class="text-2xl font-bold text-blue-600">€{{ financial.prepaid_badge_revenue.toFixed(2) }}</div>
+                            <div class="text-sm text-gray-600">Prepaid Badges</div>
+                        </div>
+                        <div class="text-center p-4">
+                            <div class="text-2xl font-bold text-orange-600">€{{ financial.late_badge_revenue.toFixed(2) }}</div>
+                            <div class="text-sm text-gray-600">Late Badges</div>
+                        </div>
                     </div>
-                </template>
-            </Card>
-            
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-2xl font-bold text-indigo-600">{{ overview.participants_registered }}</div>
-                        <div class="text-sm text-gray-600">Participants</div>
+                    
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="text-center p-4">
+                                <div class="text-2xl font-bold text-purple-600">€{{ financial.pos_badge_revenue.toFixed(2) }}</div>
+                                <div class="text-sm text-gray-600">POS Badge Sales</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div v-if="financial.printing_cost" class="mt-4 pt-4 border-t border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="text-center p-4">
+                                <div class="text-2xl font-bold text-red-600">€{{ financial.printing_cost.toFixed(2) }}</div>
+                                <div class="text-sm text-gray-600">Printing Cost</div>
+                            </div>
+                            <div class="text-center p-4">
+                                <div :class="['text-2xl font-bold', financial.profit_margin >= 0 ? 'text-green-600' : 'text-red-600']">
+                                    €{{ financial.profit_margin.toFixed(2) }}
+                                </div>
+                                <div class="text-sm text-gray-600">Profit/Loss</div>
+                            </div>
+                            <div class="text-center p-4">
+                                <div :class="['text-2xl font-bold', financial.money_needed_to_cover > 0 ? 'text-red-600' : 'text-green-600']">
+                                    €{{ financial.money_needed_to_cover.toFixed(2) }}
+                                </div>
+                                <div class="text-sm text-gray-600">Still Needed</div>
+                            </div>
+                            <div class="text-center p-4">
+                                <div :class="['text-2xl font-bold', financial.is_profitable ? 'text-green-600' : 'text-red-600']">
+                                    {{ financial.is_profitable ? 'Covered' : 'Not Covered' }}
+                                </div>
+                                <div class="text-sm text-gray-600">Cost Status</div>
+                            </div>
+                        </div>
                     </div>
                 </template>
             </Card>
@@ -187,11 +255,8 @@ const statusColors = {
 
         <!-- Charts and Tables Row -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <!-- Weekly Trend Chart -->
+            <!-- Event Days Chart -->
             <Card>
-                <template #title>
-                    <h3 class="text-lg font-semibold">7-Day Trend</h3>
-                </template>
                 <template #content>
                     <Chart type="line" :data="chartData" :options="chartOptions" class="h-64" />
                 </template>
@@ -330,22 +395,19 @@ const statusColors = {
             </Card>
         </div>
 
-        <!-- Daily Breakdown Table -->
+        <!-- Event Days Breakdown -->
         <Card>
-            <template #title>
-                <h3 class="text-lg font-semibold">7-Day Breakdown</h3>
-            </template>
             <template #content>
-                <DataTable :value="daily.last_7_days" class="p-datatable-sm">
+                <DataTable :value="daily.event_days" class="p-datatable-sm">
                     <Column field="day_name" header="Day"></Column>
-                    <Column field="badges_created" header="Badges Created"></Column>
-                    <Column field="badges_paid" header="Badges Paid"></Column>
+                    <Column field="badges_created" header="Created"></Column>
+                    <Column field="badges_paid" header="Paid"></Column>
                     <Column field="revenue" header="Revenue">
                         <template #body="slotProps">
                             {{ formatEuroFromCents(slotProps.data.revenue) }}
                         </template>
                     </Column>
-                    <Column field="print_jobs" header="Print Jobs"></Column>
+                    <Column field="print_jobs" header="Prints"></Column>
                 </DataTable>
             </template>
         </Card>

@@ -12,6 +12,8 @@ const props = defineProps({
     species: Object,
     users: Object,
     timeline: Object,
+    financial: Object,
+    daily: Object,
     currentEvent: String,
 });
 
@@ -23,29 +25,6 @@ const props = defineProps({
     </Head>
 
     <div class="p-4">
-        <!-- Header -->
-        <div class="mb-6">
-            <Card class="shadow-lg border-0 bg-gradient-to-r from-green-600 to-green-700 text-white">
-                <template #content>
-                    <div class="p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h1 class="text-3xl font-bold mb-2">Fursuit Statistics</h1>
-                                <p class="text-green-100 text-lg">
-                                    Event: {{ currentEvent }}
-                                </p>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-6xl opacity-20">
-                                    <i class="pi pi-chart-bar"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </Card>
-        </div>
-
         <!-- Overview Stats -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
             <Card class="text-center">
@@ -112,12 +91,91 @@ const props = defineProps({
             </Card>
         </div>
 
+        <!-- Financial Statistics -->
+        <div v-if="financial" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <Card>
+                <template #title>
+                    <h3 class="text-lg font-semibold">Financial Overview - {{ currentEvent }}</h3>
+                </template>
+                <template #content>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>Total Revenue</span>
+                            <span class="font-semibold text-green-600">€{{ financial.total_revenue }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Prepaid Badge Revenue</span>
+                            <span class="font-semibold text-blue-600">€{{ financial.prepaid_revenue }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Late Badge Revenue</span>
+                            <span class="font-semibold text-orange-600">€{{ financial.late_badge_revenue }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Actual Badge Revenue</span>
+                            <span class="font-semibold text-purple-600">€{{ financial.actual_badge_revenue }}</span>
+                        </div>
+                        <div v-if="financial.printing_cost !== null" class="flex justify-between border-t pt-3">
+                            <span>Printing Cost</span>
+                            <span class="font-semibold text-red-600">€{{ financial.printing_cost }}</span>
+                        </div>
+                        <div v-if="financial.profit_margin !== null" class="flex justify-between">
+                            <span>Profit Margin</span>
+                            <span class="font-semibold" :class="financial.is_profitable ? 'text-green-600' : 'text-red-600'">
+                                €{{ financial.profit_margin }}
+                            </span>
+                        </div>
+                        <div v-if="financial.is_profitable !== null" class="flex justify-between">
+                            <span>Status</span>
+                            <span class="font-semibold" :class="financial.is_profitable ? 'text-green-600' : 'text-red-600'">
+                                {{ financial.is_profitable ? '✓ Profitable' : '✗ Not Profitable' }}
+                            </span>
+                        </div>
+                    </div>
+                </template>
+            </Card>
+
+            <Card>
+                <template #title>
+                    <h3 class="text-lg font-semibold">Daily Statistics - Today</h3>
+                </template>
+                <template #content>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>Badges Ordered</span>
+                            <span class="font-semibold text-blue-600">{{ daily.badges_ordered_today }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Money Processed</span>
+                            <span class="font-semibold text-green-600">€{{ daily.money_processed_today }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>- Cash</span>
+                            <span class="font-semibold text-gray-600">€{{ daily.cash_processed_today }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>- Card</span>
+                            <span class="font-semibold text-gray-600">€{{ daily.card_processed_today }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Badges Picked Up</span>
+                            <span class="font-semibold text-orange-600">{{ daily.badges_picked_up_today }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Badges Printed</span>
+                            <span class="font-semibold text-purple-600">{{ daily.badges_printed_today }}</span>
+                        </div>
+                    </div>
+                </template>
+            </Card>
+        </div>
+
         <!-- Charts and Tables Row -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- Badges -->
             <Card>
                 <template #title>
-                    <h3 class="text-lg font-semibold">Badges of {{ currentEvent }}</h3>
+                    <h3 class="text-lg font-semibold">Badge Status Overview - {{ currentEvent }}</h3>
                 </template>
                 <template #content>
                     <div class="space-y-3">

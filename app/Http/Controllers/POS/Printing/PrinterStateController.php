@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\POS\Printing;
 
-use App\Http\Controllers\Controller;
 use App\Domain\Printing\Models\Printer;
 use App\Enum\PrinterStatusEnum;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,7 +29,7 @@ class PrinterStateController extends Controller
 
         return Inertia::render('POS/Printers/Index', [
             'printerStates' => $printerStates,
-            'recentEvents' => $recentEvents
+            'recentEvents' => $recentEvents,
         ]);
     }
 
@@ -37,10 +37,10 @@ class PrinterStateController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
-            'status' => 'required|in:' . implode(',', array_column(PrinterStatusEnum::cases(), 'value')),
+            'status' => 'required|in:'.implode(',', array_column(PrinterStatusEnum::cases(), 'value')),
             'current_job_id' => 'nullable|integer|exists:print_jobs,id',
             'last_error_message' => 'nullable|string',
-            'machine_name' => 'nullable|string'
+            'machine_name' => 'nullable|string',
         ]);
 
         $printerState = Printer::updatePrinterState(
@@ -53,7 +53,7 @@ class PrinterStateController extends Controller
 
         return response()->json([
             'success' => true,
-            'printer_state' => $printerState
+            'printer_state' => $printerState,
         ]);
     }
 
@@ -61,7 +61,7 @@ class PrinterStateController extends Controller
     {
         $printer = Printer::where('name', $printerName)->where('is_active', true)->first();
 
-        if (!$printer || !in_array($printer->status, [PrinterStatusEnum::PAUSED, PrinterStatusEnum::OFFLINE])) {
+        if (! $printer || ! in_array($printer->status, [PrinterStatusEnum::PAUSED, PrinterStatusEnum::OFFLINE])) {
             return response()->json(['error' => 'Printer not found or not in error state'], 404);
         }
 
@@ -80,17 +80,17 @@ class PrinterStateController extends Controller
             'status' => 'idle',
             'current_job_id' => null, // Clear the current job so retry job can be claimed
             'last_error_message' => null,
-            'last_state_update' => now()
+            'last_state_update' => now(),
         ]);
 
-        $message = $retryJobId 
+        $message = $retryJobId
             ? "Printer {$printerName} ready for retry. New job #{$retryJobId} created."
             : "Printer {$printerName} cleared and ready.";
 
         return response()->json([
             'success' => true,
             'message' => $message,
-            'retry_job_id' => $retryJobId
+            'retry_job_id' => $retryJobId,
         ]);
     }
 
@@ -98,7 +98,7 @@ class PrinterStateController extends Controller
     {
         $printer = Printer::where('name', $printerName)->where('is_active', true)->first();
 
-        if (!$printer || !in_array($printer->status, [PrinterStatusEnum::PAUSED, PrinterStatusEnum::OFFLINE])) {
+        if (! $printer || ! in_array($printer->status, [PrinterStatusEnum::PAUSED, PrinterStatusEnum::OFFLINE])) {
             return response()->json(['error' => 'Printer not found or not in error state'], 404);
         }
 
@@ -109,7 +109,7 @@ class PrinterStateController extends Controller
             if ($printJob) {
                 $printJob->update([
                     'status' => 'failed',
-                    'error_message' => 'Job skipped by user from printer management'
+                    'error_message' => 'Job skipped by user from printer management',
                 ]);
             }
         }
@@ -119,12 +119,12 @@ class PrinterStateController extends Controller
             'status' => 'idle',
             'current_job_id' => null,
             'last_error_message' => null,
-            'last_state_update' => now()
+            'last_state_update' => now(),
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => "Job skipped on printer {$printerName}"
+            'message' => "Job skipped on printer {$printerName}",
         ]);
     }
 
@@ -135,7 +135,7 @@ class PrinterStateController extends Controller
         if ($success) {
             return response()->json([
                 'success' => true,
-                'message' => "Error cleared for printer {$printerName}"
+                'message' => "Error cleared for printer {$printerName}",
             ]);
         }
 
@@ -162,7 +162,7 @@ class PrinterStateController extends Controller
 
         return response()->json([
             'states' => $states,
-            'last_updated' => $lastUpdated
+            'last_updated' => $lastUpdated,
         ])->header('Last-Modified', $lastUpdated);
     }
 }

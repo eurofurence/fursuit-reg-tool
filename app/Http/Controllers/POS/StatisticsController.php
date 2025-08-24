@@ -31,6 +31,7 @@ class StatisticsController extends Controller
             'badges' => $this->getBadgeStats($currentEvent),
             'printing' => $this->getPrintingStats($currentEvent),
             'sales' => $this->getSalesStats($currentEvent),
+            'financial' => $this->getFinancialStats($currentEvent),
             'daily' => $this->getDailyStats($currentEvent),
             'currentEvent' => $currentEvent,
         ];
@@ -38,14 +39,13 @@ class StatisticsController extends Controller
 
     private function getOverviewStats(?Event $currentEvent): array
     {
-        $todayStart = now()->startOfDay();
-        $todayEnd = now()->endOfDay();
-
         return [
-            'badges_today' => $this->getBadgesCreatedToday($currentEvent),
+            'badges_ordered_today' => $this->getBadgesCreatedToday($currentEvent),
             'badges_printed_today' => $this->getBadgesPrintedToday($currentEvent),
-            'badges_handed_out_today' => $this->getBadgesHandedOutToday($currentEvent),
-            'total_sales_today' => $this->getTotalSalesToday($currentEvent),
+            'badges_picked_up_today' => $this->getBadgesHandedOutToday($currentEvent),
+            'money_processed_today' => $this->getMoneyProcessedToday($currentEvent),
+            'cash_processed_today' => $this->getCashProcessedToday($currentEvent),
+            'card_processed_today' => $this->getCardProcessedToday($currentEvent),
             'pending_print_jobs' => $this->getPendingPrintJobs(),
             'participants_registered' => $currentEvent ? EventUser::where('event_id', $currentEvent->id)->count() : 0,
         ];
@@ -134,35 +134,40 @@ class StatisticsController extends Controller
 
     private function getDailyStats(?Event $currentEvent): array
     {
-        $last7Days = collect();
+        if (!$currentEvent || !$currentEvent->starts_at || !$currentEvent->ends_at) {
+            return ['event_days' => []];
+        }
 
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $dayStart = $date->copy()->startOfDay();
-            $dayEnd = $date->copy()->endOfDay();
+        $eventDays = collect();
+        $startDate = $currentEvent->starts_at->copy();
+        $endDate = $currentEvent->ends_at->copy();
+
+        while ($startDate->lte($endDate)) {
+            $dayStart = $startDate->copy()->startOfDay();
+            $dayEnd = $startDate->copy()->endOfDay();
 
             $query = Badge::query();
-            if ($currentEvent) {
-                $query->whereHas('fursuit', function ($q) use ($currentEvent) {
-                    $q->where('event_id', $currentEvent->id);
-                });
-            }
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
+                $q->where('event_id', $currentEvent->id);
+            });
 
             $dayBadges = $query->whereBetween('created_at', [$dayStart, $dayEnd])->get();
             $paidBadges = $dayBadges->where('status_payment', 'paid');
 
-            $last7Days->push([
-                'date' => $date->format('Y-m-d'),
-                'day_name' => $date->format('D'),
+            $eventDays->push([
+                'date' => $startDate->format('Y-m-d'),
+                'day_name' => $startDate->format('D'),
                 'badges_created' => $dayBadges->count(),
                 'badges_paid' => $paidBadges->count(),
                 'revenue' => $paidBadges->sum('total'),
                 'print_jobs' => PrintJob::whereBetween('created_at', [$dayStart, $dayEnd])->count(),
             ]);
+
+            $startDate->addDay();
         }
 
         return [
-            'last_7_days' => $last7Days->toArray(),
+            'event_days' => $eventDays->toArray(),
         ];
     }
 
@@ -266,5 +271,94 @@ class StatisticsController extends Controller
         }
 
         return $hours->toArray();
+    }
+
+    private function getFinancialStats(?Event $currentEvent): array
+    {
+        if (! $currentEvent) {
+            return [
+                'total_revenue' => 0,
+                'prepaid_badge_revenue' => 0,
+                'late_badge_revenue' => 0,
+                'actual_badge_revenue' => 0,
+                'printing_cost' => null,
+                'profit_margin' => null,
+                'is_profitable' => null,
+                'revenue_breakdown' => [],
+            ];
+        }
+
+        // Calculate prepaid badge revenue (each prepaid badge beyond 1 costs €2.00)
+        $prepaidRevenue = 0;
+        $eventUsers = $currentEvent->eventUsers()->where('prepaid_badges', '>', 1)->get();
+        foreach ($eventUsers as $eventUser) {
+            $paidBadges = $eventUser->prepaid_badges - 1;
+            $prepaidRevenue += $paidBadges * 2.00;
+        }
+
+        // Calculate late badge revenue (badges with €3.00 total)
+        $lateBadgeRevenue = $currentEvent->badges()
+            ->sum('total') / 100; // Convert cents to euros
+
+        // Calculate POS badge revenue (all paid badges)
+        $posBadgeRevenue = $currentEvent->badges()
+            ->where('status_payment', 'paid')
+            ->sum('total') / 100;
+
+        // Total revenue = prepaid badges + late badges
+        $totalRevenue = $prepaidRevenue + $lateBadgeRevenue;
+
+        // Actual revenue = POS badge sales + prepaid badges
+        $actualRevenue = $posBadgeRevenue + $prepaidRevenue;
+        $profitMargin = $currentEvent->cost ? $totalRevenue - $currentEvent->cost : null;
+        $moneyNeeded = $currentEvent->cost && $totalRevenue < $currentEvent->cost ? $currentEvent->cost - $totalRevenue : 0;
+
+        return [
+            'total_revenue' => round($totalRevenue, 2),
+            'actual_revenue' => round($actualRevenue, 2),
+            'prepaid_badge_revenue' => round($prepaidRevenue, 2),
+            'late_badge_revenue' => round($lateBadgeRevenue, 2),
+            'pos_badge_revenue' => round($posBadgeRevenue, 2),
+            'printing_cost' => $currentEvent->cost ? round(floatval($currentEvent->cost), 2) : null,
+            'profit_margin' => $profitMargin ? round($profitMargin, 2) : null,
+            'money_needed_to_cover' => round($moneyNeeded, 2),
+            'is_profitable' => $profitMargin !== null ? ($profitMargin >= 0) : null,
+            'revenue_breakdown' => [
+                'Free badges (1 per user)' => $currentEvent->eventUsers()->count(),
+                'Prepaid badges (€2.00 each)' => ($eventUsers->sum('prepaid_badges') - $eventUsers->count()),
+                'Late badges (€3.00 each)' => $currentEvent->badges()->where('total', 300)->where('status_payment', 'paid')->count(),
+                'All POS badges' => $currentEvent->badges()->where('status_payment', 'paid')->count(),
+            ],
+        ];
+    }
+
+    private function getMoneyProcessedToday(?Event $currentEvent): float
+    {
+        $query = Badge::query();
+        if ($currentEvent) {
+            $query->whereHas('fursuit', function ($q) use ($currentEvent) {
+                $q->where('event_id', $currentEvent->id);
+            });
+        }
+
+        return $query->where('status_payment', 'paid')
+            ->whereDate('paid_at', today())
+            ->sum('total') / 100;
+    }
+
+    private function getCashProcessedToday(?Event $currentEvent): float
+    {
+        // This would need to query checkouts or transactions to get cash vs card breakdown
+        // For now, returning 0 as placeholder - would need to check checkout records
+        // with payment method tracking
+        return 0;
+    }
+
+    private function getCardProcessedToday(?Event $currentEvent): float
+    {
+        // This would need to query checkouts or transactions to get cash vs card breakdown
+        // For now, returning 0 as placeholder - would need to check checkout records
+        // with payment method tracking
+        return 0;
     }
 }

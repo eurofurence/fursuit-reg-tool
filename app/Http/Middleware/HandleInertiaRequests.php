@@ -39,7 +39,8 @@ class HandleInertiaRequests extends Middleware
             ],
             // Get event that did not end yet and is the next one
             'event' => \App\Models\Event::latest('starts_at')->first(),
-            'printerStatus' => $this->getPrinterStatus($request),
+            // Lazy load printer status - only needed for POS header display
+            'printerStatus' => fn () => $this->getPrinterStatus($request),
         ];
     }
 
@@ -48,7 +49,8 @@ class HandleInertiaRequests extends Middleware
         if ($request->routeIs('pos.*')) {
             return [
                 'user' => $request->user('machine-user')?->only(['id', 'name', 'is_admin']),
-                'machine' => $request->user('machine'),
+                // Machine data with SumUp reader for all POS routes (needed in header)
+                'machine' => $request->user('machine')?->load('sumupReader'),
             ];
         }
 
@@ -61,7 +63,7 @@ class HandleInertiaRequests extends Middleware
     private function getPrinterStatus(Request $request): ?array
     {
         // Only provide printer status for POS routes
-        if (!$request->routeIs('pos.*') || !$request->user('machine-user')) {
+        if (! $request->routeIs('pos.*') || ! $request->user('machine-user')) {
             return null;
         }
 

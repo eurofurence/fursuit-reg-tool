@@ -34,7 +34,7 @@ class PrintQueueController extends Controller
     {
         // Create a new retry job with printer reassignment (find available printer)
         $retryJob = $printJob->createRetryJob(reassignPrinter: true);
-        
+
         $message = $retryJob->printer_id === $printJob->printer_id
             ? "Retry job #{$retryJob->id} created on same printer ({$retryJob->printer->name})"
             : "Retry job #{$retryJob->id} reassigned from {$printJob->printer->name} to {$retryJob->printer->name}";

@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 
 class MachineStatusController extends Controller
 {
-
     public function updateStatus(Request $request): JsonResponse
     {
         $request->validate([

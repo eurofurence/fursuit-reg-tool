@@ -4,8 +4,8 @@ namespace App\Jobs\Printing;
 
 use App\Badges\EF28_Badge;
 use App\Badges\EF29_Badge;
-use App\Domain\Printing\Models\PrintJob;
 use App\Domain\Printing\Models\Printer;
+use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Models\Badge\Badge;
@@ -39,24 +39,24 @@ class PrintBadgeJob implements ShouldQueue
             'EF28_Badge' => new EF28_Badge,
             default => new EF28_Badge, // Fallback to EF28 for safety
         };
-        
+
         // Generate PDF content
         $pdfContent = $printer->getPdf($this->badge);
-        
+
         // Store PDF Content in PrintJobs Storage
         $filePath = 'badges/'.$this->badge->id.'.pdf';
         Storage::put($filePath, $pdfContent);
-        
+
         // Find available printer - only check is_active to allow queuing even if paused
         $sendTo = Printer::where('is_active', true)
             ->where('type', 'badge')
             ->orderBy('status') // Prefer idle printers over working ones
             ->first();
-        
-        if (!$sendTo) {
+
+        if (! $sendTo) {
             throw new \Exception('No available badge printers found. All badge printers are inactive.');
         }
-        
+
         // Create PrintJob with success status
         $printJob = $this->badge->printJobs()->create([
             'printer_id' => $sendTo->id,
@@ -65,8 +65,8 @@ class PrintBadgeJob implements ShouldQueue
             'file' => $filePath,
             'queued_at' => now(),
         ]);
-        
-        Log::info("Badge print job created successfully", [
+
+        Log::info('Badge print job created successfully', [
             'badge_id' => $this->badge->id,
             'print_job_id' => $printJob->id,
             'printer' => $sendTo->name,
@@ -78,17 +78,17 @@ class PrintBadgeJob implements ShouldQueue
      */
     public function failed(?\Throwable $exception): void
     {
-        Log::error("Badge print job failed", [
+        Log::error('Badge print job failed', [
             'badge_id' => $this->badge->id,
             'error' => $exception?->getMessage(),
-            'trace' => $exception?->getTraceAsString()
+            'trace' => $exception?->getTraceAsString(),
         ]);
-        
+
         // Create failed print job record if we have a printer
         $fallbackPrinter = Printer::where('is_active', true)
             ->where('type', 'badge')
             ->first();
-            
+
         if ($fallbackPrinter) {
             $this->badge->printJobs()->create([
                 'printer_id' => $fallbackPrinter->id,
