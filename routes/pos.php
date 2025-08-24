@@ -51,3 +51,5 @@ Route::prefix('/printers')->name('printers.')->group(function () {
     Route::post('/{printerName}/skip', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'skipJob'])->name('skip');
     Route::post('/{printerName}/clear', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'clearError'])->name('clear');
 });
+// Machine Settings
+Route::put('/machine/{machine}/timeout', [\App\Http\Controllers\POS\MachineController::class, 'updateTimeout'])->name('machine.timeout');

@@ -34,6 +34,7 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
         'qz_connection_status' => QzConnectionStatusEnum::class,
         'qz_last_seen_at' => 'datetime',
         'pending_print_jobs_count' => 'integer',
+        'auto_logout_timeout' => 'integer',
     ];
 
     // generic printers
