@@ -78,6 +78,10 @@ const getPodiumIcon = (rank: number) => {
     if (rank === 3) return "🥉"; // Bronze medal
     return null;
 };
+
+const getProperCatch = (catchCount: number) => {
+    return catchCount === 1 || catchCount === -1 ? "catch" : "catches";
+}
 </script>
 
 <template>
@@ -141,7 +145,7 @@ const getPodiumIcon = (rank: number) => {
                                         {{ leaderboard[1]?.name }}
                                     </div>
                                     <div class="text-xs text-gray-400">
-                                        {{ leaderboard[1]?.catches }} catches
+                                        {{ leaderboard[1]?.catches }} {{ getProperCatch(leaderboard[1]?.catches) }}
                                     </div>
                                 </div>
                             </div>
@@ -160,7 +164,7 @@ const getPodiumIcon = (rank: number) => {
                                         {{ leaderboard[0]?.name }}
                                     </div>
                                     <div class="text-sm text-yellow-300">
-                                        {{ leaderboard[0]?.catches }} catches
+                                        {{ leaderboard[0]?.catches }} {{ getProperCatch(leaderboard[0]?.catches) }}
                                     </div>
                                 </div>
                             </div>
@@ -179,14 +183,14 @@ const getPodiumIcon = (rank: number) => {
                                         {{ leaderboard[2]?.name }}
                                     </div>
                                     <div class="text-xs text-gray-400">
-                                        {{ leaderboard[2]?.catches }} catches
+                                        {{ leaderboard[2]?.catches }} {{ getProperCatch(leaderboard[2]?.catches) }}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Full Leaderboard List -->
+                    <!-- Partial Leaderboard List -->
                     <div class="space-y-2">
                         <div
                             v-for="(player, index) in leaderboard"
@@ -234,7 +238,7 @@ const getPodiumIcon = (rank: number) => {
                                     </div>
                                     <div class="text-sm text-gray-400">
                                         Rank #{{ player.rank }} •
-                                        {{ player.catches }} catches
+                                        {{ player.catches }} {{ getProperCatch(player.catches) }}
                                     </div>
                                 </div>
                             </div>
