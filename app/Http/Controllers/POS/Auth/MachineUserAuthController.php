@@ -75,13 +75,47 @@ class MachineUserAuthController extends Controller
         // Authenticate staff
         Auth::guard('machine-user')->login($staff);
 
-        // To Dashboard
+        // Check if there's a saved return URL in the session
+        $returnUrl = session('pos_return_url');
+        session()->forget('pos_return_url'); // Clear it after retrieving
+
+        // Redirect to saved URL or dashboard
+        if ($returnUrl) {
+            return redirect($returnUrl);
+        }
+
         return redirect()->route('pos.dashboard');
     }
 
     public function logout()
     {
         Auth::guard('machine-user')->logout();
+
+        return redirect()->route('pos.auth.user.select');
+    }
+
+    /**
+     * Lock the screen and save return URL for re-authentication
+     */
+    public function lock(Request $request)
+    {
+        $returnUrl = $request->input('return_url');
+
+        // Only save GET routes to prevent issues with POST/PUT/DELETE
+        if ($returnUrl && $request->isMethod('post')) {
+            // Parse the URL to check if it's a valid internal route
+            $parsedUrl = parse_url($returnUrl);
+            $path = $parsedUrl['path'] ?? '/pos/dashboard';
+
+            // Store the return URL in the session for this machine
+            session(['pos_return_url' => $path.($parsedUrl['query'] ?? '' ? '?'.$parsedUrl['query'] : '')]);
+        }
+
+        // Log out the user
+        Auth::guard('machine-user')->logout();
+
+        // Clear the lastActivityTime to prevent immediate re-lock
+        $request->session()->forget('lastActivityTime');
 
         return redirect()->route('pos.auth.user.select');
     }
