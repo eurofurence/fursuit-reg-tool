@@ -108,7 +108,11 @@ const formatDate = (dateString: string) => {
                 Completed ({{ completedAchievements.length }})
             </h3>
             <div class="space-y-3 mb-6">
-                <Card v-for="achievement in completedAchievements" :key="achievement.id" class="bg-white shadow-sm">
+                <Card
+                    v-for="achievement in completedAchievements"
+                    :key="achievement.id"
+                    class="bg-white shadow-sm border border-gray-700"
+                >
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
                             <!-- Achievement Icon -->
@@ -145,7 +149,10 @@ const formatDate = (dateString: string) => {
                 In Progress ({{ inProgressAchievements.length }})
             </h3>
             <div class="space-y-3 mb-6">
-                <Card v-for="achievement in inProgressAchievements" :key="achievement.id" class="bg-white shadow-sm">
+                <Card
+                    v-for="achievement in inProgressAchievements"
+                    :key="achievement.id"
+                    class="bg-white shadow-sm border border-gray-700">
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
                             <!-- Achievement Icon -->
@@ -186,7 +193,10 @@ const formatDate = (dateString: string) => {
                 Locked ({{ lockedAchievements.length }})
             </h3>
             <div class="space-y-3">
-                <Card v-for="achievement in lockedAchievements" :key="achievement.id" class="bg-white shadow-sm opacity-75">
+                <Card
+                    v-for="achievement in lockedAchievements"
+                    :key="achievement.id"
+                    class="bg-white shadow-sm opacity-75 border border-gray-700">
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
                             <!-- Achievement Icon -->
