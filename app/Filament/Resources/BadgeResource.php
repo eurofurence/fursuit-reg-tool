@@ -67,15 +67,19 @@ class BadgeResource extends Resource
 
                         Forms\Components\Grid::make(2)
                             ->schema([
-                                Forms\Components\TextInput::make('fursuit.species.name')
+                                Forms\Components\TextInput::make('species_name')
                                     ->label('Species')
                                     ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn ($record) => $record?->fursuit?->species?->name)
                                     ->helperText('The fursuit species')
                                     ->columnSpan(1),
 
-                                Forms\Components\TextInput::make('fursuit.user.name')
+                                Forms\Components\TextInput::make('owner_name')
                                     ->label('Owner')
                                     ->disabled()
+                                    ->dehydrated(false)
+                                    ->formatStateUsing(fn ($record) => $record?->fursuit?->user?->name)
                                     ->helperText('The fursuit owner')
                                     ->columnSpan(1),
                             ]),
