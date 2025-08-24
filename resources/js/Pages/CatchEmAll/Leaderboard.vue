@@ -7,7 +7,24 @@ import Dropdown from "primevue/dropdown";
 import { computed, ref } from "vue";
 
 const props = defineProps<{
-    leaderboard: Array<any>;
+    user : {
+        id : number;
+        name : string;
+    };
+    userStat : {
+        rank: number;
+        totalCatches: number;
+        uniqueSpecies: number;
+        totalAvailable: number;
+        completionPercentage: number;
+        rarityStats: Record<string, any>;
+    };
+    leaderboard: Array<{
+        id : number;
+        name : string;
+        rank : number;
+        catches : number;
+    }>;
     eventsWithEntries: Array<any>;
     selectedEvent?: string | null;
     isGlobal: boolean;
