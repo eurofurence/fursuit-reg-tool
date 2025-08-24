@@ -111,12 +111,6 @@ const getPodiumIcon = (rank: number) => {
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
                 <div class="text-center mb-6">
-                    <div
-                        class="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center"
-                    >
-                        <Trophy class="w-8 h-8 text-white" />
-                    </div>
-                    <h2 class="text-xl font-bold text-gray-100">Leaderboard</h2>
                     <p class="text-sm text-gray-300">
                         {{
                             props.isGlobal
