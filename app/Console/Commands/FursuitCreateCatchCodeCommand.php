@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class FursuitCreateCatchCodeCommand extends Command
 {
-    protected $signature = 'fursuit:create-catch-code {--purge-all : Purge all existing catch codes before generating new ones}';
+    protected $signature = 'fursuit:create-catch-code {--purge-all : Purge all existing catch codes before generating new ones} {--regen-unprinted : Regenerate catch codes only for unprinted badges}';
 
     protected $description = 'Generate catch codes for fursuits participating in catch-em-all game';
 
@@ -20,9 +20,10 @@ class FursuitCreateCatchCodeCommand extends Command
     public function handle(): void
     {
         $activeEvent = Event::getActiveEvent();
-        
-        if (!$activeEvent) {
+
+        if (! $activeEvent) {
             $this->error('No active event found.');
+
             return;
         }
 
@@ -35,7 +36,51 @@ class FursuitCreateCatchCodeCommand extends Command
                 $this->info('All existing catch codes for the current event have been purged.');
             }
 
-            // Get fursuits that need catch codes
+            // Handle regeneration for unprinted badges
+            if ($this->option('regen-unprinted')) {
+                $this->info('Regenerating catch codes for unprinted badges...');
+                
+                // Get fursuits with badges in 'pending' fulfillment status
+                $unprintedFursuits = $activeEvent->fursuits()
+                    ->where('catch_em_all', true)
+                    ->whereHas('badges', function ($query) {
+                        $query->where('status_fulfillment', 'pending');
+                    })
+                    ->get();
+
+                if ($unprintedFursuits->isEmpty()) {
+                    $this->info('No fursuits with unprinted badges found for catch code regeneration.');
+                    return;
+                }
+
+                $this->info("Found {$unprintedFursuits->count()} fursuits with unprinted badges.");
+                
+                $progressBar = $this->output->createProgressBar($unprintedFursuits->count());
+                $progressBar->setFormat('Regenerating codes: %current%/%max% [%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s%');
+                $progressBar->start();
+
+                $counter = 0;
+                foreach ($unprintedFursuits as $fursuit) {
+                    $oldCode = $fursuit->catch_code;
+                    $fursuit->catch_code = $this->generateCatchCode();
+                    $fursuit->save();
+                    $counter++;
+                    $progressBar->advance();
+                    
+                    if ($oldCode) {
+                        $this->line(" - {$fursuit->name}: {$oldCode} → {$fursuit->catch_code}");
+                    } else {
+                        $this->line(" - {$fursuit->name}: NEW → {$fursuit->catch_code}");
+                    }
+                }
+
+                $progressBar->finish();
+                $this->newLine();
+                $this->info($counter.' catch codes regenerated for unprinted badges!');
+                return;
+            }
+
+            // Get fursuits that need catch codes (normal operation)
             $fursuitsThatNeedCodes = $activeEvent->fursuits()
                 ->where('catch_em_all', true)
                 ->whereNull('catch_code')
@@ -43,6 +88,7 @@ class FursuitCreateCatchCodeCommand extends Command
 
             if ($fursuitsThatNeedCodes->isEmpty()) {
                 $this->info('No fursuits need catch codes generated.');
+
                 return;
             }
 
