@@ -23,9 +23,23 @@ use Inertia\Inertia;
 
 class BadgeController extends Controller
 {
-    public function show(Request $request) // Catch any malformed request e.g. ./badges/AnyWord
+    public function show(Request $request, Badge $badge)
     {
-        return $this->index($request);
+        $user = $request->user();
+        
+        // Check if user can view this badge
+        Gate::authorize('view', $badge);
+        
+        // Load relationships
+        $badge->load(['fursuit.species', 'fursuit.event', 'fursuit.user']);
+        
+        // Add edit permission
+        $badge->canEdit = Gate::allows('update', $badge);
+        
+        return Inertia::render('Badges/BadgeShow', [
+            'badge' => $badge,
+            'canEdit' => $badge->canEdit,
+        ]);
     }
 
     public function index(Request $request)
@@ -53,7 +67,7 @@ class BadgeController extends Controller
                     $query->where('id', '!=', $activeEvent->id);
                 }
             })
-            ->whereIn('status_fulfillment', ['printed', 'ready_for_pickup'])
+            ->where('status_fulfillment', 'ready_for_pickup')
             ->with(['fursuit.species', 'fursuit.event'])
             ->get();
 

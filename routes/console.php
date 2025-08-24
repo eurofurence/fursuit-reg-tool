@@ -7,3 +7,9 @@
     ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Check for stuck print jobs every 3 minutes
+\Illuminate\Support\Facades\Schedule::command('printing:check-stuck-jobs')
+    ->everyThreeMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();

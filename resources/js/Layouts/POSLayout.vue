@@ -147,10 +147,13 @@ const shouldShowBackArrow = computed(() => {
         return true;
     }
     
+    // Use the reactive page.url instead of route().current() for proper reactivity
+    const currentUrl = page.url;
+    
     // Don't show back arrow on dashboard, checkout pages, and auth pages
-    if (route().current('pos.dashboard') || 
-        route().current('pos.checkout.*') ||
-        route().current('pos.auth.*')) {
+    if (currentUrl === route('pos.dashboard') || 
+        currentUrl.startsWith(route('pos.checkout.index')) ||
+        currentUrl.startsWith(route('pos.auth.user.select'))) {
         return false;
     }
     

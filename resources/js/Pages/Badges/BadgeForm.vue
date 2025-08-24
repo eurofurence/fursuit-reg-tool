@@ -329,7 +329,7 @@ const canEditFields = computed(() => {
             <div class="mb-6">
                 <Message v-if="isEditMode && canEdit && !badge.extra_copy_of" 
                          icon="pi pi-info-circle" severity="info" class="mb-4">
-                    You can edit your badge until we have printed it.
+                    You can edit your badge until we start processing it.
                 </Message>
                 
                 <Message v-else-if="isEditMode && badge.extra_copy_of" 
@@ -648,34 +648,20 @@ const canEditFields = computed(() => {
                         </template>
                     </Card>
 
-                    <!-- How to Pick Up Card -->
-                    <Card class="shadow-lg">
-                        <template #title>
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-calendar text-primary-600"></i>
-                                <span>How to pick up your badge?</span>
-                            </div>
-                        </template>
-                        <template #content>
-                            <div class="space-y-3 text-sm text-gray-600">
-                                <ul class="list-disc pl-5 space-y-2">
-                                    <li>
-                                        <strong>First convention day:</strong> If your badge is free or prepaid and you submitted it at least two weeks before the convention, you can pick it up on the first day.
-                                    </li>
-                                    <li>
-                                        <strong>Second day and later:</strong> If you still need to pay for your badge, or you submitted it less than two weeks before the convention, you can pick it up from the second day onward.
-                                    </li>
-                                    <li>
-                                        <strong>Not sure?</strong> On the first day, click "Manage your Badges" on the front page. Badges that are ready for pickup will be marked with "ready for pickup" and "paid" tags.
-                                    </li>
-                                </ul>
-                                <div class="mt-2">
-                                    <strong>Where:</strong> Fursuit Lounge, please check the online schedule for the opening times.
-                                </div>
-                            </div>
-                        </template>
-                    </Card>
                 </div>
+            </div>
+
+            <!-- Back Button (Edit mode only) -->
+            <div v-if="isEditMode" class="mt-6 text-center">
+                <Button
+                    @click="router.visit(route('badges.show', {badge: badge.id}))"
+                    class="p-button-secondary"
+                >
+                    <template #icon>
+                        <i class="pi pi-arrow-left mr-2"></i>
+                    </template>
+                    Back to Badge Details
+                </Button>
             </div>
         </div>
     </div>

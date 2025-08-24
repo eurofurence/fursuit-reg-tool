@@ -3,7 +3,7 @@
 namespace App\Models\Badge\State_Payment\Transitions;
 
 use App\Models\Badge\Badge;
-use App\Models\Badge\State_Fulfillment\Printed;
+use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use App\Models\Badge\State_Payment\Paid;
 use Illuminate\Support\Facades\DB;
@@ -16,9 +16,9 @@ class ToPaid extends Transition
     public function handle()
     {
         return DB::transaction(function () {
-            if ($this->badge->status_fulfillment->equals(Printed::class)) {
-                $this->badge->status_fulfillment = new ReadyForPickup($this->badge);
-            }
+            // Don't automatically transition to ReadyForPickup anymore
+            // The badge should stay in its current fulfillment state
+            // It will only move to ReadyForPickup when actually printed
 
             $this->badge->status_payment = new Paid($this->badge);
 

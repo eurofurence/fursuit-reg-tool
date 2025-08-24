@@ -35,16 +35,73 @@ class PrinterController extends Controller
 
         // Get jobs that are ready to be printed (pending or queued)
         // BUT only for printers that are IDLE (one job at a time per printer)
-        return PrintJob::whereHas('printer', function ($query) use ($machine) {
+        $jobs = PrintJob::whereHas('printer', function ($query) use ($machine) {
             $query->where('machine_id', $machine->id)
                 ->where('status', PrinterStatusEnum::IDLE->value); // Only idle printers
         })
             ->whereIn('status', [PrintJobStatusEnum::Pending, PrintJobStatusEnum::Queued])
+            ->with(['printable'])
             ->orderBy('priority', 'desc')
             ->orderBy('created_at', 'asc')
-            ->limit(5)
-            ->get()
-            ->map(fn (PrintJob $printJob) => [
+            ->limit(50) // Get more to sort properly, then limit later
+            ->get();
+
+        // Apply custom badge sorting for database-agnostic solution
+        $sortedJobs = $jobs->sort(function (PrintJob $a, PrintJob $b) {
+            // High priority jobs always come first
+            if ($a->priority > 1 && $b->priority <= 1) {
+                return -1;
+            }
+            if ($b->priority > 1 && $a->priority <= 1) {
+                return 1;
+            }
+            if ($a->priority !== $b->priority) {
+                return $b->priority <=> $a->priority;
+            }
+
+            // For same priority, apply badge sorting if both are badges
+            if ($a->printable_type === 'App\\Models\\Badge\\Badge' &&
+                $b->printable_type === 'App\\Models\\Badge\\Badge') {
+
+                $aCustomId = $a->printable?->custom_id;
+                $bCustomId = $b->printable?->custom_id;
+
+                // Handle null custom_ids
+                if (! $aCustomId && ! $bCustomId) {
+                    return 0;
+                }
+                if (! $aCustomId) {
+                    return 1;
+                }
+                if (! $bCustomId) {
+                    return -1;
+                }
+
+                // Parse attendee ID and badge number
+                $aParts = explode('-', $aCustomId, 2);
+                $bParts = explode('-', $bCustomId, 2);
+
+                if (count($aParts) === 2 && count($bParts) === 2) {
+                    $aAttendeeId = (int) $aParts[0];
+                    $bAttendeeId = (int) $bParts[0];
+                    $aBadgeNumber = (int) $aParts[1];
+                    $bBadgeNumber = (int) $bParts[1];
+
+                    // Sort by attendee ID first (ascending)
+                    if ($aAttendeeId !== $bAttendeeId) {
+                        return $aAttendeeId <=> $bAttendeeId;
+                    }
+
+                    // Then by badge number (descending within same attendee)
+                    return $bBadgeNumber <=> $aBadgeNumber;
+                }
+            }
+
+            // Default to creation time
+            return $a->created_at <=> $b->created_at;
+        });
+
+        return $sortedJobs->take(5)->map(fn (PrintJob $printJob) => [
             'id' => $printJob->id,
             'printer' => $printJob->printer->name,
             'type' => $printJob->type,
@@ -208,6 +265,9 @@ class PrinterController extends Controller
                 // Job actually completed - mark as printed
                 $newStatus = PrintJobStatusEnum::Printed;
                 $printerStatus = PrinterStatusEnum::IDLE;
+                
+                // Auto-resume printer if it was paused due to stuck jobs
+                $this->autoResumePrinterIfStuck($job->printer);
                 break;
 
             case 'ERROR':
@@ -242,6 +302,15 @@ class PrinterController extends Controller
             $job->transitionTo($newStatus, $errorMessage);
 
             \Log::info("Job {$job->id} transitioned from {$job->status->value} to {$newStatus->value} via QZ callback");
+            
+            // If this is a badge print job that just completed, transition the badge to ReadyForPickup
+            if ($newStatus === PrintJobStatusEnum::Printed && $job->printable_type === \App\Models\Badge\Badge::class) {
+                $badge = $job->printable;
+                if ($badge && $badge->status_fulfillment->canTransitionTo(\App\Models\Badge\State_Fulfillment\ReadyForPickup::class)) {
+                    $badge->status_fulfillment->transitionTo(\App\Models\Badge\State_Fulfillment\ReadyForPickup::class);
+                    \Log::info("Badge {$badge->id} transitioned to ReadyForPickup after print job completion");
+                }
+            }
         }
 
         // Update printer status if we have a mapping
@@ -404,5 +473,40 @@ class PrinterController extends Controller
             'handled' => $event->handled,
             'action_taken' => $event->handled ? 'Printer paused due to critical event' : 'Event logged',
         ]);
+    }
+
+    /**
+     * Auto-resume printer if it was paused due to stuck jobs
+     */
+    private function autoResumePrinterIfStuck(Printer $printer): void
+    {
+        // Refresh printer data to get current status
+        $printer->refresh();
+        
+        if ($printer->status !== PrinterStatusEnum::PAUSED) {
+            return; // Printer is not paused
+        }
+
+        // Check if the pause reason mentions stuck jobs or timeout
+        $pauseReason = $printer->last_error_message ?? '';
+        $isStuckJobPause = str_contains($pauseReason, 'processing for over') || 
+                          str_contains($pauseReason, 'minutes') ||
+                          str_contains($pauseReason, 'stuck');
+
+        if ($isStuckJobPause) {
+            // Auto-resume the printer since it's working again
+            Printer::updatePrinterState(
+                $printer->name,
+                PrinterStatusEnum::IDLE,
+                null,
+                null,
+                auth('machine')->user()->name ?? 'System'
+            );
+
+            \Log::info("Printer '{$printer->name}' auto-resumed after successful job completion", [
+                'printer_id' => $printer->id,
+                'previous_pause_reason' => $pauseReason
+            ]);
+        }
     }
 }

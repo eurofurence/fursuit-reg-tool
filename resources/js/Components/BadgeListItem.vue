@@ -42,9 +42,9 @@ function getFursuitTooltipText(status) {
 function getBadgeStatusName(status) {
     switch (status) {
         case 'pending':
-            return 'Pending Printing';
-        case 'printed':
-            return 'Printed';
+            return 'Pending';
+        case 'processing':
+            return 'Printing';
         case 'ready_for_pickup':
             return 'Ready for Pickup';
         case 'picked_up':
@@ -56,23 +56,23 @@ function getBadgeSeverity(status) {
     switch (status) {
         case 'pending':
             return 'warning';
-        case 'printed':
-            return 'info';
+        case 'processing':
+            return 'info'; // Blue for printing
         case 'ready_for_pickup':
-            return 'success';
+            return 'warning'; // Orange for action needed
         case 'picked_up':
-            return 'success';
+            return 'success'; // Green - only picked up is green
     }
 }
 
 function getBadgeTooltipText(status) {
     switch (status) {
         case 'pending':
-            return 'This badge is pending printing. We will notify you once it is ready for pickup.';
-        case 'printed':
-            return 'This badge has been printed. No further changes can be made.';
+            return 'This badge is waiting to be processed. You can still make changes until printing begins.';
+        case 'processing':
+            return 'This badge is being printed. No further changes can be made.';
         case 'ready_for_pickup':
-            return 'This badge is ready for pickup.';
+            return 'This badge is ready for pickup at the convention.';
         case 'picked_up':
             return 'This badge has been picked up.';
     }

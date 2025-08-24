@@ -61,7 +61,7 @@ function changeHandout(badgeId, undo) {
             <template #body="slotProps">
                 <div class="flex flex-col gap-1 items-start justify-center">
                     <Tag severity="warning" v-if="slotProps.data.status_fulfillment === 'pending'" value="Pending" />
-                    <Tag severity="info" v-else-if="slotProps.data.status_fulfillment === 'printed'" value="printed" />
+                    <Tag severity="info" v-else-if="slotProps.data.status_fulfillment === 'processing'" value="Processing" />
                     <Tag severity="success" v-else-if="slotProps.data.status_fulfillment === 'ready_for_pickup'"
                         value="Ready for Pickup" />
                     <Tag severity="success" v-else-if="slotProps.data.status_fulfillment === 'picked_up'"

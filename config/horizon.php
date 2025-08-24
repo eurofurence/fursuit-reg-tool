@@ -193,6 +193,19 @@ return [
             'timeout' => 60,
             'nice' => 0,
         ],
+        'batch-print-supervisor' => [
+            'connection' => 'redis',
+            'queue' => ['batch-print'],
+            'balance' => 'simple',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 3,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -203,11 +216,20 @@ return [
                 'balanceCooldown' => 3,
                 'timeout' => 120,
             ],
+            'batch-print-supervisor' => [
+                'maxProcesses' => 2,
+                'timeout' => 600,
+                'tries' => 3,
+            ],
         ],
 
         'local' => [
             'supervisor-1' => [
                 'maxProcesses' => 3,
+            ],
+            'batch-print-supervisor' => [
+                'maxProcesses' => 1,
+                'timeout' => 300,
             ],
         ],
     ],
