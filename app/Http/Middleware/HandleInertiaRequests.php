@@ -49,10 +49,8 @@ class HandleInertiaRequests extends Middleware
         if ($request->routeIs('pos.*')) {
             return [
                 'user' => $request->user('machine-user')?->only(['id', 'name', 'is_admin']),
-                // Machine data changes rarely, but SumUp reader is only needed for checkout
-                'machine' => $request->routeIs('pos.checkout.*') 
-                    ? $request->user('machine')?->load('sumupReader')
-                    : $request->user('machine'),
+                // Machine data with SumUp reader for all POS routes (needed in header)
+                'machine' => $request->user('machine')?->load('sumupReader'),
             ];
         }
 

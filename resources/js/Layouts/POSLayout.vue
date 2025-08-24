@@ -139,25 +139,14 @@ const shouldShowBackArrow = computed(() => {
         return true;
     }
     
-    // Get current route name
-    const currentRoute = page.props.ziggy?.route?.current || page.props.ziggy?.route || '';
+    // Don't show back arrow on dashboard, checkout pages, and auth pages
+    if (route().current('pos.dashboard') || 
+        route().current('pos.checkout.*') ||
+        route().current('pos.auth.*')) {
+        return false;
+    }
     
-    // Don't show back arrow on dashboard and checkout pages
-    const excludedRoutes = [
-        'pos.dashboard',
-        'pos.checkout.show'
-    ];
-    
-    // Also exclude auth pages (login, user selection, etc.)
-    const authRoutes = [
-        'pos.auth.user.select',
-        'pos.auth.pin.login',
-        'pos.auth.staff.setup'
-    ];
-    
-    const allExcludedRoutes = [...excludedRoutes, ...authRoutes];
-    
-    return !allExcludedRoutes.includes(currentRoute);
+    return true;
 });
 
 // Determine the back route (default to dashboard)

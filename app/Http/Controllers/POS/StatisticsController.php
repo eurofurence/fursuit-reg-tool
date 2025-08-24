@@ -298,8 +298,6 @@ class StatisticsController extends Controller
 
         // Calculate late badge revenue (badges with €3.00 total)
         $lateBadgeRevenue = $currentEvent->badges()
-            ->where('total', 300) // 300 cents = €3.00
-            ->where('status_payment', 'paid')
             ->sum('total') / 100; // Convert cents to euros
 
         // Calculate POS badge revenue (all paid badges)
@@ -309,7 +307,7 @@ class StatisticsController extends Controller
 
         // Total revenue = prepaid badges + late badges
         $totalRevenue = $prepaidRevenue + $lateBadgeRevenue;
-        
+
         // Actual revenue = POS badge sales + prepaid badges
         $actualRevenue = $posBadgeRevenue + $prepaidRevenue;
         $profitMargin = $currentEvent->cost ? $totalRevenue - $currentEvent->cost : null;
