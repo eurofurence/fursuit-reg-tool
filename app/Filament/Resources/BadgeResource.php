@@ -348,33 +348,39 @@ class BadgeResource extends Resource
                     ->trueLabel('Free Badges Only')
                     ->falseLabel('Paid Badges Only'),
 
-                Tables\Filters\Filter::make('badge_number_range')
+                Tables\Filters\Filter::make('attendee_id_range')
                     ->form([
-                        Forms\Components\TextInput::make('from_number')
-                            ->label('From Badge Number')
+                        Forms\Components\TextInput::make('from_attendee_id')
+                            ->label('From Attendee ID')
                             ->numeric()
                             ->placeholder('e.g., 1'),
-                        Forms\Components\TextInput::make('to_number')
-                            ->label('To Badge Number')
+                        Forms\Components\TextInput::make('to_attendee_id')
+                            ->label('To Attendee ID')
                             ->numeric()
                             ->placeholder('e.g., 1000'),
                     ])
                     ->query(function ($query, array $data) {
                         return $query
-                            ->when($data['from_number'], function ($query, $fromNumber) {
-                                return $query->whereRaw('CAST(SUBSTRING_INDEX(custom_id, "-", -1) AS UNSIGNED) >= ?', [$fromNumber]);
+                            ->when($data['from_attendee_id'], function ($query, $fromAttendeeId) {
+                                return $query->whereHas('fursuit.user.eventUsers', function ($q) use ($fromAttendeeId) {
+                                    $q->where('event_id', static::getSelectedEventId())
+                                      ->whereRaw('CAST(attendee_id AS UNSIGNED) >= ?', [$fromAttendeeId]);
+                                });
                             })
-                            ->when($data['to_number'], function ($query, $toNumber) {
-                                return $query->whereRaw('CAST(SUBSTRING_INDEX(custom_id, "-", -1) AS UNSIGNED) <= ?', [$toNumber]);
+                            ->when($data['to_attendee_id'], function ($query, $toAttendeeId) {
+                                return $query->whereHas('fursuit.user.eventUsers', function ($q) use ($toAttendeeId) {
+                                    $q->where('event_id', static::getSelectedEventId())
+                                      ->whereRaw('CAST(attendee_id AS UNSIGNED) <= ?', [$toAttendeeId]);
+                                });
                             });
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
-                        if ($data['from_number']) {
-                            $indicators[] = 'From badge #'.$data['from_number'];
+                        if ($data['from_attendee_id']) {
+                            $indicators[] = 'From attendee #'.$data['from_attendee_id'];
                         }
-                        if ($data['to_number']) {
-                            $indicators[] = 'To badge #'.$data['to_number'];
+                        if ($data['to_attendee_id']) {
+                            $indicators[] = 'To attendee #'.$data['to_attendee_id'];
                         }
 
                         return $indicators;
