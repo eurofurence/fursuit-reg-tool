@@ -9,8 +9,8 @@ enum PrinterStatusEnum: string
     case WORKING = 'working';
     case PAUSED = 'paused';
     case OFFLINE = 'offline';
-    
-    // QZ-Tray specific statuses (for external printer monitoring)  
+
+    // QZ-Tray specific statuses (for external printer monitoring)
     case ONLINE = 'online';
     case BUSY = 'busy';
     case PROCESSING = 'processing';
@@ -50,9 +50,9 @@ enum PrinterStatusEnum: string
 
     public function getLabel(): string
     {
-        return match($this) {
+        return match ($this) {
             self::IDLE => 'Ready',
-            self::WORKING => 'Working', 
+            self::WORKING => 'Working',
             self::PAUSED => 'Paused',
             self::OFFLINE => 'Offline',
             self::ONLINE => 'Online',
@@ -68,7 +68,7 @@ enum PrinterStatusEnum: string
 
     public function getIcon(): string
     {
-        return match($this) {
+        return match ($this) {
             self::IDLE => 'pi pi-check-circle',
             self::WORKING => 'pi pi-spin pi-spinner',
             self::PAUSED => 'pi pi-pause-circle',
@@ -86,10 +86,10 @@ enum PrinterStatusEnum: string
 
     public function getSeverity(): string
     {
-        return match($this) {
+        return match ($this) {
             self::IDLE => 'success',
             self::WORKING => 'info',
-            self::PAUSED => 'warning', 
+            self::PAUSED => 'warning',
             self::OFFLINE => 'danger',
             self::ONLINE => 'success',
             self::BUSY => 'info',

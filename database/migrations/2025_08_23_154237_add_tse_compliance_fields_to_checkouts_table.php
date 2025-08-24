@@ -32,7 +32,7 @@ return new class extends Migration
                 'tse_end_signature',
                 'tse_timestamp',
                 'tse_process_type',
-                'tse_process_data'
+                'tse_process_data',
             ]);
         });
     }

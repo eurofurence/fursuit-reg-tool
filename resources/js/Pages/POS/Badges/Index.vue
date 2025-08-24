@@ -142,7 +142,7 @@ watchEffect(() => {
 </script>
 
 <template>
-    <div>
+    <div class="w-full">
         <ConfirmModal
             title="Confirm Print"
             message="Are you sure you want to print this badge?"
@@ -225,17 +225,8 @@ watchEffect(() => {
         <div class="py-3 rounded-lg bg-white">
             <TabView @tab-change="onTabChange" :activeIndex="getTabIndex()">
                 <TabPanel header="Unprinted">
-                    <div class="mb-4 flex justify-between items-center">
-                        <div class="text-sm text-gray-600">
-                            {{ totalRecords }} unprinted badge(s)
-                        </div>
-                        <Button
-                            v-if="printAllBadges.length > 0"
-                            label="Print All"
-                            icon="pi pi-print"
-                            size="small"
-                            @click="showPrintAllConfirmModal = true"
-                        />
+                    <div class="mb-4 text-sm text-gray-600">
+                        {{ totalRecords }} unprinted badge(s)
                     </div>
                 </TabPanel>
                 <TabPanel header="Printed">

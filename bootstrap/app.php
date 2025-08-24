@@ -63,7 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'pos/auth/machine/status/update',
             'pos/auth/machine/status',
             'pos/auth/printer**',
-            'pos/printers/**'
+            'pos/printers/**',
         ]);
         $middleware->alias([
             'pos-auth' => \App\Http\Middleware\PosAuthMiddleware::class,

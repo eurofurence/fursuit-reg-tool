@@ -131,6 +131,39 @@ const props = defineProps({
     eventUser: Object || undefined, // event-specific user data
     backToRoute: String || undefined
 });
+
+// Determine if we should show the back arrow
+const shouldShowBackArrow = computed(() => {
+    // If backToRoute is explicitly provided, use it
+    if (props.backToRoute) {
+        return true;
+    }
+    
+    // Get current route name
+    const currentRoute = page.props.ziggy?.route?.current || page.props.ziggy?.route || '';
+    
+    // Don't show back arrow on dashboard and checkout pages
+    const excludedRoutes = [
+        'pos.dashboard',
+        'pos.checkout.show'
+    ];
+    
+    // Also exclude auth pages (login, user selection, etc.)
+    const authRoutes = [
+        'pos.auth.user.select',
+        'pos.auth.pin.login',
+        'pos.auth.staff.setup'
+    ];
+    
+    const allExcludedRoutes = [...excludedRoutes, ...authRoutes];
+    
+    return !allExcludedRoutes.includes(currentRoute);
+});
+
+// Determine the back route (default to dashboard)
+const backRoute = computed(() => {
+    return props.backToRoute || 'pos.dashboard';
+});
 </script>
 
 <template>
@@ -143,75 +176,48 @@ const props = defineProps({
         @printer-states-updated="handlePrinterStatesUpdate"
     />
     <div class="min-h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
-        <!-- Modern Header -->
-        <header class="bg-white shadow-sm border-b border-slate-200" v-if="page.props.auth.user">
-            <div class="px-6 py-4 flex items-center justify-between">
-                <!-- Left Section -->
-                <div class="flex items-center space-x-4">
-                    <Link :href="route(backToRoute)" v-if="backToRoute">
-                        <Button
-                            icon="pi pi-arrow-left"
-                            class="p-button-text p-button-lg hover:bg-slate-100"
-                            :label="isMobile ? '' : 'Back'"
-                        />
+        <!-- Compact System Bar -->
+        <header class="bg-white border-b border-slate-200 h-8" v-if="page.props.auth.user">
+            <div class="px-2 h-full flex items-center justify-between text-xs">
+                <!-- Left: Back & Attendee -->
+                <div class="flex items-center space-x-2">
+                    <Link :href="route(backRoute)" v-if="shouldShowBackArrow" title="Back to Dashboard">
+                        <i class="pi pi-arrow-left text-slate-600 hover:text-slate-800 cursor-pointer transition-colors"></i>
                     </Link>
-                    <div v-if="attendee" class="hidden sm:flex items-center space-x-2">
-                        <Badge :value="attendee.name + ' #' + (eventUser?.attendee_id || 'N/A')" size="large" severity="success" class="font-medium"/>
-                    </div>
+                    <span v-if="attendee" class="text-slate-700 font-medium">
+                        {{ attendee.name }} #{{ eventUser?.attendee_id || 'N/A' }}
+                    </span>
                 </div>
 
-                <!-- Center Section - Clock & QZ Status -->
-                <div class="flex-1 flex items-center justify-center space-x-6">
-                    <DigitalClock class="text-slate-600 font-semibold text-xl"/>
-                    <div class="hidden md:block">
-                        <QzStatusIndicator :qz-status="qzStatus" />
-                    </div>
-                    <div class="hidden md:block">
-                        <!-- Full Printers button for devices that can discover printers -->
-                        <Link v-if="machine?.should_discover_printers" :href="route('pos.printers.index')">
-                            <Button
-                                label="Printers"
-                                icon="pi pi-print"
-                                size="small"
-                                :severity="hasPausedPrinters ? 'danger' : 'secondary'"
-                                :outlined="!hasPausedPrinters"
-                                :badge="hasPausedPrinters ? printerStatusSummary.paused.toString() : ''"
-                                badgeSeverity="danger"
-                                class="relative"
-                            />
-                        </Link>
-                    </div>
+                <!-- Center: Clock | QZ Status | Printers -->
+                <div class="flex items-center space-x-1 text-slate-600">
+                    <DigitalClock class="font-medium"/>
+                    <span class="text-slate-400">|</span>
+                    <QzStatusIndicator v-if="qzStatus" :qz-status="qzStatus" :show-pending-jobs="false" />
+                    <span v-else class="text-xs font-medium">POS Endpoint</span>
+                    <span v-if="machine?.should_discover_printers" class="text-slate-400">|</span>
+                    <Link v-if="machine?.should_discover_printers" :href="route('pos.printers.index')" class="flex items-center hover:text-slate-800">
+                        <i class="pi pi-print mr-1" :class="hasPausedPrinters ? 'text-red-500' : ''"></i>
+                        <span v-if="hasPausedPrinters" class="text-red-500 font-medium">{{ printerStatusSummary.paused }}</span>
+                    </Link>
                 </div>
 
-                <!-- Right Section - User Menu -->
-                <div class="flex items-center space-x-3">
-                    <!-- Mobile QZ Status -->
-                    <div class="block md:hidden">
-                        <QzStatusIndicator :qz-status="qzStatus" :show-pending-jobs="false" />
-                    </div>
-                    <div class="text-right hidden sm:block space-y-1">
-                        <div class="flex items-center justify-end space-x-4">
-                            <!-- Real-time printer status indicators -->
-                            <PrinterStatusIndicator />
-                            <div class="text-left">
-                                <div class="text-xs text-slate-400 uppercase tracking-wide">Machine</div>
-                                <div class="font-medium text-slate-700 text-sm">{{ machine?.name || 'Unknown' }}</div>
-                            </div>
-                            <div class="text-left">
-                                <div class="text-xs text-slate-400 uppercase tracking-wide">Cashier</div>
-                                <div class="font-medium text-slate-800 text-sm">{{ cashier?.name || 'Unknown' }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <Button
-                        type="button"
-                        icon="pi pi-user"
-                        @click="toggleUserMenu"
-                        aria-haspopup="true"
-                        aria-controls="overlay_menu"
-                        class="p-button-rounded p-button-lg"
-                        :label="isMobile ? '' : 'Menu'"
-                    />
+                <!-- Right: Machine | Cashier | Card Reader | Printers | Menu -->
+                <div class="flex items-center space-x-1 text-slate-600">
+                    <i class="pi pi-desktop text-xs"></i>
+                    <span class="font-medium">{{ machine?.name || 'Unknown' }}</span>
+                    <span class="text-slate-400">|</span>
+                    <i class="pi pi-user text-xs"></i>
+                    <span class="font-medium">{{ cashier?.name || 'Unknown' }}</span>
+                    <template v-if="machine?.sumup_reader">
+                        <span class="text-slate-400">|</span>
+                        <i class="pi pi-credit-card text-xs"></i>
+                        <span class="font-medium">{{ machine.sumup_reader.name || 'Unknown Reader' }}</span>
+                    </template>
+                    <span class="text-slate-400">|</span>
+                    <PrinterStatusIndicator />
+                    <span class="text-slate-400">|</span>
+                    <i class="pi pi-bars cursor-pointer hover:text-slate-800" @click="toggleUserMenu"></i>
                     <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" class="mt-2">
                         <template #item="{ item }">
                             <Link v-if="item.route" :href="item.route" :method="item.method" class="w-full">
@@ -231,7 +237,7 @@ const props = defineProps({
         </header>
 
         <!-- Main Content -->
-        <main class="flex-1 p-6">
+        <main class="flex flex-1 p-2">
             <slot></slot>
             <ShortcutsDialog v-model:visible="showShortcutsDialog" />
         </main>

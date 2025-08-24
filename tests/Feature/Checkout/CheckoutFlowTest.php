@@ -6,6 +6,7 @@ use App\Domain\Checkout\Models\Checkout\Checkout;
 use App\Domain\Checkout\Models\Checkout\CheckoutItem;
 use App\Domain\Checkout\Models\TseClient;
 use App\Domain\Checkout\Services\FiskalyService;
+use App\Models\Badge\Badge;
 use App\Models\Machine;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,21 +18,27 @@ class CheckoutFlowTest extends TestCase
     use RefreshDatabase;
 
     private User $cashier;
+
     private User $customer;
+
     private Machine $machine;
+
     private TseClient $tseClient;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->cashier = User::factory()->create(['name' => 'Test Cashier']);
         $this->customer = User::factory()->create(['name' => 'Test Customer']);
-        $this->machine = Machine::factory()->create(['name' => 'POS-01']);
         $this->tseClient = TseClient::create([
-            'machine_id' => $this->machine->id,
             'remote_id' => 'client-test-123',
-            'state' => 'ACTIVE'
+            'serial_number' => 'TSE-TEST-123',
+            'state' => 'REGISTERED',
+        ]);
+        $this->machine = Machine::factory()->create([
+            'name' => 'POS-01',
+            'tse_client_id' => $this->tseClient->id,
         ]);
     }
 
@@ -44,7 +51,7 @@ class CheckoutFlowTest extends TestCase
             'user_id' => $this->customer->id,
             'cashier_id' => $this->cashier->id,
             'machine_id' => $this->machine->id,
-            'remote_id' => 'tx-' . uniqid(),
+            'remote_id' => 'tx-'.uniqid(),
             'subtotal' => 1681, // €16.81 before tax
             'tax' => 319,       // 19% VAT
             'total' => 2000,    // €20.00 total
@@ -130,12 +137,12 @@ class CheckoutFlowTest extends TestCase
                 ],
                 'time_start' => '2025-08-23T15:42:33.000Z',
                 'state' => 'FINISHED',
-            ], 200)
+            ], 200),
         ]);
 
         $checkout = $this->createBasicCheckout();
         $fiskalyService = app(FiskalyService::class);
-        
+
         $fiskalyService->updateOrCreateTransaction($checkout);
 
         $checkout->refresh();
@@ -162,7 +169,7 @@ class CheckoutFlowTest extends TestCase
                     'value' => 'mock-signature-value-abc123def456',
                 ],
                 'time_start' => '2025-08-23T15:42:33.000Z',
-            ], 200)
+            ], 200),
         ]);
 
         $checkout = $this->createBasicCheckout();
@@ -191,9 +198,9 @@ class CheckoutFlowTest extends TestCase
     public function it_handles_checkout_state_transitions()
     {
         $checkout = $this->createBasicCheckout(['status' => 'ACTIVE']);
-        
+
         $this->assertEquals('ACTIVE', $checkout->status);
-        
+
         // Test state transition to FINISHED
         $checkout->update(['status' => 'FINISHED']);
         $this->assertEquals('FINISHED', $checkout->status);
@@ -215,8 +222,8 @@ class CheckoutFlowTest extends TestCase
         Http::fake([
             'kassensichv.fiskaly.com/api/v2/tss/*/tx/*' => Http::response([
                 'error' => 'TSE_NOT_AVAILABLE',
-                'message' => 'TSE device is not available'
-            ], 500)
+                'message' => 'TSE device is not available',
+            ], 500),
         ]);
 
         $checkout = $this->createBasicCheckout();
@@ -235,7 +242,7 @@ class CheckoutFlowTest extends TestCase
             'kassensichv.fiskaly.com/api/v2/tss/*/tx/*' => Http::response([
                 '_id' => 'fiskaly-tx-123',
                 'number' => 42,
-            ], 200)
+            ], 200),
         ]);
 
         $fiskalyService = app(FiskalyService::class);
@@ -262,12 +269,12 @@ class CheckoutFlowTest extends TestCase
         ];
 
         Http::fake([
-            'kassensichv.fiskaly.com/api/v2/tss/*/tx/*' => Http::response($mockResponse, 200)
+            'kassensichv.fiskaly.com/api/v2/tss/*/tx/*' => Http::response($mockResponse, 200),
         ]);
 
         $checkout = $this->createBasicCheckout();
         $fiskalyService = app(FiskalyService::class);
-        
+
         $fiskalyService->updateOrCreateTransaction($checkout);
 
         $checkout->refresh();
@@ -284,7 +291,7 @@ class CheckoutFlowTest extends TestCase
             'user_id' => $this->customer->id,
             'cashier_id' => $this->cashier->id,
             'machine_id' => $this->machine->id,
-            'remote_id' => 'tx-' . uniqid(),
+            'remote_id' => 'tx-'.uniqid(),
             'subtotal' => 1681,
             'tax' => 319,
             'total' => 2000,
@@ -294,10 +301,16 @@ class CheckoutFlowTest extends TestCase
 
     private function addCheckoutItem(Checkout $checkout): CheckoutItem
     {
+        $badge = Badge::factory()->create(['total' => $checkout->total]);
+
         return CheckoutItem::create([
             'checkout_id' => $checkout->id,
+            'payable_type' => Badge::class,
+            'payable_id' => $badge->id,
             'name' => 'Fursuit Badge Registration',
             'description' => ['Premium Badge'],
+            'subtotal' => 1681,
+            'tax' => 319,
             'total' => $checkout->total,
         ]);
     }

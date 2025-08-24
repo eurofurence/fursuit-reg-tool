@@ -24,6 +24,10 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
 
     protected $guarded = [];
 
+    protected $hidden = [
+        'remember_token',
+    ];
+
     protected $casts = [
         'should_discover_printers' => 'boolean',
         'is_print_server' => 'boolean',

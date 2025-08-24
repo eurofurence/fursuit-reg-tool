@@ -73,11 +73,11 @@ const printerStats = computed(() => {
         working: 0,
         paused: 0
     };
-    
+
     printers.value.forEach(printer => {
         stats[printer.status] = (stats[printer.status] || 0) + 1;
     });
-    
+
     return stats;
 });
 
@@ -90,7 +90,7 @@ async function retryPrinter(printerName) {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         });
-        
+
         if (response.ok) {
             toast.add({
                 severity: 'success',
@@ -116,7 +116,7 @@ async function skipPrinter(printerName) {
     if (!confirm(`Are you sure you want to skip the current job on ${printerName}?`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(route('pos.printers.skip', { printerName }), {
             method: 'POST',
@@ -125,7 +125,7 @@ async function skipPrinter(printerName) {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         });
-        
+
         if (response.ok) {
             toast.add({
                 severity: 'warn',
@@ -156,7 +156,7 @@ async function clearError(printerName) {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         });
-        
+
         if (response.ok) {
             toast.add({
                 severity: 'success',
@@ -183,88 +183,11 @@ async function clearError(printerName) {
     <Head>
         <title>POS - Printer Management</title>
     </Head>
-    
-    <div class="p-4">
-        <!-- Header -->
-        <div class="mb-6">
-            <Card class="shadow-lg border-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-                <template #content>
-                    <div class="p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h1 class="text-3xl font-bold mb-2">Printer Management</h1>
-                                <p class="text-blue-100 text-lg">
-                                    Monitor and control all printers across workstations
-                                </p>
-                            </div>
-                            <div class="text-right">
-                                <Button 
-                                    label="Refresh" 
-                                    icon="pi pi-refresh" 
-                                    @click="refreshPrinterStates"
-                                    severity="secondary"
-                                    outlined
-                                    class="mb-4"
-                                />
-                                <div class="text-6xl opacity-20">
-                                    <i class="pi pi-print"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </Card>
-        </div>
 
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-gray-600 text-2xl font-bold">
-                            {{ printerStats.total }}
-                        </div>
-                        <div class="text-sm text-gray-600 mt-1">Total Printers</div>
-                    </div>
-                </template>
-            </Card>
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-green-600 text-2xl font-bold">
-                            {{ printerStats.idle }}
-                        </div>
-                        <div class="text-sm text-gray-600 mt-1">Idle</div>
-                    </div>
-                </template>
-            </Card>
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-blue-600 text-2xl font-bold">
-                            {{ printerStats.working }}
-                        </div>
-                        <div class="text-sm text-gray-600 mt-1">Working</div>
-                    </div>
-                </template>
-            </Card>
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-red-600 text-2xl font-bold">
-                            {{ printerStats.paused }}
-                        </div>
-                        <div class="text-sm text-gray-600 mt-1">Paused</div>
-                    </div>
-                </template>
-            </Card>
-        </div>
-
+    <div class="w-full p-4">
         <!-- Printers Table -->
-        <Card>
-            <template #content>
-                <DataTable 
-                    :value="printers" 
+                <DataTable
+                    :value="printers"
                     class="p-datatable-sm"
                     :paginator="false"
                     emptyMessage="No printers found"
@@ -273,7 +196,7 @@ async function clearError(printerName) {
                     <Column field="name" header="Printer Name" style="width: 200px">
                         <template #body="slotProps">
                             <div class="flex items-center space-x-2">
-                                <i :class="getStatusIcon(slotProps.data.status)" 
+                                <i :class="getStatusIcon(slotProps.data.status)"
                                    :style="{ color: slotProps.data.status === 'working' ? '#3b82f6' : slotProps.data.status === 'paused' ? '#dc2626' : '#6b7280' }"></i>
                                 <span class="font-semibold">{{ slotProps.data.name }}</span>
                             </div>
@@ -282,8 +205,8 @@ async function clearError(printerName) {
 
                     <Column field="status" header="Status" style="width: 120px">
                         <template #body="slotProps">
-                            <Tag 
-                                :value="getStatusLabel(slotProps.data.status)" 
+                            <Tag
+                                :value="getStatusLabel(slotProps.data.status)"
                                 :severity="getStatusSeverity(slotProps.data.status)"
                             />
                         </template>
@@ -309,8 +232,8 @@ async function clearError(printerName) {
 
                     <Column field="last_error_message" header="Last Error">
                         <template #body="slotProps">
-                            <span v-if="slotProps.data.last_error_message" 
-                                  class="text-red-600 text-sm truncate max-w-xs block" 
+                            <span v-if="slotProps.data.last_error_message"
+                                  class="text-red-600 text-sm truncate max-w-xs block"
                                   :title="slotProps.data.last_error_message">
                                 {{ slotProps.data.last_error_message }}
                             </span>
@@ -331,16 +254,16 @@ async function clearError(printerName) {
                             <div v-if="slotProps.data.status === 'paused' || slotProps.data.status === 'offline'" class="flex gap-2">
                                 <!-- Only show Retry/Skip if there's a current job -->
                                 <template v-if="slotProps.data.current_job_id">
-                                    <Button 
-                                        label="Retry" 
-                                        size="small" 
+                                    <Button
+                                        label="Retry"
+                                        size="small"
                                         severity="success"
                                         icon="pi pi-refresh"
                                         @click="retryPrinter(slotProps.data.name)"
                                     />
-                                    <Button 
-                                        label="Skip" 
-                                        size="small" 
+                                    <Button
+                                        label="Skip"
+                                        size="small"
                                         severity="warning"
                                         icon="pi pi-step-forward"
                                         outlined
@@ -348,16 +271,16 @@ async function clearError(printerName) {
                                     />
                                 </template>
                                 <!-- Always show Clear for debugging -->
-                                <Button 
-                                    label="Clear" 
-                                    size="small" 
+                                <Button
+                                    label="Clear"
+                                    size="small"
                                     severity="secondary"
                                     icon="pi pi-times"
                                     outlined
                                     @click="clearError(slotProps.data.name)"
                                 />
                             </div>
-                            <div v-else-if="slotProps.data.status === 'working'" 
+                            <div v-else-if="slotProps.data.status === 'working'"
                                  class="text-blue-600 text-sm font-medium">
                                 <i class="pi pi-spin pi-spinner mr-1"></i>
                                 Processing...
@@ -369,8 +292,6 @@ async function clearError(printerName) {
                         </template>
                     </Column>
                 </DataTable>
-            </template>
-        </Card>
 
         <!-- Help Section -->
         <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -391,9 +312,9 @@ async function clearError(printerName) {
         <!-- Back Button -->
         <div class="mt-6 flex justify-center">
             <Link :href="route('pos.dashboard')">
-                <Button 
-                    label="Back to Dashboard" 
-                    icon="pi pi-arrow-left" 
+                <Button
+                    label="Back to Dashboard"
+                    icon="pi pi-arrow-left"
                     severity="secondary"
                 />
             </Link>
