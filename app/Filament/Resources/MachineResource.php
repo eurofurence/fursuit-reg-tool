@@ -32,11 +32,13 @@ class MachineResource extends Resource
                 Forms\Components\Select::make('tse_client_id')
                     ->label('TSE Client')
                     ->relationship('tseClient', 'remote_id')
+                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->remote_id ?? 'Unknown TSE Client')
                     ->columnSpanFull(),
                 // SumUp Reader
                 Forms\Components\Select::make('sumup_reader_id')
                     ->label('SumUp Reader')
                     ->relationship('sumupReader', 'remote_id')
+                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->remote_id ?? 'Unknown SumUp Reader')
                     ->columnSpanFull(),
                 Forms\Components\Checkbox::make('should_discover_printers')
                     ->columnSpanFull(),
@@ -49,6 +51,22 @@ class MachineResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('tseClient.remote_id')
+                    ->label('TSE Client')
+                    ->placeholder('None assigned'),
+                Tables\Columns\SelectColumn::make('sumup_reader_id')
+                    ->label('SumUp Reader')
+                    ->options(function () {
+                        return \App\Models\SumupReader::all()
+                            ->pluck('remote_id', 'id')
+                            ->map(fn ($remote_id) => $remote_id ?? 'Unknown Reader')
+                            ->toArray();
+                    })
+                    ->placeholder('None assigned')
+                    ->selectablePlaceholder(false),
+                Tables\Columns\IconColumn::make('should_discover_printers')
+                    ->label('Auto-discover Printers')
+                    ->boolean(),
             ])
             ->filters([
                 //

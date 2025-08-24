@@ -22,9 +22,10 @@ class ListPrintJobs extends ListRecords
         // Check if we're filtering by printer
         if (request()->has('printer')) {
             $printerName = \App\Domain\Printing\Models\Printer::find(request('printer'))?->name ?? 'Unknown';
+
             return "Print Jobs - {$printerName}";
         }
-        
+
         return 'Print Jobs';
     }
 }

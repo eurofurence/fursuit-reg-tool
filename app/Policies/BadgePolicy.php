@@ -13,12 +13,12 @@ class BadgePolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->is_admin && request()->routeIs('filament.*');
+        return ($user->is_admin || $user->is_reviewer);
     }
 
     public function view(User $user, Badge $badge): bool
     {
-        if ($user->is_admin && request()->routeIs('filament.*')) {
+        if (($user->is_admin || $user->is_reviewer)) {
             return true;
         }
 
@@ -28,7 +28,7 @@ class BadgePolicy
     public function create(User $user): bool
     {
         // Admin can override
-        if ($user->is_admin && request()->routeIs('filament.*')) {
+        if ($user->is_admin) {
             return true;
         }
 
@@ -93,7 +93,7 @@ class BadgePolicy
     public function delete(User $user, Badge $badge): bool
     {
         // Admin can do everything
-        if ($user->is_admin && request()->routeIs('filament.*')) {
+        if ($user->is_admin) {
             return true;
         }
 
@@ -114,11 +114,11 @@ class BadgePolicy
 
     public function restore(User $user, Badge $badge): bool
     {
-        return $user->is_admin && request()->routeIs('filament.*');
+        return $user->is_admin;
     }
 
     public function forceDelete(User $user, Badge $badge): bool
     {
-        return $user->is_admin && request()->routeIs('filament.*');
+        return $user->is_admin;
     }
 }

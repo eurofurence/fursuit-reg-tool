@@ -19,6 +19,10 @@ Route::middleware('auth:machine')->group(function () {
         ->name('user.select');
     Route::post('/login', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'submitPinLogin'])
         ->name('user.pin.submit');
+    Route::get('/setup', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'showSetup'])
+        ->name('setup');
+    Route::post('/setup', [\App\Http\Controllers\POS\Auth\MachineUserAuthController::class, 'completeSetup'])
+        ->name('setup.complete');
 
     /**
      * CONTAINS ALL ROUTES FOR POS SYSTEM - AUTHENTICATED

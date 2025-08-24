@@ -2,8 +2,8 @@
 
 namespace App\Domain\Printing\Models;
 
-use App\Enum\PrintJobTypeEnum;
 use App\Enum\PrinterStatusEnum;
+use App\Enum\PrintJobTypeEnum;
 use App\Events\PrinterStatusUpdated;
 use App\Models\Machine;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -51,7 +51,7 @@ class Printer extends Model
     {
         $printer = self::where('name', $printerName)->first();
 
-        if (!$printer) {
+        if (! $printer) {
             return null;
         }
 
@@ -62,7 +62,7 @@ class Printer extends Model
             'current_job_id' => $jobId,
             'last_error_message' => $errorMessage,
             'last_state_update' => now(),
-            'handling_machine_name' => $machineName
+            'handling_machine_name' => $machineName,
         ]);
 
         // Determine printer type from name/config (simple heuristic)
@@ -123,7 +123,7 @@ class Printer extends Model
                 'status' => PrinterStatusEnum::IDLE->value,
                 'current_job_id' => null,
                 'last_error_message' => null,
-                'last_state_update' => now()
+                'last_state_update' => now(),
             ]);
 
             // Broadcast status update

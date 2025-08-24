@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -19,12 +19,12 @@ return new class extends Migration
                 $table->text('last_error_message')->nullable();
                 $table->timestamp('last_state_update')->useCurrent();
                 $table->string('handling_machine_name')->nullable();
-                
+
                 $table->index(['status', 'last_state_update']);
                 $table->foreign('current_job_id')->references('id')->on('print_jobs')->onDelete('set null');
             });
         });
-        
+
         // Migrate data from printer_states table
         if (Schema::hasTable('printer_states')) {
             DB::statement('
@@ -50,10 +50,10 @@ return new class extends Migration
             $table->dropIndex(['status', 'last_state_update']);
             $table->dropColumn([
                 'status',
-                'current_job_id', 
+                'current_job_id',
                 'last_error_message',
                 'last_state_update',
-                'handling_machine_name'
+                'handling_machine_name',
             ]);
         });
     }

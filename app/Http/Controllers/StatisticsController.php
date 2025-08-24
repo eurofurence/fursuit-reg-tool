@@ -51,6 +51,8 @@ class StatisticsController extends Controller
             'species' => $this->getSpeciesStats($currentEvent),
             'users' => $this->getUserStats($currentEvent),
             'timeline' => $this->getTimelineStats($currentEvent),
+            'financial' => $this->getFinancialStats($currentEvent),
+            'daily' => $this->getDailyStats($currentEvent),
             'currentEvent' => $currentEvent?->name ?? 'No Active Event',
         ];
     }
@@ -443,6 +445,104 @@ class StatisticsController extends Controller
         return [
             'peak_hour' => $hourlyStats ? $hourlyStats->hour.':00' : null,
             'peak_day' => $dayStats ? $dayStats->day : null,
+        ];
+    }
+
+    private function getFinancialStats(?Event $currentEvent): array
+    {
+        if (! $currentEvent) {
+            return [
+                'total_revenue' => 0,
+                'prepaid_revenue' => 0,
+                'late_badge_revenue' => 0,
+                'printing_cost' => null,
+                'profit_margin' => null,
+                'is_profitable' => null,
+            ];
+        }
+
+        // Calculate prepaid badge revenue
+        $prepaidRevenue = 0;
+        $eventUsers = $currentEvent->eventUsers()->where('prepaid_badges', '>', 1)->get();
+        foreach ($eventUsers as $eventUser) {
+            $paidBadges = $eventUser->prepaid_badges - 1;
+            $prepaidRevenue += $paidBadges * 2.00;
+        }
+
+        // Calculate late badge revenue
+        $lateBadgeRevenue = $currentEvent->badges()
+            ->where('apply_late_fee', true)
+            ->where('status_payment', 'paid')
+            ->count() * 3.00;
+
+        // Calculate total actual revenue from paid badges
+        $actualBadgeRevenue = $currentEvent->badges()
+            ->where('status_payment', 'paid')
+            ->sum('total') / 100;
+
+        $totalRevenue = $prepaidRevenue + $lateBadgeRevenue + $actualBadgeRevenue;
+
+        $profitMargin = $currentEvent->cost ? $totalRevenue - $currentEvent->cost : null;
+
+        return [
+            'total_revenue' => round($totalRevenue, 2),
+            'prepaid_revenue' => round($prepaidRevenue, 2),
+            'late_badge_revenue' => round($lateBadgeRevenue, 2),
+            'actual_badge_revenue' => round($actualBadgeRevenue, 2),
+            'printing_cost' => $currentEvent->cost ? round(floatval($currentEvent->cost), 2) : null,
+            'profit_margin' => $profitMargin ? round($profitMargin, 2) : null,
+            'is_profitable' => $profitMargin !== null ? ($profitMargin >= 0) : null,
+        ];
+    }
+
+    private function getDailyStats(?Event $currentEvent): array
+    {
+        $today = now()->startOfDay();
+
+        if (! $currentEvent) {
+            return [
+                'badges_ordered_today' => 0,
+                'money_processed_today' => 0,
+                'cash_processed_today' => 0,
+                'card_processed_today' => 0,
+                'badges_picked_up_today' => 0,
+                'badges_printed_today' => 0,
+            ];
+        }
+
+        // Badges ordered today (created today)
+        $badgesOrderedToday = $currentEvent->badges()
+            ->where('created_at', '>=', $today)
+            ->count();
+
+        // Money processed today (paid_at today)
+        $moneyProcessedToday = $currentEvent->badges()
+            ->where('paid_at', '>=', $today)
+            ->where('status_payment', 'paid')
+            ->sum('total') / 100;
+
+        // For cash/card breakdown, we'd need to check the transactions table or wallet transfers
+        // This is a simplified version - you might need to adjust based on your payment tracking
+        $cashProcessedToday = 0; // Would need to query transactions/transfers with payment_method
+        $cardProcessedToday = 0; // Would need to query transactions/transfers with payment_method
+
+        // Badges picked up today
+        $badgesPickedUpToday = $currentEvent->badges()
+            ->where('picked_up_at', '>=', $today)
+            ->count();
+
+        // Badges printed today
+        $badgesPrintedToday = $currentEvent->badges()
+            ->where('printed_at', '>=', $today)
+            ->count();
+
+        return [
+            'badges_ordered_today' => $badgesOrderedToday,
+            'money_processed_today' => round($moneyProcessedToday, 2),
+            'cash_processed_today' => round($cashProcessedToday, 2), // Placeholder
+            'card_processed_today' => round($cardProcessedToday, 2), // Placeholder
+            'badges_picked_up_today' => $badgesPickedUpToday,
+            'badges_printed_today' => $badgesPrintedToday,
         ];
     }
 }

@@ -102,6 +102,7 @@ function startPayment() {
 </script>
 
 <template>
+    <div class="w-full flex-1">
     <div>
         <ConfirmModal
             title="Confirm"
@@ -118,17 +119,11 @@ function startPayment() {
             @cancel="showHandoutConfirmModal = false"
         />
     </div>
-    <div class="grid grid-cols-1 gap-4 p-4">
+    <div class="flex flex-col flex-1 min-h-full gap-4">
         <div>
-            <div class="bg-white p-4 mb-4 rounded-lg shadow">
-                <h1 class="text-2xl font-bold">
-                    <!-- <span class="text-gray-500">Attendee</span>  -->
-                    {{ attendee.name }}<span class="text-gray-400">#</span>{{ eventUser?.attendee_id || 'N/A' }}
-                </h1>
-                <div class="text-sm text-gray-500 mt-1">
-                    Current Event: {{ currentEvent.name }}
-                </div>
-            </div>
+            <h1 class="text-2xl font-bold mb-4">
+                {{ attendee.name }}<span class="text-gray-400">#</span>{{ eventUser?.attendee_id || 'N/A' }}
+            </h1>
             <div class="grid grid-cols-4 gap-4">
                 <DashboardButton label="Pay" :subtitle="formatEuroFromCents(attendee.wallet.balance *-1) +' Unpaid'" icon="pi pi-money-bill" @click="startPayment()"></DashboardButton>
                 <DashboardButton label="Handout" :subtitle="badgesReadyForHandout + ' to handout'" icon="pi pi-th-large" @click="showHandoutConfirmModal = true"></DashboardButton>
@@ -162,13 +157,8 @@ function startPayment() {
                         <Divider />
                         <div class="mt-6">
                             <div class="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-800">Past Events</h3>
-                                    <p class="text-sm text-gray-600">
-                                        {{ pastEventBadges.length }} event(s) with unclaimed badges
-                                    </p>
-                                </div>
-                                <Button 
+                                <h3 class="text-lg font-semibold text-gray-800">Past Events</h3>
+                                <Button
                                     :label="showPastEvents ? 'Hide Past Events' : 'Show Past Events'"
                                     :icon="showPastEvents ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
                                     severity="secondary"
@@ -178,25 +168,16 @@ function startPayment() {
                             </div>
 
                             <!-- Past Event Badges Tables -->
-                            <div v-if="showPastEvents" class="space-y-6">
-                                <Card v-for="eventData in pastEventBadges" :key="eventData.event.id" class="shadow-sm">
-                                    <template #title>
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-lg font-medium">{{ eventData.event.name }}</span>
-                                            <div class="text-sm text-gray-500">
-                                                {{ eventData.badges.length }} unclaimed badge(s)
-                                            </div>
-                                        </div>
-                                    </template>
-                                    <template #content>
-                                        <BadgesTable
-                                            :badges="eventData.badges"
-                                            :attendee="attendee"
-                                            :readonly="true"
-                                            @print-badge="args => badgeIdToPrint = args"
-                                        />
-                                    </template>
-                                </Card>
+                            <div v-if="showPastEvents" class="space-y-4">
+                                <div v-for="eventData in pastEventBadges" :key="eventData.event.id">
+                                    <h4 class="text-md font-medium text-gray-700 mb-2">{{ eventData.event.name }}</h4>
+                                    <BadgesTable
+                                        :badges="eventData.badges"
+                                        :attendee="attendee"
+                                        :readonly="true"
+                                        @print-badge="args => badgeIdToPrint = args"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -212,5 +193,6 @@ function startPayment() {
                 </TabPanel>
             </TabView>
         </div>
+    </div>
     </div>
 </template>

@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
-import { Badge, Receipt } from 'lucide-vue-next';
 
 const page = usePage();
 
@@ -52,27 +51,23 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex items-center space-x-3">
+    <div class="flex items-center space-x-2">
         <!-- Badge Printer Status -->
-        <div :title="`Badge Printer: ${badgePrinterStatus.label || badgePrinterStatus.status}`">
-            <Badge 
-                :size="18"
-                :class="[
-                    'transition-colors duration-300',
-                    getStatusColor(badgePrinterStatus.severity)
-                ]"
-            />
+        <div 
+            class="flex items-center space-x-1"
+            :title="`Badge Printer: ${badgePrinterStatus.label || badgePrinterStatus.status}`"
+        >
+            <i class="pi pi-id-card text-xs" :class="getStatusColor(badgePrinterStatus.severity)"></i>
+            <span class="text-xs font-medium" :class="getStatusColor(badgePrinterStatus.severity)">Badge</span>
         </div>
 
         <!-- Receipt Printer Status -->
-        <div :title="`Receipt Printer: ${receiptPrinterStatus.label || receiptPrinterStatus.status}`">
-            <Receipt 
-                :size="18"
-                :class="[
-                    'transition-colors duration-300',
-                    getStatusColor(receiptPrinterStatus.severity)
-                ]"
-            />
+        <div 
+            class="flex items-center space-x-1"
+            :title="`Receipt Printer: ${receiptPrinterStatus.label || receiptPrinterStatus.status}`"
+        >
+            <i class="pi pi-receipt text-xs" :class="getStatusColor(receiptPrinterStatus.severity)"></i>
+            <span class="text-xs font-medium" :class="getStatusColor(receiptPrinterStatus.severity)">Receipt</span>
         </div>
     </div>
 </template>

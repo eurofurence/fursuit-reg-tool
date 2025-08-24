@@ -1,13 +1,14 @@
 <script setup>
-import {onMounted, ref, watchEffect} from "vue";
+import {onMounted, ref, watchEffect, computed} from "vue";
 import POSLayout from "@/Layouts/POSLayout.vue";
 import Button from 'primevue/button';
-import Cash from "@/Components/POS/Checkout/Cash.vue";
-import SimpleKeyboard from "@/Components/SimpleKeyboard.vue";
+import Card from 'primevue/card';
+import CashSVG from "@/Components/POS/Checkout/CashSVG.vue";
 import {formatEuroFromCents} from "@/helpers.js";
 import {useForm} from "laravel-precognition-vue-inertia";
 import Message from 'primevue/message'
 import {router} from "@inertiajs/vue3";
+import {usePage} from '@inertiajs/vue3';
 
 defineOptions({
     layout: POSLayout,
@@ -22,6 +23,13 @@ const props = defineProps({
     transaction: Object,
 });
 
+const page = usePage();
+const machine = computed(() => page.props.auth.machine);
+
+// Debug: Log machine data to console
+console.log('🔍 Machine data:', machine.value);
+console.log('🔍 SumUp Reader:', machine.value?.sumupReader);
+
 const denominations = [
     200, // what's wrong with you, the order amount is TWO EUROS
     100,  50,   20,  10,   5,   // paper cash
@@ -29,26 +37,10 @@ const denominations = [
     0.05, 0.02, 0.01
 ];
 
-const keyboardOptions = {
-    layout: {
-        default: [
-            // bills
-            "200€ 100€ 50€",
-            "20€ 10€ 5€",
-            // coins
-            "2€ 1€",
-            // literal dog water
-            // "20¢ 10¢ 5¢",
-            "{reset} {enter}",
-
-        ]
-    },
-    display: {
-        "{reset}": "Clear",
-        "{enter}": "Pay With Cash",
-    },
-    autoUseTouchEvents: false,
-    theme: "hg-theme-default hg-layout-numeric numeric-theme"
+// Currency denominations for cash register
+const cashDenominations = {
+    banknotes: [50, 20, 10, 5],
+    coins: [2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01]
 };
 
 const positions = props.checkout.items;
@@ -98,23 +90,18 @@ function clear() {
     currentChange.value = [];
 }
 
-function keyPress(event) {
-    if (event === "{reset}") {
-        clear();
-    } else if (event === "{enter}") {
-        if (given.value < (props.checkout.total / 100)) {
-            console.log('Insufficient amount');
-            return;
-        }
-        useForm('POST', route('pos.checkout.payWithCash', {'checkout': props.checkout.id}), {amount: given.value}).submit();
-    } else {
-        const eventVal = denomToValue(event);
-        givenBills.value.push(event)
-        given.value = Math.round((given.value + eventVal) * 100) / 100;;
-        // default value of 4 for testing
-        // todo: remove...                           vvvv ...this bit here
-        currentChange.value = calcChange(props.checkout.total / 100, given.value);
+function addCash(denomination) {
+    givenBills.value.push(denomination);
+    given.value = Math.round((given.value + denomination) * 100) / 100;
+    currentChange.value = calcChange(props.checkout.total / 100, given.value);
+}
+
+function payWithCash() {
+    if (given.value < (props.checkout.total / 100)) {
+        console.log('Insufficient amount');
+        return;
     }
+    useForm('POST', route('pos.checkout.payWithCash', {'checkout': props.checkout.id}), {amount: given.value}).submit();
 }
 
 function cancel() {
@@ -147,86 +134,212 @@ function receiptForm(via) {
 </script>
 
 <template>
-    <div class="grid grid-cols-2 gap-4 px-4 pb-4 h-full">
-        <!-- cash -->
-        <div class="flex flex-col gap-4">
-            <div class="flex flex-col gap-4 ">
-                <div class="flex flex-col flex-wrap gap-1 ">
-                    <span class="flex rounded-lg bg-blue-200 p-3 shrink">Given: {{ given }}€ total</span>
-                    <div class="flex flex-row gap-1 flex-wrap overflow-hidden">
-                        <div v-for="b in givenBills" :key="b">
-                            <Cash :denomination="denomToValue(b)" />
-                        </div>
-                    </div>
-                </div>
-                <div class="flex flex-col gap-1 " v-if="currentChange.length > 0">
-                    <span class="flex rounded-lg bg-amber-200 p-3 shrink">Change:</span>
-                    <div class="flex flex-wrap gap-4">
-                        <div class="grid grid-cols-[auto_1fr] gap-4 items-center" v-for="c in currentChange" :key="c">
-                        <span>{{ c.amount }}x </span>
-                        <div class="flex">
-                            <Cash :denomination="c.denomination" />
-                        </div>
-                    </div>
-                    </div>
-                </div>
-                <div class="flex rounded-lg bg-red-300 p-3" v-else-if="given < (checkout.total / 100)">
-                    <span class=""><strong>!</strong> Insufficient amount</span>
-                </div>
-                <div class="flex rounded-lg bg-teal-200 p-3" v-else>
-                    <span class=""><strong>✓</strong> Exact change!</span>
-                </div>
-            </div>
-            <div v-if="checkout.status !== 'FINISHED' && !(transaction && transaction.status === 'PENDING') && !startCardPaymentForm.processing" class="flex-1 flex items-end">
-                <SimpleKeyboard @onKeyPress="keyPress" :options="keyboardOptions" />
-            </div>
-            <div class="flex-1 flex items-end w-full" v-if="checkout.status === 'FINISHED'">
-                <div class="flex gap-2 w-full pb-4">
-                <Button severity="contrast" size="large" icon="pi pi-at" label="E-Mail" @click="receiptForm('email')" class="grow h-32" />
-                <Button severity="contrast" size="large" icon="pi pi-receipt" label="Print" @click="receiptForm('print')" class="grow h-32" />
-                </div>
-            </div>
-        </div>
-        <!-- card & status -->
-        <div class="bg-white border-gray-400 rounded-lg text-black">
-            <div class="flex flex-col grow p-4 gap-1 h-[100%]">
-                <div class="flex flex-col grow">
-                    <span class="text-lg">Positions:</span>
-                    <div v-if="positions" class="flex flex-col divide-gray-600 divide-y">
-                        <div v-for="pos in (positions)" :key="pos" class="flex gap-2 items-center">
-                            <span><strong class=" rounded-lg p-1">#{{pos.payable_id}}</strong></span>
-                            <div class="flex grow justify-between p-1 rounded-lg">
-                                <div>
-                                    <strong>{{ pos.name }}</strong>
-                                    <ul class="text-sm">
-                                        <li v-for="item in pos.description" :key="item">{{ item }}</li>
-                                    </ul>
+    <div class="w-full flex-1 flex flex-col">
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-row gap-2 mb-2">
+            <!-- Left Side - Cash Calculator -->
+            <div class="flex-1" v-if="checkout.status !== 'FINISHED'">
+                <!-- add flex-1 to content and make it flex-col with space-between -->
+                <Card class="h-full" :pt="{
+                    body: { class: 'p-5 flex-1 flex flex-col h-full'},
+                    content: { class: 'h-full flex-1' }
+                }">
+                    <template #title>Cash Register</template>
+                    <template #content>
+                        <!-- Vertical Grid: Amount Area / Banknotes+Coins Area -->
+                        <div class="grid grid-rows-2 gap-4 h-full">
+                            <!-- Top Half - Cash Input Display -->
+                            <div class="h-full overflow-y-auto flex-1">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm font-medium">Amount Given:</span>
+                                    <div class="text-xl font-bold" :class="given >= (checkout.total / 100) ? 'text-green-600' : 'text-red-600'">
+                                        {{ given.toFixed(2) }}€
+                                    </div>
                                 </div>
-                                <span class="ml-[auto]"><strong>{{ formatEuroFromCents(pos.total) }}</strong></span>
+
+                                <!-- Given Cash and Change Display - Side by Side -->
+                                <div class="flex flex-col gap-4 mb-2">
+                                    <!-- Given Cash Display -->
+                                    <div v-if="givenBills.length > 0">
+                                        <div class="text-xs font-medium mb-1">Cash Received:</div>
+                                        <div class="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
+                                            <CashSVG v-for="(bill, index) in givenBills" :key="index"
+                                                     :denomination="bill" size="small" />
+                                        </div>
+                                    </div>
+
+                                    <!-- Change Display -->
+                                    <div v-if="currentChange.length > 0">
+                                        <div class="text-xs font-medium mb-1">Change to Return:</div>
+                                        <div class="flex flex-wrap gap-1">
+                                            <div v-for="c in currentChange" :key="c.denomination" class="flex items-center gap-1 text-xs">
+                                                <span class="font-semibold">{{ c.amount }}×</span>
+                                                <CashSVG :denomination="c.denomination" size="small" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Status Message -->
+                                <div class="text-xs">
+                                    <div v-if="given < (checkout.total / 100)" class="text-red-600 font-medium">
+                                        Need {{ ((checkout.total / 100) - given).toFixed(2) }}€ more
+                                    </div>
+                                    <div v-else-if="currentChange.length === 0" class="text-green-600 font-medium">
+                                        Exact change - Ready to complete!
+                                    </div>
+                                    <div v-else class="text-yellow-600 font-medium">
+                                        Change: {{ (given - (checkout.total / 100)).toFixed(2) }}€
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bottom Half - Cash Calculator -->
+                            <div class="border-t pt-4">
+                                <h4 class="text-sm font-semibold mb-3">Cash Calculator</h4>
+                                <div class="flex flex-col gap-3">
+                                    <!-- Banknotes -->
+                                    <div class="grid grid-cols-4 gap-2">
+                                        <button v-for="denomination in cashDenominations.banknotes"
+                                                :key="denomination"
+                                                @click="addCash(denomination)"
+                                                class="aspect-[3/2] hover:bg-blue-50 transition-colors rounded">
+                                            <CashSVG :denomination="denomination" size="large" />
+                                        </button>
+                                    </div>
+
+                                    <!-- Coins -->
+                                    <div class="flex gap-1">
+                                        <button v-for="denomination in cashDenominations.coins"
+                                                :key="denomination"
+                                                @click="addCash(denomination)"
+                                                class="flex-1 hover:bg-blue-50 transition-colors rounded">
+                                            <CashSVG :denomination="denomination" size="normal" />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div v-else>
-                        <strong>No items provided!</strong> If you didn't accidentally initiate a transaction on a completely empty order, this is probably a bug.
-                    </div>
-                </div>
-                <!-- todo: implement -->
-                <div>
-                    <div class="text-1xl text-gray-600 border-b-gray-400 flex justify-between items-end border-b-2 border-dotted border-black pb-2 mb-2">
-                        <div>Tax</div>
-                        <div>{{ formatEuroFromCents(checkout.tax) }}</div>
-                    </div>
-                    <div class="text-2xl flex justify-between items-end border-b-2 border-double border-black pb-2">
-                        <div>Total</div>
-                        <div>{{ formatEuroFromCents(checkout.total) }}</div>
-                    </div>
-                </div>
-                <Message :closable="false" :severity="getSeverityFromTransactionStatus(transaction.status)" v-if="transaction">{{ transaction.status }}</Message>
-                <div class="flex justify-between gap-4 shrink">
-                    <Button :disabled="checkout.status === 'FINISHED' || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))" severity="contrast" label="Cancel Transaction" @click="cancel" class="grow"></Button>
-                    <Button :disabled="checkout.status === 'FINISHED' || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))" :loading="startCardPaymentForm.processing" label="Pay With Card" @click="startCardPayment" class="grow"></Button>
-                </div>
+                    </template>
+                </Card>
             </div>
+
+            <!-- Receipt Options (when finished) - Left side -->
+            <div class="flex-1" v-if="checkout.status === 'FINISHED'">
+                <Card class="h-full flex items-center justify-center">
+                    <template #content>
+                        <div class="text-center">
+                            <div class="text-green-600 mb-4">
+                                <i class="pi pi-check-circle text-4xl"></i>
+                                <div class="text-xl font-bold mt-2">Transaction Complete</div>
+                            </div>
+                            <div class="flex gap-4 justify-center">
+                                <Button severity="contrast" size="large" icon="pi pi-at" label="E-Mail Receipt"
+                                        @click="receiptForm('email')" />
+                                <Button severity="contrast" size="large" icon="pi pi-print" label="Print Receipt"
+                                        @click="receiptForm('print')" />
+                            </div>
+                        </div>
+                    </template>
+                </Card>
+            </div>
+
+            <!-- Right Side - Transaction Overview -->
+            <div class="flex-1">
+                <Card class="h-full" :pt="{
+                    body: { class: 'p-5 flex-1 flex flex-col h-full'},
+                    content: { class: 'h-full flex-1 flex justify-between flex-col' }
+                }">
+                    <template #title>Transaction #{{ checkout.id }}</template>
+                    <template #content>
+                        <!-- Items List -->
+                        <div class="flex-1 ">
+                            <div class="mb-4 max-h-80 overflow-y-auto">
+                                <div v-for="pos in positions" :key="pos.id" class="mb-3 p-2 border-b border-gray-200">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="font-medium text-sm">{{ pos.name }}</div>
+                                            <div class="text-xs text-gray-600">Fursuit Badge #{{ pos.payable_id }}</div>
+                                            <div v-if="pos.description && pos.description.length" class="text-xs text-gray-500 mt-1">
+                                                {{ pos.description.join(', ') }}
+                                            </div>
+                                        </div>
+                                        <div class="font-bold">{{ formatEuroFromCents(pos.total) }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Totals -->
+                        <div class="space-y-1 text-sm border-t pt-3">
+                            <div class="flex justify-between">
+                                <span>Subtotal:</span>
+                                <span>{{ formatEuroFromCents(checkout.subtotal) }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Tax (19%):</span>
+                                <span>{{ formatEuroFromCents(checkout.tax) }}</span>
+                            </div>
+                            <div class="flex justify-between font-bold text-lg border-t pt-2">
+                                <span>TOTAL:</span>
+                                <span class="text-green-600">{{ formatEuroFromCents(checkout.total) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="mt-4">
+                            <div v-if="transaction" class="mb-2">
+                                <div class="text-xs font-medium mb-1">Payment Status:</div>
+                                <Message :closable="false" :severity="getSeverityFromTransactionStatus(transaction.status)" class="text-xs p-2">
+                                    {{ transaction.status }}
+                                </Message>
+                            </div>
+                        </div>
+                    </template>
+                </Card>
+            </div>
+        </div>
+
+        <!-- Bottom Row - Action Buttons -->
+        <div class="flex gap-2 h-12">
+            <!-- Cash Payment Button -->
+            <Button v-if="checkout.status !== 'FINISHED'"
+                @click="payWithCash"
+                :disabled="given < (checkout.total / 100) || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))"
+                severity="success"
+                size="small"
+                class="flex-1 h-12 text-xs font-bold"
+                icon="pi pi-money-bill"
+                label="Complete Cash" />
+
+            <!-- Card Payment Button -->
+            <Button v-if="checkout.status !== 'FINISHED' && machine && machine.sumup_reader"
+                @click="startCardPayment"
+                :disabled="transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING')"
+                :loading="startCardPaymentForm.processing"
+                severity="primary"
+                size="small"
+                class="flex-1 h-12 text-xs font-bold"
+                icon="pi pi-credit-card"
+                label="Pay Card" />
+
+            <!-- Clear Cash Button -->
+            <Button v-if="checkout.status !== 'FINISHED'"
+                @click="clear"
+                severity="secondary"
+                size="small"
+                class="flex-1 h-12 text-xs font-bold"
+                icon="pi pi-refresh"
+                label="Clear" />
+
+            <!-- Cancel Transaction Button -->
+            <Button @click="cancel"
+                :disabled="checkout.status === 'FINISHED' || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))"
+                severity="danger"
+                size="small"
+                class="flex-1 h-12 text-xs font-bold"
+                icon="pi pi-times"
+                label="Cancel" />
         </div>
     </div>
 </template>

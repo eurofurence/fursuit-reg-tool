@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Domain\Printing\Models\Printer;
 use App\Filament\Resources\PrinterResource\Pages;
-use App\Filament\Resources\PrintJobResource;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
