@@ -11,7 +11,7 @@ class FursuitCatchCode
     public function generate(): string
     {
         do {
-            $identifier = strtoupper(substr(str_shuffle(str_repeat('ABCDEFGHIJKLMNPQRSTUVWXYZ123456789', 5)), 0, config('fcea.fursuit_catch_code_length', 5)));
+            $identifier = strtoupper(substr(str_shuffle(str_repeat('ABCEFGHIJKLMNPRSTUVWXYZ1234567890', 5)), 0, config('fcea.fursuit_catch_code_length', 5)));
         } while ($this->model::where($this->column, $identifier)->exists());
 
         return $identifier;
