@@ -110,18 +110,18 @@ const getRankIcon = (rank: number) => {
         <Dialog
             v-model:visible="showRecentCatch"
             :modal="true"
-            class="mx-4 dark-dialog"
+            class="mx-4 dark dark-dialog"
             :style="{ width: '90vw', maxWidth: '400px' }"
             dismissableMask
         >
             <template #header>
-                <div class="text-center w-full">
+                <div class="inline-flex items-center gap-2">
                     <div
-                        class="w-16 h-16 mx-auto mb-3 bg-green-900/30 rounded-full flex items-center justify-center"
+                        class="w-16 h-16 mx-auto mr-2 bg-green-900/30 rounded-full flex items-center justify-center"
                     >
                         <Star class="w-8 h-8 text-green-400" />
                     </div>
-                    <h2 class="text-xl font-bold text-green-400">
+                    <h2 class="flex item-center text-xl font-bold text-green-400">
                         Amazing Catch!
                     </h2>
                 </div>
@@ -145,7 +145,7 @@ const getRankIcon = (rank: number) => {
                         v-else
                         class="w-full h-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center"
                     >
-                        <User class="w-8 h-8 text-gray-500" />
+                        <User class="w-8 h-8 text-white" />
                     </div>
                     <div
                         class="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg"
@@ -159,10 +159,10 @@ const getRankIcon = (rank: number) => {
 
                 <div>
                     <div class="text-xl font-bold">{{ recentCatch.name }}</div>
-                    <div class="text-sm text-gray-600">
+                    <div class="text-sm text-gray-200">
                         {{ recentCatch.species }}
                     </div>
-                    <div class="text-xs text-gray-500">
+                    <div class="text-xs text-gray-200">
                         owned by {{ recentCatch.user }}
                     </div>
                 </div>
