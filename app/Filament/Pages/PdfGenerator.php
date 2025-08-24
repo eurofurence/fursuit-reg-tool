@@ -1,0 +1,300 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Models\Badge\Badge;
+use App\Models\Event;
+use Mpdf\Mpdf;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Pages\Page;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Collection;
+
+class PdfGenerator extends Page implements HasForms
+{
+    use InteractsWithForms;
+
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+
+    protected static string $view = 'filament.pages.pdf-generator';
+
+    protected static ?string $navigationGroup = 'Tools';
+
+    protected static ?string $title = 'PDF Generator';
+
+    public ?array $data = [];
+
+    public function mount(): void
+    {
+        $this->form->fill([
+            'pdf_type' => 'badge_list',
+            'title' => '',
+            'subtitle' => '',
+        ]);
+    }
+
+    public function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Section::make('PDF Generation Options')
+                    ->description('Generate PDFs for badge management')
+                    ->schema([
+                        Select::make('pdf_type')
+                            ->label('PDF Type')
+                            ->options([
+                                'badge_list' => 'Badge List (Free Badges by Range)',
+                                'box_labels' => 'Box Labels (3 per A4 page)',
+                            ])
+                            ->required()
+                            ->default('badge_list')
+                            ->reactive(),
+
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('title')
+                                    ->label('Title')
+                                    ->placeholder('e.g., "Badge Range 1-999"')
+                                    ->visible(fn ($get) => $get('pdf_type') === 'box_labels'),
+
+                                TextInput::make('subtitle')
+                                    ->label('Subtitle')
+                                    ->placeholder('e.g., "Free Badges"')
+                                    ->visible(fn ($get) => $get('pdf_type') === 'box_labels'),
+                            ]),
+                    ]),
+            ])
+            ->statePath('data');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('generate_badge_list')
+                ->label('Generate Badge List PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('primary')
+                ->visible(fn () => $this->data['pdf_type'] === 'badge_list')
+                ->action('generateBadgeListPdf'),
+
+            Action::make('generate_box_labels')
+                ->label('Generate Box Labels PDF')
+                ->icon('heroicon-o-tag')
+                ->color('success')
+                ->visible(fn () => $this->data['pdf_type'] === 'box_labels')
+                ->action('generateBoxLabelsPdf'),
+        ];
+    }
+
+    public function generateBadgeListPdf()
+    {
+        $selectedEvent = $this->getSelectedEvent();
+
+        if (!$selectedEvent) {
+            Notification::make()
+                ->title('Error')
+                ->body('No event selected in the header.')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        // Get all free badges for the current event
+        $badges = Badge::whereHas('fursuit', function ($query) use ($selectedEvent) {
+                $query->where('event_id', $selectedEvent->id);
+            })
+            ->where('is_free_badge', true)
+            ->with(['fursuit.user.eventUsers' => function ($query) use ($selectedEvent) {
+                $query->where('event_id', $selectedEvent->id);
+            }])
+            ->get();
+
+        if ($badges->isEmpty()) {
+            Notification::make()
+                ->title('No Data')
+                ->body('No free badges found for the current event.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        // Group badges by ranges and attendees
+        $groupedBadges = $this->groupBadgesByRangeAndAttendee($badges);
+
+        $mpdf = new Mpdf([
+            'format' => 'A4',
+            'orientation' => 'P',
+            'margin_left' => 5,
+            'margin_right' => 5,
+            'margin_top' => 5,
+            'margin_bottom' => 5,
+            'mode' => 'utf-8',
+            'default_font' => 'helvetica',
+        ]);
+
+        // Write CSS first
+        $css = view('pdfs.badge-list-css')->render();
+        $css = mb_convert_encoding($css, 'UTF-8', 'auto');
+        $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
+
+        // Write header
+        $header = view('pdfs.badge-list-header', [
+            'event' => $selectedEvent,
+        ])->render();
+        $header = mb_convert_encoding($header, 'UTF-8', 'auto');
+        $mpdf->WriteHTML($header, \Mpdf\HTMLParserMode::HTML_BODY);
+
+        // Sort ranges by their numeric start value (0-999, 1000-1999, etc.)
+        $sortedRanges = [];
+        foreach ($groupedBadges as $range => $attendees) {
+            if ($range === '4000+') {
+                $sortKey = 4000;
+            } else {
+                $parts = explode('-', $range);
+                $sortKey = (int) $parts[0];
+            }
+            $sortedRanges[$sortKey] = ['range' => $range, 'attendees' => $attendees];
+        }
+        ksort($sortedRanges); // Sort by numeric key
+
+        // Write each range section on its own page
+        $isFirst = true;
+        foreach ($sortedRanges as $data) {
+            if (!$isFirst) {
+                $mpdf->AddPage();
+            }
+            $isFirst = false;
+
+            $rangeHtml = view('pdfs.badge-list-range', [
+                'range' => $data['range'],
+                'attendees' => $data['attendees'],
+                'rowsPerColumn' => 50, // Configurable - change this number as needed
+                'fontSize' => 0, // Configurable - change text size (px)
+            ])->render();
+            $rangeHtml = mb_convert_encoding($rangeHtml, 'UTF-8', 'auto');
+
+            $mpdf->WriteHTML($rangeHtml, \Mpdf\HTMLParserMode::HTML_BODY);
+        }
+
+        return response()->streamDownload(function () use ($mpdf) {
+            echo $mpdf->Output('', 'S');
+        }, "badge-list-{$selectedEvent->name}-" . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function generateBoxLabelsPdf()
+    {
+        $title = $this->data['title'] ?? '';
+        $subtitle = $this->data['subtitle'] ?? '';
+
+        if (empty($title)) {
+            Notification::make()
+                ->title('Error')
+                ->body('Title is required for box labels.')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        // Generate 3 labels for one page - user can customize what goes in each
+        // For now, just create 3 identical labels with the title/subtitle
+
+        // Safely encode title and subtitle, handling empty values
+        $safeTitle = $title ? mb_convert_encoding($title, 'UTF-8', 'UTF-8') : '';
+        $safeSubtitle = $subtitle ? mb_convert_encoding($subtitle, 'UTF-8', 'UTF-8') : '';
+
+        $html = view('pdfs.box-labels', [
+            'title' => $safeTitle,
+            'subtitle' => $safeSubtitle,
+        ])->render();
+
+        // Ensure HTML is properly UTF-8 encoded
+        if (!mb_check_encoding($html, 'UTF-8')) {
+            $html = mb_convert_encoding($html, 'UTF-8', 'auto');
+        }
+
+        // Custom page size for endless paper printer - exactly 1/3 of A4
+        $mpdf = new Mpdf([
+            'format' => [210, 99], // 210mm wide (A4 width), 99mm tall (297mm A4 height ÷ 3)
+            'orientation' => 'P',
+            'margin_left' => 5,
+            'margin_right' => 5,
+            'margin_top' => 5,
+            'margin_bottom' => 5,
+            'mode' => 'utf-8',
+            'default_font' => 'helvetica',
+        ]);
+
+        $mpdf->WriteHTML($html);
+
+        return response()->streamDownload(function () use ($mpdf) {
+            echo $mpdf->Output('', 'S');
+        }, "box-label-" . \Str::slug($title) . "-" . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function getSelectedEvent(): ?Event
+    {
+        // Get the selected event from Filament's event filter
+        $eventId = session('filament.admin.selected_event_id');
+        if (!$eventId) {
+            return Event::latest('starts_at')->first();
+        }
+        return Event::find($eventId);
+    }
+
+    private function groupBadgesByRangeAndAttendee(Collection $badges): array
+    {
+        $grouped = [];
+
+        foreach ($badges as $badge) {
+            $attendeeId = $badge->fursuit?->user?->eventUsers?->first()?->attendee_id ?? 0;
+            $attendeeName = $badge->fursuit?->user?->name ?? 'Unknown';
+
+            // Group by attendee_id ranges instead of badge custom_id
+            $attendeeIdNum = (int) $attendeeId;
+            $rangeStart = intval($attendeeIdNum / 1000) * 1000;
+            $rangeEnd = $rangeStart + 999;
+
+            if ($rangeStart >= 4000) {
+                $rangeKey = "4000+";
+            } else {
+                $rangeKey = "{$rangeStart}-{$rangeEnd}";
+            }
+
+            $attendeeKey = "{$attendeeId}_{$attendeeName}";
+
+            if (!isset($grouped[$rangeKey])) {
+                $grouped[$rangeKey] = [];
+            }
+
+            if (!isset($grouped[$rangeKey][$attendeeKey])) {
+                $grouped[$rangeKey][$attendeeKey] = [
+                    'attendee_id' => $attendeeId,
+                    'attendee_name' => $attendeeName,
+                    'badges' => [],
+                ];
+            }
+
+            $grouped[$rangeKey][$attendeeKey]['badges'][] = $badge->custom_id;
+        }
+
+        // Sort badges within each attendee group
+        foreach ($grouped as $rangeKey => &$attendees) {
+            foreach ($attendees as &$attendee) {
+                sort($attendee['badges']);
+            }
+            // Sort attendees by attendee_id
+            uasort($attendees, function ($a, $b) {
+                return (int)$a['attendee_id'] <=> (int)$b['attendee_id'];
+            });
+        }
+
+        return $grouped;
+    }
+}

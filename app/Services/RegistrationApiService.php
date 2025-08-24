@@ -152,17 +152,12 @@ class RegistrationApiService
      */
     private function getValidBearerToken(): ?string
     {
-        // Try to find a user with admin permissions and valid token
-        // This assumes admin users have been properly set up with tokens
-        $adminUsers = User::whereNotNull('token')
+        // Try to find users with tokens (encrypted tokens are automatically decrypted by Laravel)
+        $usersWithTokens = User::whereNotNull('token')
             ->whereNotNull('refresh_token')
-            ->where(function ($query) {
-                $query->where('token_expires_at', '>', now())
-                    ->orWhereNull('token_expires_at');
-            })
             ->get();
 
-        foreach ($adminUsers as $user) {
+        foreach ($usersWithTokens as $user) {
             try {
                 $tokenService = new TokenRefreshService($user);
                 $token = $tokenService->getValidAccessToken();
