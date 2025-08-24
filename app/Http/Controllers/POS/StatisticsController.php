@@ -134,7 +134,7 @@ class StatisticsController extends Controller
 
     private function getDailyStats(?Event $currentEvent): array
     {
-        if (!$currentEvent || !$currentEvent->starts_at || !$currentEvent->ends_at) {
+        if (! $currentEvent || ! $currentEvent->starts_at || ! $currentEvent->ends_at) {
             return ['event_days' => []];
         }
 

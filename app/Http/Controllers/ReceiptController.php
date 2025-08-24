@@ -50,7 +50,7 @@ class ReceiptController extends Controller
         }
 
         $attendeeId = $checkout->user->eventUser()?->attendee_id;
-        
+
         return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId])->with('success', 'Receipt added to print queue.');
     }
 
@@ -61,7 +61,7 @@ class ReceiptController extends Controller
         $checkout->user->notify(new SendReceiptNotification($checkout));
 
         $attendeeId = $checkout->user->eventUser()?->attendee_id;
-        
+
         return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId])->with('success', 'Receipt sent to user.');
     }
 

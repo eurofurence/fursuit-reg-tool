@@ -78,7 +78,7 @@ class CheckoutFlowTest extends TestCase
         ]);
         $this->machine = Machine::factory()->create([
             'name' => 'POS-01',
-            'tse_client_id' => $this->tseClient->id
+            'tse_client_id' => $this->tseClient->id,
         ]);
     }
 
@@ -381,6 +381,7 @@ class CheckoutFlowTest extends TestCase
     private function addCheckoutItem(Checkout $checkout): CheckoutItem
     {
         $badge = \App\Models\Badge\Badge::factory()->create();
+
         return CheckoutItem::create([
             'checkout_id' => $checkout->id,
             'payable_type' => 'App\\Models\\Badge\\Badge',
