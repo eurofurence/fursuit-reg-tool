@@ -32,9 +32,13 @@ class CheckoutFlowTest extends TestCase
         $this->cashier = User::factory()->create(['name' => 'Test Cashier']);
         $this->customer = User::factory()->create(['name' => 'Test Customer']);
         $this->tseClient = TseClient::create([
-            'machine_id' => $this->machine->id,
             'remote_id' => 'client-test-123',
-            'state' => 'ACTIVE'
+            'serial_number' => 'tse-serial-456',
+            'state' => 'REGISTERED'
+        ]);
+        $this->machine = Machine::factory()->create([
+            'name' => 'POS-01',
+            'tse_client_id' => $this->tseClient->id
         ]);
     }
 
@@ -76,8 +80,12 @@ class CheckoutFlowTest extends TestCase
         $badge = \App\Models\Badge\Badge::factory()->create();
         $item = CheckoutItem::create([
             'checkout_id' => $checkout->id,
+            'payable_type' => Badge::class,
+            'payable_id' => $badge->id,
             'name' => 'Fursuit Badge Registration',
             'description' => ['Premium Badge', 'Double-sided print'],
+            'subtotal' => 1681,
+            'tax' => 319,
             'total' => 2000, // €20.00
         ]);
 
@@ -255,9 +263,24 @@ class CheckoutFlowTest extends TestCase
     /** @test */
     public function it_handles_fiskaly_api_errors_gracefully()
     {
+        // Set up Fiskaly config for this test
+        config([
+            'services.fiskaly.api_key' => 'test-key',
+            'services.fiskaly.api_secret' => 'test-secret',
+            'services.fiskaly.tss_id' => 'f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0',
+        ]);
+
+        // Pre-cache auth data to avoid auth flow
+        cache()->put('fiskaly_auth_data', encrypt([
+            'access_token' => 'test-access-token',
+            'refresh_token' => 'test-refresh-token',
+            'access_token_expires_at' => now()->addHour()->toISOString(),
+            'refresh_token_expires_in' => 86400,
+        ]), 86400);
+
         // Mock Fiskaly API error response
         Http::fake([
-            'kassensichv.fiskaly.com/api/v2/tss/*/tx/*' => Http::response([
+            'https://kassensichv-middleware.fiskaly.com/api/v2/tss/*/tx/*' => Http::response([
                 'error' => 'TSE_NOT_AVAILABLE',
                 'message' => 'TSE device is not available'
             ], 500)
@@ -316,6 +339,21 @@ class CheckoutFlowTest extends TestCase
      */
     public function it_stores_complete_fiskaly_response_data()
     {
+        // Set up Fiskaly config for this test
+        config([
+            'services.fiskaly.api_key' => 'test-key',
+            'services.fiskaly.api_secret' => 'test-secret',
+            'services.fiskaly.tss_id' => 'f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0',
+        ]);
+
+        // Pre-cache auth data to avoid auth flow
+        cache()->put('fiskaly_auth_data', encrypt([
+            'access_token' => 'test-access-token',
+            'refresh_token' => 'test-refresh-token',
+            'access_token_expires_at' => now()->addHour()->toISOString(),
+            'refresh_token_expires_in' => 86400,
+        ]), 86400);
+
         $mockResponse = [
             '_id' => 'fiskaly-tx-123',
             'number' => 42,
@@ -330,7 +368,7 @@ class CheckoutFlowTest extends TestCase
         ];
 
         Http::fake([
-            'kassensichv.fiskaly.com/api/v2/tss/*/tx/*' => Http::response($mockResponse, 200)
+            'https://kassensichv-middleware.fiskaly.com/api/v2/tss/*/tx/*' => Http::response($mockResponse, 200)
         ]);
 
         $checkout = $this->createBasicCheckout(['remote_id' => 'f1f1f105-f1f1-f1f1-f1f1-f1f1f1f1f005', 'remote_rev_count' => 0]);
@@ -364,8 +402,12 @@ class CheckoutFlowTest extends TestCase
         $badge = \App\Models\Badge\Badge::factory()->create();
         return CheckoutItem::create([
             'checkout_id' => $checkout->id,
+            'payable_type' => Badge::class,
+            'payable_id' => $badge->id,
             'name' => 'Fursuit Badge Registration',
             'description' => ['Premium Badge'],
+            'subtotal' => $checkout->subtotal,
+            'tax' => $checkout->tax,
             'total' => $checkout->total,
         ]);
     }
