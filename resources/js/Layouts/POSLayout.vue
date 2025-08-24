@@ -36,6 +36,8 @@ import ToastService from "@/Components/POS/ToastService.vue";
 import ShortcutsDialog from "@/Components/POS/ShortcutsDialog.vue";
 import QzStatusIndicator from "@/Components/POS/QzStatusIndicator.vue";
 import PrinterStatusIndicator from "@/Components/POS/PrinterStatusIndicator.vue";
+import InactivityTimer from "@/Components/POS/InactivityTimer.vue";
+import AutoLogoutModal from "@/Components/POS/AutoLogoutModal.vue";
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
@@ -63,11 +65,17 @@ onUnmounted(() => {
 });
 
 const userMenu = ref();
+const showShortcutsDialog = ref(false);
+const showAutoLogoutModal = ref(false);
+
+// Auto logout modal is now handled by the modal component
+
+// Build the user menu
 const userMenuItems = ref([
     { label: 'Switch User', icon: 'pi pi-user', route: route('pos.auth.user.logout'), method: 'POST' },
     { label: 'Keyboard Shortcuts', icon: 'pi pi-keyboard', command: () => showShortcutsDialog.value = true },
+    { label: 'Auto Logout Settings', icon: 'pi pi-clock', command: () => showAutoLogoutModal.value = true },
 ]);
-const showShortcutsDialog = ref(false);
 
 // Computed properties for printer status
 const printerStatusSummary = computed(() => {
@@ -157,6 +165,7 @@ const backRoute = computed(() => {
 
 <template>
     <ToastService/>
+    <InactivityTimer/>
     <!-- Only load QZPrintService for devices that should discover printers -->
     <QZPrintService
         v-if="machine?.should_discover_printers"
@@ -229,6 +238,7 @@ const backRoute = computed(() => {
         <main class="flex flex-1 p-2">
             <slot></slot>
             <ShortcutsDialog v-model:visible="showShortcutsDialog" />
+            <AutoLogoutModal v-model:visible="showAutoLogoutModal" />
         </main>
     </div>
 </template>
