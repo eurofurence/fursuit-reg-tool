@@ -21,6 +21,11 @@ class Event extends Model
         'order_starts_at',
         'order_ends_at',
         'mass_printed_at',
+        'cost',
+    ];
+
+    protected $hidden = [
+        'cost', // Never expose printing costs to public API
     ];
 
     protected $appends = ['state'];
@@ -33,6 +38,7 @@ class Event extends Model
             'order_starts_at' => 'datetime',
             'order_ends_at' => 'datetime',
             'mass_printed_at' => 'datetime',
+            'cost' => 'decimal:2',
         ];
     }
 
@@ -80,11 +86,78 @@ class Event extends Model
     public function isDuringEvent(): bool
     {
         $now = now();
+
         return $this->starts_at <= $now && $this->ends_at >= $now;
     }
 
     public function fursuits()
     {
         return $this->hasMany(\App\Models\Fursuit\Fursuit::class);
+    }
+
+    public function badges()
+    {
+        return $this->hasManyThrough(\App\Models\Badge\Badge::class, \App\Models\Fursuit\Fursuit::class);
+    }
+
+    public function eventUsers()
+    {
+        return $this->hasMany(EventUser::class);
+    }
+
+    public function getTotalRevenueAttribute(): float
+    {
+        return $this->badges()->sum('total') / 100; // Convert cents to euros
+    }
+
+    public function getPaidBadgeRevenueAttribute(): float
+    {
+        return $this->badges()
+            ->where('is_free_badge', false)
+            ->where('status_payment', 'paid')
+            ->sum('total') / 100; // Convert cents to euros
+    }
+
+    public function getTotalPrepaidBadgeRevenueAttribute(): float
+    {
+        // Calculate revenue from prepaid badges beyond the free one
+        $totalRevenue = 0;
+        $eventUsers = $this->eventUsers()->where('prepaid_badges', '>', 1)->get();
+
+        foreach ($eventUsers as $eventUser) {
+            // Each prepaid badge beyond 1 costs €2.00
+            $paidBadges = $eventUser->prepaid_badges - 1;
+            $totalRevenue += $paidBadges * 2.00;
+        }
+
+        return $totalRevenue;
+    }
+
+    public function getLateBadgeRevenueAttribute(): float
+    {
+        return $this->badges()
+            ->where('apply_late_fee', true)
+            ->where('status_payment', 'paid')
+            ->count() * 3.00; // Late badges cost €3.00
+    }
+
+    public function getProfitMarginAttribute(): ?float
+    {
+        if (! $this->cost) {
+            return null;
+        }
+
+        $revenue = $this->total_revenue;
+
+        return $revenue - $this->cost;
+    }
+
+    public function isProfitableAttribute(): ?bool
+    {
+        if (! $this->cost) {
+            return null;
+        }
+
+        return $this->profit_margin >= 0;
     }
 }

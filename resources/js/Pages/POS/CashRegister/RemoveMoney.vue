@@ -69,7 +69,7 @@ const keyPress = (event) => {
 
 <template>
     <Head title="Machine Wallet"/>
-    <div>
+    <div class="w-full">
         <ConfirmModal
             title="Confirm Amount"
             :message="'Are you sure you want to withdraw ' + (parseInt(amount || 0) / 100.0).toFixed(2) + ' € from the cash register?'"

@@ -10,8 +10,8 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 class PrintJobResource extends Resource
@@ -107,7 +107,8 @@ class PrintJobResource extends Resource
                         if ($record->printable_type === 'App\\Models\\Badge\\Badge') {
                             return "Badge #{$record->printable?->custom_id}";
                         }
-                        return class_basename($record->printable_type) . " #{$record->printable_id}";
+
+                        return class_basename($record->printable_type)." #{$record->printable_id}";
                     }),
                 Tables\Columns\TextColumn::make('priority')
                     ->sortable()
@@ -208,12 +209,12 @@ class PrintJobResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
-        
+
         // Check if we have a printer filter from URL
         if (request()->has('printer')) {
             $query->where('printer_id', request('printer'));
         }
-        
+
         return $query;
     }
 }

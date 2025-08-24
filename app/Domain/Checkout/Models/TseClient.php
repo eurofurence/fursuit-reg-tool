@@ -12,4 +12,9 @@ class TseClient extends Model
     protected $casts = [
         'state' => TseClientStateEnum::class,
     ];
+
+    public function machine()
+    {
+        return $this->hasOne(\App\Models\Machine::class);
+    }
 }

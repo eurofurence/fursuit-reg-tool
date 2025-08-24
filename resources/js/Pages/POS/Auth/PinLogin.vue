@@ -31,17 +31,23 @@ const rfidCode = ref('');
 const pinCode = ref('');
 const isListening = ref(true);
 
-// Keyboard configuration for PIN entry
+// Keyboard configuration for PIN entry - NUMBERS ONLY
 const keyboardOptions = {
     layout: {
-        default: ["7 8 9", "4 5 6", "1 2 3", "0 {backspace} {enter}"]
+        default: [
+            "1 2 3",
+            "4 5 6", 
+            "7 8 9",
+            "{backspace} 0 {enter}"
+        ]
     },
     display: {
-        "{backspace}": "backspace ⌫",
-        "{enter}": "enter ↵",
+        "{backspace}": "⌫",
+        "{enter}": "↵",
+        "{space}": " "
     },
     autoUseTouchEvents: false,
-    theme: "hg-theme-default hg-layout-numeric numeric-theme"
+    theme: "hg-theme-default"
 };
 
 // RFID Scanner Detection
@@ -90,7 +96,7 @@ const submitPinLogin = () => {
     if (pinCode.value.length < 6) return;
     
     // Send PIN directly without hashing
-    form.code = pinCode.value;
+    form.code = pinCode.value.toUpperCase();
     form.is_rfid = false;
     form.submit();
     pinCode.value = '';
@@ -102,9 +108,12 @@ const handleVirtualKeyPress = (event) => {
         pinCode.value = pinCode.value.slice(0, -1);
     } else if (event === "{enter}") {
         submitPinLogin();
+    } else if (event === "{space}") {
+        // Ignore space for PIN/setup code entry
+        return;
     } else {
         if (pinCode.value.length < 6) {
-            pinCode.value += event;
+            pinCode.value += event.toUpperCase();
         }
     }
 };
@@ -144,162 +153,92 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="max-w-4xl mx-auto">
-        <!-- RFID Scanner Mode (Default) -->
-        <div v-if="authMode === 'rfid'">
-            <div class="text-center mb-8">
-                <div class="mb-6">
-                    <i class="pi pi-qrcode text-8xl text-blue-500 mb-4 animate-pulse"></i>
-                </div>
-                <h1 class="text-4xl font-bold text-slate-800 mb-3">Scan Your Badge</h1>
-                <p class="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-                    Hold your RFID badge near the scanner or position it for scanning.
-                </p>
-            </div>
-
-            <!-- RFID Scanner Card -->
-            <Card class="shadow-xl border-0 mb-6">
+    <div class="w-full min-h-full flex items-center justify-center">
+        <div class="max-w-md w-full">
+            <!-- Single Centered Card -->
+            <Card class="shadow-xl border-0">
                 <template #content>
-                    <div class="p-8 text-center">
-                        <!-- Scanner Status -->
-                        <div class="mb-6">
-                            <div class="inline-flex items-center justify-center w-24 h-24 bg-blue-100 rounded-full mb-4">
-                                <i class="pi pi-wifi text-4xl text-blue-600"></i>
+                    <div class="p-8">
+                        <!-- RFID Scanner Mode (Default) -->
+                        <div v-if="authMode === 'rfid'" class="text-center">
+                            <!-- Animated Icon -->
+                            <div class="mb-6">
+                                <i class="pi pi-qrcode text-6xl text-blue-500 animate-pulse"></i>
                             </div>
-                            <h2 class="text-2xl font-semibold text-slate-700 mb-2">Scanner Ready</h2>
-                            <p class="text-slate-600">
+                            
+                            <!-- Title -->
+                            <h1 class="text-3xl font-bold text-slate-800 mb-6">Scan Your Access Tag</h1>
+                            
+                            <!-- Error Message -->
+                            <div v-if="form.invalid('code')" class="mb-4">
+                                <Message severity="error">{{ form.errors.code }}</Message>
+                            </div>
+                            
+                            <!-- RFID Detection -->
+                            <div v-if="rfidCode" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <div class="flex items-center justify-center text-green-800">
+                                    <i class="pi pi-check-circle mr-2"></i>
+                                    <span class="font-medium">Badge Detected</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Status -->
+                            <p class="text-slate-600 mb-6">
                                 <span class="inline-flex items-center">
                                     <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
                                     Listening for badge scan...
                                 </span>
                             </p>
+                            
+                            <!-- Alternative Login Button -->
+                            <Button 
+                                @click="switchToPin"
+                                label="Enter PIN Code"
+                                severity="secondary"
+                                class="w-full"
+                            />
                         </div>
 
-                        <!-- Error Message -->
-                        <div v-if="form.invalid('code')" class="mb-6">
-                            <Message severity="error" class="text-left">
-                                <i class="pi pi-exclamation-triangle mr-2"></i>
-                                {{ form.errors.code }}
-                            </Message>
-                        </div>
-
-                        <!-- RFID Input Display (hidden but shows when code detected) -->
-                        <div v-if="rfidCode" class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <div class="flex items-center justify-center text-green-800">
-                                <i class="pi pi-check-circle mr-2"></i>
-                                <span class="font-medium">Badge Detected: {{ rfidCode.substring(0, 4) }}****</span>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </Card>
-
-            <!-- Alternative PIN Login -->
-            <Card class="shadow-lg border-0">
-                <template #content>
-                    <div class="p-6 text-center">
-                        <h3 class="text-xl font-semibold text-slate-700 mb-3">Alternative Login</h3>
-                        <p class="text-slate-600 mb-4">Don't have your badge? You can use your PIN instead.</p>
-                        <Button 
-                            @click="switchToPin"
-                            icon="pi pi-lock"
-                            label="Enter PIN Code Instead"
-                            class="p-button-lg p-button-outlined"
-                        />
-                    </div>
-                </template>
-            </Card>
-        </div>
-
-        <!-- PIN Entry Mode -->
-        <div v-else-if="authMode === 'pin'">
-            <!-- Back Button -->
-            <div class="mb-6">
-                <Button 
-                    icon="pi pi-arrow-left" 
-                    @click="switchToRfid" 
-                    severity="secondary" 
-                    class="p-button-lg" 
-                    label="Back to Badge Scanner"
-                />
-            </div>
-
-            <!-- PIN Entry Card -->
-            <Card class="shadow-xl border-0">
-                <template #content>
-                    <div class="p-8 text-center">
-                        <!-- PIN Icon -->
-                        <div class="mb-6">
-                            <div class="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-full mb-4">
-                                <i class="pi pi-lock text-3xl text-amber-600"></i>
-                            </div>
-                            <h1 class="text-3xl font-bold text-slate-800 mb-2">Enter Your PIN</h1>
-                            <p class="text-lg text-slate-600">Please enter your 6-digit PIN code</p>
-                        </div>
-
-                        <!-- Error Message -->
-                        <div v-if="form.invalid('code')" class="mb-6">
-                            <Message severity="error" class="text-left">
-                                <i class="pi pi-exclamation-triangle mr-2"></i>
-                                {{ form.errors.code }}
-                            </Message>
-                        </div>
-
-                        <!-- PIN Input -->
-                        <div class="mb-8">
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-slate-700 mb-3">Enter 6-digit PIN</label>
-                                <div class="flex justify-center">
-                                    <InputOtp 
-                                        :invalid="form.invalid('code')" 
-                                        :autofocus="true" 
-                                        :length="6" 
-                                        integerOnly 
-                                        mask 
-                                        v-model="pinCode"
-                                        class="pin-input"
-                                    />
+                        <!-- PIN Entry Mode -->
+                        <div v-else-if="authMode === 'pin'">
+                            <!-- Back Button -->
+                            <button @click="switchToRfid" class="mb-4 text-slate-600 hover:text-slate-800">
+                                <i class="pi pi-arrow-left mr-2"></i>Back
+                            </button>
+                            
+                            <div class="text-center">
+                                <!-- Title -->
+                                <h1 class="text-2xl font-bold text-slate-800 mb-6">Enter PIN Code</h1>
+                                
+                                <!-- Error Message -->
+                                <div v-if="form.invalid('code')" class="mb-4">
+                                    <Message severity="error">{{ form.errors.code }}</Message>
+                                </div>
+                                
+                                <!-- PIN Input -->
+                                <div class="mb-6">
+                                    <div class="flex justify-center">
+                                        <InputOtp 
+                                            :invalid="form.invalid('code')" 
+                                            :autofocus="true" 
+                                            :length="6" 
+                                            mask 
+                                            v-model="pinCode"
+                                            class="pin-input"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <!-- Virtual Keyboard -->
+                                <div class="bg-slate-50 rounded-lg p-3">
+                                    <SimpleKeyboard @onKeyPress="handleVirtualKeyPress" :options='keyboardOptions'></SimpleKeyboard>
                                 </div>
                             </div>
-                            
-                            <!-- PIN Status -->
-                            <div class="text-sm text-slate-500">
-                                {{ pinCode.length }}/6 digits entered
-                            </div>
-                        </div>
-
-                        <!-- Virtual Keyboard -->
-                        <div class="bg-slate-50 rounded-xl p-4">
-                            <SimpleKeyboard @onKeyPress="handleVirtualKeyPress" :options='keyboardOptions'></SimpleKeyboard>
                         </div>
                     </div>
                 </template>
             </Card>
         </div>
-
-        <!-- Instructions Card -->
-        <Card class="mt-6 shadow-lg border-0">
-            <template #content>
-                <div class="p-6">
-                    <h3 class="text-lg font-semibold text-slate-700 mb-3">
-                        <i class="pi pi-info-circle mr-2"></i>
-                        Instructions
-                    </h3>
-                    <div class="space-y-2 text-slate-600">
-                        <div v-if="authMode === 'rfid'">
-                            <p>• <strong>Badge Scanner:</strong> Hold your RFID badge close to the scanner</p>
-                            <p>• <strong>Automatic Detection:</strong> The system will automatically detect and authenticate your badge</p>
-                            <p>• <strong>Alternative:</strong> Click "Enter PIN Code Instead" if you don't have your badge</p>
-                        </div>
-                        <div v-else>
-                            <p>• <strong>PIN Entry:</strong> Enter your 6-digit personal identification number</p>
-                            <p>• <strong>Virtual Keyboard:</strong> Use the on-screen keypad or physical keyboard</p>
-                            <p>• <strong>Auto Submit:</strong> The system will automatically log you in after 6 digits</p>
-                        </div>
-                    </div>
-                </div>
-            </template>
-        </Card>
     </div>
 </template>
 

@@ -37,6 +37,12 @@ class CheckoutController extends Controller
         if ($transactionData && $transactionData['status'] === 'SUCCESSFUL' && $checkout->status->equals(Active::class)) {
             $checkout->payment_method = 'card';
             $checkout->save();
+
+            // Update Fiskaly transaction to FINISHED state to get end signature
+            $fiskalyService = new FiskalyService;
+            $fiskalyService->finishTransaction($checkout);
+
+            // Transition to finished state after Fiskaly update
             $checkout->status->transitionTo(Finished::class);
         }
 
@@ -50,6 +56,12 @@ class CheckoutController extends Controller
     {
         $checkout->payment_method = 'cash';
         $checkout->save();
+
+        // Update Fiskaly transaction to FINISHED state to get end signature
+        $fiskalyService = new FiskalyService;
+        $fiskalyService->finishTransaction($checkout);
+
+        // Transition to finished state after Fiskaly update
         $checkout->status->transitionTo(Finished::class);
 
         return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id]);
@@ -79,6 +91,9 @@ class CheckoutController extends Controller
         if ($badges->isEmpty()) {
             return redirect()->back()->with(['error' => 'No badges found']);
         }
+
+        // Auto-cancel any previous ACTIVE checkouts for this machine
+        $this->cancelPreviousActiveCheckouts();
 
         $checkout = DB::transaction(function () use ($badges, $data) {
             $total = $badges->sum('total');
@@ -126,6 +141,11 @@ class CheckoutController extends Controller
 
     public function destroy(Checkout $checkout)
     {
+        // Cancel the Fiskaly transaction to get proper end signature
+        $fiskalyService = new FiskalyService;
+        $fiskalyService->cancelTransaction($checkout);
+
+        // Transition to cancelled state after Fiskaly update
         $checkout->status->transitionTo(Cancelled::class);
 
         $attendeeId = $checkout->user->eventUser()?->attendee_id;
@@ -138,24 +158,44 @@ class CheckoutController extends Controller
         $reader = $checkout->machine->sumupReader;
         $checkout->payment_method = 'card';
         $uuid = Str::uuid();
-        $response = Http::sumup()->post('/v0.1/merchants/'.config('services.sumup.merchant_code').'/readers/'.$reader->remote_id.'/checkout', [
-            'affiliate' => [
-                'app_id' => config('services.sumup.app_id'),
-                'foreign_transaction_id' => $uuid,
-                'key' => config('services.sumup.affiliate_key'),
-            ],
-            'description' => 'Fursuit Badges Payment',
-            'card_type' => 'debit',
-            'return_url' => 'https://test.de',
-            'total_amount' => [
-                'currency' => 'EUR',
-                'value' => $checkout->total,
-                'minor_unit' => 2,
-            ],
-        ])->throw();
-        $data = $response->json('data');
-        $checkout->payment_method_remote_id = $uuid;
-        $checkout->save();
+
+        try {
+            $response = Http::sumup()->post('/v0.1/merchants/'.config('services.sumup.merchant_code').'/readers/'.$reader->remote_id.'/checkout', [
+                'affiliate' => [
+                    'app_id' => config('services.sumup.app_id'),
+                    'foreign_transaction_id' => $uuid,
+                    'key' => config('services.sumup.affiliate_key'),
+                ],
+                'description' => 'Fursuit Badges Payment',
+                'card_type' => 'debit',
+                'return_url' => 'https://test.de',
+                'total_amount' => [
+                    'currency' => 'EUR',
+                    'value' => $checkout->total,
+                    'minor_unit' => 2,
+                ],
+            ]);
+
+            // Check for specific reader offline error
+            if ($response->status() === 422) {
+                $errorData = $response->json();
+                if (isset($errorData['errors']['type']) && $errorData['errors']['type'] === 'READER_OFFLINE') {
+                    return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id])
+                        ->with('error', 'Card reader is offline. Please check the connection and try again.');
+                }
+            }
+
+            // Throw for other non-successful responses
+            $response->throw();
+
+            $data = $response->json('data');
+            $checkout->payment_method_remote_id = $uuid;
+            $checkout->save();
+
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id])
+                ->with('error', 'Card payment failed: Unable to connect to payment system.');
+        }
 
         return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id]);
     }
@@ -202,5 +242,28 @@ class CheckoutController extends Controller
         }
 
         return $transactionData;
+    }
+
+    /**
+     * Cancel any previous ACTIVE checkouts for this machine
+     * This ensures only one checkout is active at a time per machine
+     */
+    private function cancelPreviousActiveCheckouts(): void
+    {
+        $machineId = auth('machine')->user()->id;
+
+        // Find all ACTIVE checkouts for this machine
+        $activeCheckouts = Checkout::where('machine_id', $machineId)
+            ->where('status', Active::$name)
+            ->get();
+
+        foreach ($activeCheckouts as $activeCheckout) {
+            // Cancel the Fiskaly transaction to get proper end signature
+            $fiskalyService = new FiskalyService;
+            $fiskalyService->cancelTransaction($activeCheckout);
+
+            // Transition to cancelled state after Fiskaly update
+            $activeCheckout->status->transitionTo(Cancelled::class);
+        }
     }
 }

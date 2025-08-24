@@ -16,7 +16,7 @@ defineOptions({
 
 <template>
     <Head title="Machine Wallet"/>
-    <div class="grow flex flex-col h-full items-center">
+    <div class="w-full grow flex flex-col h-full items-center">
         <h1 class="text-xl text-gray-600">{{ wallet.holder.name }}</h1>
         <div class="text-gray-800 text-6xl mt-4 mb-40">
             {{ (parseInt(wallet.balance) / 100.0).toFixed(wallet.decimal_places) }} €

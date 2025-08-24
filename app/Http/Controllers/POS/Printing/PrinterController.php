@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\POS\Printing;
 
-use App\Domain\Printing\Models\PrintJob;
 use App\Domain\Printing\Models\Printer;
+use App\Domain\Printing\Models\PrintJob;
+use App\Enum\PrinterStatusEnum;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
-use App\Enum\PrinterStatusEnum;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -36,25 +36,25 @@ class PrinterController extends Controller
         // Get jobs that are ready to be printed (pending or queued)
         // BUT only for printers that are IDLE (one job at a time per printer)
         return PrintJob::whereHas('printer', function ($query) use ($machine) {
-                $query->where('machine_id', $machine->id)
-                      ->where('status', PrinterStatusEnum::IDLE->value); // Only idle printers
-            })
+            $query->where('machine_id', $machine->id)
+                ->where('status', PrinterStatusEnum::IDLE->value); // Only idle printers
+        })
             ->whereIn('status', [PrintJobStatusEnum::Pending, PrintJobStatusEnum::Queued])
             ->orderBy('priority', 'desc')
             ->orderBy('created_at', 'asc')
             ->limit(5)
             ->get()
             ->map(fn (PrintJob $printJob) => [
-                'id' => $printJob->id,
-                'printer' => $printJob->printer->name,
-                'type' => $printJob->type,
-                'status' => $printJob->status->value,
-                'file' => Storage::drive('s3')->temporaryUrl($printJob->file, now()->addDay()),
-                'paper' => collect($printJob->printer->paper_sizes)->where('name', $printJob->printer->default_paper_size)->first(),
-                'duplex' => ($printJob->type === PrintJobTypeEnum::Receipt) ? false : $printJob->printable->dual_side_print,
-                'priority' => $printJob->priority,
-                'retry_count' => $printJob->retry_count,
-            ])->values()->toArray();
+            'id' => $printJob->id,
+            'printer' => $printJob->printer->name,
+            'type' => $printJob->type,
+            'status' => $printJob->status->value,
+            'file' => Storage::drive('s3')->temporaryUrl($printJob->file, now()->addDay()),
+            'paper' => collect($printJob->printer->paper_sizes)->where('name', $printJob->printer->default_paper_size)->first(),
+            'duplex' => ($printJob->type === PrintJobTypeEnum::Receipt) ? false : $printJob->printable->dual_side_print,
+            'priority' => $printJob->priority,
+            'retry_count' => $printJob->retry_count,
+        ])->values()->toArray();
     }
 
     public function jobShow(PrintJob $job)
@@ -395,14 +395,14 @@ class PrinterController extends Controller
             'status' => $request->input('status'),
             'severity' => $request->input('severity'),
             'message' => $request->input('message'),
-            'machine_name' => $machine->name ?? 'Unknown'
+            'machine_name' => $machine->name ?? 'Unknown',
         ]);
 
         return response()->json([
             'success' => true,
             'event_id' => $event->id,
             'handled' => $event->handled,
-            'action_taken' => $event->handled ? 'Printer paused due to critical event' : 'Event logged'
+            'action_taken' => $event->handled ? 'Printer paused due to critical event' : 'Event logged',
         ]);
     }
 }

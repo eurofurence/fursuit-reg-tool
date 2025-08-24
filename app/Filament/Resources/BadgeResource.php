@@ -371,11 +371,12 @@ class BadgeResource extends Resource
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['from_number']) {
-                            $indicators[] = 'From badge #' . $data['from_number'];
+                            $indicators[] = 'From badge #'.$data['from_number'];
                         }
                         if ($data['to_number']) {
-                            $indicators[] = 'To badge #' . $data['to_number'];
+                            $indicators[] = 'To badge #'.$data['to_number'];
                         }
+
                         return $indicators;
                     }),
             ])
@@ -406,15 +407,16 @@ class BadgeResource extends Resource
                                     ->where('is_active', true)
                                     ->pluck('name', 'id')
                             )
-                            ->placeholder('Use default printer assignment')
-                            ->helperText('Optional: Select a specific printer for all badges. Leave empty for automatic assignment.'),
+                            ->required()
+                            ->helperText('Select a specific printer for all selected badges.'),
                     ])
                     ->requiresConfirmation()
                     ->modalHeading('Print Selected Badges')
-                    ->modalDescription('This will print all selected badges.')
+                    ->modalDescription('This will print all selected badges to the specified printer.')
                     ->action(function (Collection $records, array $data) {
-                        $printerId = $data['printer_id'] ?? null;
-                        return $records->reverse()->each(fn (Badge $record, $index) => static::printBadge($record, $index, $printerId));
+                        $printerId = $data['printer_id'];
+
+                        return $records->reverse()->each(fn (Badge $record, $index) => static::printBadgeWithPrinter($record, $printerId, $index));
                     }),
             ])
             ->selectCurrentPageOnly()
@@ -428,24 +430,52 @@ class BadgeResource extends Resource
             $badge->status_fulfillment->transitionTo(Printed::class);
         }
 
-        if ($printerId) {
-            // Create print job directly with specific printer
-            \App\Domain\Printing\Models\PrintJob::create([
-                'printer_id' => $printerId,
-                'printable_type' => Badge::class,
-                'printable_id' => $badge->id,
-                'type' => PrintJobTypeEnum::Badge,
-                'status' => \App\Enum\PrintJobStatusEnum::Pending,
-                'priority' => 1,
-            ]);
-        } else {
-            // Use default PrintBadgeJob dispatch
-            PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($mass * 15));
-        }
+        // Always use PrintBadgeJob for consistency - it handles PDF generation and file storage
+        PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($mass * 15));
 
         return $badge;
     }
 
+    public static function printBadgeWithPrinter(Badge $badge, int $printerId, int $delaySeconds = 0): Badge
+    {
+        if ($badge->status_fulfillment->canTransitionTo(Printed::class)) {
+            $badge->status_fulfillment->transitionTo(Printed::class);
+        }
+
+        // Generate PDF content synchronously (like PrintBadgeJob does)
+        $badgeClass = $badge->fursuit->event->badge_class ?? 'EF28_Badge';
+
+        $printer = match ($badgeClass) {
+            'EF29_Badge' => new \App\Badges\EF29_Badge,
+            'EF28_Badge' => new \App\Badges\EF28_Badge,
+            default => new \App\Badges\EF28_Badge,
+        };
+
+        // Generate PDF content
+        $pdfContent = $printer->getPdf($badge);
+
+        // Store PDF Content in PrintJobs Storage
+        $filePath = 'badges/'.$badge->id.'.pdf';
+        \Illuminate\Support\Facades\Storage::put($filePath, $pdfContent);
+
+        // Create PrintJob with the specified printer and file
+        $badge->printJobs()->create([
+            'printer_id' => $printerId,
+            'type' => PrintJobTypeEnum::Badge,
+            'status' => \App\Enum\PrintJobStatusEnum::Pending,
+            'file' => $filePath,
+            'queued_at' => now(),
+            'priority' => 1,
+        ]);
+
+        \Illuminate\Support\Facades\Log::info('Badge print job created with specific printer', [
+            'badge_id' => $badge->id,
+            'printer_id' => $printerId,
+            'delay' => $delaySeconds,
+        ]);
+
+        return $badge;
+    }
 
     public static function getRelations(): array
     {

@@ -14,12 +14,12 @@ class PrintJob extends Model
     use HasFactory;
 
     protected $guarded = [];
-    
+
     protected $fillable = [
         'printer_id', 'printable_type', 'printable_id', 'type', 'status', 'file',
         'priority', 'retry_count', 'retry_of', 'processing_machine_id',
         'qz_job_name', 'last_qz_status', 'last_qz_message', 'error_message',
-        'printed_at', 'queued_at', 'started_at', 'failed_at'
+        'printed_at', 'queued_at', 'started_at', 'failed_at',
     ];
 
     protected static function newFactory()
@@ -69,7 +69,7 @@ class PrintJob extends Model
     public function createRetryJob(bool $reassignPrinter = false): self
     {
         $printerId = $this->printer_id;
-        
+
         // If reassigning, find an available printer of the same type
         if ($reassignPrinter) {
             $printerId = $this->findAvailablePrinter();
@@ -106,7 +106,7 @@ class PrintJob extends Model
     private function findAvailablePrinter(): int
     {
         $originalPrinter = $this->printer;
-        
+
         // Find a printer of the same type that's not in error state
         $availablePrinter = Printer::where('type', $originalPrinter->type)
             ->where('is_active', true)
@@ -136,9 +136,9 @@ class PrintJob extends Model
     public function scopePrioritized($query)
     {
         return $query->leftJoin('badges', function ($join) {
-                $join->on('badges.id', '=', 'print_jobs.printable_id')
-                     ->where('print_jobs.printable_type', '=', 'App\\Models\\Badge\\Badge');
-            })
+            $join->on('badges.id', '=', 'print_jobs.printable_id')
+                ->where('print_jobs.printable_type', '=', 'App\\Models\\Badge\\Badge');
+        })
             ->orderBy('print_jobs.priority', 'desc')
             ->orderByRaw('CAST(SUBSTRING_INDEX(badges.custom_id, "-", 1) AS UNSIGNED) ASC')
             ->orderByRaw('CAST(SUBSTRING_INDEX(badges.custom_id, "-", -1) AS UNSIGNED) ASC')

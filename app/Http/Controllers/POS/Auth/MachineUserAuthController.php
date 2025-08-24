@@ -5,8 +5,10 @@ namespace App\Http\Controllers\POS\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\RfidTag;
 use App\Models\Staff;
+use App\Rules\SecurePinRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class MachineUserAuthController extends Controller
@@ -16,15 +18,12 @@ class MachineUserAuthController extends Controller
         return Inertia::render('POS/Auth/PinLogin');
     }
 
-
-
     public function submitPinLogin(Request $request)
     {
         $data = $request->validate([
             'code' => 'required|string',
             'is_rfid' => 'boolean',
         ]);
-
 
         $staff = null;
         $rfidTag = null;
@@ -46,16 +45,29 @@ class MachineUserAuthController extends Controller
             // Update RFID tag last login
             $rfidTag->updateLastLogin();
         } else {
-            // PIN authentication - find staff by direct PIN comparison
+            // PIN or setup code authentication
             $staff = Staff::active()
                 ->where('pin_code', $data['code'])
                 ->first();
 
+            // If not found by PIN, try setup code
             if (! $staff) {
-                return redirect()->back()->withErrors(['code' => 'Invalid PIN code']);
+                $staff = Staff::active()
+                    ->where('setup_code', $data['code'])
+                    ->first();
+
+                if ($staff) {
+                    // Setup code found - redirect to setup flow
+                    session(['staff_setup_id' => $staff->id]);
+
+                    return redirect()->route('pos.auth.setup');
+                }
+            }
+
+            if (! $staff) {
+                return redirect()->back()->withErrors(['code' => 'Invalid PIN or setup code']);
             }
         }
-
 
         // Update staff last login
         $staff->updateLastLogin();
@@ -67,11 +79,87 @@ class MachineUserAuthController extends Controller
         return redirect()->route('pos.dashboard');
     }
 
-
     public function logout()
     {
         Auth::guard('machine-user')->logout();
 
         return redirect()->route('pos.auth.user.select');
+    }
+
+    /**
+     * Show staff setup page for new account configuration
+     */
+    public function showSetup()
+    {
+        $staffId = session('staff_setup_id');
+        if (! $staffId) {
+            return redirect()->route('pos.auth.user.select')
+                ->withErrors(['code' => 'Setup session expired']);
+        }
+
+        $staff = Staff::find($staffId);
+        if (! $staff || ! $staff->hasSetupCode()) {
+            return redirect()->route('pos.auth.user.select')
+                ->withErrors(['code' => 'Invalid setup session']);
+        }
+
+        return Inertia::render('POS/Auth/StaffSetup', [
+            'staff_name' => $staff->name,
+        ]);
+    }
+
+    /**
+     * Complete staff setup with PIN and RFID registration
+     */
+    public function completeSetup(Request $request)
+    {
+        $staffId = session('staff_setup_id');
+        if (! $staffId) {
+            return redirect()->route('pos.auth.user.select')
+                ->withErrors(['code' => 'Setup session expired']);
+        }
+
+        $staff = Staff::find($staffId);
+        if (! $staff || ! $staff->hasSetupCode()) {
+            return redirect()->route('pos.auth.user.select')
+                ->withErrors(['code' => 'Invalid setup session']);
+        }
+
+        $data = $request->validate([
+            'pin_code' => ['required', 'string', 'size:6', new SecurePinRule],
+            'pin_code_confirmation' => 'required|string|same:pin_code',
+            'rfid_tag' => 'required|string|min:8|max:20|regex:/^[0-9]+$/|unique:rfid_tags,content',
+        ], [
+            'rfid_tag.min' => 'RFID tag must be at least 8 digits long.',
+            'rfid_tag.max' => 'RFID tag must not exceed 20 digits.',
+            'rfid_tag.regex' => 'RFID tag must contain only numbers.',
+            'rfid_tag.unique' => 'This RFID tag is already registered to another staff member.',
+        ]);
+
+        DB::transaction(function () use ($staff, $data) {
+            // Update staff with new PIN
+            $staff->update([
+                'pin_code' => $data['pin_code'],
+            ]);
+
+            // Clear setup code
+            $staff->clearSetupCode();
+
+            // Create RFID tag
+            $staff->rfidTags()->create([
+                'content' => $data['rfid_tag'],
+                'is_active' => true,
+                'last_login_at' => now(),
+            ]);
+        });
+
+        // Clear setup session
+        session()->forget('staff_setup_id');
+
+        // Authenticate staff
+        Auth::guard('machine-user')->login($staff);
+
+        return redirect()->route('pos.dashboard')
+            ->with('success', 'Account setup completed successfully!');
     }
 }

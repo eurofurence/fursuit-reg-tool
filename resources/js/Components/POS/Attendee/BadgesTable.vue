@@ -46,7 +46,7 @@ function changeHandout(badgeId, undo) {
 </script>
 
 <template>
-    <DataTable dataKey="id" v-model:selection="selectedBadges" :value="badges" class="-m-5"
+    <DataTable dataKey="id" v-model:selection="selectedBadges" :value="badges"
         tableStyle="min-width: 50rem">
         <Column v-if="!props.readonly" selectionMode="multiple" headerStyle="width: 3rem"></Column>
         <Column field="custom_id" header="ID"></Column>
@@ -55,11 +55,6 @@ function changeHandout(badgeId, undo) {
         <Column field="printed_at" header="Print">
             <template #body="slotProps">
                 {{ (slotProps.data.printed_at) ? dayjs(slotProps.data.printed_at).format('DD.MM.YY') : '-' }}
-            </template>
-        </Column>
-        <Column field="dual_side_print" header="Duplex">
-            <template #body="slotProps">
-                <Checkbox :modelValue="slotProps.data.dual_side_print" :binary="true" />
             </template>
         </Column>
         <Column field="status" header="Status">

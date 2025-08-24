@@ -58,6 +58,16 @@ class EventResource extends Resource
                 ])->columns()->columnSpanFull()->label('Order Management'),
 
                 Group::make([
+                    Forms\Components\TextInput::make('cost')
+                        ->label('Printing Cost (€)')
+                        ->helperText('Total printing cost in euros that we need to cover for this event')
+                        ->numeric()
+                        ->step(0.01)
+                        ->suffix('€')
+                        ->placeholder('1914.95'),
+                ])->columnSpanFull()->label('Financial Tracking'),
+
+                Group::make([
                     Forms\Components\Toggle::make('catch_em_all_enabled')
                         ->label('Catch-Em-All Enabled')
                         ->helperText('Enable catch-em-all functionality for this event')

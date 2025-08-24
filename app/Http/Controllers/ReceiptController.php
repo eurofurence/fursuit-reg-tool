@@ -49,7 +49,9 @@ class ReceiptController extends Controller
             ]);
         }
 
-        return redirect()->route('pos.attendee.show', ['attendeeId' => $checkout->user->attendee_id])->with('success', 'Receipt added to print queue.');
+        $attendeeId = $checkout->user->eventUser()?->attendee_id;
+        
+        return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId])->with('success', 'Receipt added to print queue.');
     }
 
     public function sendEmail(Checkout $checkout)
@@ -58,7 +60,9 @@ class ReceiptController extends Controller
         // send email to user and redirect back to attende show page
         $checkout->user->notify(new SendReceiptNotification($checkout));
 
-        return redirect()->route('pos.attendee.show', ['attendeeId' => $checkout->user->attendee_id])->with('success', 'Receipt sent to user.');
+        $attendeeId = $checkout->user->eventUser()?->attendee_id;
+        
+        return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId])->with('success', 'Receipt sent to user.');
     }
 
     private function generateReceipt(Checkout $checkout)
