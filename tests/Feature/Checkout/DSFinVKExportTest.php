@@ -1,0 +1,375 @@
+<?php
+
+namespace Tests\Feature\Checkout;
+
+use App\Domain\Checkout\Models\Checkout\Checkout;
+use App\Domain\Checkout\Models\Checkout\CheckoutItem;
+use App\Domain\Checkout\Models\TseClient;
+use App\Domain\Checkout\Services\DSFinVKExportService;
+use App\Models\Badge\Badge;
+use App\Models\Machine;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+use ZipArchive;
+
+class DSFinVKExportTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private DSFinVKExportService $exportService;
+
+    private User $cashier;
+
+    private User $customer;
+
+    private Machine $machine;
+
+    private TseClient $tseClient;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Disable Fiskaly integration for tests
+        config([
+            'services.fiskaly.api_key' => null,
+            'services.fiskaly.api_secret' => null,
+        ]);
+
+        $this->exportService = new DSFinVKExportService;
+        $this->cashier = User::factory()->create(['name' => 'Test Cashier']);
+        $this->customer = User::factory()->create(['name' => 'Test Customer']);
+        $this->tseClient = TseClient::create([
+            'remote_id' => 'client-test-123',
+            'serial_number' => 'TSE-TEST-123',
+            'state' => 'REGISTERED',
+        ]);
+        $this->machine = Machine::factory()->create([
+            'name' => 'POS-01',
+            'tse_client_id' => $this->tseClient->id,
+        ]);
+    }
+
+    /** @test */
+    public function it_generates_complete_dsfin_export()
+    {
+        // Create test data
+        $this->createTestCheckouts();
+
+        $dateFrom = Carbon::now()->startOfDay();
+        $dateTo = Carbon::now()->endOfDay();
+
+        // Generate export
+        $exportPath = $this->exportService->generateExport($dateFrom, $dateTo);
+
+        // Verify ZIP file was created
+        $this->assertFileExists($exportPath);
+        $this->assertStringEndsWith('.zip', $exportPath);
+
+        // Extract and verify ZIP contents
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($exportPath) === true);
+
+        $expectedFiles = [
+            'cashregister.csv',
+            'cashpointclosing.csv',
+            'vat.csv',
+            'tse.csv',
+            'transactions.csv',
+            'transactions_vat.csv',
+            'datapayment.csv',
+            'lines.csv',
+            'lines_vat.csv',
+            'transactions_tse.csv',
+            'businesscases.csv',
+            'payment.csv',
+            'cash_per_currency.csv',
+            'index.xml',
+        ];
+
+        foreach ($expectedFiles as $file) {
+            $this->assertNotFalse($zip->locateName($file), "File $file not found in export");
+        }
+
+        $zip->close();
+
+        // Clean up
+        unlink($exportPath);
+    }
+
+    /** @test */
+    public function it_exports_cash_register_info_correctly()
+    {
+        $this->createTestCheckouts();
+
+        $dateFrom = Carbon::now()->startOfDay();
+        $dateTo = Carbon::now()->endOfDay();
+
+        $exportPath = $this->exportService->generateExport($dateFrom, $dateTo);
+
+        // Extract and read cashregister.csv
+        $zip = new ZipArchive;
+        $zip->open($exportPath);
+        $content = $zip->getFromName('cashregister.csv');
+        $zip->close();
+
+        $lines = explode("\n", trim($content));
+        $header = explode('|', $lines[0]);
+        $data = explode('|', $lines[1]);
+
+        $this->assertContains('Z_KASSE_ID', $header);
+        $this->assertContains('KASSE_BRAND', $header);
+        $this->assertContains('KASSE_SW_BRAND', $header);
+
+        $this->assertStringContains('POS', $data[0]); // Z_KASSE_ID starts with POS
+        $this->assertContains('Eurofurence e.V.', $data);
+
+        unlink($exportPath);
+    }
+
+    /** @test */
+    public function it_exports_transactions_with_tse_data()
+    {
+        $checkout = $this->createTestCheckouts()[0];
+
+        // Add TSE compliance data
+        $checkout->update([
+            'tse_serial_number' => 'TSE-123456789',
+            'tse_transaction_number' => '42',
+            'tse_signature_counter' => '123',
+            'tse_start_signature' => 'mock-signature-abc123',
+            'tse_timestamp' => now(),
+            'tse_process_type' => 'Kassenbeleg-V1',
+        ]);
+
+        $dateFrom = Carbon::now()->startOfDay();
+        $dateTo = Carbon::now()->endOfDay();
+
+        $exportPath = $this->exportService->generateExport($dateFrom, $dateTo);
+
+        // Extract and read transactions_v1.csv
+        $zip = new ZipArchive;
+        $zip->open($exportPath);
+        $content = $zip->getFromName('transactions_v1.csv');
+        $zip->close();
+
+        $lines = explode("\n", trim($content));
+        $header = explode(';', $lines[0]);
+        $data = explode(';', $lines[1]);
+
+        $this->assertContains('TSE_TRANSACTION_NUMBER', $header);
+        $this->assertContains('TSE_SIGNATURE_COUNTER', $header);
+        $this->assertContains('TSE_SIGNATURE_VALUE', $header);
+
+        $tseTxIndex = array_search('TSE_TRANSACTION_NUMBER', $header);
+        $sigCounterIndex = array_search('TSE_SIGNATURE_COUNTER', $header);
+        $sigValueIndex = array_search('TSE_SIGNATURE_VALUE', $header);
+
+        $this->assertEquals('42', $data[$tseTxIndex]);
+        $this->assertEquals('123', $data[$sigCounterIndex]);
+        $this->assertEquals('mock-signature-abc123', $data[$sigValueIndex]);
+
+        unlink($exportPath);
+    }
+
+    /** @test */
+    public function it_exports_receipt_line_items()
+    {
+        $checkouts = $this->createTestCheckouts();
+        $checkout = $checkouts[0];
+
+        // Add items to checkout
+        $badge = Badge::factory()->create(['total' => 2000]);
+        CheckoutItem::create([
+            'checkout_id' => $checkout->id,
+            'payable_type' => Badge::class,
+            'payable_id' => $badge->id,
+            'name' => 'Premium Badge',
+            'description' => ['Double-sided print'],
+            'subtotal' => 1681,
+            'tax' => 319,
+            'total' => 2000, // €20.00
+        ]);
+
+        $serviceBadge = Badge::factory()->create(['total' => 500]);
+        CheckoutItem::create([
+            'checkout_id' => $checkout->id,
+            'payable_type' => Badge::class,
+            'payable_id' => $serviceBadge->id,
+            'name' => 'Express Service',
+            'description' => ['Same-day processing'],
+            'subtotal' => 420,
+            'tax' => 80,
+            'total' => 500, // €5.00
+        ]);
+
+        $dateFrom = Carbon::now()->startOfDay();
+        $dateTo = Carbon::now()->endOfDay();
+
+        $exportPath = $this->exportService->generateExport($dateFrom, $dateTo);
+
+        // Extract and read receipts_v1.csv
+        $zip = new ZipArchive;
+        $zip->open($exportPath);
+        $content = $zip->getFromName('receipts_v1.csv');
+        $zip->close();
+
+        $lines = explode("\n", trim($content));
+
+        // Should have header + 2 line items
+        $this->assertCount(3, $lines);
+
+        $header = explode(';', $lines[0]);
+        $this->assertContains('ARTICLE_DESCRIPTION', $header);
+        $this->assertContains('QUANTITY', $header);
+        $this->assertContains('LINE_AMOUNT_INCL_TAX', $header);
+
+        $line1 = explode(';', $lines[1]);
+        $line2 = explode(';', $lines[2]);
+
+        $descIndex = array_search('ARTICLE_DESCRIPTION', $header);
+        $amountIndex = array_search('LINE_AMOUNT_INCL_TAX', $header);
+
+        $this->assertEquals('Premium Badge', $line1[$descIndex]);
+        $this->assertEquals('20.00', $line1[$amountIndex]);
+
+        $this->assertEquals('Express Service', $line2[$descIndex]);
+        $this->assertEquals('5.00', $line2[$amountIndex]);
+
+        unlink($exportPath);
+    }
+
+    /** @test */
+    public function it_exports_tse_specific_transactions()
+    {
+        $checkout = $this->createTestCheckouts()[0];
+
+        $checkout->update([
+            'tse_serial_number' => 'TSE-123456789',
+            'tse_transaction_number' => '42',
+            'tse_signature_counter' => '123',
+            'tse_start_signature' => 'mock-signature-abc123',
+            'tse_timestamp' => Carbon::parse('2025-08-23 15:42:33'),
+        ]);
+
+        $dateFrom = Carbon::now()->startOfDay();
+        $dateTo = Carbon::now()->endOfDay();
+
+        $exportPath = $this->exportService->generateExport($dateFrom, $dateTo);
+
+        // Extract and read tse_transactions.csv
+        $zip = new ZipArchive;
+        $zip->open($exportPath);
+        $content = $zip->getFromName('tse_transactions.csv');
+        $zip->close();
+
+        $lines = explode("\n", trim($content));
+        $header = explode(';', $lines[0]);
+        $data = explode(';', $lines[1]);
+
+        $this->assertContains('TSE_SERIAL_NUMBER', $header);
+        $this->assertContains('CLIENT_ID', $header);
+
+        $serialIndex = array_search('TSE_SERIAL_NUMBER', $header);
+        $clientIndex = array_search('CLIENT_ID', $header);
+
+        $this->assertEquals('TSE-123456789', $data[$serialIndex]);
+        $this->assertEquals('client-test-123', $data[$clientIndex]);
+
+        unlink($exportPath);
+    }
+
+    /** @test */
+    public function it_filters_exports_by_date_range()
+    {
+        // Create checkouts on different dates
+        $oldCheckout = $this->createCheckout(['created_at' => Carbon::now()->subDays(10)]);
+        $newCheckout = $this->createCheckout(['created_at' => Carbon::now()]);
+
+        $dateFrom = Carbon::now()->startOfDay();
+        $dateTo = Carbon::now()->endOfDay();
+
+        $exportPath = $this->exportService->generateExport($dateFrom, $dateTo);
+
+        // Extract and read transactions_v1.csv
+        $zip = new ZipArchive;
+        $zip->open($exportPath);
+        $content = $zip->getFromName('transactions_v1.csv');
+        $zip->close();
+
+        $lines = explode("\n", trim($content));
+
+        // Should only have header + 1 transaction (the new one)
+        $this->assertCount(2, $lines);
+
+        unlink($exportPath);
+    }
+
+    /** @test */
+    public function it_handles_csv_field_escaping()
+    {
+        $checkout = $this->createCheckout();
+
+        // Create item with special characters that need CSV escaping
+        $specialBadge = Badge::factory()->create(['total' => 2000]);
+        CheckoutItem::create([
+            'checkout_id' => $checkout->id,
+            'payable_type' => Badge::class,
+            'payable_id' => $specialBadge->id,
+            'name' => 'Premium Badge; "Special Edition"',
+            'description' => ['Contains semicolon; and "quotes"'],
+            'subtotal' => 1681,
+            'tax' => 319,
+            'total' => 2000,
+        ]);
+
+        $dateFrom = Carbon::now()->startOfDay();
+        $dateTo = Carbon::now()->endOfDay();
+
+        $exportPath = $this->exportService->generateExport($dateFrom, $dateTo);
+
+        // Extract and read receipts_v1.csv
+        $zip = new ZipArchive;
+        $zip->open($exportPath);
+        $content = $zip->getFromName('receipts_v1.csv');
+        $zip->close();
+
+        // Should properly escape fields with special characters
+        $this->assertStringContainsString('"Premium Badge; ""Special Edition"""', $content);
+
+        unlink($exportPath);
+    }
+
+    // Helper methods
+    private function createTestCheckouts(): array
+    {
+        $checkouts = [];
+
+        for ($i = 0; $i < 2; $i++) {
+            $checkouts[] = $this->createCheckout([
+                'total' => 2000 + ($i * 500), // Varying amounts
+                'payment_method' => $i % 2 === 0 ? 'cash' : 'card',
+            ]);
+        }
+
+        return $checkouts;
+    }
+
+    private function createCheckout(array $overrides = []): Checkout
+    {
+        return Checkout::create(array_merge([
+            'status' => 'FINISHED',
+            'payment_method' => 'cash',
+            'user_id' => $this->customer->id,
+            'cashier_id' => $this->cashier->id,
+            'machine_id' => $this->machine->id,
+            'remote_id' => 'tx-'.uniqid(),
+            'subtotal' => 1681,
+            'tax' => 319,
+            'total' => 2000,
+            'fiskaly_data' => [],
+        ], $overrides));
+    }
+}
