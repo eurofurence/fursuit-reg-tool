@@ -38,6 +38,11 @@ class TokenRefreshService
 
     public function refreshToken()
     {
+        // CRITICAL: Never attempt to use refresh tokens on non-production environments
+        if (! app()->isProduction()) {
+            throw new \Exception('Refresh tokens are not allowed in non-production environments');
+        }
+
         try {
             /** @var Token $token */
             $token = Socialite::driver('identity')
