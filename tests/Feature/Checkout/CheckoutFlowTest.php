@@ -34,11 +34,11 @@ class CheckoutFlowTest extends TestCase
         $this->tseClient = TseClient::create([
             'remote_id' => 'client-test-123',
             'serial_number' => 'tse-serial-456',
-            'state' => 'REGISTERED'
+            'state' => 'REGISTERED',
         ]);
         $this->machine = Machine::factory()->create([
             'name' => 'POS-01',
-            'tse_client_id' => $this->tseClient->id
+            'tse_client_id' => $this->tseClient->id,
         ]);
     }
 
@@ -184,6 +184,7 @@ class CheckoutFlowTest extends TestCase
 
     /**
      * @test
+     *
      * @skip Fiskaly integration test - external service dependency
      */
     public function it_generates_compliant_receipt_data()
@@ -282,8 +283,8 @@ class CheckoutFlowTest extends TestCase
         Http::fake([
             'https://kassensichv-middleware.fiskaly.com/api/v2/tss/*/tx/*' => Http::response([
                 'error' => 'TSE_NOT_AVAILABLE',
-                'message' => 'TSE device is not available'
-            ], 500)
+                'message' => 'TSE device is not available',
+            ], 500),
         ]);
 
         $checkout = $this->createBasicCheckout(['remote_id' => 'f1f1f103-f1f1-f1f1-f1f1-f1f1f1f1f003', 'remote_rev_count' => 0]);
@@ -295,6 +296,7 @@ class CheckoutFlowTest extends TestCase
 
     /**
      * @test
+     *
      * @skip Fiskaly integration test - external service dependency
      */
     public function it_tracks_remote_revision_count()
@@ -335,6 +337,7 @@ class CheckoutFlowTest extends TestCase
 
     /**
      * @test
+     *
      * @skip Fiskaly integration test - external service dependency
      */
     public function it_stores_complete_fiskaly_response_data()
@@ -368,7 +371,7 @@ class CheckoutFlowTest extends TestCase
         ];
 
         Http::fake([
-            'https://kassensichv-middleware.fiskaly.com/api/v2/tss/*/tx/*' => Http::response($mockResponse, 200)
+            'https://kassensichv-middleware.fiskaly.com/api/v2/tss/*/tx/*' => Http::response($mockResponse, 200),
         ]);
 
         $checkout = $this->createBasicCheckout(['remote_id' => 'f1f1f105-f1f1-f1f1-f1f1-f1f1f1f1f005', 'remote_rev_count' => 0]);
@@ -400,6 +403,7 @@ class CheckoutFlowTest extends TestCase
     private function addCheckoutItem(Checkout $checkout): CheckoutItem
     {
         $badge = \App\Models\Badge\Badge::factory()->create();
+
         return CheckoutItem::create([
             'checkout_id' => $checkout->id,
             'payable_type' => Badge::class,

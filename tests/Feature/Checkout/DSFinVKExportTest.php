@@ -156,12 +156,12 @@ class DSFinVKExportTest extends TestCase
         $zip->close();
 
         $lines = explode("\n", trim($content));
-        
+
         // Check if we have data
         if (count($lines) < 2) {
             $this->markTestSkipped('No transaction data in export');
         }
-        
+
         $header = explode('|', $lines[0]);
         $data = explode('|', $lines[1]);
 
@@ -169,7 +169,7 @@ class DSFinVKExportTest extends TestCase
         $this->assertContains('Z_KASSE_ID', $header);
         $this->assertContains('BON_ID', $header);
         $this->assertContains('UMS_BRUTTO', $header);
-        
+
         // Verify first transaction has expected format
         $this->assertStringContainsString('POS', $data[0]); // Z_KASSE_ID starts with POS
 
@@ -216,11 +216,11 @@ class DSFinVKExportTest extends TestCase
         $zip = new ZipArchive;
         $zip->open($exportPath);
         $content = $zip->getFromName('lines.csv');
-        
-        if (!$content || trim($content) === '') {
+
+        if (! $content || trim($content) === '') {
             $this->markTestSkipped('No lines data in export');
         }
-        
+
         $zip->close();
 
         $lines = explode("\n", trim($content));
@@ -229,7 +229,7 @@ class DSFinVKExportTest extends TestCase
         $this->assertGreaterThanOrEqual(3, count($lines));
 
         $header = explode('|', $lines[0]);
-        
+
         // Check for required headers
         $this->assertContains('Z_KASSE_ID', $header);
         $this->assertContains('POS_ZEILE', $header);
@@ -260,19 +260,19 @@ class DSFinVKExportTest extends TestCase
         $zip = new ZipArchive;
         $zip->open($exportPath);
         $content = $zip->getFromName('transactions_tse.csv');
-        
-        if (!$content || trim($content) === '') {
+
+        if (! $content || trim($content) === '') {
             $this->markTestSkipped('No TSE transaction data in export');
         }
-        
+
         $zip->close();
 
         $lines = explode("\n", trim($content));
-        
+
         if (count($lines) < 2) {
             $this->markTestSkipped('No TSE transaction data rows in export');
         }
-        
+
         $header = explode('|', $lines[0]);
         $data = explode('|', $lines[1]);
 
@@ -309,11 +309,11 @@ class DSFinVKExportTest extends TestCase
         $zip = new ZipArchive;
         $zip->open($exportPath);
         $content = $zip->getFromName('transactions.csv');
-        
-        if (!$content || trim($content) === '') {
+
+        if (! $content || trim($content) === '') {
             $this->markTestSkipped('No transaction data in export');
         }
-        
+
         $zip->close();
 
         $lines = explode("\n", trim($content));
@@ -351,11 +351,11 @@ class DSFinVKExportTest extends TestCase
         $zip = new ZipArchive;
         $zip->open($exportPath);
         $content = $zip->getFromName('lines.csv');
-        
-        if (!$content || trim($content) === '') {
+
+        if (! $content || trim($content) === '') {
             $this->markTestSkipped('No lines data in export');
         }
-        
+
         $zip->close();
 
         // Check that special characters are present in the data

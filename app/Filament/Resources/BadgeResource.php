@@ -364,13 +364,13 @@ class BadgeResource extends Resource
                             ->when($data['from_attendee_id'], function ($query, $fromAttendeeId) {
                                 return $query->whereHas('fursuit.user.eventUsers', function ($q) use ($fromAttendeeId) {
                                     $q->where('event_id', static::getSelectedEventId())
-                                      ->whereRaw('CAST(attendee_id AS UNSIGNED) >= ?', [$fromAttendeeId]);
+                                        ->whereRaw('CAST(attendee_id AS UNSIGNED) >= ?', [$fromAttendeeId]);
                                 });
                             })
                             ->when($data['to_attendee_id'], function ($query, $toAttendeeId) {
                                 return $query->whereHas('fursuit.user.eventUsers', function ($q) use ($toAttendeeId) {
                                     $q->where('event_id', static::getSelectedEventId())
-                                      ->whereRaw('CAST(attendee_id AS UNSIGNED) <= ?', [$toAttendeeId]);
+                                        ->whereRaw('CAST(attendee_id AS UNSIGNED) <= ?', [$toAttendeeId]);
                                 });
                             });
                     })
@@ -422,7 +422,16 @@ class BadgeResource extends Resource
                     ->action(function (Collection $records, array $data) {
                         $printerId = $data['printer_id'];
 
-                        return $records->reverse()->each(fn (Badge $record, $index) => static::printBadgeWithPrinter($record, $printerId, $index));
+                        $records->each(function (Badge $record, $index) use ($printerId) {
+                            if ($record->status_fulfillment->canTransitionTo(Printed::class)) {
+                                $record->status_fulfillment->transitionTo(Printed::class);
+                            }
+
+                            // Dispatch with staggered delay to prevent overwhelming the queue
+                            PrintBadgeJob::dispatch($record, $printerId)->delay(now()->addSeconds($index * 2));
+                        });
+
+                        return true;
                     }),
             ])
             ->selectCurrentPageOnly()

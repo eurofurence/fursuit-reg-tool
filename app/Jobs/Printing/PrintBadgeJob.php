@@ -22,7 +22,7 @@ class PrintBadgeJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(private readonly Badge $badge) {}
+    public function __construct(private readonly Badge $badge, private readonly ?int $printerId = null) {}
 
     public function handle(): void
     {
@@ -47,14 +47,26 @@ class PrintBadgeJob implements ShouldQueue
         $filePath = 'badges/'.$this->badge->id.'.pdf';
         Storage::put($filePath, $pdfContent);
 
-        // Find available printer - only check is_active to allow queuing even if paused
-        $sendTo = Printer::where('is_active', true)
-            ->where('type', 'badge')
-            ->orderBy('status') // Prefer idle printers over working ones
-            ->first();
+        // Use specified printer if provided, otherwise find available printer
+        if ($this->printerId) {
+            $sendTo = Printer::where('id', $this->printerId)
+                ->where('is_active', true)
+                ->where('type', 'badge')
+                ->first();
 
-        if (! $sendTo) {
-            throw new \Exception('No available badge printers found. All badge printers are inactive.');
+            if (! $sendTo) {
+                throw new \Exception("Specified printer (ID: {$this->printerId}) not found or not active.");
+            }
+        } else {
+            // Find available printer - only check is_active to allow queuing even if paused
+            $sendTo = Printer::where('is_active', true)
+                ->where('type', 'badge')
+                ->orderBy('status') // Prefer idle printers over working ones
+                ->first();
+
+            if (! $sendTo) {
+                throw new \Exception('No available badge printers found. All badge printers are inactive.');
+            }
         }
 
         // Create PrintJob with success status

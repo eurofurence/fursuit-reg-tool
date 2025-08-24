@@ -13,7 +13,7 @@ class BadgePolicy
 
     public function viewAny(User $user): bool
     {
-        return ($user->is_admin || $user->is_reviewer);
+        return $user->is_admin || $user->is_reviewer;
     }
 
     public function view(User $user, Badge $badge): bool
