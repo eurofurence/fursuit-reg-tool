@@ -14,6 +14,7 @@ import {
     Grid3X3,
     List,
 } from "lucide-vue-next";
+import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
 
 const props = defineProps<{
     collection: {
@@ -34,7 +35,7 @@ const props = defineProps<{
                 scoring: number;
             };
         }>;
-        species: Array<number>;
+        species: Record<string, number>;
         totalCatches: number;
     };
     eventsWithEntries: Array<any>;
@@ -43,7 +44,10 @@ const props = defineProps<{
     flash?: any;
 }>();
 
-console.log("[Collection] Props:", props.collection.suits);
+console.log(
+    "[Collection] Props:",
+    Object.keys(props.collection.species).length
+);
 
 // Debug logs for initial props
 // console.log('[Collection] Received props:', {
@@ -194,28 +198,23 @@ const rarityStats = computed(() => {
         icon="library"
     >
         <!-- Collection Stats -->
-        <Card class="bg-white shadow-sm">
+        <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
                 <div class="text-center mb-4">
-                    <div
-                        class="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-green-500 to-teal-600 rounded-full flex items-center justify-center"
-                    >
-                        <BookOpen class="w-8 h-8 text-white" />
-                    </div>
-                    <h2 class="text-xl font-bold text-gray-800">
+                    <h2 class="text-xl font-bold text-gray-200">
                         Your Collection
                     </h2>
                     <p
-                        class="text-sm text-gray-600"
+                        class="text-sm text-gray-300"
                         v-if="collection?.species !== undefined"
                     >
-                        {{ collection.species.length }} unique species •
-                        {{ collection.totalCatches }} total catches
+                        {{
+                            Object.keys(props.collection.species).length
+                        }}
+                        unique species • {{ collection.totalCatches }} total
+                        catches
                     </p>
-                    <p class="text-sm text-gray-600" v-else>
-                        Loading collection...
-                    </p>
-                    <p class="text-sm text-gray-600" v-else>
+                    <p class="text-sm text-gray-300" v-else>
                         Loading collection...
                     </p>
                 </div>
@@ -223,62 +222,65 @@ const rarityStats = computed(() => {
                 <!-- Rarity Distribution -->
                 <div class="grid grid-cols-5 gap-2 mb-4">
                     <div
-                        class="text-center p-2 bg-yellow-50 rounded-lg border border-yellow-200"
+                        class="icon-box text-center bg-yellow-50 rounded-lg border border-yellow-200 rarity-tile"
                     >
-                        <Crown class="w-5 h-5 mx-auto mb-1 text-yellow-600" />
-                        <div class="text-sm font-bold text-yellow-600">
+                        <Crown class="w-5 h-5 mx-auto mb-1 text-yellow-800" />
+                        <div class="text-sm font-bold text-yellow-800">
                             {{ rarityStats.legendary }}
                         </div>
-                        <div class="text-xs text-yellow-700">Legendary</div>
+                        <div class="icon-text text-yellow-800">Legendary</div>
                     </div>
                     <div
-                        class="text-center p-2 bg-purple-50 rounded-lg border border-purple-200"
+                        class="icon-box text-center bg-purple-50 rounded-lg border border-purple-200 rarity-tile"
                     >
-                        <Gem class="w-5 h-5 mx-auto mb-1 text-purple-600" />
-                        <div class="text-sm font-bold text-purple-600">
+                        <Gem class="w-5 h-5 mx-auto mb-1 text-purple-800" />
+                        <div class="text-sm font-bold text-purple-800">
                             {{ rarityStats.epic }}
                         </div>
-                        <div class="text-xs text-purple-700">Epic</div>
+                        <div class="icon-text text-purple-800">Epic</div>
                     </div>
                     <div
-                        class="text-center p-2 bg-blue-50 rounded-lg border border-blue-200"
+                        class="icon-box text-center bg-blue-50 rounded-lg border border-blue-200 rarity-tile"
                     >
-                        <Sparkles class="w-5 h-5 mx-auto mb-1 text-blue-600" />
-                        <div class="text-sm font-bold text-blue-600">
+                        <Sparkles class="w-5 h-5 mx-auto mb-1 text-blue-800" />
+                        <div class="text-sm font-bold text-blue-800">
                             {{ rarityStats.rare }}
                         </div>
-                        <div class="text-xs text-blue-700">Rare</div>
+                        <div class="icon-text text-blue-800">Rare</div>
                     </div>
                     <div
-                        class="text-center p-2 bg-green-50 rounded-lg border border-green-200"
+                        class="icon-box text-center bg-green-50 rounded-lg border border-green-200 rarity-tile"
                     >
-                        <Star class="w-5 h-5 mx-auto mb-1 text-green-600" />
-                        <div class="text-sm font-bold text-green-600">
+                        <Star class="w-5 h-5 mx-auto mb-1 text-green-800" />
+                        <div class="text-sm font-bold text-green-800">
                             {{ rarityStats.uncommon }}
                         </div>
-                        <div class="text-xs text-green-700">Uncommon</div>
+                        <div class="icon-text text-green-800">Uncommon</div>
                     </div>
                     <div
-                        class="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"
+                        class="icon-box text-center bg-gray-50 rounded-lg border border-gray-200 rarity-tile"
                     >
-                        <BookOpen class="w-5 h-5 mx-auto mb-1 text-gray-600" />
-                        <div class="text-sm font-bold text-gray-600">
+                        <BookOpen class="w-5 h-5 mx-auto mb-1 text-gray-800" />
+                        <div class="text-sm font-bold text-gray-800">
                             {{ rarityStats.common }}
                         </div>
-                        <div class="text-xs text-gray-700">Common</div>
+                        <div class="icon-text text-gray-800">Common</div>
                     </div>
                 </div>
             </template>
         </Card>
 
         <!-- Filters and Controls -->
-        <Card class="bg-white shadow-sm">
+        <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
                 <div
-                    class="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
+                    class="flex flex-col gap-4 items-start sm:items-center justify-between"
+                    :class="
+                        eventOptions.length > 2 ? 'sm:flex-row' : 'xs:flex-row'
+                    "
                 >
                     <!-- Event Filter -->
-                    <div class="flex-1 min-w-0">
+                    <div v-if="eventOptions.length > 2" class="flex-1 min-w-20">
                         <label
                             class="block text-sm font-medium text-gray-700 mb-2"
                             >Event:</label
@@ -295,9 +297,9 @@ const rarityStats = computed(() => {
                     </div>
 
                     <!-- Rarity Filter -->
-                    <div class="flex-1 min-w-0">
+                    <div class="flex-1 min-w-20">
                         <label
-                            class="block text-sm font-medium text-gray-700 mb-2"
+                            class="block text-sm font-medium text-gray-300 mb-2"
                             >Rarity:</label
                         >
                         <Dropdown
@@ -309,11 +311,10 @@ const rarityStats = computed(() => {
                             fluid
                         />
                     </div>
-
                     <!-- View Mode Toggle -->
                     <div class="flex-shrink-0">
                         <label
-                            class="block text-sm font-medium text-gray-700 mb-2"
+                            class="block text-sm font-medium text-gray-300 mb-2"
                             >View:</label
                         >
                         <div
@@ -348,7 +349,7 @@ const rarityStats = computed(() => {
         </Card>
 
         <!-- Collection Display -->
-        <Card class="bg-white shadow-sm">
+        <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
                 <div
                     class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8"
@@ -371,18 +372,14 @@ const rarityStats = computed(() => {
                         v-if="selectedRarity !== 'all'"
                         class="w-16 h-16 mx-auto mb-4 text-gray-300"
                     />
-                    <BookOpen
-                        v-else
-                        class="w-16 h-16 mx-auto mb-4 text-gray-300"
-                    />
-                    <h3 class="text-lg font-medium text-gray-600 mb-2">
+                    <h3 class="text-lg font-medium text-gray-200 mb-2">
                         {{
                             selectedRarity !== "all"
                                 ? "No species found"
                                 : "No collection yet"
                         }}
                     </h3>
-                    <p class="text-gray-500">
+                    <p class="text-gray-300">
                         {{
                             selectedRarity !== "all"
                                 ? "Try a different rarity filter or start catching more fursuiters!"
@@ -411,6 +408,16 @@ const rarityStats = computed(() => {
 .collection-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.icon-text {
+    font-size: 0.55rem;
+    line-height: 0.75rem;
+}
+
+.icon-box {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
 }
 
 /* Grid view animations */

@@ -7,7 +7,24 @@ import Dropdown from "primevue/dropdown";
 import { computed, ref } from "vue";
 
 const props = defineProps<{
-    leaderboard: Array<any>;
+    user : {
+        id : number;
+        name : string;
+    };
+    userStat : {
+        rank: number;
+        totalCatches: number;
+        uniqueSpecies: number;
+        totalAvailable: number;
+        completionPercentage: number;
+        rarityStats: Record<string, any>;
+    };
+    leaderboard: Array<{
+        id : number;
+        name : string;
+        rank : number;
+        catches : number;
+    }>;
     eventsWithEntries: Array<any>;
     selectedEvent?: string | null;
     isGlobal: boolean;
@@ -61,6 +78,10 @@ const getPodiumIcon = (rank: number) => {
     if (rank === 3) return "🥉"; // Bronze medal
     return null;
 };
+
+const getProperCatch = (catchCount: number) => {
+    return catchCount === 1 || catchCount === -1 ? "catch" : "catches";
+}
 </script>
 
 <template>
@@ -71,7 +92,7 @@ const getPodiumIcon = (rank: number) => {
         icon="medal"
     >
         <!-- Event Filter -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
+        <Card v-if="eventOptions.length > 2" class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
                 <div class="space-y-3">
                     <label class="block text-sm font-medium text-gray-300"
@@ -94,12 +115,6 @@ const getPodiumIcon = (rank: number) => {
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
                 <div class="text-center mb-6">
-                    <div
-                        class="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center"
-                    >
-                        <Trophy class="w-8 h-8 text-white" />
-                    </div>
-                    <h2 class="text-xl font-bold text-gray-100">Leaderboard</h2>
                     <p class="text-sm text-gray-300">
                         {{
                             props.isGlobal
@@ -130,7 +145,7 @@ const getPodiumIcon = (rank: number) => {
                                         {{ leaderboard[1]?.name }}
                                     </div>
                                     <div class="text-xs text-gray-400">
-                                        {{ leaderboard[1]?.catches }} catches
+                                        {{ leaderboard[1]?.catches }} {{ getProperCatch(leaderboard[1]?.catches) }}
                                     </div>
                                 </div>
                             </div>
@@ -149,7 +164,7 @@ const getPodiumIcon = (rank: number) => {
                                         {{ leaderboard[0]?.name }}
                                     </div>
                                     <div class="text-sm text-yellow-300">
-                                        {{ leaderboard[0]?.catches }} catches
+                                        {{ leaderboard[0]?.catches }} {{ getProperCatch(leaderboard[0]?.catches) }}
                                     </div>
                                 </div>
                             </div>
@@ -168,14 +183,14 @@ const getPodiumIcon = (rank: number) => {
                                         {{ leaderboard[2]?.name }}
                                     </div>
                                     <div class="text-xs text-gray-400">
-                                        {{ leaderboard[2]?.catches }} catches
+                                        {{ leaderboard[2]?.catches }} {{ getProperCatch(leaderboard[2]?.catches) }}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Full Leaderboard List -->
+                    <!-- Partial Leaderboard List -->
                     <div class="space-y-2">
                         <div
                             v-for="(player, index) in leaderboard"
@@ -223,7 +238,7 @@ const getPodiumIcon = (rank: number) => {
                                     </div>
                                     <div class="text-sm text-gray-400">
                                         Rank #{{ player.rank }} •
-                                        {{ player.catches }} catches
+                                        {{ player.catches }} {{ getProperCatch(player.catches) }}
                                     </div>
                                 </div>
                             </div>
@@ -258,6 +273,58 @@ const getPodiumIcon = (rank: number) => {
                             Be the first to catch some fursuiters and claim the
                             top spot.
                         </p>
+                    </div>
+                </div>
+            </template>
+        </Card>
+        <Card
+            class="bg-gray-800 border border-gray-700 shadow-sm"
+            v-if="leaderboard.length > 2 && !leaderboard.some(current => current.id === user.id)"
+        >
+            <template #content>
+                <div class="space-y-2">
+                    <!-- User Information if not in top 3 -->
+                    <div
+                        class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
+                    >
+                        <div class="flex items-center space-x-4">
+                            <div
+                                class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg bg-blue-900/30 text-blue-400"
+                            >
+                                <component
+                                    :is="getRankIcon(userStat.rank)"
+                                    class="w-6 h-6"
+                                    :class="getRankColor(userStat.rank)"
+                                />
+                            </div>
+
+                            <!-- Player Info -->
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <div
+                                        class="font-semibold text-gray-100"
+                                    >
+                                        {{ user.name }}
+                                    </div>
+                                    <div class="text-lg">
+                                        {{ getPodiumIcon(userStat.rank) }}
+                                    </div>
+                                </div>
+                                <div class="text-sm text-gray-400">
+                                    Rank #{{ userStat.rank }} •
+                                    {{ userStat.totalCatches }} {{ getProperCatch(userStat.totalCatches) }}
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Points -->
+                        <div class="text-right">
+                            <div
+                                class="font-bold text-xl text-gray-100"
+                            >
+                                {{ leaderboard[2].catches - userStat.totalCatches }}
+                            </div>
+                            <div class="text-xs text-gray-400">{{ getProperCatch(leaderboard[2].catches - userStat.totalCatches) }} away</div>
+                        </div>
                     </div>
                 </div>
             </template>

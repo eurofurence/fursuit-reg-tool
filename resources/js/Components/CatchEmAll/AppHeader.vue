@@ -17,7 +17,7 @@ const icons = {
     gem: Gem,
     medal: Medal, // Assuming Medal is similar to Trophy
 
-} 
+}
 
 const currentIcon = computed(() => {
     if (props.icon && props.icon in icons){
@@ -31,7 +31,7 @@ const currentIcon = computed(() => {
 
 <template>
     <!-- Header -->
-    <div class="bg-gray-800 shadow-sm border-b border-gray-700">
+    <div class="fixed top-0 w-full z-50 shadow-sm border-b border-gray-700 bg-gray-800">
         <div class="px-4 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -41,12 +41,11 @@ const currentIcon = computed(() => {
                     <h1 class="text-lg font-bold text-gray-100">
                         {{ title || 'Fursuit Catch em All' }}
                     </h1>
-                    <p class="text-xs text-gray-400">
+                    <p class="text-xs text-gray-300">
                         {{ subtitle || 'Catch them all!' }}
                     </p>
                 </div>
             </div>
-            <Settings class="w-6 h-6 text-gray-400" />
         </div>
     </div>
 </template>

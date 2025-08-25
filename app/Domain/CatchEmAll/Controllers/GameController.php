@@ -141,12 +141,17 @@ class GameController extends Controller
         $filterEvent = $this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
 
         // Get leaderboard data
-        $leaderboard = $this->gameStatsService->getLeaderboard($filterEvent, $isGlobal, 50); // Show more players
+        $leaderboard = $this->gameStatsService->getLeaderboard($filterEvent, $isGlobal, 3); // Show more players
 
         // Get events for filter dropdown
         $eventsWithEntries = $this->getEventsWithEntries();
 
+        $user = Auth::user();
+        $userStat = $this->gameStatsService->getUserStats($user, $selectedEventId, $isGlobal);
+
         return Inertia::render('CatchEmAll/Leaderboard', [
+            'user' => $user,
+            'userStat' => $userStat,
             'leaderboard' => $leaderboard,
             'eventsWithEntries' => $eventsWithEntries,
             'selectedEvent' => $selectedEventId ?: ($filterEvent?->id ?? 'global'),

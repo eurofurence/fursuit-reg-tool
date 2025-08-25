@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
 import Card from 'primevue/card'
-import { 
-    Award, 
-    Star, 
-    Shield, 
-    Zap, 
-    Target, 
-    Trophy, 
-    Crown, 
-    Users, 
+import {
+    Award,
+    Star,
+    Shield,
+    Zap,
+    Target,
+    Trophy,
+    Crown,
+    Users,
     Clock,
     CheckCircle,
     Circle
@@ -81,25 +81,18 @@ const formatDate = (dateString: string) => {
         <!-- Stats Overview -->
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
-                <div class="text-center mb-4">
-                    <div class="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
-                        <Award class="w-8 h-8 text-white" />
-                    </div>
-                    <h2 class="text-xl font-bold text-gray-100">Achievement Progress</h2>
-                </div>
-
                 <div class="grid grid-cols-3 gap-4">
-                    <div class="text-center p-4 bg-green-900/20 rounded-lg border border-green-700">
+                    <div class="text-center pt-4 pb-4 p-0.5 bg-green-900/20 rounded-lg border border-green-700 achievement-icon">
                         <CheckCircle class="w-8 h-8 mx-auto mb-2 text-green-600" />
                         <div class="text-2xl font-bold text-green-400">{{ completedAchievements.length }}</div>
                         <div class="text-sm text-green-300">Completed</div>
                     </div>
-                    <div class="text-center p-4 bg-blue-900/20 rounded-lg border border-blue-700">
+                    <div class="text-center pt-4 pb-4 p-0.5 bg-blue-900/20 rounded-lg border border-blue-700 achievement-icon">
                         <Clock class="w-8 h-8 mx-auto mb-2 text-blue-600" />
                         <div class="text-2xl font-bold text-blue-400">{{ inProgressAchievements.length }}</div>
                         <div class="text-sm text-blue-300">In Progress</div>
                     </div>
-                    <div class="text-center p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <div class="text-center pt-4 pb-4 p-0.5 bg-gray-700/50 rounded-lg border border-gray-600 achievement-icon">
                         <Circle class="w-8 h-8 mx-auto mb-2 text-gray-400" />
                         <div class="text-2xl font-bold text-gray-300">{{ lockedAchievements.length }}</div>
                         <div class="text-sm text-gray-400">Locked</div>
@@ -115,21 +108,25 @@ const formatDate = (dateString: string) => {
                 Completed ({{ completedAchievements.length }})
             </h3>
             <div class="space-y-3 mb-6">
-                <Card v-for="achievement in completedAchievements" :key="achievement.id" class="bg-white shadow-sm">
+                <Card
+                    v-for="achievement in completedAchievements"
+                    :key="achievement.id"
+                    class="bg-white shadow-sm border border-gray-700"
+                >
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
                             <!-- Achievement Icon -->
                             <div class="w-14 h-14 rounded-full flex items-center justify-center border-2 border-green-300 bg-green-100">
                                 <component :is="getCategoryIcon(achievement.achievement)" class="w-7 h-7 text-green-600" />
                             </div>
-                            
+
                             <!-- Achievement Info -->
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
-                                    <h4 class="font-semibold text-gray-800">{{ achievement.title }}</h4>
+                                    <h4 class="font-semibold text-gray-200">{{ achievement.title }}</h4>
                                     <Star class="w-5 h-5 text-yellow-500 fill-current" />
                                 </div>
-                                <p class="text-sm text-gray-600 mb-2">{{ achievement.description }}</p>
+                                <p class="text-sm text-gray-300 mb-2">{{ achievement.description }}</p>
                                 <div class="flex items-center justify-between">
                                     <div class="text-xs text-green-600 font-medium">
                                         ✅ Completed on {{ formatDate(achievement.earnedAt) }}
@@ -148,11 +145,14 @@ const formatDate = (dateString: string) => {
         <!-- In Progress Achievements -->
         <div v-if="inProgressAchievements.length > 0">
             <h3 class="text-lg font-bold text-gray-100 mb-3 flex items-center">
-                <Clock class="w-6 h-6 mr-2 text-blue-400" />
+                <Clock class="w-6 h-6 mr-2 text-blue-600" />
                 In Progress ({{ inProgressAchievements.length }})
             </h3>
             <div class="space-y-3 mb-6">
-                <Card v-for="achievement in inProgressAchievements" :key="achievement.id" class="bg-white shadow-sm">
+                <Card
+                    v-for="achievement in inProgressAchievements"
+                    :key="achievement.id"
+                    class="bg-white shadow-sm border border-gray-700">
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
                             <!-- Achievement Icon -->
@@ -160,17 +160,17 @@ const formatDate = (dateString: string) => {
                                  :class="'border-blue-300 bg-blue-100'">
                                 <component :is="getCategoryIcon(achievement.achievement)" class="w-7 h-7 text-blue-600" />
                             </div>
-                            
+
                             <!-- Achievement Info -->
                             <div class="flex-1">
-                                <h4 class="font-semibold text-gray-800 mb-1">{{ achievement.title }}</h4>
-                                <p class="text-sm text-gray-600 mb-3">{{ achievement.description }}</p>
-                                
+                                <h4 class="font-semibold text-gray-200 mb-1">{{ achievement.title }}</h4>
+                                <p class="text-sm text-gray-300 mb-3">{{ achievement.description }}</p>
+
                                 <!-- Progress Bar -->
                                 <div class="space-y-2">
                                     <div class="flex justify-between text-sm">
-                                        <span class="text-gray-600">Progress</span>
-                                        <span class="font-medium text-blue-600">
+                                        <span class="text-gray-300">Progress</span>
+                                        <span class="font-medium text-blue-500">
                                             {{ achievement.progress }}/{{ achievement.maxProgress }} ({{ achievement.progressPercentage }}%)
                                         </span>
                                     </div>
@@ -193,18 +193,21 @@ const formatDate = (dateString: string) => {
                 Locked ({{ lockedAchievements.length }})
             </h3>
             <div class="space-y-3">
-                <Card v-for="achievement in lockedAchievements" :key="achievement.id" class="bg-white shadow-sm opacity-75">
+                <Card
+                    v-for="achievement in lockedAchievements"
+                    :key="achievement.id"
+                    class="bg-white shadow-sm opacity-75 border border-gray-700">
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
                             <!-- Achievement Icon -->
                             <div class="w-14 h-14 rounded-full flex items-center justify-center border-2 border-gray-300 bg-gray-100">
                                 <component :is="getCategoryIcon(achievement.achievement)" class="w-7 h-7 text-gray-400" />
                             </div>
-                            
+
                             <!-- Achievement Info -->
                             <div class="flex-1">
-                                <h4 class="font-semibold text-gray-600 mb-1">{{ achievement.title }}</h4>
-                                <p class="text-sm text-gray-500 mb-2">{{ achievement.description }}</p>
+                                <h4 class="font-semibold text-gray-200 mb-1">{{ achievement.title }}</h4>
+                                <p class="text-sm text-gray-300 mb-2">{{ achievement.description }}</p>
                                 <div class="text-xs text-gray-400 font-medium">
                                     🔒 Start hunting to unlock!
                                 </div>
@@ -218,8 +221,8 @@ const formatDate = (dateString: string) => {
         <!-- Empty State -->
         <div v-if="achievements.length === 0" class="text-center py-12">
             <Award class="w-20 h-20 mx-auto mb-4 text-gray-300" />
-            <h3 class="text-xl font-medium text-gray-600 mb-2">No achievements available</h3>
-            <p class="text-gray-500">Start catching fursuiters to unlock achievements!</p>
+            <h3 class="text-xl font-medium text-gray-200 mb-2">No achievements available</h3>
+            <p class="text-gray-300">Start catching fursuiters to unlock achievements!</p>
         </div>
     </CatchEmAllLayout>
 </template>

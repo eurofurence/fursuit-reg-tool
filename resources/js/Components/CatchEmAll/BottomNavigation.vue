@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { usePage, Link } from '@inertiajs/vue3'
-import { 
-    Trophy, 
-    Award, 
-    BookOpen, 
-    Target, 
+import {
+    Trophy,
+    Award,
+    BookOpen,
+    Target,
     User,
     Medal,
     Gem,
@@ -16,8 +16,7 @@ const page = usePage()
 
 // Get current route name to determine active tab
 const currentRoute = computed(() => {
-    const ziggy = page.props.ziggy as { route?: { current?: string } }
-    const routeName = ziggy?.route?.current || ''
+    const routeName = route().current()
     if (routeName.includes('leaderboard')) return 'leaderboard'
     if (routeName.includes('achievements')) return 'achievements'
     if (routeName.includes('collection')) return 'collection'
@@ -31,14 +30,14 @@ const navItems = [
         label: 'Leaderboard',
         icon: Medal,
         route: 'catch-em-all.leaderboard',
-        color: 'text-yellow-400 bg-yellow-900/30'
+        color: 'text-white'
     },
     {
         key: 'achievements',
         label: 'Achievements',
         icon: Gem,
         route: 'catch-em-all.achievements',
-        color: 'text-purple-400 bg-purple-900/30'
+        color: 'text-white'
     },
     {
         key: 'catch',
@@ -53,7 +52,7 @@ const navItems = [
         label: 'Collection',
         icon: Library,
         route: 'catch-em-all.collection',
-        color: 'text-green-400 bg-green-900/30'
+        color: 'text-white'
     },
     {
         key: 'profile',
@@ -72,7 +71,7 @@ const navItems = [
         <div class="grid grid-cols-5 items-center py-2">
             <template v-for="item in navItems" :key="item.key">
                 <!-- Regular Navigation Item -->
-                <Link 
+                <Link
                     :href="item.route ? route(item.route) + '/' : null"
                     :disabled="item.disabled"
                     :preserve-scroll="true"
@@ -86,15 +85,15 @@ const navItems = [
                         item.isCenter && currentRoute !== item.key ? 'bg-gray-700' : ''
                     ]"
                 >
-                    <component 
-                        :is="item.icon" 
+                    <component
+                        :is="item.icon"
                         :class="[
                             item.isCenter ? 'w-8 h-8 mb-1' : 'w-6 h-6 mb-1'
-                        ]" 
+                        ]"
                     />
                     <span :class="[
                         'font-medium',
-                        item.isCenter ? 'text-sm font-bold' : 'text-xs'
+                        currentRoute === item.key ? 'nav-text font-bold' : 'nav-text'
                     ]">
                         {{ item.label }}
                     </span>
@@ -112,6 +111,11 @@ button, a {
 
 button:active, a:active {
     transform: scale(0.95);
+}
+
+.nav-text {
+    font-size: 0.65rem;
+    line-height: .75rem;
 }
 
 /* Safe area handling for devices with notches */
