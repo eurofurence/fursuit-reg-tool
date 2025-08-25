@@ -28,7 +28,7 @@ const props = defineProps({
         </div>
 
         <!-- Always visible info bar at bottom -->
-        <div class="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-3 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300">
+        <div class="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300">
             <h4 class="font-semibold text-gray-900 text-sm truncate">{{ fursuit.name }}</h4>
             <p class="text-xs text-gray-600 truncate">{{ fursuit.species }}</p>
         </div>
