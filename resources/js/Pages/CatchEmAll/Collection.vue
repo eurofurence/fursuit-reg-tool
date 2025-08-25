@@ -9,6 +9,11 @@ import { router } from "@inertiajs/vue3";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import Card from "primevue/card";
 import Dropdown from "primevue/dropdown";
+import { ref, computed, watch, onMounted } from "vue";
+import { router } from "@inertiajs/vue3";
+import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
+import Card from "primevue/card";
+import Dropdown from "primevue/dropdown";
 import {
     BookOpen,
     Star,
@@ -81,6 +86,35 @@ const onEventChange = () => {
 };
 
 
+
+onMounted(() => {
+    const savedViewMode = localStorage.getItem("catch-em-all-collection-view-mode");
+    if (savedViewMode && (savedViewMode === "grid" || savedViewMode === "list")) {
+        viewMode.value = savedViewMode;
+    }
+});
+
+watch(viewMode, (newMode) => {
+    localStorage.setItem("catch-em-all-collection-view-mode", newMode);
+});
+// Monitor collection changes
+watch(
+    () => props.collection,
+    (newVal, oldVal) => {
+        // console.log('[Collection] Collection updated:', {
+        //     hasOldData: !!oldVal,
+        //     hasNewData: !!newVal,
+        //     oldSpeciesCount: oldVal?.species?.length,
+        //     newSpeciesCount: newVal?.species?.length,
+        //     newTotalSpecies: newVal?.totalSpecies,
+        //     newTotalCatches: newVal?.totalCatches
+        // })
+    },
+    { deep: true }
+);
+
+// View mode toggle
+const viewMode = ref<"grid" | "list">("grid");
 
 onMounted(() => {
     const savedViewMode = localStorage.getItem("catch-em-all-collection-view-mode");
