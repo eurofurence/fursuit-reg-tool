@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { router } from '@inertiajs/vue3'
-import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
-import Card from 'primevue/card'
-import Dropdown from 'primevue/dropdown'
+import { ref, computed, watch } from "vue";
+import { router } from "@inertiajs/vue3";
+import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
+import Card from "primevue/card";
+import Dropdown from "primevue/dropdown";
 import {
     BookOpen,
     Star,
@@ -14,6 +14,7 @@ import {
     Grid3X3,
     List,
 } from "lucide-vue-next";
+import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
 
 const props = defineProps<{
     collection: {
@@ -142,10 +143,10 @@ const collectionByRarity = computed(() => {
         if (grouped[rarity]) {
             grouped[rarity].push(suit);
         }
-    })
+    });
 
-    return grouped
-})
+    return grouped;
+});
 
 // Get rarity icon
 const getRarityIcon = (rarity: string) => {
@@ -405,7 +406,7 @@ const rarityStats = computed(() => {
 
 .icon-text {
     font-size: 0.55rem;
-    line-height: .75rem;
+    line-height: 0.75rem;
 }
 
 .icon-box {
