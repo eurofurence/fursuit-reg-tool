@@ -37,6 +37,9 @@ class PdfGenerator extends Page implements HasForms
             'pdf_type' => 'badge_list',
             'title' => '',
             'subtitle' => '',
+            'rows_per_column' => 50,
+            'columns' => 12,
+            'font_size' => 6,
         ]);
     }
 
@@ -68,6 +71,30 @@ class PdfGenerator extends Page implements HasForms
                                     ->label('Subtitle')
                                     ->placeholder('e.g., "Free Badges"')
                                     ->visible(fn ($get) => $get('pdf_type') === 'box_labels'),
+                            ]),
+
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('rows_per_column')
+                                    ->label('Rows per Column')
+                                    ->numeric()
+                                    ->default(50)
+                                    ->placeholder('50')
+                                    ->visible(fn ($get) => $get('pdf_type') === 'badge_list'),
+
+                                TextInput::make('columns')
+                                    ->label('Number of Columns')
+                                    ->numeric()
+                                    ->default(12)
+                                    ->placeholder('12')
+                                    ->visible(fn ($get) => $get('pdf_type') === 'badge_list'),
+
+                                TextInput::make('font_size')
+                                    ->label('Font Size (px)')
+                                    ->numeric()
+                                    ->default(6)
+                                    ->placeholder('6')
+                                    ->visible(fn ($get) => $get('pdf_type') === 'badge_list'),
                             ]),
                     ]),
             ])
@@ -106,7 +133,7 @@ class PdfGenerator extends Page implements HasForms
             return;
         }
 
-        // Get all free badges for the current event
+        // Get all free badges for the current event, sorted by attendee_id
         $badges = Badge::whereHas('fursuit', function ($query) use ($selectedEvent) {
                 $query->where('event_id', $selectedEvent->id);
             })
@@ -114,7 +141,12 @@ class PdfGenerator extends Page implements HasForms
             ->with(['fursuit.user.eventUsers' => function ($query) use ($selectedEvent) {
                 $query->where('event_id', $selectedEvent->id);
             }])
-            ->get();
+            ->get()
+            ->sortBy(function ($badge) {
+                // Sort by attendee_id first
+                return $badge->fursuit?->user?->eventUsers?->first()?->attendee_id ?? 999999;
+            })
+            ->values();
 
         if ($badges->isEmpty()) {
             Notification::make()
@@ -154,12 +186,8 @@ class PdfGenerator extends Page implements HasForms
         // Sort ranges by their numeric start value (0-999, 1000-1999, etc.)
         $sortedRanges = [];
         foreach ($groupedBadges as $range => $attendees) {
-            if ($range === '4000+') {
-                $sortKey = 4000;
-            } else {
-                $parts = explode('-', $range);
-                $sortKey = (int) $parts[0];
-            }
+            $parts = explode('-', $range);
+            $sortKey = (int) $parts[0];
             $sortedRanges[$sortKey] = ['range' => $range, 'attendees' => $attendees];
         }
         ksort($sortedRanges); // Sort by numeric key
@@ -175,8 +203,9 @@ class PdfGenerator extends Page implements HasForms
             $rangeHtml = view('pdfs.badge-list-range', [
                 'range' => $data['range'],
                 'attendees' => $data['attendees'],
-                'rowsPerColumn' => 50, // Configurable - change this number as needed
-                'fontSize' => 0, // Configurable - change text size (px)
+                'rowsPerColumn' => $this->data['rows_per_column'] ?? 50,
+                'columns' => $this->data['columns'] ?? 12,
+                'fontSize' => $this->data['font_size'] ?? 6,
             ])->render();
             $rangeHtml = mb_convert_encoding($rangeHtml, 'UTF-8', 'auto');
 
@@ -219,9 +248,9 @@ class PdfGenerator extends Page implements HasForms
             $html = mb_convert_encoding($html, 'UTF-8', 'auto');
         }
 
-        // Custom page size for endless paper printer - exactly 1/3 of A4
+        // Custom page size for endless paper printer - exactly 1/3 of A4 minus 5mm
         $mpdf = new Mpdf([
-            'format' => [210, 99], // 210mm wide (A4 width), 99mm tall (297mm A4 height ÷ 3)
+            'format' => [210, 94], // 210mm wide (A4 width), 94mm tall (99mm - 5mm)
             'orientation' => 'P',
             'margin_left' => 5,
             'margin_right' => 5,
@@ -248,50 +277,58 @@ class PdfGenerator extends Page implements HasForms
         return Event::find($eventId);
     }
 
+    private function parseCustomId(?string $customId): array
+    {
+        // Handle null or empty custom_id
+        if (empty($customId)) {
+            return [0, 0];
+        }
+        
+        // Parse custom_id like "10-1" or "104-1" into sortable array [10, 1] or [104, 1]
+        $parts = explode('-', $customId);
+        $result = [];
+        foreach ($parts as $part) {
+            $result[] = (int) $part;
+        }
+        // Pad with zeros if needed to ensure consistent comparison
+        while (count($result) < 2) {
+            $result[] = 0;
+        }
+        return $result;
+    }
+
     private function groupBadgesByRangeAndAttendee(Collection $badges): array
     {
         $grouped = [];
 
         foreach ($badges as $badge) {
+            // Get attendee_id for grouping by range
             $attendeeId = $badge->fursuit?->user?->eventUsers?->first()?->attendee_id ?? 0;
-            $attendeeName = $badge->fursuit?->user?->name ?? 'Unknown';
-
-            // Group by attendee_id ranges instead of badge custom_id
             $attendeeIdNum = (int) $attendeeId;
+            
+            // Group by attendee_id ranges (0-999, 1000-1999, etc.)
             $rangeStart = intval($attendeeIdNum / 1000) * 1000;
             $rangeEnd = $rangeStart + 999;
-
-            if ($rangeStart >= 4000) {
-                $rangeKey = "4000+";
-            } else {
-                $rangeKey = "{$rangeStart}-{$rangeEnd}";
-            }
-
-            $attendeeKey = "{$attendeeId}_{$attendeeName}";
+            $rangeKey = "{$rangeStart}-{$rangeEnd}";
 
             if (!isset($grouped[$rangeKey])) {
                 $grouped[$rangeKey] = [];
             }
 
-            if (!isset($grouped[$rangeKey][$attendeeKey])) {
-                $grouped[$rangeKey][$attendeeKey] = [
-                    'attendee_id' => $attendeeId,
-                    'attendee_name' => $attendeeName,
-                    'badges' => [],
+            // Only include badges with custom_ids
+            if (!empty($badge->custom_id)) {
+                // Store custom_id for display (but we've already sorted by attendee_id)
+                $grouped[$rangeKey][] = [
+                    'attendee_id' => $badge->custom_id, // Display custom_id in the PDF
+                    'sort_key' => $this->parseCustomId($badge->custom_id), // Parse for proper numeric sorting
                 ];
             }
-
-            $grouped[$rangeKey][$attendeeKey]['badges'][] = $badge->custom_id;
         }
 
-        // Sort badges within each attendee group
-        foreach ($grouped as $rangeKey => &$attendees) {
-            foreach ($attendees as &$attendee) {
-                sort($attendee['badges']);
-            }
-            // Sort attendees by attendee_id
-            uasort($attendees, function ($a, $b) {
-                return (int)$a['attendee_id'] <=> (int)$b['attendee_id'];
+        // Sort custom_ids within each range by parsed numeric values
+        foreach ($grouped as &$rangeData) {
+            usort($rangeData, function ($a, $b) {
+                return $a['sort_key'] <=> $b['sort_key'];
             });
         }
 
