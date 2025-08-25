@@ -144,7 +144,7 @@ const getProperCatch = (catchCount: number) => {
                                     >
                                         {{ leaderboard[1]?.name }}
                                     </div>
-                                    <div class="text-xs text-gray-400">
+                                    <div class="text-xs text-gray-300">
                                         {{ leaderboard[1]?.catches }} {{ getProperCatch(leaderboard[1]?.catches) }}
                                     </div>
                                 </div>
@@ -182,7 +182,7 @@ const getProperCatch = (catchCount: number) => {
                                     >
                                         {{ leaderboard[2]?.name }}
                                     </div>
-                                    <div class="text-xs text-gray-400">
+                                    <div class="text-xs text-gray-300">
                                         {{ leaderboard[2]?.catches }} {{ getProperCatch(leaderboard[2]?.catches) }}
                                     </div>
                                 </div>
@@ -236,7 +236,7 @@ const getProperCatch = (catchCount: number) => {
                                             {{ getPodiumIcon(player.rank) }}
                                         </div>
                                     </div>
-                                    <div class="text-sm text-gray-400">
+                                    <div class="text-sm text-gray-300">
                                         Rank #{{ player.rank }} •
                                         {{ player.catches }} {{ getProperCatch(player.catches) }}
                                     </div>
@@ -255,7 +255,7 @@ const getProperCatch = (catchCount: number) => {
                                 >
                                     {{ player.catches }}
                                 </div>
-                                <div class="text-xs text-gray-400">catches</div>
+                                <div class="text-xs text-gray-300">{{ getProperCatch(player.catches) }}</div>
                             </div>
                         </div>
                     </div>
@@ -310,7 +310,7 @@ const getProperCatch = (catchCount: number) => {
                                         {{ getPodiumIcon(userStat.rank) }}
                                     </div>
                                 </div>
-                                <div class="text-sm text-gray-400">
+                                <div class="text-sm text-gray-200">
                                     Rank #{{ userStat.rank }} •
                                     {{ userStat.totalCatches }} {{ getProperCatch(userStat.totalCatches) }}
                                 </div>
@@ -323,7 +323,7 @@ const getProperCatch = (catchCount: number) => {
                             >
                                 {{ leaderboard[2].catches - userStat.totalCatches }}
                             </div>
-                            <div class="text-xs text-gray-400">{{ getProperCatch(leaderboard[2].catches - userStat.totalCatches) }} away</div>
+                            <div class="text-xs text-gray-300">{{ getProperCatch(leaderboard[2].catches - userStat.totalCatches) }} away</div>
                         </div>
                     </div>
                 </div>
