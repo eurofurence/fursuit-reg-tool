@@ -17,7 +17,7 @@ const icons = {
     gem: Gem,
     medal: Medal, // Assuming Medal is similar to Trophy
 
-} 
+}
 
 const currentIcon = computed(() => {
     if (props.icon && props.icon in icons){
@@ -46,7 +46,6 @@ const currentIcon = computed(() => {
                     </p>
                 </div>
             </div>
-            <Settings class="w-6 h-6 text-gray-400" />
         </div>
     </div>
 </template>
