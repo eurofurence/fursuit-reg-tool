@@ -102,7 +102,7 @@ watch(
 );
 
 // View mode toggle
-const viewMode = ref<"grid" | "list">("grid");
+const viewMode = ref<"grid" | "list">("list");
 
 // Rarity filter
 const selectedRarity = ref<string>("all");
@@ -188,6 +188,17 @@ const rarityStats = computed(() => {
 
     return stats;
 });
+
+const getRarityBgColor = (textColor: string) => {
+    const colorMap: Record<string, string> = {
+        "text-yellow-600": "bg-yellow-600",
+        "text-purple-600": "bg-purple-600",
+        "text-blue-600": "bg-blue-600",
+        "text-green-600": "bg-green-600",
+        "text-gray-600": "bg-gray-500",
+    };
+    return colorMap[textColor] || "bg-gray-500";
+};
 </script>
 
 <template>
@@ -387,11 +398,8 @@ const rarityStats = computed(() => {
                         </div>
                         <div class="text-center mx-4">
                             <span
-                                class="px-2 py-1 text-xs font-semibold rounded-full"
-                                :style="{
-                                    backgroundColor: fursuit.rarity.color,
-                                    color: 'white',
-                                }"
+                                class="px-2 py-1 text-xs font-semibold text-white rounded-full whitespace-nowrap"
+                                :class="getRarityBgColor(fursuit.rarity.color)"
                                 >{{ fursuit.rarity.label }}</span
                             >
                         </div>
