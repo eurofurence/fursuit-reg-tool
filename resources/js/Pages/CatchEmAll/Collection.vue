@@ -182,7 +182,7 @@ const rarityStats = computed(() => {
     props.collection.suits.forEach((suit) => {
         const rarity = suit.rarity.level;
         if (stats[rarity] !== undefined) {
-            stats[rarity] += suit.count;
+            stats[rarity] += 1;
         }
     });
 
