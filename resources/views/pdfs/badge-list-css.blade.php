@@ -44,7 +44,7 @@
     .attendee-table {
         width: 100%;
         border-collapse: collapse;
-        table-layout: auto;
+        table-layout: fixed;
         font-family: monospace;
         /* font-size is now configurable via inline style */
     }
@@ -57,10 +57,11 @@
         padding: 0.5px 2px;
         border-right: 1px solid #ddd;
         border-bottom: 1px solid #ddd;
-        text-align: center;
+        text-align: left;
         vertical-align: top;
         color: #000;
-        width: auto;
+        font-family: 'Courier New', Courier, monospace;
+        white-space: pre;
     }
     
     .attendee-cell:last-child {
