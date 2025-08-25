@@ -19,7 +19,10 @@ defineProps<{
         <AppHeader :title="title" :subtitle="subtitle" :icon="icon" />
 
         <!-- Content Area with bottom padding for navigation -->
-        <div class="px-4 pt-4 pb-4 space-y-4 overflow-y-auto" style="height: calc(100vh - 140px);">
+        <div
+            class="px-4 pt-4 pb-4 space-y-4 overflow-y-auto"
+            style="padding-top: 100px; height: calc(100vh - 80px);"
+        >
             <!-- Flash Messages -->
             <FlashMessages :flash="flash" />
 

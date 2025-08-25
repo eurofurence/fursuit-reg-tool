@@ -14,6 +14,7 @@ import {
     Grid3X3,
     List,
 } from "lucide-vue-next";
+import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
 
 const props = defineProps<{
     collection: {
@@ -34,7 +35,7 @@ const props = defineProps<{
                 scoring: number;
             };
         }>;
-        species: Array<number>;
+        species: Record<string, number>;
         totalCatches: number;
     };
     eventsWithEntries: Array<any>;
@@ -43,7 +44,10 @@ const props = defineProps<{
     flash?: any;
 }>();
 
-console.log("[Collection] Props:", props.collection.suits);
+console.log(
+    "[Collection] Props:",
+    Object.keys(props.collection.species).length
+);
 
 // Debug logs for initial props
 // console.log('[Collection] Received props:', {
@@ -204,8 +208,11 @@ const rarityStats = computed(() => {
                         class="text-sm text-gray-300"
                         v-if="collection?.species !== undefined"
                     >
-                        {{ collection.species.length }} unique species •
-                        {{ collection.totalCatches }} total catches
+                        {{
+                            Object.keys(props.collection.species).length
+                        }}
+                        unique species • {{ collection.totalCatches }} total
+                        catches
                     </p>
                     <p class="text-sm text-gray-300" v-else>
                         Loading collection...
@@ -304,7 +311,6 @@ const rarityStats = computed(() => {
                             fluid
                         />
                     </div>
-
                     <!-- View Mode Toggle -->
                     <div class="flex-shrink-0">
                         <label
@@ -406,7 +412,7 @@ const rarityStats = computed(() => {
 
 .icon-text {
     font-size: 0.55rem;
-    line-height: .75rem;
+    line-height: 0.75rem;
 }
 
 .icon-box {
