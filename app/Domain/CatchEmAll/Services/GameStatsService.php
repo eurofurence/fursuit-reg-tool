@@ -65,13 +65,21 @@ class GameStatsService
             $users = $query->get();
             $leaderboard = [];
 
+            $rank = 1;
+            $lastCatch = 0;
+
             foreach ($users as $index => $user) {
+                if ($lastCatch > $user->fursuits_catched_count) {
+                    $rank++;
+                    if ($rank > 3) break;
+                }
                 $leaderboard[] = [
                     'id' => $user->id,
                     'name' => $user->name ?? 'Unknown User',
-                    'rank' => $index + 1,
+                    'rank' => $rank,
                     'catches' => $user->fursuits_catched_count ?? 0,
                 ];
+                $lastCatch = $user->fursuits_catched_count;
             }
 
             return $leaderboard;
