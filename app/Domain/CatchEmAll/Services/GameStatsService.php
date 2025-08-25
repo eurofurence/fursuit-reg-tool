@@ -186,7 +186,9 @@ class GameStatsService
                 }
             }
         ])
-            ->having('fursuits_catched_count', '>', $userCatches);
+            ->having('fursuits_catched_count', '>', $userCatches)
+            ->get()
+            ->groupBy('fursuits_catched_count');
 
         return $query->count() + 1;
     }
