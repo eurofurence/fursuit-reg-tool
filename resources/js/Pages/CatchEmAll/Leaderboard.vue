@@ -279,7 +279,7 @@ const getProperCatch = (catchCount: number) => {
         </Card>
         <Card
             class="bg-gray-800 border border-gray-700 shadow-sm"
-            v-if="!leaderboard.some(current => current.id === user.id)"
+            v-if="leaderboard.length > 2 && !leaderboard.some(current => current.id === user.id)"
         >
             <template #content>
                 <div class="space-y-2">
