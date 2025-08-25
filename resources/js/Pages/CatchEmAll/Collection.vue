@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import Card from "primevue/card";
@@ -102,7 +102,18 @@ watch(
 );
 
 // View mode toggle
-const viewMode = ref<"grid" | "list">("list");
+const viewMode = ref<"grid" | "list">("grid");
+
+onMounted(() => {
+    const savedViewMode = localStorage.getItem("catch-em-all-collection-view-mode");
+    if (savedViewMode && (savedViewMode === "grid" || savedViewMode === "list")) {
+        viewMode.value = savedViewMode;
+    }
+});
+
+watch(viewMode, (newMode) => {
+    localStorage.setItem("catch-em-all-collection-view-mode", newMode);
+});
 
 // Rarity filter
 const selectedRarity = ref<string>("all");
