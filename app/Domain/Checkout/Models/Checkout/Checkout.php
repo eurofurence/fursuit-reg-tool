@@ -5,6 +5,7 @@ namespace App\Domain\Checkout\Models\Checkout;
 use App\Domain\Checkout\Models\Checkout\States\CheckoutStatusState;
 use App\Domain\Printing\Models\PrintJob;
 use App\Models\Machine;
+use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,7 +36,7 @@ class Checkout extends Model
 
     public function cashier(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'cashier_id');
+        return $this->belongsTo(Staff::class, 'cashier_id');
     }
 
     public function items()
