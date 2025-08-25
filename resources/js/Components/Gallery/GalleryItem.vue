@@ -32,11 +32,6 @@ const props = defineProps({
             <h4 class="font-semibold text-gray-900 text-sm truncate">{{ fursuit.name }}</h4>
             <p class="text-xs text-gray-600 truncate">{{ fursuit.species }}</p>
         </div>
-
-        <!-- Scoring badge -->
-        <div v-if="fursuit.scoring > 0" class="absolute top-3 right-3 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-            {{ fursuit.scoring }}
-        </div>
     </div>
 </template>
 

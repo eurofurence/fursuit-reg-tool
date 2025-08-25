@@ -395,14 +395,6 @@ const rarityStats = computed(() => {
                                 >{{ fursuit.rarity.label }}</span
                             >
                         </div>
-                        <div class="text-center w-20">
-                            <p class="font-bold text-lg text-gray-200">
-                                {{ fursuit.count }}
-                            </p>
-                            <p class="text-xs text-gray-400">
-                                {{ fursuit.count > 1 ? "catches" : "catch" }}
-                            </p>
-                        </div>
                     </div>
                 </div>
 
