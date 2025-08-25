@@ -35,7 +35,7 @@ const props = defineProps<{
                 scoring: number;
             };
         }>;
-        species: Array<number>;
+        species: Record<string, number>;
         totalCatches: number;
     };
     eventsWithEntries: Array<any>;
@@ -44,7 +44,10 @@ const props = defineProps<{
     flash?: any;
 }>();
 
-console.log("[Collection] Props:", props.collection.suits);
+console.log(
+    "[Collection] Props:",
+    Object.keys(props.collection.species).length
+);
 
 // Debug logs for initial props
 // console.log('[Collection] Received props:', {
@@ -205,8 +208,11 @@ const rarityStats = computed(() => {
                         class="text-sm text-gray-300"
                         v-if="collection?.species !== undefined"
                     >
-                        {{ collection.species.length }} unique species •
-                        {{ collection.totalCatches }} total catches
+                        {{
+                            Object.keys(props.collection.species).length
+                        }}
+                        unique species • {{ collection.totalCatches }} total
+                        catches
                     </p>
                     <p class="text-sm text-gray-300" v-else>
                         Loading collection...
