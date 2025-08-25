@@ -102,7 +102,7 @@ watch(
 );
 
 // View mode toggle
-const viewMode = ref<"grid" | "list">("list");
+const viewMode = ref<"grid" | "list">("grid");
 
 // Rarity filter
 const selectedRarity = ref<string>("all");
@@ -351,8 +351,10 @@ const rarityStats = computed(() => {
         <!-- Collection Display -->
         <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
+                <!-- Grid View -->
                 <div
-                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8"
+                    v-if="viewMode === 'grid'"
+                    class="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
                 >
                     <div
                         v-for="fursuit in filteredCollection"
@@ -360,6 +362,47 @@ const rarityStats = computed(() => {
                         class="cursor-pointer transform transition-transform hover:scale-105"
                     >
                         <GalleryItem :fursuit="fursuit.gallery" />
+                    </div>
+                </div>
+
+                <!-- List View -->
+                <div v-else class="space-y-2">
+                    <div
+                        v-for="fursuit in filteredCollection"
+                        :key="fursuit.gallery.id"
+                        class="flex items-center p-3 bg-gray-800 rounded-lg shadow-sm border border-gray-700"
+                    >
+                        <img
+                            :src="fursuit.gallery.image"
+                            :alt="fursuit.gallery.name"
+                            class="w-12 h-12 rounded-md object-cover mr-4"
+                        />
+                        <div class="flex-1">
+                            <h4 class="font-bold text-base text-gray-200">
+                                {{ fursuit.gallery.name }}
+                            </h4>
+                            <p class="text-sm text-gray-400">
+                                {{ fursuit.species }}
+                            </p>
+                        </div>
+                        <div class="text-center mx-4">
+                            <span
+                                class="px-2 py-1 text-xs font-semibold rounded-full"
+                                :style="{
+                                    backgroundColor: fursuit.rarity.color,
+                                    color: 'white',
+                                }"
+                                >{{ fursuit.rarity.label }}</span
+                            >
+                        </div>
+                        <div class="text-center w-20">
+                            <p class="font-bold text-lg text-gray-200">
+                                {{ fursuit.count }}
+                            </p>
+                            <p class="text-xs text-gray-400">
+                                {{ fursuit.count > 1 ? "catches" : "catch" }}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
