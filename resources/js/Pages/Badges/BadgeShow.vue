@@ -418,7 +418,7 @@ function cancelBadge() {
                                     <div class="space-y-3">
                                         <div class="flex items-center gap-3">
                                             <Check
-                                                v-if="badge.fursuit.catchem_optin"
+                                                v-if="badge.fursuit.catch_em_all"
                                                 :size="20"
                                                 class="text-green-600"
                                             />
@@ -431,7 +431,7 @@ function cancelBadge() {
                                         </div>
                                         <div class="flex items-center gap-3">
                                             <Check
-                                                v-if="badge.fursuit.gallery_optin"
+                                                v-if="badge.fursuit.published"
                                                 :size="20"
                                                 class="text-green-600"
                                             />
