@@ -13,6 +13,7 @@ enum Achievement: string
     case SOCIAL_BUTTERFLY = 'social_butterfly';
     case DEDICATION = 'dedication';
     case COMPLETIONIST = 'completionist';
+    case BUG_BOUNTY_HUNTER = 'bug_bounty_hunter';
     case CHEATER = 'cheater';
 
     public function getTitle(): string
@@ -27,6 +28,7 @@ enum Achievement: string
             self::SOCIAL_BUTTERFLY => 'Social Butterfly',
             self::DEDICATION => 'Dedicated Catcher',
             self::COMPLETIONIST => 'Completionist',
+            self::BUG_BOUNTY_HUNTER => 'Bug Bounty Hunter',
             self::CHEATER => 'Suspicious Activity',
         };
     }
@@ -43,6 +45,7 @@ enum Achievement: string
             self::SOCIAL_BUTTERFLY => 'Caught 50 different fursuiters',
             self::DEDICATION => 'Caught fursuiters on 3 different days',
             self::COMPLETIONIST => 'Caught all available fursuiters',
+            self::BUG_BOUNTY_HUNTER => 'Thanks for the QA! Your contribution is noted.',
             self::CHEATER => 'Detected suspicious activity',
         };
     }
@@ -59,6 +62,7 @@ enum Achievement: string
             self::SOCIAL_BUTTERFLY => '🦋',
             self::DEDICATION => '🏆',
             self::COMPLETIONIST => '💯',
+            self::BUG_BOUNTY_HUNTER => '🐛',
             self::CHEATER => '⚠️',
         };
     }

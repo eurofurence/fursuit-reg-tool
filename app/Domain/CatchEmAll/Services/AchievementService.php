@@ -4,9 +4,11 @@ namespace App\Domain\CatchEmAll\Services;
 
 use App\Domain\CatchEmAll\Enums\Achievement;
 use App\Domain\CatchEmAll\Enums\FursuitRarity;
+use App\Domain\CatchEmAll\Enums\SpecialCodeTypes;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\User;
+use ErrorException;
 use Illuminate\Support\Facades\DB;
 
 class AchievementService
@@ -20,6 +22,18 @@ class AchievementService
         $this->checkSocialButterfly($user);
         $this->checkDedication($user);
         $this->checkCompletionist($user);
+    }
+
+    public function processSpecialAchievements(User $user, SpecialCodeTypes $codeType): void
+    {
+        $this->checkBugBountyHunt($user, $codeType);
+    }
+
+    public function checkBugBountyHunt(User $user, SpecialCodeTypes $codeType): void
+    {
+        if ($codeType === SpecialCodeTypes::BUG_BOUNTY) {
+            $this->grantAchievement($user, Achievement::BUG_BOUNTY_HUNTER);
+        }
     }
 
     public function checkCheatingBehavior(User $user): void
