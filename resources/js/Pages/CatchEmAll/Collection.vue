@@ -383,7 +383,7 @@ const getRarityBgColor = (textColor: string) => {
                         :key="fursuit.gallery.id"
                         class="cursor-pointer transform transition-transform hover:scale-105"
                     >
-                        <GalleryItem :fursuit="fursuit.gallery" />
+                        <GalleryItem :fursuit="fursuit.gallery" :rarity="fursuit.rarity" />
                     </div>
                 </div>
 
