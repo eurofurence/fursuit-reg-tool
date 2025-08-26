@@ -4,6 +4,7 @@ import { computed } from 'vue';
 const props = defineProps({
     fursuit: Object,
     rarity: Object,
+    hideCount: Boolean
 });
 
 const rarityColorName = computed(() => {
@@ -79,6 +80,12 @@ const infoBarSpeciesColorClass = computed(() => {
             <h4 class="font-semibold text-sm truncate" :class="[infoBarTitleColorClass]">{{ fursuit.name }}</h4>
             <p class="text-xs truncate" :class="[infoBarSpeciesColorClass]">{{ fursuit.species }}</p>
         </div>
+
+                <!-- Scoring badge -->
+        <div v-if="fursuit.scoring > 0 && !hideCount" class="absolute top-3 right-3 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+            {{ fursuit.scoring }}
+        </div>
+
     </div>
 </template>
 
