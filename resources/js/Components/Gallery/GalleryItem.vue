@@ -9,7 +9,7 @@ const props = defineProps({
 
 const rarityConfig = computed(() => {
     const level = props.rarity?.level || 'common';
-    
+
     const config = {
         'common': {
             bgClass: 'bg-gray-100/95',
@@ -22,7 +22,7 @@ const rarityConfig = computed(() => {
         },
         'uncommon': {
             bgClass: 'bg-emerald-200/95',
-            titleClass: 'text-emerald-900 font-semibold', 
+            titleClass: 'text-emerald-900 font-semibold',
             speciesClass: 'text-emerald-800',
             shadowClass: 'shadow-emerald-200/50',
             cardGlow: 'shadow-emerald-400/20 hover:shadow-emerald-400/40',
@@ -89,14 +89,14 @@ const rarityConfig = computed(() => {
         </div>
 
         <!-- Always visible info bar at bottom -->
-        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300" 
+        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300"
              :class="[rarityConfig.bgClass, rarityConfig.shadowClass]">
             <h4 class="text-sm truncate" :class="[rarityConfig.titleClass]">{{ fursuit.name }}</h4>
             <p class="text-xs truncate" :class="[rarityConfig.speciesClass]">{{ fursuit.species }}</p>
         </div>
 
                 <!-- Catches count -->
-        <div v-show="fursuit.scoring > 0 && !hideCount" 
+        <div v-show="fursuit.scoring > 0 && !hideCount"
              class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full shadow-lg border"
              :class="[rarityConfig.badgeClass]">
             {{ fursuit.scoring }}
@@ -113,14 +113,14 @@ const rarityConfig = computed(() => {
 
 @keyframes epic-pulse {
     0%, 100% {
-        box-shadow: 
-            0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
             0 2px 4px -1px rgba(0, 0, 0, 0.06),
             0 0 0 rgba(139, 92, 246, 0);
     }
     50% {
-        box-shadow: 
-            0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
             0 2px 4px -1px rgba(0, 0, 0, 0.06),
             0 0 20px rgba(139, 92, 246, 0.3);
     }
@@ -132,14 +132,14 @@ const rarityConfig = computed(() => {
 
 @keyframes legendary-pulse {
     0%, 100% {
-        box-shadow: 
-            0 10px 15px -3px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 10px 15px -3px rgba(0, 0, 0, 0.1),
             0 4px 6px -2px rgba(0, 0, 0, 0.05),
             0 0 0 rgba(251, 191, 36, 0);
     }
     50% {
-        box-shadow: 
-            0 10px 15px -3px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 10px 15px -3px rgba(0, 0, 0, 0.1),
             0 4px 6px -2px rgba(0, 0, 0, 0.05),
             0 0 25px rgba(251, 191, 36, 0.4),
             0 0 40px rgba(251, 191, 36, 0.2);
