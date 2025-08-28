@@ -2,7 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Models;
 
-use App\Domain\CatchEmAll\Enums\Achievement;
+use App\Domain\CatchEmAll\Enums\AchievementOLD;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,7 +18,7 @@ class UserAchievement extends Model
     ];
 
     protected $casts = [
-        'achievement' => Achievement::class,
+        'achievement' => AchievementOLD::class,
         'earned_at' => 'datetime',
         'progress' => 'integer',
         'max_progress' => 'integer',

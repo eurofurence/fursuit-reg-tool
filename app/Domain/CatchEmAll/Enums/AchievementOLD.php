@@ -2,7 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Enums;
 
-enum Achievement: string
+enum AchievementOLD: string
 {
     case FIRST_CATCH = 'first_catch';
     case SPECIES_COLLECTOR = 'species_collector';

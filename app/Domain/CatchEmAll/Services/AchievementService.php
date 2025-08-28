@@ -2,13 +2,13 @@
 
 namespace App\Domain\CatchEmAll\Services;
 
-use App\Domain\CatchEmAll\Enums\Achievement;
+use App\Domain\CatchEmAll\Enums\AchievementOLD;
 use App\Domain\CatchEmAll\Enums\FursuitRarity;
 use App\Domain\CatchEmAll\Enums\SpecialCodeTypes;
+use App\Domain\CatchEmAll\Interface\Achievement;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\User;
-use ErrorException;
 use Illuminate\Support\Facades\DB;
 
 class AchievementService
@@ -32,7 +32,7 @@ class AchievementService
     public function checkBugBountyHunt(User $user, SpecialCodeTypes $codeType): void
     {
         if ($codeType === SpecialCodeTypes::BUG_BOUNTY) {
-            $this->grantAchievement($user, Achievement::BUG_BOUNTY_HUNTER);
+            $this->grantAchievement($user, AchievementOLD::BUG_BOUNTY_HUNTER);
         }
     }
 
@@ -63,7 +63,7 @@ class AchievementService
         }
 
         if ($suspiciousActivity) {
-            $this->grantAchievement($user, Achievement::CHEATER);
+            $this->grantAchievement($user, AchievementOLD::CHEATER);
         }
     }
 
@@ -72,7 +72,7 @@ class AchievementService
         $catchCount = UserCatch::where('user_id', $user->id)->count();
 
         if ($catchCount === 1) {
-            $this->grantAchievement($user, Achievement::FIRST_CATCH);
+            $this->grantAchievement($user, AchievementOLD::FIRST_CATCH);
         }
     }
 
@@ -83,7 +83,7 @@ class AchievementService
             ->distinct('fursuits.species_id')
             ->count();
 
-        $this->updateProgressAchievement($user, Achievement::SPECIES_COLLECTOR, $speciesCount, 10);
+        $this->updateProgressAchievement($user, AchievementOLD::SPECIES_COLLECTOR, $speciesCount, 10);
     }
 
     private function checkRarityAchievements(User $user, UserCatch $newCatch): void
@@ -93,18 +93,18 @@ class AchievementService
         // Check for rare catches
         if ($rarity === FursuitRarity::RARE) {
             $rareCount = $this->getRarityCatchCount($user, FursuitRarity::RARE);
-            $this->updateProgressAchievement($user, Achievement::RARE_HUNTER, $rareCount, 5);
+            $this->updateProgressAchievement($user, AchievementOLD::RARE_HUNTER, $rareCount, 5);
         }
 
         // Check for epic catches
         if ($rarity === FursuitRarity::EPIC) {
             $epicCount = $this->getRarityCatchCount($user, FursuitRarity::EPIC);
-            $this->updateProgressAchievement($user, Achievement::EPIC_SEEKER, $epicCount, 3);
+            $this->updateProgressAchievement($user, AchievementOLD::EPIC_SEEKER, $epicCount, 3);
         }
 
         // Check for legendary catches
         if ($rarity === FursuitRarity::LEGENDARY) {
-            $this->grantAchievement($user, Achievement::LEGENDARY_MASTER);
+            $this->grantAchievement($user, AchievementOLD::LEGENDARY_MASTER);
         }
     }
 
@@ -114,7 +114,7 @@ class AchievementService
             ->where('created_at', '>=', now()->subHour())
             ->count();
 
-        $this->updateProgressAchievement($user, Achievement::SPEED_DEMON, $recentCatches, 10);
+        $this->updateProgressAchievement($user, AchievementOLD::SPEED_DEMON, $recentCatches, 10);
     }
 
     private function checkSocialButterfly(User $user): void
@@ -123,7 +123,7 @@ class AchievementService
             ->distinct('fursuit_id')
             ->count();
 
-        $this->updateProgressAchievement($user, Achievement::SOCIAL_BUTTERFLY, $uniqueFursuiters, 50);
+        $this->updateProgressAchievement($user, AchievementOLD::SOCIAL_BUTTERFLY, $uniqueFursuiters, 50);
     }
 
     private function checkDedication(User $user): void
@@ -133,7 +133,7 @@ class AchievementService
             ->distinct()
             ->count();
 
-        $this->updateProgressAchievement($user, Achievement::DEDICATION, $daysWithCatches, 3);
+        $this->updateProgressAchievement($user, AchievementOLD::DEDICATION, $daysWithCatches, 3);
     }
 
     private function checkCompletionist(User $user): void
@@ -145,7 +145,7 @@ class AchievementService
             ->count();
 
         if ($totalAvailable > 0 && $totalCatches >= $totalAvailable) {
-            $this->grantAchievement($user, Achievement::COMPLETIONIST);
+            $this->grantAchievement($user, AchievementOLD::COMPLETIONIST);
         }
     }
 
@@ -160,7 +160,7 @@ class AchievementService
         })->count();
     }
 
-    private function grantAchievement(User $user, Achievement $achievement): bool
+    public static function grantAchievement(User $user, Achievement $achievement): bool
     {
         $existing = UserAchievement::where('user_id', $user->id)
             ->where('achievement', $achievement)
@@ -173,9 +173,9 @@ class AchievementService
         if (!$existing) {
             $existing = new UserAchievement([
                 'user_id' => $user->id,
-                'achievement' => $achievement,
+                'achievement' => $achievement->getId(),
                 'progress' => 0,
-                'max_progress' => 1,
+                'max_progress' => $achievement->getMaxProgress(),
             ]);
         }
 
@@ -186,19 +186,19 @@ class AchievementService
         return true;
     }
 
-    private function updateProgressAchievement(User $user, Achievement $achievement, int $progress, int $maxProgress): bool
+    public static function updateProgressAchievement(User $user, Achievement $achievement, int $progress): bool
     {
         $existing = UserAchievement::firstOrCreate([
             'user_id' => $user->id,
-            'achievement' => $achievement,
+            'achievement' => $achievement->getId(),
         ], [
             'progress' => 0,
-            'max_progress' => $maxProgress,
+            'max_progress' => $achievement->getMaxProgress(),
         ]);
 
-        $existing->progress = min($progress, $maxProgress);
+        $existing->progress = min($progress, $existing->max_progress);
 
-        if ($existing->progress >= $maxProgress && !$existing->earned_at) {
+        if ($existing->progress >= $existing->max_progress && !$existing->earned_at) {
             $existing->earned_at = now();
             $existing->save();
             return true; // Achievement earned

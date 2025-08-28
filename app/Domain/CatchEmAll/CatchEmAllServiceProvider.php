@@ -12,6 +12,7 @@ class CatchEmAllServiceProvider extends ServiceProvider
     {
         $this->app->singleton(AchievementService::class);
         $this->app->singleton(GameStatsService::class);
+        
     }
 
     public function boot()
