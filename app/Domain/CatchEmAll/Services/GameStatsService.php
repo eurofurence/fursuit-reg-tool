@@ -46,11 +46,11 @@ class GameStatsService
         });
     }
 
-    public function getLeaderboard($filterEvent = null, bool $isGlobal = false, int $limit = 10): array
+    public function getLeaderboard($filterEvent = null, bool $isGlobal = false, int $limit = 10, int $rankCutoff = 3): array
     {
         $cacheKey = $isGlobal ? "leaderboard_global_{$limit}" : "leaderboard_{$filterEvent?->id}_{$limit}";
 
-        $result = Cache::remember($cacheKey, 600, function () use ($filterEvent, $isGlobal, $limit) {
+        $result = Cache::remember($cacheKey, 6, function () use ($filterEvent, $isGlobal, $limit, $rankCutoff) {
             $query = User::withCount([
                 'fursuitsCatched' => function ($q) use ($filterEvent, $isGlobal) {
                     if (!$isGlobal && $filterEvent) {
@@ -71,7 +71,95 @@ class GameStatsService
             foreach ($users as $index => $user) {
                 if ($lastCatch > $user->fursuits_catched_count) {
                     $rank++;
-                    if ($rank > 3) break;
+                    if ($rank > $rankCutoff) break;
+                }
+                $leaderboard[] = [
+                    'id' => $user->id,
+                    'name' => $user->name ?? 'Unknown User',
+                    'rank' => $rank,
+                    'catches' => $user->fursuits_catched_count ?? 0,
+                ];
+                $lastCatch = $user->fursuits_catched_count;
+            }
+
+            return $leaderboard;
+        });
+
+        // Ensure we always return an array, even if cache returns something else
+        return is_array($result) ? $result : [];
+    }
+
+    public function getUserLeaderboard(int $userId, int $userRank, int $userCatched, string $userName = null, int $rankCutoff = 3, $filterEvent = null, bool $isGlobal = false): array
+    {
+        $cacheKey = $isGlobal ? "user_leaderboard_global" : "user_leaderboard_{$filterEvent?->id}";
+
+        $result = Cache::remember($cacheKey, 6, function () use ($filterEvent, $isGlobal, $userId, $userName, $userCatched, $userRank, $rankCutoff) {
+            $lower = User::withCount([
+                'fursuitsCatched' => function ($q) use ($filterEvent, $isGlobal, $userId) {
+                    if (!$isGlobal && $filterEvent) {
+                        $q->where('event_id', $filterEvent->id);
+                    }
+                    $q->where('user_id', '<>', $userId);
+                }
+            ])
+                ->having('fursuits_catched_count', '>', 0)
+                ->having('fursuits_catched_count', '<=', $userCatched)
+                ->orderByDesc('fursuits_catched_count')
+                ->limit(3);
+
+
+            $upper = User::withCount([
+                'fursuitsCatched' => function ($q) use ($filterEvent, $isGlobal) {
+                    if (!$isGlobal && $filterEvent) {
+                        $q->where('event_id', $filterEvent->id);
+                    }
+                }
+            ])
+                ->having('fursuits_catched_count', '>', 0)
+                ->having('fursuits_catched_count', '>', $userCatched)
+                ->orderBy('fursuits_catched_count')
+                ->limit(3);
+
+
+            $aboveUser = $upper->get();
+            $rank = $userRank;
+            $lastCatch = $userCatched;
+
+            $leaderboard = [];
+
+            foreach ($aboveUser as $index => $user) {
+                if ($lastCatch < $user->fursuits_catched_count) {
+                    $rank--;
+                    if($rank <= $rankCutoff) {
+                        break;
+                    }
+                }
+                $leaderboard[] = [
+                    'id' => $user->id,
+                    'name' => $user->name ?? 'Unknown User',
+                    'rank' => $rank,
+                    'catches' => $user->fursuits_catched_count ?? 0,
+                ];
+                $lastCatch = $user->fursuits_catched_count;
+            }
+
+            $leaderboard = array_reverse($leaderboard);
+
+            $leaderboard[] = [
+                'id' => $userId,
+                'name' => $userName ?? 'Unknown User',
+                'rank' => $userRank,
+                'catches' => $userCatched
+            ];
+
+            $belowUser = $lower->get();
+
+            $rank = $userRank;
+            $lastCatch = $userCatched;
+
+            foreach ($belowUser as $index => $user) {
+                if ($lastCatch > $user->fursuits_catched_count) {
+                    $rank++;
                 }
                 $leaderboard[] = [
                     'id' => $user->id,
