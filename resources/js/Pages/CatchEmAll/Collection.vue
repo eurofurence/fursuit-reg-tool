@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import Card from "primevue/card";
@@ -13,6 +13,7 @@ import {
     Filter,
     Grid3X3,
     List,
+    Info,
 } from "lucide-vue-next";
 import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
 
@@ -125,6 +126,39 @@ const rarityOptions = [
     { label: "Epic", value: "epic" },
     { label: "Legendary", value: "legendary" },
 ];
+
+// Counter visibility toggle
+const showCounters = ref(true);
+const showTooltip = ref(false);
+
+// Handle click outside to hide tooltip
+const handleClickOutside = (event: Event) => {
+    const target = event.target as HTMLElement;
+    const tooltipContainer = target.closest('.tooltip-container');
+    if (!tooltipContainer && showTooltip.value) {
+        showTooltip.value = false;
+    }
+};
+
+onMounted(() => {
+    document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
+});
+
+// Load counter preference from localStorage
+onMounted(() => {
+    const savedCounterPreference = localStorage.getItem("catch-em-all-show-counters");
+    if (savedCounterPreference !== null) {
+        showCounters.value = JSON.parse(savedCounterPreference);
+    }
+});
+
+watch(showCounters, (newValue) => {
+    localStorage.setItem("catch-em-all-show-counters", JSON.stringify(newValue));
+});
 
 // Filter collection by rarity
 const filteredCollection = computed(() => {
@@ -366,6 +400,50 @@ const getRarityBgColor = (textColor: string) => {
                             </button>
                         </div>
                     </div>
+
+                    <!-- Counter Toggle -->
+                    <div class="flex-shrink-0 relative tooltip-container">
+                        <label
+                            class="block text-sm font-medium text-gray-300 mb-2"
+                            >Counters:</label
+                        >
+                        <div class="relative">
+                            <button
+                                @click="showCounters = !showCounters"
+                                class="px-3 py-2 rounded-lg border border-gray-300 transition-colors"
+                                :class="
+                                    showCounters
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                                "
+                                :title="showCounters 
+                                    ? 'Hide scoring numbers on fursuit cards' 
+                                    : 'Show scoring numbers on fursuit cards'"
+                            >
+                                <span class="text-sm font-medium">
+                                    {{ showCounters ? 'Hide' : 'Show' }}
+                                </span>
+                            </button>
+                            
+                            <!-- Mobile Tooltip Info Button -->
+                            <button
+                                @click="showTooltip = !showTooltip"
+                                class="absolute -top-1 -right-1 w-4 h-4 bg-gray-500 hover:bg-gray-600 text-white rounded-full flex items-center justify-center md:hidden"
+                                type="button"
+                            >
+                                <Info class="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                        
+                        <!-- Mobile Tooltip -->
+                        <div 
+                            v-if="showTooltip"
+                            class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap md:hidden"
+                        >
+                            Shows total catches made by all players
+                            <div class="absolute -top-1 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-gray-800"></div>
+                        </div>
+                    </div>
                 </div>
             </template>
         </Card>
@@ -383,7 +461,7 @@ const getRarityBgColor = (textColor: string) => {
                         :key="fursuit.gallery.id"
                         class="cursor-pointer transform transition-transform hover:scale-105"
                     >
-                        <GalleryItem :fursuit="fursuit.gallery" :rarity="fursuit.rarity" :hideCount="true" />
+                        <GalleryItem :fursuit="fursuit.gallery" :rarity="fursuit.rarity" :hideCount="!showCounters" />
                     </div>
                 </div>
 
