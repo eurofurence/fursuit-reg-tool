@@ -352,6 +352,8 @@ class GameController extends Controller
             "collection_global_{$userId}",
             "collection_{$eventId}_{$userId}",
             "total_fursuiters_{$eventId}", // TODO: Forget when new fursuit gets approved and not here
+            "user_leaderboard_global",
+            "user_leaderboard_{$eventId}",
         ];
 
         foreach ($keys as $key) {
