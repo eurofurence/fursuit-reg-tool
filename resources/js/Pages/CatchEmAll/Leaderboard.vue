@@ -277,7 +277,7 @@ const getProperCatch = (catchCount: number) => {
                                     :key="player.id"
                                     class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
                                     :class="[
-                                player.id === user.id ? 'bg-gradient-to-r from-blue-900/50 to-blue-900/40 border-blue-700'
+                                player.id === user.id ? 'ring-1 ring-white bg-gradient-to-r from-blue-900/50 to-blue-900/40 border-white'
                                     : ' bg-gray-700/50 border-gray-600',
                             ]"
                                 >
