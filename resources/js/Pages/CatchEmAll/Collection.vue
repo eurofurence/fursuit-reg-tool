@@ -438,7 +438,7 @@ const getRarityBgColor = (textColor: string) => {
 
                         <!-- Mobile Tooltip -->
                         <div
-                            v-show="showTooltip"
+                            v-if="showTooltip"
                             class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap md:hidden"
                         >
                             Shows total catches made by all players
