@@ -270,28 +270,30 @@ const getProperCatch = (catchCount: number) => {
                                     </div>
                                 </div>
                             </div>
-                            <!-- User Leardboard -->
+                            <!-- User Leaderboard -->
                             <div class="space-y-2">
                                 <div
                                     v-for="(player) in userLeaderboard"
                                     :key="player.id"
                                     class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
                                     :class="[
-                                player.id === user.id ? 'ring-1 ring-white bg-gradient-to-r from-blue-900/50 to-blue-900/40 border-white'
+                                player.id === user.id ? 'ring-1 ring-white bg-gradient-to-r from-blue-900/40 to-blue-900/20 border-white'
                                     : ' bg-gray-700/50 border-gray-600',
                             ]"
                                 >
                                     <div class="flex items-center space-x-4">
-                                        <!-- Rank Badge -->
+                                        <!-- Rank Number -->
                                         <div
                                             class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg"
-                                            :class="player.id === user.id ? 'bg-purple-900 text-purple-700' : 'bg-blue-900/30 text-blue-400'"
+                                            :class="player.id === user.id ? 'bg-purple-900/30 text-purple-200'
+                                                : 'bg-blue-900/30 text-blue-200'"
                                         >
-                                            <component
-                                                :is="getRankIcon(player.rank)"
-                                                class="w-6 h-6"
-                                                :class="player.id === user.id ? 'text-purple-300' : getRankColor(player.rank)"
-                                            />
+                                            <p
+                                                class="w-10 h-6 leading-6 text-center m-auto"
+                                                :class="player.rank > 99 ? 'text-sm' : ''"
+                                            >
+                                                #{{player.rank}}
+                                            </p>
                                         </div>
 
                                         <!-- Player Info -->
@@ -302,12 +304,8 @@ const getProperCatch = (catchCount: number) => {
                                                 >
                                                     {{ player.name }}
                                                 </div>
-                                                <div class="text-lg">
-                                                    {{ getPodiumIcon(player.rank) }}
-                                                </div>
                                             </div>
                                             <div class="text-sm text-gray-300">
-                                                Rank #{{ player.rank }} •
                                                 {{ player.catches }} {{ getProperCatch(player.catches) }}
                                             </div>
                                         </div>
