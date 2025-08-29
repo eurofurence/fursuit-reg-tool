@@ -128,7 +128,7 @@ const rarityOptions = [
 ];
 
 // Counter visibility toggle
-const showCounters = ref(true);
+const showCounters = ref(false);
 const showTooltip = ref(false);
 
 // Handle click outside to hide tooltip
@@ -485,12 +485,20 @@ const getRarityBgColor = (textColor: string) => {
                                 {{ fursuit.species }}
                             </p>
                         </div>
+                        
+                        <!-- Combined Rarity and Counter Badge -->
                         <div class="text-center mx-4">
                             <span
                                 class="px-2 py-1 text-xs font-semibold text-white rounded-full whitespace-nowrap"
                                 :class="getRarityBgColor(fursuit.rarity.color)"
-                                >{{ fursuit.rarity.label }}</span
                             >
+                                <template v-if="fursuit.gallery.scoring > 0 && showCounters">
+                                    {{ fursuit.gallery.scoring }} · {{ fursuit.rarity.label }}
+                                </template>
+                                <template v-else>
+                                    {{ fursuit.rarity.label }}
+                                </template>
+                            </span>
                         </div>
                     </div>
                 </div>
