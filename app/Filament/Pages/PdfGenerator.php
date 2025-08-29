@@ -137,7 +137,6 @@ class PdfGenerator extends Page implements HasForms
         $badges = Badge::whereHas('fursuit', function ($query) use ($selectedEvent) {
                 $query->where('event_id', $selectedEvent->id);
             })
-            ->where('is_free_badge', true)
             ->with(['fursuit.user.eventUsers' => function ($query) use ($selectedEvent) {
                 $query->where('event_id', $selectedEvent->id);
             }])
@@ -283,7 +282,7 @@ class PdfGenerator extends Page implements HasForms
         if (empty($customId)) {
             return [0, 0];
         }
-        
+
         // Parse custom_id like "10-1" or "104-1" into sortable array [10, 1] or [104, 1]
         $parts = explode('-', $customId);
         $result = [];
@@ -305,7 +304,7 @@ class PdfGenerator extends Page implements HasForms
             // Get attendee_id for grouping by range
             $attendeeId = $badge->fursuit?->user?->eventUsers?->first()?->attendee_id ?? 0;
             $attendeeIdNum = (int) $attendeeId;
-            
+
             // Group by attendee_id ranges (0-999, 1000-1999, etc.)
             $rangeStart = intval($attendeeIdNum / 1000) * 1000;
             $rangeEnd = $rangeStart + 999;
