@@ -260,8 +260,8 @@ const getProperCatch = (catchCount: number) => {
                         </div>
                         <div v-if="userLeaderboard.length > 0">
                             <!-- Transition Card -->
-                            <div v-if="leaderboard[leaderboard.length - 1].rank - userLeaderboard[0].rank > 1">
-                                <div class="flex items-center justify-between p-4 mb-2 rounded-lg border transition-all hover:shadow-md bg-gray-700/50 border-gray-600">
+                            <div v-if="userLeaderboard[0].rank - leaderboard[leaderboard.length - 1].rank > 1">
+                                <div class="flex items-center justify-between mb-2 rounded-lg border transition-all hover:shadow-md bg-gray-700/50 border-gray-600">
                                     <div
                                         class="space-y-2 w-full">
                                         <p class="text-md text-center text-white">
