@@ -50,7 +50,7 @@ class GameStatsService
     {
         $cacheKey = $isGlobal ? "leaderboard_global_{$limit}" : "leaderboard_{$filterEvent?->id}_{$limit}";
 
-        $result = Cache::remember($cacheKey, 6, function () use ($filterEvent, $isGlobal, $limit, $rankCutoff) {
+        $result = Cache::remember($cacheKey, 600, function () use ($filterEvent, $isGlobal, $limit, $rankCutoff) {
             $query = User::withCount([
                 'fursuitsCatched' => function ($q) use ($filterEvent, $isGlobal) {
                     if (!$isGlobal && $filterEvent) {
@@ -93,7 +93,7 @@ class GameStatsService
     {
         $cacheKey = $isGlobal ? "user_leaderboard_global" : "user_leaderboard_{$filterEvent?->id}";
 
-        $result = Cache::remember($cacheKey, 6, function () use ($filterEvent, $isGlobal, $userId, $userName, $userCatched, $userRank, $rankCutoff) {
+        $result = Cache::remember($cacheKey, 600, function () use ($filterEvent, $isGlobal, $userId, $userName, $userCatched, $userRank, $rankCutoff) {
             $lower = User::withCount([
                 'fursuitsCatched' => function ($q) use ($filterEvent, $isGlobal, $userId) {
                     if (!$isGlobal && $filterEvent) {
