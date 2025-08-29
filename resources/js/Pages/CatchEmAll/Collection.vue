@@ -378,7 +378,7 @@ const getRarityBgColor = (textColor: string) => {
                         >
                             <button
                                 @click="viewMode = 'list'"
-                                class="px-3 py-2 transition-colors"
+                                class="px-3 py-2 h-9 transition-colors"
                                 :class="
                                     viewMode === 'list'
                                         ? 'bg-blue-500 text-white'
@@ -389,7 +389,7 @@ const getRarityBgColor = (textColor: string) => {
                             </button>
                             <button
                                 @click="viewMode = 'grid'"
-                                class="px-3 py-2 transition-colors"
+                                class="px-3 py-2 h-9 transition-colors"
                                 :class="
                                     viewMode === 'grid'
                                         ? 'bg-blue-500 text-white'
@@ -410,7 +410,7 @@ const getRarityBgColor = (textColor: string) => {
                         <div class="relative">
                             <button
                                 @click="showCounters = !showCounters"
-                                class="px-3 py-2 rounded-lg border border-gray-300 transition-colors"
+                                class="px-3 py-2 rounded-lg border border-gray-300 transition-colors h-10 w-16"
                                 :class="
                                     showCounters
                                         ? 'bg-blue-500 text-white'
