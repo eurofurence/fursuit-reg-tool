@@ -95,8 +95,8 @@ const rarityConfig = computed(() => {
             <p class="text-xs truncate" :class="[rarityConfig.speciesClass]">{{ fursuit.species }}</p>
         </div>
 
-                <!-- Scoring badge -->
-        <div v-if="fursuit.scoring > 0 && !hideCount" 
+                <!-- Catches count -->
+        <div v-show="fursuit.scoring > 0 && !hideCount" 
              class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full shadow-lg border"
              :class="[rarityConfig.badgeClass]">
             {{ fursuit.scoring }}
