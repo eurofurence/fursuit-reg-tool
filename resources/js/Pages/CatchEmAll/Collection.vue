@@ -71,6 +71,11 @@ const eventOptions = computed(() => [
 ]);
 
 const selectedEventValue = ref(props.selectedEvent || "global");
+// View mode toggle
+const viewMode = ref<"grid" | "list">("grid");
+// Counter visibility toggle
+const showCounters = ref(false);
+const showTooltip = ref(false);
 
 const onEventChange = () => {
     console.log("[Collection] Event changed to:", selectedEventValue.value);
@@ -102,9 +107,6 @@ watch(
     { deep: true }
 );
 
-// View mode toggle
-const viewMode = ref<"grid" | "list">("grid");
-
 onMounted(() => {
     const savedViewMode = localStorage.getItem("catch-em-all-collection-view-mode");
     if (savedViewMode && (savedViewMode === "grid" || savedViewMode === "list")) {
@@ -126,10 +128,13 @@ const rarityOptions = [
     { label: "Epic", value: "epic" },
     { label: "Legendary", value: "legendary" },
 ];
-
-// Counter visibility toggle
-const showCounters = ref(false);
-const showTooltip = ref(false);
+const colorMap: Record<string, string> = {
+    "text-yellow-600": "bg-yellow-600",
+    "text-purple-600": "bg-purple-600",
+    "text-blue-600": "bg-blue-600",
+    "text-green-600": "bg-green-600",
+    "text-gray-600": "bg-gray-500"
+};
 
 // Handle click outside to hide tooltip
 const handleClickOutside = (event: Event) => {
@@ -235,13 +240,6 @@ const rarityStats = computed(() => {
 });
 
 const getRarityBgColor = (textColor: string) => {
-    const colorMap: Record<string, string> = {
-        "text-yellow-600": "bg-yellow-600",
-        "text-purple-600": "bg-purple-600",
-        "text-blue-600": "bg-blue-600",
-        "text-green-600": "bg-green-600",
-        "text-gray-600": "bg-gray-500",
-    };
     return colorMap[textColor] || "bg-gray-500";
 };
 </script>
