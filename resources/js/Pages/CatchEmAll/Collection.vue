@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import Card from "primevue/card";
@@ -13,6 +13,7 @@ import {
     Filter,
     Grid3X3,
     List,
+    Info,
 } from "lucide-vue-next";
 import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
 
@@ -44,22 +45,6 @@ const props = defineProps<{
     flash?: any;
 }>();
 
-console.log(
-    "[Collection] Props:",
-    Object.keys(props.collection.species).length
-);
-
-// Debug logs for initial props
-// console.log('[Collection] Received props:', {
-//     collectionExists: !!props.collection,
-//     speciesCount: props.collection?.species?.length,
-//     totalSpecies: props.collection?.totalSpecies,
-//     totalCatches: props.collection?.totalCatches,
-//     eventsCount: props.eventsWithEntries?.length,
-//     selectedEvent: props.selectedEvent,
-//     isGlobal: props.isGlobal
-// })
-
 // Event selection
 const eventOptions = computed(() => [
     { label: "Global (All-Time)", value: "global" },
@@ -70,6 +55,11 @@ const eventOptions = computed(() => [
 ]);
 
 const selectedEventValue = ref(props.selectedEvent || "global");
+// View mode toggle
+const viewMode = ref<"grid" | "list">("grid");
+// Counter visibility toggle
+const showCounters = ref(false);
+const showTooltip = ref(false);
 
 const onEventChange = () => {
     console.log("[Collection] Event changed to:", selectedEventValue.value);
@@ -85,24 +75,18 @@ const onEventChange = () => {
     );
 };
 
-// Monitor collection changes
-watch(
-    () => props.collection,
-    (newVal, oldVal) => {
-        // console.log('[Collection] Collection updated:', {
-        //     hasOldData: !!oldVal,
-        //     hasNewData: !!newVal,
-        //     oldSpeciesCount: oldVal?.species?.length,
-        //     newSpeciesCount: newVal?.species?.length,
-        //     newTotalSpecies: newVal?.totalSpecies,
-        //     newTotalCatches: newVal?.totalCatches
-        // })
-    },
-    { deep: true }
-);
 
-// View mode toggle
-const viewMode = ref<"grid" | "list">("list");
+
+onMounted(() => {
+    const savedViewMode = localStorage.getItem("catch-em-all-collection-view-mode");
+    if (savedViewMode && (savedViewMode === "grid" || savedViewMode === "list")) {
+        viewMode.value = savedViewMode;
+    }
+});
+
+watch(viewMode, (newMode) => {
+    localStorage.setItem("catch-em-all-collection-view-mode", newMode);
+});
 
 // Rarity filter
 const selectedRarity = ref<string>("all");
@@ -114,6 +98,42 @@ const rarityOptions = [
     { label: "Epic", value: "epic" },
     { label: "Legendary", value: "legendary" },
 ];
+const colorMap: Record<string, string> = {
+    "text-yellow-600": "bg-yellow-600",
+    "text-purple-600": "bg-purple-600",
+    "text-blue-600": "bg-blue-600",
+    "text-green-600": "bg-green-600",
+    "text-gray-600": "bg-gray-500"
+};
+
+// Handle click outside to hide tooltip
+const handleClickOutside = (event: Event) => {
+    const target = event.target as HTMLElement;
+    const tooltipContainer = target.closest('.tooltip-container');
+    if (!tooltipContainer && showTooltip.value) {
+        showTooltip.value = false;
+    }
+};
+
+onMounted(() => {
+    document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
+});
+
+// Load counter preference from localStorage
+onMounted(() => {
+    const savedCounterPreference = localStorage.getItem("catch-em-all-show-counters");
+    if (savedCounterPreference !== null) {
+        showCounters.value = JSON.parse(savedCounterPreference);
+    }
+});
+
+watch(showCounters, (newValue) => {
+    localStorage.setItem("catch-em-all-show-counters", JSON.stringify(newValue));
+});
 
 // Filter collection by rarity
 const filteredCollection = computed(() => {
@@ -182,12 +202,16 @@ const rarityStats = computed(() => {
     props.collection.suits.forEach((suit) => {
         const rarity = suit.rarity.level;
         if (stats[rarity] !== undefined) {
-            stats[rarity] += suit.count;
+            stats[rarity] += 1;
         }
     });
 
     return stats;
 });
+
+const getRarityBgColor = (textColor: string) => {
+    return colorMap[textColor] || "bg-gray-500";
+};
 </script>
 
 <template>
@@ -322,7 +346,7 @@ const rarityStats = computed(() => {
                         >
                             <button
                                 @click="viewMode = 'list'"
-                                class="px-3 py-2 transition-colors"
+                                class="px-3 py-2 h-9 transition-colors"
                                 :class="
                                     viewMode === 'list'
                                         ? 'bg-blue-500 text-white'
@@ -333,7 +357,7 @@ const rarityStats = computed(() => {
                             </button>
                             <button
                                 @click="viewMode = 'grid'"
-                                class="px-3 py-2 transition-colors"
+                                class="px-3 py-2 h-9 transition-colors"
                                 :class="
                                     viewMode === 'grid'
                                         ? 'bg-blue-500 text-white'
@@ -344,6 +368,50 @@ const rarityStats = computed(() => {
                             </button>
                         </div>
                     </div>
+
+                    <!-- Counter Toggle -->
+                    <div class="flex-shrink-0 relative tooltip-container">
+                        <label
+                            class="block text-sm font-medium text-gray-300 mb-2"
+                            >Counters:</label
+                        >
+                        <div class="relative">
+                            <button
+                                @click="showCounters = !showCounters"
+                                class="px-3 py-2 rounded-lg border border-gray-300 transition-colors h-10 w-16"
+                                :class="
+                                    showCounters
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                                "
+                                :title="showCounters 
+                                    ? 'Hide scoring numbers on fursuit cards' 
+                                    : 'Show scoring numbers on fursuit cards'"
+                            >
+                                <span class="text-sm font-medium">
+                                    {{ showCounters ? 'Hide' : 'Show' }}
+                                </span>
+                            </button>
+                            
+                            <!-- Mobile Tooltip Info Button -->
+                            <button
+                                @click="showTooltip = !showTooltip"
+                                class="absolute -top-1 -right-1 w-4 h-4 bg-gray-500 hover:bg-gray-600 text-white rounded-full flex items-center justify-center md:hidden"
+                                type="button"
+                            >
+                                <Info class="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                        
+                        <!-- Mobile Tooltip -->
+                        <div 
+                            v-show="showTooltip"
+                            class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap md:hidden"
+                        >
+                            Shows total catches made by all players
+                            <div class="absolute -top-1 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-gray-800"></div>
+                        </div>
+                    </div>
                 </div>
             </template>
         </Card>
@@ -351,15 +419,55 @@ const rarityStats = computed(() => {
         <!-- Collection Display -->
         <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
+                <!-- Grid View -->
                 <div
-                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8"
+                    v-if="viewMode === 'grid'"
+                    class="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
                 >
                     <div
                         v-for="fursuit in filteredCollection"
                         :key="fursuit.gallery.id"
                         class="cursor-pointer transform transition-transform hover:scale-105"
                     >
-                        <GalleryItem :fursuit="fursuit.gallery" />
+                        <GalleryItem :fursuit="fursuit.gallery" :rarity="fursuit.rarity" :hideCount="!showCounters" />
+                    </div>
+                </div>
+
+                <!-- List View -->
+                <div v-else class="space-y-2">
+                    <div
+                        v-for="fursuit in filteredCollection"
+                        :key="fursuit.gallery.id"
+                        class="flex items-center p-3 bg-gray-800 rounded-lg shadow-sm border border-gray-700"
+                    >
+                        <img
+                            :src="fursuit.gallery.image"
+                            :alt="fursuit.gallery.name"
+                            class="w-12 h-12 rounded-md object-cover mr-4"
+                        />
+                        <div class="flex-1">
+                            <h4 class="font-bold text-base text-gray-200">
+                                {{ fursuit.gallery.name }}
+                            </h4>
+                            <p class="text-sm text-gray-400">
+                                {{ fursuit.species }}
+                            </p>
+                        </div>
+                        
+                        <!-- Combined Rarity and Counter Badge -->
+                        <div class="text-center mx-4">
+                            <span
+                                class="px-2 py-1 text-xs font-semibold text-white rounded-full whitespace-nowrap"
+                                :class="getRarityBgColor(fursuit.rarity.color)"
+                            >
+                                <template v-if="fursuit.gallery.scoring > 0 && showCounters">
+                                    {{ fursuit.gallery.scoring }} · {{ fursuit.rarity.label }}
+                                </template>
+                                <template v-else>
+                                    {{ fursuit.rarity.label }}
+                                </template>
+                            </span>
+                        </div>
                     </div>
                 </div>
 
