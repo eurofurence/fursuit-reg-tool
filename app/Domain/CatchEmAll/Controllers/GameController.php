@@ -136,12 +136,13 @@ class GameController extends Controller
     {
         $selectedEventId = $request->get('event');
         $isGlobal = $selectedEventId === 'global';
+        $rankCutoff = 3;
 
         $currentEvent = $this->getCurrentEvent();
         $filterEvent = $this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
 
         // Get leaderboard data
-        $leaderboard = $this->gameStatsService->getLeaderboard($filterEvent, $isGlobal, 3); // Show more players
+        $leaderboard = $this->gameStatsService->getLeaderboard($filterEvent, $isGlobal, 50, $rankCutoff); // Show more players
 
         // Get events for filter dropdown
         $eventsWithEntries = $this->getEventsWithEntries();
@@ -149,10 +150,21 @@ class GameController extends Controller
         $user = Auth::user();
         $userStat = $this->gameStatsService->getUserStats($user, $selectedEventId, $isGlobal);
 
+        $userLeaderboard = [];
+        if ($userStat['rank'] > $rankCutoff && $userStat['totalCatches'] > 0) {
+            $userLeaderboard = $this->gameStatsService->getUserLeaderboard($user->id,
+                $userStat['rank'],
+                $userStat['totalCatches'],
+                $user->name,
+                $rankCutoff,
+                $selectedEventId,
+                $isGlobal);
+        }
+
         return Inertia::render('CatchEmAll/Leaderboard', [
             'user' => $user,
-            'userStat' => $userStat,
             'leaderboard' => $leaderboard,
+            'userLeaderboard' => $userLeaderboard,
             'eventsWithEntries' => $eventsWithEntries,
             'selectedEvent' => $selectedEventId ?: ($filterEvent?->id ?? 'global'),
             'isGlobal' => $isGlobal,
@@ -340,6 +352,8 @@ class GameController extends Controller
             "collection_global_{$userId}",
             "collection_{$eventId}_{$userId}",
             "total_fursuiters_{$eventId}", // TODO: Forget when new fursuit gets approved and not here
+            "user_leaderboard_global",
+            "user_leaderboard_{$eventId}",
         ];
 
         foreach ($keys as $key) {

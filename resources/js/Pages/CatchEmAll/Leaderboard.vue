@@ -11,15 +11,13 @@ const props = defineProps<{
         id : number;
         name : string;
     };
-    userStat : {
-        rank: number;
-        totalCatches: number;
-        uniqueSpecies: number;
-        totalAvailable: number;
-        completionPercentage: number;
-        rarityStats: Record<string, any>;
-    };
     leaderboard: Array<{
+        id : number;
+        name : string;
+        rank : number;
+        catches : number;
+    }>;
+    userLeaderboard: Array<{
         id : number;
         name : string;
         rank : number;
@@ -114,20 +112,25 @@ const getProperCatch = (catchCount: number) => {
         <!-- Leaderboard -->
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
-                <div class="text-center mb-6">
+                <div class="text-center justify-center mb-6">
+                    <div
+                        class="w-20 h-20 m-auto rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mb-2 border-4 border-yellow-200 shadow-lg"
+                    >
+                        <Crown class="w-10 h-10 text-white" />
+                    </div>
                     <p class="text-sm text-gray-300">
                         {{
                             props.isGlobal
                                 ? "All-time champions"
                                 : "Event champions"
                         }}
-                        • {{ props.leaderboard.length }} hunters
+                        • {{ props.leaderboard.length }} top hunters
                     </p>
                 </div>
 
                 <div class="space-y-3">
                     <!-- Top 3 Podium -->
-                    <div v-if="leaderboard.length >= 3" class="mb-6">
+                    <div hidden v-if="leaderboard.length >= 3" class="mb-6">
                         <div
                             class="flex items-end justify-center space-x-4 mb-4"
                         >
@@ -144,7 +147,7 @@ const getProperCatch = (catchCount: number) => {
                                     >
                                         {{ leaderboard[1]?.name }}
                                     </div>
-                                    <div class="text-xs text-gray-400">
+                                    <div class="text-xs text-gray-300">
                                         {{ leaderboard[1]?.catches }} {{ getProperCatch(leaderboard[1]?.catches) }}
                                     </div>
                                 </div>
@@ -182,7 +185,7 @@ const getProperCatch = (catchCount: number) => {
                                     >
                                         {{ leaderboard[2]?.name }}
                                     </div>
-                                    <div class="text-xs text-gray-400">
+                                    <div class="text-xs text-gray-300">
                                         {{ leaderboard[2]?.catches }} {{ getProperCatch(leaderboard[2]?.catches) }}
                                     </div>
                                 </div>
@@ -193,14 +196,14 @@ const getProperCatch = (catchCount: number) => {
                     <!-- Partial Leaderboard List -->
                     <div class="space-y-2">
                         <div
-                            v-for="(player, index) in leaderboard"
+                            v-for="(player) in leaderboard"
                             :key="player.id"
                             class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
                             :class="[
-                                index < 3
-                                    ? 'bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border-yellow-700'
-                                    : 'bg-gray-700/50 border-gray-600',
-                                index === 0 ? 'ring-2 ring-yellow-300' : '',
+                                player.rank === 1 ? 'ring-2 ring-yellow-300 bg-gradient-to-r from-yellow-900/50 to-yellow-900/40 border-yellow-700'
+                                    : player.rank === 2 ? 'bg-gradient-to-r from-gray-700/30 to-gray-900/30'
+                                    : player.rank === 3 ? 'bg-gradient-to-r from-orange-900/30 to-orange-900/20'
+                                    : ' bg-gray-700/50 border-gray-600',
                             ]"
                         >
                             <div class="flex items-center space-x-4">
@@ -208,12 +211,9 @@ const getProperCatch = (catchCount: number) => {
                                 <div
                                     class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg"
                                     :class="[
-                                        index === 0
-                                            ? 'bg-yellow-900/30 text-yellow-400'
-                                            : index === 1
-                                            ? 'bg-gray-700 text-gray-300'
-                                            : index === 2
-                                            ? 'bg-amber-900/30 text-amber-400'
+                                        player.rank === 1 ? 'bg-yellow-900/30 text-yellow-400'
+                                            : player.rank === 2 ? 'bg-gray-700 text-gray-300'
+                                            : player.rank === 3 ? 'bg-amber-900/30 text-amber-400'
                                             : 'bg-blue-900/30 text-blue-400',
                                     ]"
                                 >
@@ -232,11 +232,11 @@ const getProperCatch = (catchCount: number) => {
                                         >
                                             {{ player.name }}
                                         </div>
-                                        <div v-if="index < 3" class="text-lg">
+                                        <div class="text-lg">
                                             {{ getPodiumIcon(player.rank) }}
                                         </div>
                                     </div>
-                                    <div class="text-sm text-gray-400">
+                                    <div class="text-sm text-gray-300">
                                         Rank #{{ player.rank }} •
                                         {{ player.catches }} {{ getProperCatch(player.catches) }}
                                     </div>
@@ -248,82 +248,99 @@ const getProperCatch = (catchCount: number) => {
                                 <div
                                     class="font-bold text-xl"
                                     :class="
-                                        index < 3
+                                        player.rank <= 3
                                             ? 'text-blue-400'
                                             : 'text-gray-100'
                                     "
                                 >
                                     {{ player.catches }}
                                 </div>
-                                <div class="text-xs text-gray-400">catches</div>
+                                <div class="text-xs text-gray-300">{{ getProperCatch(player.catches) }}</div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Empty State -->
-                    <div
-                        v-if="leaderboard.length === 0"
-                        class="text-center py-8"
-                    >
-                        <Trophy class="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                        <h3 class="text-lg font-medium text-gray-300 mb-2">
-                            No hunters yet!
-                        </h3>
-                        <p class="text-gray-400">
-                            Be the first to catch some fursuiters and claim the
-                            top spot.
-                        </p>
-                    </div>
-                </div>
-            </template>
-        </Card>
-        <Card
-            class="bg-gray-800 border border-gray-700 shadow-sm"
-            v-if="leaderboard.length > 2 && !leaderboard.some(current => current.id === user.id)"
-        >
-            <template #content>
-                <div class="space-y-2">
-                    <!-- User Information if not in top 3 -->
-                    <div
-                        class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
-                    >
-                        <div class="flex items-center space-x-4">
-                            <div
-                                class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg bg-blue-900/30 text-blue-400"
-                            >
-                                <component
-                                    :is="getRankIcon(userStat.rank)"
-                                    class="w-6 h-6"
-                                    :class="getRankColor(userStat.rank)"
-                                />
-                            </div>
-
-                            <!-- Player Info -->
-                            <div>
-                                <div class="flex items-center space-x-2">
+                        <div v-if="userLeaderboard.length > 0">
+                            <!-- Transition Card -->
+                            <div v-if="userLeaderboard[0].rank - leaderboard[leaderboard.length - 1].rank > 1">
+                                <div class="flex items-center justify-between mb-2 rounded-lg border transition-all hover:shadow-md bg-gray-700/50 border-gray-600">
                                     <div
-                                        class="font-semibold text-gray-100"
-                                    >
-                                        {{ user.name }}
-                                    </div>
-                                    <div class="text-lg">
-                                        {{ getPodiumIcon(userStat.rank) }}
+                                        class="space-y-2 w-full">
+                                        <p class="text-md text-center text-white">
+                                            . . .
+                                        </p>
                                     </div>
                                 </div>
-                                <div class="text-sm text-gray-400">
-                                    Rank #{{ userStat.rank }} •
-                                    {{ userStat.totalCatches }} {{ getProperCatch(userStat.totalCatches) }}
+                            </div>
+                            <!-- User Leaderboard -->
+                            <div class="space-y-2">
+                                <div
+                                    v-for="(player) in userLeaderboard"
+                                    :key="player.id"
+                                    class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
+                                    :class="[
+                                player.id === user.id ? 'ring-1 ring-white bg-gradient-to-r from-blue-900/40 to-blue-900/20 border-white'
+                                    : ' bg-gray-700/50 border-gray-600',
+                            ]"
+                                >
+                                    <div class="flex items-center space-x-4">
+                                        <!-- Rank Number -->
+                                        <div
+                                            class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg"
+                                            :class="player.id === user.id ? 'bg-purple-900/30 text-purple-200'
+                                                : 'bg-blue-900/30 text-blue-200'"
+                                        >
+                                            <p
+                                                class="w-10 h-6 leading-6 text-center m-auto"
+                                                :class="player.rank > 99 ? 'text-sm' : ''"
+                                            >
+                                                #{{player.rank}}
+                                            </p>
+                                        </div>
+
+                                        <!-- Player Info -->
+                                        <div>
+                                            <div class="flex items-center space-x-2">
+                                                <div
+                                                    class="font-semibold text-gray-100"
+                                                >
+                                                    {{ player.name }}
+                                                </div>
+                                            </div>
+                                            <div class="text-sm text-gray-300">
+                                                {{ player.catches }} {{ getProperCatch(player.catches) }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Points -->
+                                    <div class="text-right">
+                                        <div
+                                            class="font-bold text-xl"
+                                            :class="
+                                        player.rank <= 3
+                                            ? 'text-blue-400'
+                                            : 'text-gray-100'
+                                    "
+                                        >
+                                            {{ player.catches }}
+                                        </div>
+                                        <div class="text-xs text-gray-300">{{ getProperCatch(player.catches) }}</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <!-- Points -->
-                        <div class="text-right">
-                            <div
-                                class="font-bold text-xl text-gray-100"
-                            >
-                                {{ leaderboard[2].catches - userStat.totalCatches }}
-                            </div>
-                            <div class="text-xs text-gray-400">{{ getProperCatch(leaderboard[2].catches - userStat.totalCatches) }} away</div>
+                        <!-- Empty State -->
+                        <div
+                            v-if="leaderboard.length === 0"
+                            class="text-center py-8"
+                        >
+                            <Trophy class="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                            <h3 class="text-lg font-medium text-gray-300 mb-2">
+                                No hunters yet!
+                            </h3>
+                            <p class="text-gray-400">
+                                Be the first to catch some fursuiters and claim the
+                                top spot.
+                            </p>
                         </div>
                     </div>
                 </div>
