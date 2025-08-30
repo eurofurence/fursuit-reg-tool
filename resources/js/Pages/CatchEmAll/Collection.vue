@@ -45,22 +45,6 @@ const props = defineProps<{
     flash?: any;
 }>();
 
-console.log(
-    "[Collection] Props:",
-    Object.keys(props.collection.species).length
-);
-
-// Debug logs for initial props
-// console.log('[Collection] Received props:', {
-//     collectionExists: !!props.collection,
-//     speciesCount: props.collection?.species?.length,
-//     totalSpecies: props.collection?.totalSpecies,
-//     totalCatches: props.collection?.totalCatches,
-//     eventsCount: props.eventsWithEntries?.length,
-//     selectedEvent: props.selectedEvent,
-//     isGlobal: props.isGlobal
-// })
-
 // Event selection
 const eventOptions = computed(() => [
     { label: "Global (All-Time)", value: "global" },
@@ -91,21 +75,7 @@ const onEventChange = () => {
     );
 };
 
-// Monitor collection changes
-watch(
-    () => props.collection,
-    (newVal, oldVal) => {
-        // console.log('[Collection] Collection updated:', {
-        //     hasOldData: !!oldVal,
-        //     hasNewData: !!newVal,
-        //     oldSpeciesCount: oldVal?.species?.length,
-        //     newSpeciesCount: newVal?.species?.length,
-        //     newTotalSpecies: newVal?.totalSpecies,
-        //     newTotalCatches: newVal?.totalCatches
-        // })
-    },
-    { deep: true }
-);
+
 
 onMounted(() => {
     const savedViewMode = localStorage.getItem("catch-em-all-collection-view-mode");
