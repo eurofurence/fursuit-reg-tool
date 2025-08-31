@@ -2,82 +2,75 @@
 
 namespace App\Domain\CatchEmAll\Achievements;
 
-use App\Domain\CatchEmAll\Interface\Achievement;
-use App\Domain\CatchEmAll\Models\UserCatch;
-use App\Models\User;
+use App\Domain\CatchEmAll\Enums\SpecialCodeType;
+use App\Domain\CatchEmAll\Interface\SpecialAchievement;
+use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class BugBountyHunter implements Achievement
+class BugBountyHunter implements SpecialAchievement
 {
-    /**
-     * @inheritDoc
-     */
+
     public function getId(): string
     {
         return 'bug_bounty_hunter';
     }
 
-    /**
-     * @inheritDoc
-     */
+
     public function getTile(): string
     {
         return 'Bug Bounty Hunter';
     }
 
-    /**
-     * @inheritDoc
-     */
+
     public function getDescription(): string
     {
         return 'Thanks for the QA! Your contribution is noted.';
     }
 
-    /**
-     * @inheritDoc
-     */
+
     public function getIcon(): string
     {
         return '🐛';
     }
 
-    /**
-     * @inheritDoc
-     */
+
     public function getMaxProgress(): int
     {
         return 1;
     }
 
-    /**
-     * @inheritDoc
-     */
+
     public function isSecret(): bool
     {
         return true;
     }
 
-    /**
-     * @inheritDoc
-     */
+
     public function isOptional(): bool
     {
         return true;
     }
 
-    /**
-     * @inheritDoc
-     */
+
     public function isHidden(): bool
     {
         return false;
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function updateAchievementProgress(User $user, UserCatch $newCatch): bool
+
+    public function updateAchievementProgress(AchievementUpdateContext $context): bool
     {
-        \App\Domain\CatchEmAll\Services\AchievementService::grantAchievement($user, $this);
+        // This achievement can only be triggered by special code, not by catches
+        if (!$context->isSpecialCodeTrigger() || $context->specialCodeType !== SpecialCodeType::BUG_BOUNTY) {
+            return false;
+        }
+
+        \App\Domain\CatchEmAll\Services\AchievementService::grantAchievement($context->user, $this);
         return true;
+    }
+
+
+    public function getSpecialCode(): SpecialCodeType
+    {
+        return SpecialCodeType::BUG_BOUNTY;
     }
 }

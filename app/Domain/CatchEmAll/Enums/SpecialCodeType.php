@@ -2,7 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Enums;
 
-enum SpecialCodeTypes
+enum SpecialCodeType
 {
     // Thank you for your service
     case STUFF;

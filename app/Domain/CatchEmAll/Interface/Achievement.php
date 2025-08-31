@@ -2,19 +2,17 @@
 
 namespace App\Domain\CatchEmAll\Interface;
 
-use App\Domain\CatchEmAll\Models\UserCatch;
-use App\Models\User;
+use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
 interface Achievement
 {
     /**
      * Updates the progress of the achievement for the given user.
      *
-     * @param User $user The user to update the achievement for
-     * @param UserCatch $newCatch The new catch to update the achievement progress with
-     * @return void
+     * @param AchievementUpdateContext $context Contains user, catch data, and pre-calculated statistics
+     * @return bool True if the achievement was updated/completed, false otherwise
      */
-    public function updateAchievementProgress(User $user, UserCatch $newCatch): bool;
+    public function updateAchievementProgress(AchievementUpdateContext $context): bool;
 
     /**
      * Get the unique identifier for the achievement.
