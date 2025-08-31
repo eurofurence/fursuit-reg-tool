@@ -73,4 +73,10 @@ class BugBountyHunter implements SpecialAchievement
     {
         return SpecialCodeType::BUG_BOUNTY;
     }
+
+
+    public function getSpecialCode(): SpecialCodeType
+    {
+        return SpecialCodeType::BUG_BOUNTY;
+    }
 }
