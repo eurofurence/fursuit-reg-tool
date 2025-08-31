@@ -57,15 +57,15 @@ class BugBountyHunter implements SpecialAchievement
     }
 
 
-    public function updateAchievementProgress(AchievementUpdateContext $context): bool
+    public function updateAchievementProgress(AchievementUpdateContext $context): int
     {
         // This achievement can only be triggered by special code, not by catches
         if (!$context->isSpecialCodeTrigger() || $context->specialCodeType !== SpecialCodeType::BUG_BOUNTY) {
-            return false;
+            return -1; // Ignore this update
         }
 
-        \App\Domain\CatchEmAll\Services\AchievementService::grantAchievement($context->user, $this);
-        return true;
+        // Return completion progress - achievement granting is handled by AchievementService
+        return $this->getMaxProgress(); // Return 1 (completed)
     }
 
 

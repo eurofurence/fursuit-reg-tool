@@ -2,7 +2,15 @@
 
 namespace App\Domain\CatchEmAll\Achievements\Utils;
 
+use App\Domain\CatchEmAll\Achievements\Archivist;
 use App\Domain\CatchEmAll\Achievements\BugBountyHunter;
+use App\Domain\CatchEmAll\Achievements\Collector;
+use App\Domain\CatchEmAll\Achievements\Curator;
+use App\Domain\CatchEmAll\Achievements\FirstCatch;
+use App\Domain\CatchEmAll\Achievements\FuredexComplete;
+use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
+use App\Domain\CatchEmAll\Achievements\Nice;
+use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
@@ -18,6 +26,14 @@ class AchievementRegister
      */
     private static array $achievementClasses = [
         BugBountyHunter::class,
+        FirstCatch::class,
+        Collector::class,
+        Curator::class,
+        Archivist::class,
+        GottaCatchEmAll::class,
+        Nice::class,
+        TheLegendary151::class,
+        FuredexComplete::class,
         // Add new achievements here in the format:
         // AchievementClassName::class,
     ];
@@ -55,6 +71,22 @@ class AchievementRegister
     protected static array $normalAchievements = [];
 
     /**
+     * Count of required (non-optional) achievements for 100% completion.
+     * Built during initialization.
+     *
+     * @var int
+     */
+    protected static int $requiredAchievementCount = 0;
+
+    /**
+     * Count of optional achievements.
+     * Built during initialization.
+     *
+     * @var int
+     */
+    protected static int $optionalAchievementCount = 0;
+
+    /**
      * Initialize the achievement register.
      * This method is called once during application startup.
      *
@@ -71,11 +103,16 @@ class AchievementRegister
         // Build all indexes
         self::buildIndexes();
 
+        // Calculate achievement counts
+        self::calculateAchievementCounts();
+
         // Log initialization
         Log::info('AchievementRegister initialized with ' . count(self::$achievements) . ' achievements', [
             'total_achievements' => count(self::$achievements),
             'special_achievements' => count(self::$specialCodeIndex),
             'normal_achievements' => count(self::$normalAchievements),
+            'required_achievements' => self::$requiredAchievementCount,
+            'optional_achievements' => self::$optionalAchievementCount,
         ]);
     }
 
@@ -161,6 +198,26 @@ class AchievementRegister
     }
 
     /**
+     * Calculate achievement counts for required and optional achievements.
+     * Called during initialization.
+     *
+     * @return void
+     */
+    protected static function calculateAchievementCounts(): void
+    {
+        self::$requiredAchievementCount = 0;
+        self::$optionalAchievementCount = 0;
+
+        foreach (self::$achievements as $achievement) {
+            if ($achievement->isOptional()) {
+                self::$optionalAchievementCount++;
+            } else {
+                self::$requiredAchievementCount++;
+            }
+        }
+    }
+
+    /**
      * Get an achievement by its ID using the index for fast lookup.
      *
      * @param string $achievementId
@@ -203,6 +260,17 @@ class AchievementRegister
     }
 
     /**
+     * Get special achievements by their special code.
+     *
+     * @param SpecialCodeType $specialCode
+     * @return array<SpecialAchievement>
+     */
+    public static function getSpecialAchievementsByCode(SpecialCodeType $specialCode): array
+    {
+        return self::$specialCodeIndex[$specialCode->name] ?? [];
+    }
+
+    /**
      * Get all achievement instances.
      *
      * @return array<Achievement>
@@ -231,6 +299,26 @@ class AchievementRegister
     public static function getAchievement(string $className): ?Achievement
     {
         return self::$achievements[$className] ?? null;
+    }
+
+    /**
+     * Get the number of required (non-optional) achievements for 100% completion.
+     *
+     * @return int
+     */
+    public static function getRequiredAchievementCount(): int
+    {
+        return self::$requiredAchievementCount;
+    }
+
+    /**
+     * Get the number of optional achievements.
+     *
+     * @return int
+     */
+    public static function getOptionalAchievementCount(): int
+    {
+        return self::$optionalAchievementCount;
     }
 
     /**

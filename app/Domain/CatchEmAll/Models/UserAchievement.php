@@ -18,7 +18,7 @@ class UserAchievement extends Model
     ];
 
     protected $casts = [
-        'achievement' => AchievementOLD::class,
+        'achievement' => 'string',
         'earned_at' => 'datetime',
         'progress' => 'integer',
         'max_progress' => 'integer',
@@ -32,14 +32,5 @@ class UserAchievement extends Model
     public function isCompleted(): bool
     {
         return $this->earned_at !== null;
-    }
-
-    public function getProgressPercentage(): int
-    {
-        if ($this->max_progress === 0) {
-            return 100;
-        }
-
-        return min(100, (int) round(($this->progress / $this->max_progress) * 100));
     }
 }

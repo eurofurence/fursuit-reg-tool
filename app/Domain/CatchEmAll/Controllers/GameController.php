@@ -2,6 +2,8 @@
 
 namespace App\Domain\CatchEmAll\Controllers;
 
+use App\Domain\CatchEmAll\Achievements\Utils\AchievementFactory;
+use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Domain\CatchEmAll\Models\UserCatch;
@@ -48,7 +50,7 @@ class GameController extends Controller
         $collection = $this->gameStatsService->getUserCollection($user, $filterEvent, $isGlobal);
 
         // Get user's achievements
-        $achievements = $this->getUserAchievements($user);
+        $achievements = AchievementFactory::getUserAchievementData($user);
 
         // Get events for filter dropdown
         $eventsWithEntries = $this->getEventsWithEntries();
@@ -90,6 +92,9 @@ class GameController extends Controller
         $logEntry = $this->createCatchLog($event, $user, $catchCode);
 
         // Check for both special code and fursuit code simultaneously
+        /**
+         * @var SpecialCode|null
+         */
         $specialCode = SpecialCode::where('event_id', $event->id)
             ->where('code', $catchCode)
             ->first();
@@ -102,30 +107,29 @@ class GameController extends Controller
             return to_route('catch-em-all.catch')->with('error', 'Invalid Code - Try Again!');
         }
 
-        $specialCodeResult = null;
-        $fursuitCatchResult = null;
         $errors = [];
+        $wasSuccessful = true;
+        $userCatch = null;
+        /**
+         * @var SpecialCodeType|null $specialCodeResult
+         */
+        $specialCodeType = null;
 
-        // Process special code if it exists
         if ($specialCode) {
             try {
                 $actionInstance = $specialCode->createActionInstance();
-                $specialCodeResult = $actionInstance->use($user);
-
-                // Process special code achievements
-                $this->achievementService->processSpecialAchievements($user, $specialCodeResult);
+                $specialCodeType = $actionInstance->use($user);
             } catch (\Exception $e) {
                 $errors[] = 'Error processing special code';
             }
         }
 
-        // Process fursuit code if it exists
+        // Check if user is trying to catch themselves
         if ($fursuit) {
-            // Check if user is trying to catch themselves
             if ($user->id === $fursuit->user_id) {
                 if (!$specialCode) {
-                    // Only show this error if there's no special code to fall back on
                     $errors[] = "You can't catch yourself!";
+                    $wasSuccessful = false;
                 }
             } else {
                 // Check if already caught
@@ -137,8 +141,8 @@ class GameController extends Controller
 
                 if ($alreadyCaught) {
                     if (!$specialCode) {
-                        // Only show this error if there's no special code to fall back on
                         $errors[] = 'Already caught this fursuiter!';
+                        $wasSuccessful = false;
                     }
                 } else {
                     // Success! Create the catch record
@@ -148,16 +152,19 @@ class GameController extends Controller
                         'event_id' => $event->id,
                     ]);
                     $userCatch->save();
-                    $fursuitCatchResult = $userCatch;
-
-                    // Process fursuit achievements
-                    $this->achievementService->processAchievements($user, $userCatch);
                 }
             }
         }
 
+        if ($wasSuccessful) {
+            $this->achievementService->processAchievements(
+                $user,
+                $userCatch,
+                $specialCodeType,
+            );
+        }
+
         // Determine success/failure and log
-        $wasSuccessful = ($specialCodeResult !== null) || ($fursuitCatchResult !== null);
         $logEntry->is_successful = $wasSuccessful;
         $logEntry->save();
 
@@ -172,15 +179,15 @@ class GameController extends Controller
         }
 
         // Determine response message and redirect
-        if ($specialCodeResult && $fursuitCatchResult) {
+        if ($specialCode && $fursuit) {
             // Both were successful
             return to_route('catch-em-all.catch')
                 ->with('caught_fursuit', $fursuit->id)
                 ->with('success', 'Special code redeemed and fursuiter caught!');
-        } elseif ($specialCodeResult) {
+        } elseif ($specialCode) {
             // Only special code was successful
             return to_route('catch-em-all.catch')->with('success', 'Special code redeemed successfully!');
-        } elseif ($fursuitCatchResult) {
+        } elseif ($fursuit) {
             // Only fursuit catch was successful
             return to_route('catch-em-all.catch')->with('caught_fursuit', $fursuit->id);
         }
@@ -239,7 +246,7 @@ class GameController extends Controller
     public function achievements()
     {
         $user = Auth::user();
-        $achievements = $this->getUserAchievements($user, true); // Include progress details
+        $achievements = AchievementFactory::getUserAchievementData($user);
 
         return Inertia::render('CatchEmAll/Achievements', [
             'achievements' => $achievements,
@@ -289,35 +296,6 @@ class GameController extends Controller
         }
 
         return Event::find($selectedEventId);
-    }
-
-    private function getUserAchievements(User $user, bool $detailed = false)
-    {
-        $query = UserAchievement::where('user_id', $user->id);
-
-        if (!$detailed) {
-            $query->where('earned_at', '!=', null);
-        }
-
-        $achievements = $query->get();
-        $result = [];
-
-        foreach ($achievements as $achievement) {
-            $result[] = [
-                'id' => $achievement->id,
-                'achievement' => $achievement->achievement->value,
-                'title' => $achievement->achievement->getTitle(),
-                'description' => $achievement->achievement->getDescription(),
-                'icon' => $achievement->achievement->getIcon(),
-                'completed' => $achievement->isCompleted(),
-                'progress' => $achievement->progress,
-                'maxProgress' => $achievement->max_progress,
-                'progressPercentage' => $achievement->getProgressPercentage(),
-                'earnedAt' => $achievement->earned_at,
-            ];
-        }
-
-        return $result;
     }
 
     private function getEventsWithEntries()

@@ -9,10 +9,15 @@ interface Achievement
     /**
      * Updates the progress of the achievement for the given user.
      *
+     * IMPORTANT: This method should ONLY return the current progress value.
+     * It should NOT grant achievements to the user or update his achievement records.
+     * Achievement granting is handled by the AchievementService automatically.
+     * Only override this behavior if you know what you are doing. (Hint use -1 as return for own handling)
+     *
      * @param AchievementUpdateContext $context Contains user, catch data, and pre-calculated statistics
-     * @return bool True if the achievement was updated/completed, false otherwise
+     * @return int The current progress value. If negative, the change should be ignored from outside.
      */
-    public function updateAchievementProgress(AchievementUpdateContext $context): bool;
+    public function updateAchievementProgress(AchievementUpdateContext $context): int;
 
     /**
      * Get the unique identifier for the achievement.

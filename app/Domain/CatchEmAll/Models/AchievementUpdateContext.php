@@ -15,6 +15,9 @@ readonly class AchievementUpdateContext
         public User $user,
         public ?UserCatch $userCatch,
         public ?SpecialCodeType $specialCodeType,
+        public int $userTotalCatches,
+        public int $totalCatchableFursuits,
+        public int $userUniqueFursuits,
     ) {
     }
 
@@ -26,28 +29,26 @@ readonly class AchievementUpdateContext
      * @param SpecialCodeType|null $specialCodeType Optional special code that triggered this catch
      * @return self
      */
-    public static function fromCatch(User $user, UserCatch $userCatch, ?SpecialCodeType $specialCodeType = null): self
+    public static function fromCatch(User $user, ?UserCatch $userCatch = null, ?SpecialCodeType $specialCodeType = null): self
     {
+        if ($userCatch === null && $specialCodeType === null) {
+            throw new \InvalidArgumentException('Either userCatch or specialCodeType must be provided');
+        }
+
+        // Calculate user statistics
+        $userTotalCatches = UserCatch::where('user_id', $user->id)->count();
+        $totalCatchableFursuits = \App\Models\Fursuit\Fursuit::count();
+        $userUniqueFursuits = UserCatch::where('user_id', $user->id)
+            ->distinct('fursuit_id')
+            ->count();
+
         return new self(
             user: $user,
             userCatch: $userCatch,
             specialCodeType: $specialCodeType,
-        );
-    }
-
-    /**
-     * Create an AchievementUpdateContext for special code triggers (no catch involved).
-     *
-     * @param User $user
-     * @param SpecialCodeType $specialCodeType
-     * @return self
-     */
-    public static function fromSpecialCode(User $user, SpecialCodeType $specialCodeType): self
-    {
-        return new self(
-            user: $user,
-            userCatch: null,
-            specialCodeType: $specialCodeType,
+            userTotalCatches: $userTotalCatches,
+            totalCatchableFursuits: $totalCatchableFursuits,
+            userUniqueFursuits: $userUniqueFursuits,
         );
     }
 
