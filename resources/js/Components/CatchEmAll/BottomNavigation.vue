@@ -58,9 +58,8 @@ const navItems = [
         key: 'profile',
         label: 'Profile',
         icon: User,
-        route: 'catch-em-all.collection', // No route yet
-        color: 'text-gray-500',
-        disabled: true
+        route: 'catch-em-all.profile',
+        color: 'text-gray-500'
     }
 ]
 </script>
