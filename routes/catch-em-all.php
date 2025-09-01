@@ -34,4 +34,5 @@ Route::middleware(['catch-auth:web', 'catch-introduction'])->group(function () {
     Route::get('/achievements', [GameController::class, 'achievements'])->name('achievements');
     Route::get('/collection', [GameController::class, 'collection'])->name('collection');
     Route::post('/catch', [GameController::class, 'catch'])->name('catch.submit');
+    Route::get('/profile', [GameController::class, 'profile'])->name('profile');
 });
