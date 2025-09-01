@@ -2,7 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Models;
 
-use App\Domain\CatchEmAll\Enums\SpeciesRarity;
+use App\Domain\CatchEmAll\Enums\FursuitRarity;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,11 +19,9 @@ class UserCatch extends Model
         'user_id',
         'fursuit_id',
         'event_id',
-        'points_earned',
     ];
 
     protected $casts = [
-        'points_earned' => 'integer',
     ];
 
     public function user(): BelongsTo
@@ -41,34 +39,37 @@ class UserCatch extends Model
         return $this->belongsTo(\App\Models\Event::class);
     }
 
-    public function getSpeciesRarity(): SpeciesRarity
+    public function getFursuitRarity(): FursuitRarity
     {
-        if (! $this->fursuit || ! $this->fursuit->species) {
-            return SpeciesRarity::COMMON;
-        }
+        // Calculate rarity based on global frequency of fursuits
+        $count = $this->getCatches();
 
-        // Calculate rarity based on global frequency of species
-        $speciesCount = Fursuit::whereHas('species', function ($query) {
-            $query->where('id', $this->fursuit->species->id);
-        })->count();
-
-        return match (true) {
-            $speciesCount >= config('fcea.species_rarity_threshold_common') => SpeciesRarity::COMMON,
-            $speciesCount >= config('fcea.species_rarity_threshold_uncommon') => SpeciesRarity::UNCOMMON,
-            $speciesCount >= config('fcea.species_rarity_threshold_rare') => SpeciesRarity::RARE,
-            $speciesCount >= config('fcea.species_rarity_threshold_epic') => SpeciesRarity::EPIC,
-            default => SpeciesRarity::LEGENDARY,
+        $rarity = match (true) {
+            $count >= config('fcea.species_rarity_threshold_legendary') => FursuitRarity::LEGENDARY,
+            $count >= config('fcea.species_rarity_threshold_epic') => FursuitRarity::EPIC,
+            $count >= config('fcea.species_rarity_threshold_rare') => FursuitRarity::RARE,
+            $count >= config('fcea.species_rarity_threshold_uncommon') => FursuitRarity::UNCOMMON,
+            default => FursuitRarity::COMMON,
         };
+
+        return $rarity;
     }
 
-    public function calculatePoints(): int
+    public function getFursuitSpecies(): string
     {
-        return $this->getSpeciesRarity()->getPoints();
+        return $this->fursuit?->species?->name ?? 'Unknown';
+    }
+
+    public function getCatches(): int
+    {
+        // Calculate rarity based on global frequency of fursuits
+        $count = UserCatch::where('fursuit_id', $this->fursuit_id)->count();
+        return $count;
     }
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['user_id', 'fursuit_id', 'points_earned']);
+            ->logOnly(['user_id', 'fursuit_id']);
     }
 }
