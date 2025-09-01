@@ -11,7 +11,6 @@ import {
     Sparkles,
     Crown,
     Filter,
-    Gem,
     Grid3X3,
     List,
     Info,
@@ -162,11 +161,6 @@ const collectionByRarity = computed(() => {
         common: [],
     };
 
-    props.collection.species.forEach(species => {
-        const rarity = species.rarity.level
-        common: [],
-    };
-
     props.collection.suits.forEach((suit) => {
         const rarity = suit.rarity.level;
         if (grouped[rarity]) {
@@ -245,9 +239,6 @@ const getRarityBgColor = (textColor: string) => {
                         catches
                     </p>
                     <p class="text-sm text-gray-300" v-else>
-                        Loading collection...
-                    </p>
-                    <p class="text-sm text-gray-600" v-else>
                         Loading collection...
                     </p>
                 </div>

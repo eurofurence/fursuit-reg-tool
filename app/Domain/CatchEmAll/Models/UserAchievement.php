@@ -34,7 +34,3 @@ class UserAchievement extends Model
         return $this->earned_at !== null;
     }
 }
-
-        return min(100, (int) round(($this->progress / $this->max_progress) * 100));
-    }
-}
