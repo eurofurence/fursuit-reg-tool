@@ -28,17 +28,6 @@ services:
             - mysql
             - redis
             - mailpit
-    ngrok:
-        image: 'ngrok/ngrok:alpine'
-        environment:
-            NGROK_AUTHTOKEN: '${NGROK_AUTHTOKEN}'
-        command: 'http laravel.test:80 --domain=${NGROK_DOMAIN}'
-        ports:
-            - '4040:4040'
-        networks:
-            - sail
-        depends_on:
-            - laravel.test
     mysql:
         image: 'mysql/mysql-server:8.0'
         ports:
