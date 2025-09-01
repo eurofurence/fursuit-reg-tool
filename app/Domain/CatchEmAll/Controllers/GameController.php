@@ -271,6 +271,11 @@ class GameController extends Controller
         return Inertia::render('CatchEmAll/Introduction');
     }
 
+    public function profile()
+    {
+        return Inertia::render('CatchEmAll/Profile');
+    }
+
     public function completeIntroduction(Request $request)
     {
         $user = Auth::user();
