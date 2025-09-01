@@ -6,6 +6,7 @@ use App\Domain\CatchEmAll\Achievements\Archivist;
 use App\Domain\CatchEmAll\Achievements\BugBountyHunter;
 use App\Domain\CatchEmAll\Achievements\Collector;
 use App\Domain\CatchEmAll\Achievements\Curator;
+use App\Domain\CatchEmAll\Achievements\DoubleAgent;
 use App\Domain\CatchEmAll\Achievements\FirstCatch;
 use App\Domain\CatchEmAll\Achievements\FuredexComplete;
 use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
@@ -34,6 +35,7 @@ class AchievementRegister
         Nice::class,
         TheLegendary151::class,
         FuredexComplete::class,
+        DoubleAgent::class,
         // Add new achievements here in the format:
         // AchievementClassName::class,
     ];

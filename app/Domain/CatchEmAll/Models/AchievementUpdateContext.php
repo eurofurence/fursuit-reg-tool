@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Models;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
+use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 
 /**
@@ -12,12 +13,13 @@ use App\Models\User;
 readonly class AchievementUpdateContext
 {
     public function __construct(
-        public User $user,
-        public ?UserCatch $userCatch,
-        public ?SpecialCodeType $specialCodeType,
-        public int $userTotalCatches,
-        public int $totalCatchableFursuits,
-        public int $userUniqueFursuits,
+        public User $user,                          // User
+        public ?UserCatch $userCatch,               // Caught Fursuit
+        public ?SpecialCodeType $specialCodeType,   // Special Code Type
+        public int $userTotalCatches,               // Total Catches by User
+        public int $totalCatchableFursuits,         // Total Catchable Fursuits
+        public int $userUniqueFursuits,             // Unique Fursuits Caught by User
+        public int $userOwnedFursuits,              // Count of Fursuits Owned by User
     ) {
     }
 
@@ -37,10 +39,11 @@ readonly class AchievementUpdateContext
 
         // Calculate user statistics
         $userTotalCatches = UserCatch::where('user_id', $user->id)->count();
-        $totalCatchableFursuits = \App\Models\Fursuit\Fursuit::count();
+        $totalCatchableFursuits = Fursuit::where('event_id', $userCatch->event_id)->where('catch_em_all', true)->count();
         $userUniqueFursuits = UserCatch::where('user_id', $user->id)
             ->distinct('fursuit_id')
             ->count();
+        $userOwnedFursuits = Fursuit::where('user_id', $user->id)->count();
 
         return new self(
             user: $user,
@@ -49,6 +52,7 @@ readonly class AchievementUpdateContext
             userTotalCatches: $userTotalCatches,
             totalCatchableFursuits: $totalCatchableFursuits,
             userUniqueFursuits: $userUniqueFursuits,
+            userOwnedFursuits: $userOwnedFursuits,
         );
     }
 
