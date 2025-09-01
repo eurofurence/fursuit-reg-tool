@@ -11,6 +11,7 @@ use App\Domain\CatchEmAll\Achievements\FirstCatch;
 use App\Domain\CatchEmAll\Achievements\FuredexComplete;
 use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
 use App\Domain\CatchEmAll\Achievements\Nice;
+use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
@@ -36,6 +37,7 @@ class AchievementRegister
         TheLegendary151::class,
         FuredexComplete::class,
         DoubleAgent::class,
+        NightOwl::class,
         // Add new achievements here in the format:
         // AchievementClassName::class,
     ];
