@@ -48,7 +48,7 @@ class GameStatsService
 
     public function getLeaderboard($filterEvent = null, bool $isGlobal = false, int $limit = 10, int $rankCutoff = 3): array
     {
-        $cacheKey = $isGlobal ? "leaderboard_global_{$limit}" : "leaderboard_{$filterEvent?->id}_{$limit}";
+        $cacheKey = $isGlobal ? "leaderboard_global" : "leaderboard_{$filterEvent?->id}";
 
         $result = Cache::remember($cacheKey, 600, function () use ($filterEvent, $isGlobal, $limit, $rankCutoff) {
             $query = User::withCount([
