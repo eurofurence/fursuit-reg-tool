@@ -112,33 +112,33 @@ class PWAController extends Controller
     {
         $serviceWorkerContent = "
 // Service Worker for Catch-Em-All PWA
-const CACHE_NAME = 'catch-em-all-v1';
-const urlsToCache = [
-    '/',
-    '/auth/login',
-    '/leaderboard',
-    '/collection',
-    '/achievements'
+const CACHE_VERSION = 'v1';
+const CACHE_NAME = `catch-em-all-\${CACHE_VERSION}`;
+const STATIC_CACHE_NAME = `catch-em-all-static-\${CACHE_VERSION}`;
+
+// Only cache static assets that don't change often
+const STATIC_ASSETS = [
+    '/manifest.json',
+    '/icons/icon-72x72.png',
+    '/icons/icon-96x96.png',
+    '/icons/icon-128x128.png',
+    '/icons/icon-144x144.png',
+    '/icons/icon-152x152.png',
+    '/icons/icon-192x192.png',
+    '/icons/icon-384x384.png',
+    '/icons/icon-512x512.png'
 ];
 
 self.addEventListener('install', function(event) {
+    // Pre-cache static assets only
     event.waitUntil(
-        caches.open(CACHE_NAME)
+        caches.open(STATIC_CACHE_NAME)
             .then(function(cache) {
-                return cache.addAll(urlsToCache);
+                return cache.addAll(STATIC_ASSETS);
             })
     );
-});
-
-self.addEventListener('fetch', function(event) {
-    event.respondWith(
-        caches.match(event.request)
-            .then(function(response) {
-                // Return cached version or fetch from network
-                return response || fetch(event.request);
-            }
-        )
-    );
+    // Force the new service worker to activate
+    self.skipWaiting();
 });
 
 self.addEventListener('activate', function(event) {
@@ -146,12 +146,77 @@ self.addEventListener('activate', function(event) {
         caches.keys().then(function(cacheNames) {
             return Promise.all(
                 cacheNames.map(function(cacheName) {
-                    if (cacheName !== CACHE_NAME) {
+                    // Delete old cache versions
+                    if (cacheName.startsWith('catch-em-all-') && 
+                        cacheName !== CACHE_NAME && 
+                        cacheName !== STATIC_CACHE_NAME) {
                         return caches.delete(cacheName);
                     }
                 })
             );
         })
+    );
+    // Take control of all pages immediately
+    self.clients.claim();
+});
+
+self.addEventListener('fetch', function(event) {
+    const { request } = event;
+    const url = new URL(request.url);
+    
+    // Skip non-GET requests
+    if (request.method !== 'GET') {
+        return;
+    }
+    
+    // Skip cross-origin requests
+    if (url.origin !== location.origin) {
+        return;
+    }
+    
+    // Network-first strategy for API and dynamic content
+    if (url.pathname.startsWith('/api/') || 
+        url.pathname.startsWith('/catch') ||
+        url.pathname.startsWith('/auth/') ||
+        request.headers.get('accept')?.includes('application/json')) {
+        event.respondWith(
+            fetch(request)
+                .catch(() => {
+                    // If network fails, try cache as fallback
+                    return caches.match(request);
+                })
+        );
+        return;
+    }
+    
+    // Cache-first strategy for static assets
+    if (url.pathname.startsWith('/icons/') || 
+        url.pathname.startsWith('/build/') ||
+        url.pathname === '/manifest.json') {
+        event.respondWith(
+            caches.match(request)
+                .then(function(response) {
+                    return response || fetch(request).then(function(response) {
+                        // Cache successful responses
+                        if (response.status === 200) {
+                            const responseClone = response.clone();
+                            caches.open(STATIC_CACHE_NAME).then(function(cache) {
+                                cache.put(request, responseClone);
+                            });
+                        }
+                        return response;
+                    });
+                })
+        );
+        return;
+    }
+    
+    // Default: network-first for everything else
+    event.respondWith(
+        fetch(request)
+            .catch(() => {
+                return caches.match(request);
+            })
     );
 });
 ";
