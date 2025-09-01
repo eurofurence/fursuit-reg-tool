@@ -2,6 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Models;
 
+
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,9 +32,5 @@ class UserAchievement extends Model
     public function isCompleted(): bool
     {
         return $this->earned_at !== null;
-    }
-}
-
-        return min(100, (int) round(($this->progress / $this->max_progress) * 100));
     }
 }

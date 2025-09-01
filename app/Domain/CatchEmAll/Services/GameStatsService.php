@@ -27,8 +27,6 @@ class GameStatsService
             $uniqueSpecies = $catches->pluck('fursuit.species.id')->unique()->count();
 
             // Calculate rank
-            $rank = $this->calculateUserRank($user, $filterEvent, $isGlobal, $totalPoints);
-
             $rank = $this->calculateUserRank($user, $filterEvent, $isGlobal, $totalCatches);
 
             // Calculate rarity distribution
@@ -67,14 +65,14 @@ class GameStatsService
             $users = $query->get();
             $leaderboard = [];
 
-
             $rank = 1;
             $lastCatch = 0;
 
             foreach ($users as $index => $user) {
                 if ($lastCatch > $user->fursuits_catched_count) {
                     $rank++;
-                    if ($rank > $rankCutoff) break;
+                    if ($rank > $rankCutoff)
+                        break;
                 }
                 $leaderboard[] = [
                     'id' => $user->id,
@@ -133,7 +131,7 @@ class GameStatsService
             foreach ($aboveUser as $index => $user) {
                 if ($lastCatch < $user->fursuits_catched_count) {
                     $rank--;
-                    if($rank <= $rankCutoff) {
+                    if ($rank <= $rankCutoff) {
                         break;
                     }
                 }
@@ -193,18 +191,6 @@ class GameStatsService
             }
 
             $catches = $query->get();
-
-            // Group by species
-            $speciesGrouped = $catches->groupBy('fursuit.species.name');
-            $speciesArray = [];
-
-            foreach ($speciesGrouped as $speciesName => $speciesCatches) {
-                $firstCatch = $speciesCatches->first();
-                $rarity = $firstCatch->getSpeciesRarity();
-
-                $speciesArray[] = [
-                    'species' => $speciesName,
-                    'count' => $speciesCatches->count(),
             $fursuits = [];
             $speciesIndex = [];
 
@@ -221,14 +207,6 @@ class GameStatsService
                         'color' => $rarity->getColor(),
                         'icon' => $rarity->getIcon(),
                     ],
-                    'firstCaught' => $speciesCatches->sortBy('created_at')->first()->created_at,
-                    'totalPoints' => $speciesCatches->sum('points_earned'),
-                ];
-            }
-
-            // Sort by total points descending
-            usort($speciesArray, function ($a, $b) {
-                return $b['totalPoints'] <=> $a['totalPoints'];
                     'gallery' => [
                         'id' => $catch->fursuit->id,
                         'name' => $catch->fursuit->name,
@@ -266,8 +244,6 @@ class GameStatsService
 
         $result = [];
         foreach ($catches as $catch) {
-            $rarity = $catch->getSpeciesRarity();
-
             $rarity = $catch->getFursuitRarity();
 
             $result[] = [
@@ -310,8 +286,6 @@ class GameStatsService
     {
         $distribution = [];
 
-        foreach (SpeciesRarity::cases() as $rarity) {
-
         foreach (FursuitRarity::cases() as $rarity) {
             $distribution[$rarity->value] = [
                 'count' => 0,
@@ -331,7 +305,7 @@ class GameStatsService
 
     private function getTotalAvailableFursuiters($filterEvent): int
     {
-        if (! $filterEvent) {
+        if (!$filterEvent) {
             return Fursuit::where('catch_em_all', true)->count();
         }
 
