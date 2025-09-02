@@ -5,6 +5,7 @@ import { Link, router } from "@inertiajs/vue3";
 import DigitalClock from "@/Components/POS/DigitalClock.vue";
 import Badge from "primevue/badge";
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { usePosKeyboard } from '@/composables/usePosKeyboard';
 
 // QZ Status management
 const qzStatus = ref({
@@ -90,44 +91,30 @@ const printerStatusSummary = computed(() => {
 
 const hasPausedPrinters = computed(() => printerStatusSummary.value.paused > 0);
 
-// Keyboard Shortcuts
-function handleGlobalShortcuts(e) {
-    // Ctrl+K: Search Attendee
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        // Route to attendee search using Inertia router
-        router.visit(route('pos.attendee.lookup'));
-    }
-    // Ctrl+P: Start Payment for All
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('pos-shortcut-payment'));
-    }
-    // Ctrl+H: Handout All
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('pos-shortcut-handout'));
-    }
+// Use the centralized keyboard handler composable
+usePosKeyboard({
+    // Global shortcuts are handled by the composable
+    // Additional F1 handling for shortcuts dialog
+});
+
+// Additional keyboard shortcuts specific to layout
+function handleLayoutShortcuts(e) {
     // F1: Show Shortcuts Dialog
     if (e.key === 'F1') {
         e.preventDefault();
         showShortcutsDialog.value = true;
-    }
-    // ENTER: Confirm Dialogs
-    if (e.key === 'Enter') {
-        window.dispatchEvent(new CustomEvent('pos-shortcut-confirm'));
     }
 }
 
 onMounted(() => {
     checkBreakpoint();
     window.addEventListener('resize', checkBreakpoint);
-    window.addEventListener('keydown', handleGlobalShortcuts);
+    window.addEventListener('keydown', handleLayoutShortcuts);
 });
 
 onUnmounted(() => {
     window.removeEventListener('resize', checkBreakpoint);
-    window.removeEventListener('keydown', handleGlobalShortcuts);
+    window.removeEventListener('keydown', handleLayoutShortcuts);
 });
 
 const toggleUserMenu = (event) => {

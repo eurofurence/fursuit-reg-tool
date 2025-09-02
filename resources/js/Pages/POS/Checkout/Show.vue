@@ -1,5 +1,6 @@
 <script setup>
 import {onMounted, ref, watchEffect, computed} from "vue";
+import { usePosKeyboard } from '@/composables/usePosKeyboard';
 import POSLayout from "@/Layouts/POSLayout.vue";
 import Button from 'primevue/button';
 import Card from 'primevue/card';
@@ -113,6 +114,19 @@ const startCardPaymentForm = useForm('POST', route('pos.checkout.startCardPaymen
 function startCardPayment() {
     startCardPaymentForm.submit();
 }
+
+// Use keyboard composable with custom handler for numpad divide
+usePosKeyboard({
+    // Override divide key to start card payment on this page
+    onNumpadDivide: () => {
+        // Only start card payment if checkout is not finished
+        if (props.checkout.status !== 'FINISHED') {
+            startCardPayment();
+        }
+    },
+    // Don't disable global shortcuts, just override specific keys
+    disableGlobalShortcuts: false
+});
 
 function getSeverityFromTransactionStatus(status) {
     switch (status) {
@@ -319,9 +333,13 @@ function receiptForm(via) {
                 :loading="startCardPaymentForm.processing"
                 severity="primary"
                 size="small"
-                class="flex-1 h-12 text-xs font-bold"
-                icon="pi pi-credit-card"
-                label="Pay Card" />
+                class="flex-1 h-12 text-xs font-bold relative"
+                icon="pi pi-credit-card">
+                <template #default>
+                    <span>Pay Card</span>
+                    <span class="ml-2 text-xs opacity-75">[/]</span>
+                </template>
+            </Button>
 
             <!-- Clear Cash Button -->
             <Button v-if="checkout.status !== 'FINISHED'"

@@ -9,6 +9,9 @@ import WalletTransactionsTable from "@/Components/POS/Attendee/WalletTransaction
 import CheckoutsTable from "@/Components/POS/Attendee/CheckoutsTable.vue"
 import DashboardButton from "@/Components/POS/DashboardButton.vue";
 import {computed, ref, watchEffect, onMounted, onUnmounted} from "vue";
+import { usePosKeyboard } from '@/composables/usePosKeyboard';
+import {router} from "@inertiajs/vue3";
+
 // Handle global POS keyboard shortcuts
 function handlePosShortcuts() {
     window.addEventListener('pos-shortcut-payment', () => {
@@ -41,7 +44,6 @@ onUnmounted(() => {
 import ConfirmModal from "@/Components/POS/ConfirmModal.vue";
 import {useForm} from "laravel-precognition-vue-inertia";
 import {formatEuroFromCents} from "@/helpers.js";
-import {router} from "@inertiajs/vue3";
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Divider from 'primevue/divider';
@@ -98,6 +100,22 @@ function startPayment() {
         badge_ids: selectedBadges.value.map(badge => badge.id)
     }));
 }
+
+// Use keyboard composable with custom handlers (must be after refs and functions are defined)
+usePosKeyboard({
+    // Handle Backspace to go back to attendee search
+    onBackspace: () => {
+        router.visit('/pos/attendees/lookup');
+    },
+    // Override divide key (/) to start payment
+    onNumpadDivide: () => {
+        startPayment();
+    },
+    // Override multiply key (*) to show handout modal
+    onNumpadMultiply: () => {
+        showHandoutConfirmModal.value = true;
+    }
+});
 
 </script>
 
