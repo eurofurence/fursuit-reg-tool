@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class MachineResource extends Resource
 {
@@ -37,8 +38,8 @@ class MachineResource extends Resource
                 // SumUp Reader
                 Forms\Components\Select::make('sumup_reader_id')
                     ->label('SumUp Reader')
-                    ->relationship('sumupReader', 'remote_id')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->remote_id ?? 'Unknown SumUp Reader')
+                    ->relationship('sumupReader', 'name')
+                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->name ?? 'Unknown SumUp Reader')
                     ->columnSpanFull(),
                 Forms\Components\Checkbox::make('should_discover_printers')
                     ->columnSpanFull(),
@@ -54,29 +55,72 @@ class MachineResource extends Resource
                 Tables\Columns\TextColumn::make('tseClient.remote_id')
                     ->label('TSE Client')
                     ->placeholder('None assigned'),
-                Tables\Columns\SelectColumn::make('sumup_reader_id')
+                Tables\Columns\TextColumn::make('sumupReader.name')
                     ->label('SumUp Reader')
-                    ->options(function () {
-                        return \App\Models\SumupReader::all()
-                            ->pluck('remote_id', 'id')
-                            ->map(fn ($remote_id) => $remote_id ?? 'Unknown Reader')
-                            ->toArray();
-                    })
-                    ->placeholder('None assigned')
-                    ->selectablePlaceholder(false),
+                    ->placeholder('None assigned'),
                 Tables\Columns\IconColumn::make('should_discover_printers')
                     ->label('Auto-discover Printers')
                     ->boolean(),
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('archived')
+                    ->label('Archived')
+                    ->placeholder('Active machines')
+                    ->trueLabel('Archived machines')
+                    ->falseLabel('All machines')
+                    ->queries(
+                        true: fn (Builder $query) => $query->onlyArchived(),
+                        false: fn (Builder $query) => $query->withArchived(),
+                        blank: fn (Builder $query) => $query->notArchived(),
+                    ),
             ])
             ->searchable(false)
             ->paginated(false)
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('archive')
+                    ->label('Archive')
+                    ->icon('heroicon-o-archive-box')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Archive Machine')
+                    ->modalDescription('Are you sure you want to archive this machine? It will be hidden from normal view.')
+                    ->modalSubmitActionLabel('Yes, archive it')
+                    ->action(fn (Machine $record) => $record->archive())
+                    ->visible(fn (Machine $record) => !$record->isArchived()),
+                Tables\Actions\Action::make('unarchive')
+                    ->label('Restore')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Restore Machine')
+                    ->modalDescription('Are you sure you want to restore this machine? It will be visible again.')
+                    ->modalSubmitActionLabel('Yes, restore it')
+                    ->action(fn (Machine $record) => $record->unarchive())
+                    ->visible(fn (Machine $record) => $record->isArchived()),
             ])
-            ->bulkActions([]);
+            ->bulkActions([
+                Tables\Actions\BulkAction::make('archive')
+                    ->label('Archive selected')
+                    ->icon('heroicon-o-archive-box')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Archive Machines')
+                    ->modalDescription('Are you sure you want to archive the selected machines? They will be hidden from normal view and unable to log in to the POS system.')
+                    ->modalSubmitActionLabel('Yes, archive them')
+                    ->action(fn ($records) => $records->each->archive())
+                    ->deselectRecordsAfterCompletion(),
+                Tables\Actions\BulkAction::make('unarchive')
+                    ->label('Restore selected')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Restore Machines')
+                    ->modalDescription('Are you sure you want to restore the selected machines? They will be visible again and able to log in to the POS system.')
+                    ->modalSubmitActionLabel('Yes, restore them')
+                    ->action(fn ($records) => $records->each->unarchive())
+                    ->deselectRecordsAfterCompletion(),
+            ]);
     }
 
     public static function getRelations(): array
@@ -93,5 +137,10 @@ class MachineResource extends Resource
             'create' => Pages\CreateMachine::route('/create'),
             'edit' => Pages\EditMachine::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery();
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Payment\Paid;
+use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Event;
 use Mpdf\Mpdf;
 use Filament\Actions\Action;
@@ -10,6 +12,7 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Form;
 use Filament\Pages\Page;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -35,6 +38,8 @@ class PdfGenerator extends Page implements HasForms
     {
         $this->form->fill([
             'pdf_type' => 'badge_list',
+            'payment_status' => 'all',
+            'badge_ranges' => '0-999,1000-1999,2000-2999,3000-3999,4000-4999',
             'title' => '',
             'subtitle' => '',
             'rows_per_column' => 50,
@@ -53,12 +58,31 @@ class PdfGenerator extends Page implements HasForms
                         Select::make('pdf_type')
                             ->label('PDF Type')
                             ->options([
-                                'badge_list' => 'Badge List (Free Badges by Range)',
+                                'badge_list' => 'Badge List (Badges by Range)',
                                 'box_labels' => 'Box Labels (3 per A4 page)',
                             ])
                             ->required()
                             ->default('badge_list')
                             ->reactive(),
+
+                        Select::make('payment_status')
+                            ->label('Payment Status Filter')
+                            ->options([
+                                'all' => 'All Badges',
+                                'paid' => 'Paid Badges Only',
+                                'unpaid' => 'Unpaid Badges Only',
+                            ])
+                            ->required()
+                            ->default('all')
+                            ->visible(fn ($get) => $get('pdf_type') === 'badge_list'),
+
+                        Textarea::make('badge_ranges')
+                            ->label('Badge Ranges')
+                            ->placeholder('e.g., 1-1699,1700-2400,2401-3000')
+                            ->helperText('Enter comma-separated ranges (e.g., 1-1699,1700-2400). Each range will be on a separate page.')
+                            ->rows(3)
+                            ->required()
+                            ->visible(fn ($get) => $get('pdf_type') === 'badge_list'),
 
                         Grid::make(2)
                             ->schema([
@@ -133,31 +157,76 @@ class PdfGenerator extends Page implements HasForms
             return;
         }
 
-        // Get all free badges for the current event, sorted by attendee_id
-        $badges = Badge::whereHas('fursuit', function ($query) use ($selectedEvent) {
+        // Build the query based on payment status filter
+        $query = Badge::whereHas('fursuit', function ($query) use ($selectedEvent) {
                 $query->where('event_id', $selectedEvent->id);
             })
             ->with(['fursuit.user.eventUsers' => function ($query) use ($selectedEvent) {
                 $query->where('event_id', $selectedEvent->id);
-            }])
-            ->get()
+            }]);
+
+        // Apply payment status filter
+        $paymentStatus = $this->data['payment_status'] ?? 'all';
+        if ($paymentStatus === 'paid') {
+            $query->whereState('status_payment', Paid::class);
+        } elseif ($paymentStatus === 'unpaid') {
+            $query->whereState('status_payment', Unpaid::class);
+        }
+        // 'all' - no additional filter needed
+
+        $badges = $query->get()
             ->sortBy(function ($badge) {
-                // Sort by attendee_id first
-                return $badge->fursuit?->user?->eventUsers?->first()?->attendee_id ?? 999999;
+                // Sort by custom_id (badge number)
+                if (empty($badge->custom_id)) {
+                    return [999999, 999999]; // Put badges without custom_id at the end
+                }
+                return $this->parseCustomId($badge->custom_id);
             })
             ->values();
 
         if ($badges->isEmpty()) {
+            $filterText = match($paymentStatus) {
+                'paid' => 'paid badges',
+                'unpaid' => 'unpaid badges',
+                default => 'badges'
+            };
+            
             Notification::make()
                 ->title('No Data')
-                ->body('No free badges found for the current event.')
+                ->body("No {$filterText} found for the current event.")
                 ->warning()
                 ->send();
             return;
         }
 
+        // Parse custom ranges if provided
+        $customRanges = [];
+        if (!empty($this->data['badge_ranges'])) {
+            $customRanges = $this->parseRanges($this->data['badge_ranges']);
+            
+            // Validate that we have at least one valid range
+            if (empty($customRanges)) {
+                Notification::make()
+                    ->title('Invalid Range Format')
+                    ->body('Please enter valid badge ranges in the format: 1-1699,1700-2400')
+                    ->danger()
+                    ->send();
+                return;
+            }
+        }
+
         // Group badges by ranges and attendees
-        $groupedBadges = $this->groupBadgesByRangeAndAttendee($badges);
+        $groupedBadges = $this->groupBadgesByRangeAndAttendee($badges, $customRanges);
+        
+        // Check if we have any badges in the defined ranges
+        if (empty($groupedBadges)) {
+            Notification::make()
+                ->title('No Badges in Ranges')
+                ->body('No badges found within the specified ranges. Please check your range settings.')
+                ->warning()
+                ->send();
+            return;
+        }
 
         $mpdf = new Mpdf([
             'format' => 'A4',
@@ -182,14 +251,26 @@ class PdfGenerator extends Page implements HasForms
         $header = mb_convert_encoding($header, 'UTF-8', 'auto');
         $mpdf->WriteHTML($header, \Mpdf\HTMLParserMode::HTML_BODY);
 
-        // Sort ranges by their numeric start value (0-999, 1000-1999, etc.)
+        // Sort ranges by their numeric start value
         $sortedRanges = [];
-        foreach ($groupedBadges as $range => $attendees) {
-            $parts = explode('-', $range);
-            $sortKey = (int) $parts[0];
-            $sortedRanges[$sortKey] = ['range' => $range, 'attendees' => $attendees];
+        if (!empty($customRanges)) {
+            // If using custom ranges, maintain the order from the input
+            foreach ($customRanges as $range) {
+                $rangeKey = $range['key'];
+                if (isset($groupedBadges[$rangeKey])) {
+                    $sortedRanges[] = ['range' => $rangeKey, 'attendees' => $groupedBadges[$rangeKey]];
+                }
+            }
+        } else {
+            // For default ranges, sort by numeric start value
+            foreach ($groupedBadges as $range => $attendees) {
+                $parts = explode('-', $range);
+                $sortKey = (int) $parts[0];
+                $sortedRanges[$sortKey] = ['range' => $range, 'attendees' => $attendees];
+            }
+            ksort($sortedRanges); // Sort by numeric key
+            $sortedRanges = array_values($sortedRanges); // Reset array keys
         }
-        ksort($sortedRanges); // Sort by numeric key
 
         // Write each range section on its own page
         $isFirst = true;
@@ -211,9 +292,15 @@ class PdfGenerator extends Page implements HasForms
             $mpdf->WriteHTML($rangeHtml, \Mpdf\HTMLParserMode::HTML_BODY);
         }
 
+        $paymentStatusSuffix = match($paymentStatus) {
+            'paid' => '-paid',
+            'unpaid' => '-unpaid',
+            default => ''
+        };
+        
         return response()->streamDownload(function () use ($mpdf) {
             echo $mpdf->Output('', 'S');
-        }, "badge-list-{$selectedEvent->name}-" . now()->format('Y-m-d') . '.pdf');
+        }, "badge-list-{$selectedEvent->name}{$paymentStatusSuffix}-" . now()->format('Y-m-d') . '.pdf');
     }
 
     public function generateBoxLabelsPdf()
@@ -296,31 +383,83 @@ class PdfGenerator extends Page implements HasForms
         return $result;
     }
 
-    private function groupBadgesByRangeAndAttendee(Collection $badges): array
+    private function parseRanges(string $rangesString): array
+    {
+        $ranges = [];
+        $rangeParts = explode(',', $rangesString);
+        
+        foreach ($rangeParts as $range) {
+            $range = trim($range);
+            if (empty($range)) {
+                continue;
+            }
+            
+            // Parse range like "1-1699" into [1, 1699]
+            $parts = explode('-', $range);
+            if (count($parts) === 2) {
+                $start = (int) trim($parts[0]);
+                $end = (int) trim($parts[1]);
+                
+                if ($start <= $end) {
+                    $ranges[] = [
+                        'start' => $start,
+                        'end' => $end,
+                        'key' => "{$start}-{$end}"
+                    ];
+                }
+            }
+        }
+        
+        // Sort ranges by start value
+        usort($ranges, function ($a, $b) {
+            return $a['start'] <=> $b['start'];
+        });
+        
+        return $ranges;
+    }
+
+    private function groupBadgesByRangeAndAttendee(Collection $badges, array $customRanges = []): array
     {
         $grouped = [];
 
+        // Use custom ranges if provided, otherwise fall back to default 1000-badge ranges
+        $useCustomRanges = !empty($customRanges);
+
         foreach ($badges as $badge) {
-            // Get attendee_id for grouping by range
-            $attendeeId = $badge->fursuit?->user?->eventUsers?->first()?->attendee_id ?? 0;
-            $attendeeIdNum = (int) $attendeeId;
-
-            // Group by attendee_id ranges (0-999, 1000-1999, etc.)
-            $rangeStart = intval($attendeeIdNum / 1000) * 1000;
-            $rangeEnd = $rangeStart + 999;
-            $rangeKey = "{$rangeStart}-{$rangeEnd}";
-
-            if (!isset($grouped[$rangeKey])) {
-                $grouped[$rangeKey] = [];
-            }
-
             // Only include badges with custom_ids
             if (!empty($badge->custom_id)) {
-                // Store custom_id for display (but we've already sorted by attendee_id)
-                $grouped[$rangeKey][] = [
-                    'attendee_id' => $badge->custom_id, // Display custom_id in the PDF
-                    'sort_key' => $this->parseCustomId($badge->custom_id), // Parse for proper numeric sorting
-                ];
+                // Parse the custom_id to get the main badge number (e.g., "104-1" -> 104)
+                $parsedId = $this->parseCustomId($badge->custom_id);
+                $mainBadgeNumber = $parsedId[0]; // Get the first part of the custom_id
+
+                $rangeKey = null;
+
+                if ($useCustomRanges) {
+                    // Find which custom range this badge belongs to
+                    foreach ($customRanges as $range) {
+                        if ($mainBadgeNumber >= $range['start'] && $mainBadgeNumber <= $range['end']) {
+                            $rangeKey = $range['key'];
+                            break;
+                        }
+                    }
+                } else {
+                    // Use default 1000-badge ranges
+                    $rangeStart = intval($mainBadgeNumber / 1000) * 1000;
+                    $rangeEnd = $rangeStart + 999;
+                    $rangeKey = "{$rangeStart}-{$rangeEnd}";
+                }
+
+                // Only add badge if it falls within a range
+                if ($rangeKey !== null) {
+                    if (!isset($grouped[$rangeKey])) {
+                        $grouped[$rangeKey] = [];
+                    }
+
+                    $grouped[$rangeKey][] = [
+                        'attendee_id' => $badge->custom_id, // Display custom_id in the PDF
+                        'sort_key' => $parsedId, // Parse for proper numeric sorting
+                    ];
+                }
             }
         }
 
