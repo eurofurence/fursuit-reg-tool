@@ -90,7 +90,7 @@ const getProperCatch = (catchCount: number) => {
         icon="medal"
     >
         <!-- Event Filter -->
-        <Card v-if="eventOptions.length > 2" class="bg-gray-800 border border-gray-700 shadow-sm">
+        <!-- <Card v-if="eventOptions.length > 2" class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
                 <div class="space-y-3">
                     <label class="block text-sm font-medium text-gray-300"
@@ -107,7 +107,7 @@ const getProperCatch = (catchCount: number) => {
                     />
                 </div>
             </template>
-        </Card>
+        </Card> -->
 
         <!-- Leaderboard -->
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
