@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Models;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
+use App\Models\Event;
 use App\Models\User;
 
 /**
@@ -35,10 +36,17 @@ readonly class AchievementUpdateContext
             throw new \InvalidArgumentException('Either userCatch or specialCodeType must be provided');
         }
 
+        $currentEvent = Event::latest('starts_at')->first();
+
         // Calculate user statistics
-        $userTotalCatches = UserCatch::where('user_id', $user->id)->count();
-        $totalCatchableFursuits = \App\Models\Fursuit\Fursuit::count();
+        $userTotalCatches = UserCatch::where('user_id', $user->id)
+            ->where('event_id', operator: $currentEvent->id)
+            ->count();
+        $totalCatchableFursuits = \App\Models\Fursuit\Fursuit::where('event_id', operator: $currentEvent->id)
+            ->where('catch_em_all', true)
+            ->count();
         $userUniqueFursuits = UserCatch::where('user_id', $user->id)
+            ->where('event_id', operator: $currentEvent->id)
             ->distinct('fursuit_id')
             ->count();
 
