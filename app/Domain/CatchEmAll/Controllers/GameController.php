@@ -38,7 +38,7 @@ class GameController extends Controller
 
         // Get current event
         $currentEvent = $this->getCurrentEvent();
-        $filterEvent = $this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
+        $filterEvent = $currentEvent; //$this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
 
         // Get user's game stats
         $gameStats = $this->gameStatsService->getUserStats($user, $filterEvent, $isGlobal);
@@ -245,7 +245,7 @@ class GameController extends Controller
         $isGlobal = $selectedEventId === 'global';
 
         $currentEvent = $this->getCurrentEvent();
-        $filterEvent = $this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
+        $filterEvent = $currentEvent; //$this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
 
         $collection = $this->gameStatsService->getUserCollection($user, $filterEvent, $isGlobal);
         $eventsWithEntries = $this->getEventsWithEntries();
