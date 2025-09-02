@@ -76,7 +76,7 @@ class GameController extends Controller
     public function catch(UserCatchRequest $request)
     {
         $event = $this->getCurrentEvent();
-        if (! $event) {
+        if (!$event) {
             return to_route('catch-em-all.catch')->with('error', 'No Event Available for Catch Em All');
         }
 
@@ -204,7 +204,7 @@ class GameController extends Controller
         $rankCutoff = 3;
 
         $currentEvent = $this->getCurrentEvent();
-        $filterEvent = $this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
+        $filterEvent = $currentEvent; //$this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
 
         // Get leaderboard data
         $leaderboard = $this->gameStatsService->getLeaderboard($filterEvent, $isGlobal, 50, $rankCutoff); // Show more players
@@ -217,13 +217,15 @@ class GameController extends Controller
 
         $userLeaderboard = [];
         if ($userStat['rank'] > $rankCutoff && $userStat['totalCatches'] > 0) {
-            $userLeaderboard = $this->gameStatsService->getUserLeaderboard($user->id,
+            $userLeaderboard = $this->gameStatsService->getUserLeaderboard(
+                $user->id,
                 $userStat['rank'],
                 $userStat['totalCatches'],
                 $user->name,
                 $rankCutoff,
                 $selectedEventId,
-                $isGlobal);
+                $isGlobal
+            );
         }
 
         return Inertia::render('CatchEmAll/Leaderboard', [
@@ -281,7 +283,7 @@ class GameController extends Controller
         $user = Auth::user();
         $currentEvent = Event::latest('starts_at')->first();
 
-        if (! $currentEvent) {
+        if (!$currentEvent) {
             return redirect()->route('catch-em-all.introduction')->with('error', 'No active event found.');
         }
 
@@ -309,7 +311,7 @@ class GameController extends Controller
 
     private function getFilterEvent($selectedEventId, bool $isGlobal, $currentEvent)
     {
-        if ($isGlobal || ! $selectedEventId) {
+        if ($isGlobal || !$selectedEventId) {
             return $isGlobal ? null : $currentEvent;
         }
 
