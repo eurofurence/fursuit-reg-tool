@@ -5,6 +5,7 @@ namespace App\Domain\Checkout\Models\Checkout\Transitions;
 use App\Domain\Checkout\Models\Checkout\Checkout;
 use App\Domain\Checkout\Models\Checkout\States\Finished;
 use App\Domain\Checkout\Services\FiskalyService;
+use App\Jobs\CreateReceiptFromCheckoutJob;
 use App\Models\Badge\State_Payment\Paid;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
@@ -20,7 +21,7 @@ class ToFinished extends Transition
             $this->checkout->save();
 
             $fiskalyService = new FiskalyService;
-            $fiskalyService->updateOrCreateTransaction($this->checkout);
+            $fiskalyService->finishTransaction($this->checkout);
 
             $this->checkout->items->each(function ($item) {
                 if ($item->payable->status_payment->canTransitionTo(Paid::class)) {
@@ -40,6 +41,9 @@ class ToFinished extends Transition
                 ->performedOn($this->checkout)
                 ->causedBy(auth('machine-user')->user())
                 ->log('Checkout finished');
+
+            // Generate receipt asynchronously after checkout is finished
+            CreateReceiptFromCheckoutJob::dispatch($this->checkout);
 
             return $this->checkout;
         });

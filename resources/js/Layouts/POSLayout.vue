@@ -97,6 +97,51 @@ usePosKeyboard({
     // Additional F1 handling for shortcuts dialog
 });
 
+// Backspace logout feature
+const backspaceCount = ref(0);
+const backspaceTimer = ref(null);
+
+function resetBackspaceCount() {
+    backspaceCount.value = 0;
+    if (backspaceTimer.value) {
+        clearTimeout(backspaceTimer.value);
+        backspaceTimer.value = null;
+    }
+}
+
+function handleBackspaceLogout(e) {
+    // Only track backspace when not in an input field
+    const isInputElement = (element) => {
+        const tagName = element.tagName.toLowerCase();
+        return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || 
+               element.contentEditable === 'true';
+    };
+    
+    if (e.key === 'Backspace' && !isInputElement(e.target)) {
+        e.preventDefault(); // Prevent browser back navigation
+        
+        backspaceCount.value++;
+        console.log(`[POSLayout] Backspace pressed ${backspaceCount.value}/5 times`);
+        
+        // Reset count after 2 seconds of no backspace
+        if (backspaceTimer.value) {
+            clearTimeout(backspaceTimer.value);
+        }
+        backspaceTimer.value = setTimeout(resetBackspaceCount, 2000);
+        
+        // Logout after 5 backspaces
+        if (backspaceCount.value >= 5) {
+            console.log('[POSLayout] 5 backspaces detected - logging out');
+            resetBackspaceCount();
+            // Use the same logout method as InactivityTimer
+            router.post(route('pos.auth.user.logout'));
+        }
+    } else if (e.key !== 'Backspace') {
+        // Reset count if any other key is pressed
+        resetBackspaceCount();
+    }
+}
+
 // Additional keyboard shortcuts specific to layout
 function handleLayoutShortcuts(e) {
     // F1: Show Shortcuts Dialog
@@ -104,6 +149,9 @@ function handleLayoutShortcuts(e) {
         e.preventDefault();
         showShortcutsDialog.value = true;
     }
+    
+    // Handle backspace logout
+    handleBackspaceLogout(e);
 }
 
 onMounted(() => {
@@ -115,6 +163,7 @@ onMounted(() => {
 onUnmounted(() => {
     window.removeEventListener('resize', checkBreakpoint);
     window.removeEventListener('keydown', handleLayoutShortcuts);
+    resetBackspaceCount(); // Clean up backspace timer
 });
 
 const toggleUserMenu = (event) => {
