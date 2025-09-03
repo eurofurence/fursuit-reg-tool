@@ -5,6 +5,7 @@ namespace App\Models\Badge\State_Fulfillment;
 use App\Models\Badge\State_Fulfillment\Transitions\ToPrinted;
 use App\Models\Badge\State_Fulfillment\Transitions\ToProcessing;
 use App\Models\Badge\State_Fulfillment\Transitions\ToReadyForPickup;
+use App\Models\Badge\State_Fulfillment\Transitions\ToPickedUp;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasIcon;
 use Spatie\ModelStates\State;
@@ -28,7 +29,8 @@ abstract class BadgeFulfillmentStatusState extends State implements HasColor, Ha
             ->default(Pending::class)
             ->allowTransition(Pending::class, Processing::class, ToProcessing::class)
             ->allowTransition(Processing::class, ReadyForPickup::class, ToReadyForPickup::class)
+            ->allowTransition(Processing::class, PickedUp::class, ToPickedUp::class) // Allow direct handout from processing (printed badges)
             ->allowTransition(PickedUp::class, ReadyForPickup::class, ToReadyForPickup::class) // Incase of pos user error we can revert the status
-            ->allowTransition(ReadyForPickup::class, PickedUp::class);
+            ->allowTransition(ReadyForPickup::class, PickedUp::class, ToPickedUp::class);
     }
 }

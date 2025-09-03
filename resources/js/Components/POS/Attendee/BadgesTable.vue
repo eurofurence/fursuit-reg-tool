@@ -96,7 +96,7 @@ function changeHandout(badgeId, undo) {
                     <Button severity="secondary" v-if="slotProps.data.status_fulfillment !== 'pending'"
                         @click="emit('printBadge', slotProps.data.id)">Reprint</Button>
 
-                    <Button v-if="slotProps.data.status_fulfillment === 'ready_for_pickup'"
+                    <Button v-if="slotProps.data.status_fulfillment === 'ready_for_pickup' || slotProps.data.status_fulfillment === 'processing'"
                         @click="changeHandout(slotProps.data.id, false)">Handout</Button>
                     <Button severity="warning" v-if="slotProps.data.status_fulfillment === 'picked_up'"
                         @click="changeHandout(slotProps.data.id, true)">Undo Handout</Button>
