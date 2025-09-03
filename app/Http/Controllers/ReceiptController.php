@@ -47,8 +47,8 @@ class ReceiptController extends Controller
 
     public function printReceipt(Checkout $checkout)
     {
-        // Ensure receipt exists (generate if needed, but async)
-        $this->generateReceipt($checkout, true);
+        // Ensure receipt is generated synchronously before creating print job
+        $this->ensureReceiptExists($checkout);
 
         // Find active receipt printer
         $receiptPrinter = \App\Domain\Printing\Models\Printer::where('is_active', true)
@@ -56,13 +56,18 @@ class ReceiptController extends Controller
             ->first();
 
         if ($receiptPrinter) {
-            // Add to print queue immediately (even if PDF generation is still in progress)
-            $checkout->printJobs()->create([
-                'printer_id' => $receiptPrinter->id,
-                'type' => 'receipt',
-                'file' => 'checkouts/'.$checkout->id.'.pdf',
-                'status' => PrintJobStatusEnum::Pending,
-            ]);
+            // Only add to print queue after confirming the PDF exists
+            if (Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
+                $checkout->printJobs()->create([
+                    'printer_id' => $receiptPrinter->id,
+                    'type' => 'receipt',
+                    'file' => 'checkouts/'.$checkout->id.'.pdf',
+                    'status' => PrintJobStatusEnum::Pending,
+                ]);
+            } else {
+                return redirect()->route('pos.attendee.show', ['attendeeId' => $checkout->user->eventUser()?->attendee_id])
+                    ->with('error', 'Receipt generation failed. Please try again.');
+            }
         }
 
         $attendeeId = $checkout->user->eventUser()?->attendee_id;
@@ -73,7 +78,7 @@ class ReceiptController extends Controller
     public function sendEmail(Checkout $checkout)
     {
         // Ensure receipt exists (generate if needed, but async)
-        $this->generateReceipt($checkout, true);
+        $this->generateReceipt($checkout);
         
         // Queue the email notification (will be sent async thanks to ShouldQueue)
         $checkout->user->notify(new SendReceiptNotification($checkout));
@@ -83,7 +88,7 @@ class ReceiptController extends Controller
         return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId])->with('success', 'Receipt will be emailed shortly.');
     }
 
-    private function generateReceipt(Checkout $checkout, bool $forceAsync = false)
+    private function generateReceipt(Checkout $checkout)
     {
         // Check if receipt already exists
         if (Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
@@ -92,5 +97,25 @@ class ReceiptController extends Controller
 
         // Always generate asynchronously to avoid blocking
         CreateReceiptFromCheckoutJob::dispatch($checkout);
+    }
+
+    private function ensureReceiptExists(Checkout $checkout)
+    {
+        // Check if receipt already exists
+        if (Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
+            return; // Receipt already generated
+        }
+
+        // Dispatch the job synchronously to ensure it completes before returning
+        CreateReceiptFromCheckoutJob::dispatchSync($checkout);
+        
+        // Double-check that the file was created
+        if (!Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
+            // If still doesn't exist, try once more with a small delay
+            sleep(1);
+            if (!Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
+                throw new \Exception('Failed to generate receipt PDF for checkout ' . $checkout->id);
+            }
+        }
     }
 }
