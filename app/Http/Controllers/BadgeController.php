@@ -142,15 +142,8 @@ class BadgeController extends Controller
             ]);
 
             // is Free Badge or Prepaid Badge
-            $eventUser = $request->user()->eventUser($event->id);
-            $prepaidBadges = $eventUser ? $eventUser->prepaid_badges : 0;
-            $orderedBadges = $request->user()->badges()
-                ->whereHas('fursuit.event', function ($query) use ($event) {
-                    $query->where('id', $event->id);
-                })
-                ->count();
-            // prepaidBadges is now a max limit, not decremented
-            $prepaidBadgesLeft = max(0, $prepaidBadges - $orderedBadges);
+            // Use the same method as the create() action to ensure consistency
+            $prepaidBadgesLeft = $request->user()->getPrepaidBadgesLeft($event->id);
 
             $isPrepaidBadge = $prepaidBadgesLeft > 0;
 
