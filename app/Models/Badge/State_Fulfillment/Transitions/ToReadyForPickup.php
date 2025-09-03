@@ -4,6 +4,7 @@ namespace App\Models\Badge\State_Fulfillment\Transitions;
 
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
+use App\Notifications\BadgePrintedNotification;
 use Illuminate\Support\Facades\DB;
 use Spatie\ModelStates\Transition;
 
@@ -21,6 +22,15 @@ class ToReadyForPickup extends Transition
             activity()
                 ->performedOn($this->badge)
                 ->log('Fursuit Badge Paid');
+
+            // Send notification that badge is ready for pickup
+            $user = $this->badge->fursuit->user;
+            $event = $this->badge->fursuit->event;
+            
+            // Send notification if we're during the event or if the badge was just printed
+            if ($event && ($event->isDuringEvent() || $this->badge->wasRecentlyCreated)) {
+                $user->notify(new BadgePrintedNotification($this->badge));
+            }
 
             return $this->badge;
         });
