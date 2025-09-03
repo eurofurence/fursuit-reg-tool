@@ -2,8 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Badges\EF28_Badge;
-use App\Badges\EF29_Badge;
 use App\Models\Badge\Badge;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -11,7 +9,6 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Response;
 
 class BadgePreview extends Page implements HasForms
 {
@@ -52,7 +49,9 @@ class BadgePreview extends Page implements HasForms
     {
         $this->validate();
         
-        $this->badge = Badge::where('custom_id', $this->customId)->first();
+        $this->badge = Badge::with(['fursuit.user', 'fursuit.species', 'fursuit.event'])
+            ->where('custom_id', $this->customId)
+            ->first();
         
         if (!$this->badge) {
             Notification::make()
@@ -63,10 +62,13 @@ class BadgePreview extends Page implements HasForms
             return;
         }
         
+        // Sanitize the fursuit name for display
+        $fursuitName = mb_convert_encoding($this->badge->fursuit->name, 'UTF-8', 'UTF-8');
+        
         Notification::make()
             ->title('Badge loaded')
             ->success()
-            ->body('Badge found for: ' . $this->badge->fursuit->name)
+            ->body('Badge found for: ' . $fursuitName)
             ->send();
     }
     
@@ -81,20 +83,7 @@ class BadgePreview extends Page implements HasForms
             return;
         }
         
-        $badgeClass = $this->badge->fursuit->event->badge_class ?? 'EF28_Badge';
-        
-        $printer = match ($badgeClass) {
-            'EF29_Badge' => new EF29_Badge,
-            'EF28_Badge' => new EF28_Badge,
-            default => new EF28_Badge,
-        };
-        
-        $pdfContent = $printer->getPdf($this->badge);
-        
-        return Response::make($pdfContent, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="badge-' . $this->customId . '.pdf"',
-        ]);
+        return redirect()->route('admin.badge-pdf.download', ['customId' => $this->customId]);
     }
     
     public function viewPdf()
@@ -108,19 +97,6 @@ class BadgePreview extends Page implements HasForms
             return;
         }
         
-        $badgeClass = $this->badge->fursuit->event->badge_class ?? 'EF28_Badge';
-        
-        $printer = match ($badgeClass) {
-            'EF29_Badge' => new EF29_Badge,
-            'EF28_Badge' => new EF28_Badge,
-            default => new EF28_Badge,
-        };
-        
-        $pdfContent = $printer->getPdf($this->badge);
-        
-        return Response::make($pdfContent, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="badge-' . $this->customId . '.pdf"',
-        ]);
+        return redirect()->route('admin.badge-pdf.view', ['customId' => $this->customId]);
     }
 }
