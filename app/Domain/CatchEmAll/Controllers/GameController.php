@@ -213,7 +213,7 @@ class GameController extends Controller
         $eventsWithEntries = $this->getEventsWithEntries();
 
         $user = Auth::user();
-        $userStat = $this->gameStatsService->getUserStats($user, $selectedEventId, $isGlobal);
+        $userStat = $this->gameStatsService->getUserStats($user, $filterEvent, $isGlobal);
 
         $userLeaderboard = [];
         if ($userStat['rank'] > $rankCutoff && $userStat['totalCatches'] > 0) {
@@ -223,7 +223,7 @@ class GameController extends Controller
                 $userStat['totalCatches'],
                 $user->name,
                 $rankCutoff,
-                $selectedEventId,
+                $filterEvent,
                 $isGlobal
             );
         }
@@ -233,7 +233,7 @@ class GameController extends Controller
             'leaderboard' => $leaderboard,
             'userLeaderboard' => $userLeaderboard,
             'eventsWithEntries' => $eventsWithEntries,
-            'selectedEvent' => $selectedEventId ?: ($filterEvent?->id ?? 'global'),
+            'selectedEvent' => $filterEvent?->id ?? 'global',
             'isGlobal' => $isGlobal,
         ]);
     }
