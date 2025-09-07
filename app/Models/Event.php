@@ -21,6 +21,9 @@ class Event extends Model
         'order_starts_at',
         'order_ends_at',
         'mass_printed_at',
+        'catch_em_all_enabled',
+        'catch_em_all_start',
+        'catch_em_all_end',
         'cost',
     ];
 
@@ -38,6 +41,9 @@ class Event extends Model
             'order_starts_at' => 'datetime',
             'order_ends_at' => 'datetime',
             'mass_printed_at' => 'datetime',
+            'catch_em_all_enabled' => 'boolean',
+            'catch_em_all_start' => 'datetime',
+            'catch_em_all_end' => 'datetime',
             'cost' => 'decimal:2',
         ];
     }
@@ -77,8 +83,8 @@ class Event extends Model
     public function isInOrderWindow(): bool
     {
         $now = now();
-        $orderStarted = ! $this->order_starts_at || $this->order_starts_at <= $now;
-        $orderNotEnded = ! $this->order_ends_at || $this->order_ends_at > $now;
+        $orderStarted = !$this->order_starts_at || $this->order_starts_at <= $now;
+        $orderNotEnded = !$this->order_ends_at || $this->order_ends_at > $now;
 
         return $orderStarted && $orderNotEnded;
     }
@@ -143,7 +149,7 @@ class Event extends Model
 
     public function getProfitMarginAttribute(): ?float
     {
-        if (! $this->cost) {
+        if (!$this->cost) {
             return null;
         }
 
@@ -154,10 +160,19 @@ class Event extends Model
 
     public function isProfitableAttribute(): ?bool
     {
-        if (! $this->cost) {
+        if (!$this->cost) {
             return null;
         }
 
         return $this->profit_margin >= 0;
+    }
+
+    public function isCatchEmAllActive(): bool
+    {
+        $now = now();
+        $catchEmAllStarted = !$this->catch_em_all_start || $this->catch_em_all_start <= $now;
+        $catchEmAllNotEnded = !$this->catch_em_all_end || $this->catch_em_all_end >= $now;
+
+        return $this->catch_em_all_enabled && $catchEmAllStarted && $catchEmAllNotEnded;
     }
 }
