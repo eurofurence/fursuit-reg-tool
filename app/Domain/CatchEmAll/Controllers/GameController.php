@@ -67,7 +67,7 @@ class GameController extends Controller
             'collection' => $collection,
             'achievements' => $achievements,
             'eventsWithEntries' => $eventsWithEntries,
-            'selectedEvent' => $selectedEventId ?: ($filterEvent?->id ?? 'global'),
+            'selectedEvent' => $filterEvent?->id ?? 'global',
             'isGlobal' => $isGlobal,
             'recentCatch' => $recentCatch,
         ]);
@@ -99,7 +99,10 @@ class GameController extends Controller
             ->where('code', $catchCode)
             ->first();
 
-        $fursuit = $this->findFursuitByCode($catchCode);
+        $fursuit = Fursuit::where('event_id', $event->id)
+            ->where('catch_code', $catchCode)
+            ->where('catch_em_all', true)
+            ->first();
 
         // If neither exists, it's an invalid code
         if (!$specialCode && !$fursuit) {
@@ -213,7 +216,7 @@ class GameController extends Controller
         $eventsWithEntries = $this->getEventsWithEntries();
 
         $user = Auth::user();
-        $userStat = $this->gameStatsService->getUserStats($user, $selectedEventId, $isGlobal);
+        $userStat = $this->gameStatsService->getUserStats($user, $filterEvent, $isGlobal);
 
         $userLeaderboard = [];
         if ($userStat['rank'] > $rankCutoff && $userStat['totalCatches'] > 0) {
@@ -223,7 +226,7 @@ class GameController extends Controller
                 $userStat['totalCatches'],
                 $user->name,
                 $rankCutoff,
-                $selectedEventId,
+                $filterEvent,
                 $isGlobal
             );
         }
@@ -233,7 +236,7 @@ class GameController extends Controller
             'leaderboard' => $leaderboard,
             'userLeaderboard' => $userLeaderboard,
             'eventsWithEntries' => $eventsWithEntries,
-            'selectedEvent' => $selectedEventId ?: ($filterEvent?->id ?? 'global'),
+            'selectedEvent' => $filterEvent?->id ?? 'global',
             'isGlobal' => $isGlobal,
         ]);
     }
@@ -359,13 +362,6 @@ class GameController extends Controller
             'is_successful' => false,
             'already_caught' => false,
         ]);
-    }
-
-    private function findFursuitByCode(string $code): ?Fursuit
-    {
-        return Fursuit::where('catch_code', $code)
-            ->where('catch_em_all', true)
-            ->first();
     }
 
     private function isRateLimited(int $userId): int

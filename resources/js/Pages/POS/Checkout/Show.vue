@@ -1,5 +1,6 @@
 <script setup>
 import {onMounted, ref, watchEffect, computed} from "vue";
+import { usePosKeyboard } from '@/composables/usePosKeyboard';
 import POSLayout from "@/Layouts/POSLayout.vue";
 import Button from 'primevue/button';
 import Card from 'primevue/card';
@@ -114,6 +115,42 @@ function startCardPayment() {
     startCardPaymentForm.submit();
 }
 
+// Helper function to check if card payment button should be disabled
+function isCardPaymentDisabled() {
+    return !!(props.transaction && (props.transaction.status === 'SUCCESSFUL' || props.transaction.status === 'PENDING'));
+}
+
+// Use keyboard composable with custom handlers
+usePosKeyboard({
+    // Override divide key (/) for different actions based on state
+    onNumpadDivide: () => {
+        // If checkout is finished, trigger email receipt
+        if (props.checkout.status === 'FINISHED') {
+            if (!emailReceiptForm.processing && !printReceiptForm.processing) {
+                receiptForm('email');
+            }
+        } 
+        // If checkout is not finished and card payment is available
+        else if (machine.value && machine.value.sumup_reader) {
+            // Only trigger if button is not disabled
+            if (!isCardPaymentDisabled() && !startCardPaymentForm.processing) {
+                startCardPayment();
+            }
+        }
+    },
+    // Override multiply key (*) for print receipt when finished
+    onNumpadMultiply: () => {
+        // Only trigger print receipt if checkout is finished
+        if (props.checkout.status === 'FINISHED') {
+            if (!emailReceiptForm.processing && !printReceiptForm.processing) {
+                receiptForm('print');
+            }
+        }
+    },
+    // Don't disable global shortcuts, just override specific keys
+    disableGlobalShortcuts: false
+});
+
 function getSeverityFromTransactionStatus(status) {
     switch (status) {
         case 'FAILED':
@@ -127,8 +164,15 @@ function getSeverityFromTransactionStatus(status) {
     }
 }
 
+const emailReceiptForm = useForm('POST', route('pos.checkout.receipt.email', {'checkout': props.checkout.id}), {});
+const printReceiptForm = useForm('POST', route('pos.checkout.receipt.print', {'checkout': props.checkout.id}), {});
+
 function receiptForm(via) {
-    useForm('POST',route('pos.checkout.receipt.'+via, {'checkout': props.checkout.id}),{}).submit();
+    if (via === 'email') {
+        emailReceiptForm.submit();
+    } else if (via === 'print') {
+        printReceiptForm.submit();
+    }
 }
 
 </script>
@@ -234,10 +278,28 @@ function receiptForm(via) {
                                 <div class="text-xl font-bold mt-2">Transaction Complete</div>
                             </div>
                             <div class="flex gap-4 justify-center">
-                                <Button severity="contrast" size="large" icon="pi pi-at" label="E-Mail Receipt"
-                                        @click="receiptForm('email')" />
-                                <Button severity="contrast" size="large" icon="pi pi-print" label="Print Receipt"
-                                        @click="receiptForm('print')" />
+                                <Button severity="contrast" size="large"
+                                        @click="receiptForm('email')"
+                                        :loading="emailReceiptForm.processing"
+                                        :disabled="emailReceiptForm.processing || printReceiptForm.processing"
+                                        class="min-w-[180px]">
+                                    <template #default>
+                                        <i class="pi pi-at mr-2"></i>
+                                        <span>E-Mail Receipt</span>
+                                        <span class="ml-2 text-xs opacity-75">[/]</span>
+                                    </template>
+                                </Button>
+                                <Button severity="contrast" size="large"
+                                        @click="receiptForm('print')"
+                                        :loading="printReceiptForm.processing"
+                                        :disabled="emailReceiptForm.processing || printReceiptForm.processing"
+                                        class="min-w-[180px]">
+                                    <template #default>
+                                        <i class="pi pi-print mr-2"></i>
+                                        <span>Print Receipt</span>
+                                        <span class="ml-2 text-xs opacity-75">[*]</span>
+                                    </template>
+                                </Button>
                             </div>
                         </div>
                     </template>
@@ -319,9 +381,13 @@ function receiptForm(via) {
                 :loading="startCardPaymentForm.processing"
                 severity="primary"
                 size="small"
-                class="flex-1 h-12 text-xs font-bold"
-                icon="pi pi-credit-card"
-                label="Pay Card" />
+                class="flex-1 h-12 text-xs font-bold relative"
+                icon="pi pi-credit-card">
+                <template #default>
+                    <span>Pay Card</span>
+                    <span class="ml-2 text-xs opacity-75">[/]</span>
+                </template>
+            </Button>
 
             <!-- Clear Cash Button -->
             <Button v-if="checkout.status !== 'FINISHED'"

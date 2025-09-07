@@ -38,3 +38,11 @@ Route::middleware(\App\Http\Middleware\EventEndedMiddleware::class)->group(funct
         Route::get('/statistics', [\App\Http\Controllers\StatisticsController::class, 'index'])->name('statistics');
     });
 });
+
+// Admin badge PDF routes (used by Filament)
+Route::middleware(['auth'])->prefix('admin')->group(function () {
+    Route::get('/badge-pdf/{customId}/view', [\App\Http\Controllers\Admin\BadgePdfController::class, 'view'])
+        ->name('admin.badge-pdf.view');
+    Route::get('/badge-pdf/{customId}/download', [\App\Http\Controllers\Admin\BadgePdfController::class, 'download'])
+        ->name('admin.badge-pdf.download');
+});

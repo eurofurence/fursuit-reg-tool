@@ -35,6 +35,7 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
         'qz_last_seen_at' => 'datetime',
         'pending_print_jobs_count' => 'integer',
         'auto_logout_timeout' => 'integer',
+        'archived_at' => 'datetime',
     ];
 
     // generic printers
@@ -83,6 +84,26 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
         return $query->where('qz_connection_status', QzConnectionStatusEnum::Connected);
     }
 
+    public function scopeNotArchived($query)
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    public function scopeArchived($query)
+    {
+        return $query->whereNotNull('archived_at');
+    }
+
+    public function scopeOnlyArchived($query)
+    {
+        return $query->whereNotNull('archived_at');
+    }
+
+    public function scopeWithArchived($query)
+    {
+        return $query;
+    }
+
     // Helper methods
     public function isQzConnected(): bool
     {
@@ -107,5 +128,22 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
                 PrintJobStatusEnum::Retrying,
             ])
             ->count();
+    }
+
+    public function archive(): void
+    {
+        $this->archived_at = now();
+        $this->save();
+    }
+
+    public function unarchive(): void
+    {
+        $this->archived_at = null;
+        $this->save();
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
     }
 }

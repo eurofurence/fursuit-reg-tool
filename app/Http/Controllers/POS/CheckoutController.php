@@ -258,12 +258,36 @@ class CheckoutController extends Controller
             ->get();
 
         foreach ($activeCheckouts as $activeCheckout) {
-            // Cancel the Fiskaly transaction to get proper end signature
-            $fiskalyService = new FiskalyService;
-            $fiskalyService->cancelTransaction($activeCheckout);
-
-            // Transition to cancelled state after Fiskaly update
-            $activeCheckout->status->transitionTo(Cancelled::class);
+            try {
+                // Refresh from DB to get latest state
+                $activeCheckout->refresh();
+                
+                // Skip if already cancelled
+                if ($activeCheckout->status instanceof Cancelled) {
+                    continue;
+                }
+                
+                // Transition to cancelled state (this will handle Fiskaly cancellation via ToCancelled transition)
+                if ($activeCheckout->status->canTransitionTo(Cancelled::class)) {
+                    $activeCheckout->status->transitionTo(Cancelled::class);
+                }
+            } catch (\Exception $e) {
+                // Log the error but continue processing other checkouts
+                \Log::warning('Failed to cancel stale checkout', [
+                    'checkout_id' => $activeCheckout->id,
+                    'error' => $e->getMessage(),
+                ]);
+                
+                // Force transition to cancelled even if Fiskaly fails
+                try {
+                    $activeCheckout->update(['status' => Cancelled::$name]);
+                } catch (\Exception $updateException) {
+                    \Log::error('Could not force cancel checkout', [
+                        'checkout_id' => $activeCheckout->id,
+                        'error' => $updateException->getMessage(),
+                    ]);
+                }
+            }
         }
     }
 }

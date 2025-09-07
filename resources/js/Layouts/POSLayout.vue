@@ -5,6 +5,7 @@ import { Link, router } from "@inertiajs/vue3";
 import DigitalClock from "@/Components/POS/DigitalClock.vue";
 import Badge from "primevue/badge";
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { usePosKeyboard } from '@/composables/usePosKeyboard';
 
 // QZ Status management
 const qzStatus = ref({
@@ -90,44 +91,79 @@ const printerStatusSummary = computed(() => {
 
 const hasPausedPrinters = computed(() => printerStatusSummary.value.paused > 0);
 
-// Keyboard Shortcuts
-function handleGlobalShortcuts(e) {
-    // Ctrl+K: Search Attendee
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        // Route to attendee search using Inertia router
-        router.visit(route('pos.attendee.lookup'));
+// Use the centralized keyboard handler composable
+usePosKeyboard({
+    // Global shortcuts are handled by the composable
+    // Additional F1 handling for shortcuts dialog
+});
+
+// Backspace logout feature
+const backspaceCount = ref(0);
+const backspaceTimer = ref(null);
+
+function resetBackspaceCount() {
+    backspaceCount.value = 0;
+    if (backspaceTimer.value) {
+        clearTimeout(backspaceTimer.value);
+        backspaceTimer.value = null;
     }
-    // Ctrl+P: Start Payment for All
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('pos-shortcut-payment'));
+}
+
+function handleBackspaceLogout(e) {
+    // Only track backspace when not in an input field
+    const isInputElement = (element) => {
+        const tagName = element.tagName.toLowerCase();
+        return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || 
+               element.contentEditable === 'true';
+    };
+    
+    if (e.key === 'Backspace' && !isInputElement(e.target)) {
+        e.preventDefault(); // Prevent browser back navigation
+        
+        backspaceCount.value++;
+        console.log(`[POSLayout] Backspace pressed ${backspaceCount.value}/5 times`);
+        
+        // Reset count after 2 seconds of no backspace
+        if (backspaceTimer.value) {
+            clearTimeout(backspaceTimer.value);
+        }
+        backspaceTimer.value = setTimeout(resetBackspaceCount, 2000);
+        
+        // Logout after 5 backspaces
+        if (backspaceCount.value >= 5) {
+            console.log('[POSLayout] 5 backspaces detected - logging out');
+            resetBackspaceCount();
+            // Use the same logout method as InactivityTimer
+            router.post(route('pos.auth.user.logout'));
+        }
+    } else if (e.key !== 'Backspace') {
+        // Reset count if any other key is pressed
+        resetBackspaceCount();
     }
-    // Ctrl+H: Handout All
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('pos-shortcut-handout'));
-    }
+}
+
+// Additional keyboard shortcuts specific to layout
+function handleLayoutShortcuts(e) {
     // F1: Show Shortcuts Dialog
     if (e.key === 'F1') {
         e.preventDefault();
         showShortcutsDialog.value = true;
     }
-    // ENTER: Confirm Dialogs
-    if (e.key === 'Enter') {
-        window.dispatchEvent(new CustomEvent('pos-shortcut-confirm'));
-    }
+    
+    // Handle backspace logout
+    handleBackspaceLogout(e);
 }
 
 onMounted(() => {
     checkBreakpoint();
     window.addEventListener('resize', checkBreakpoint);
-    window.addEventListener('keydown', handleGlobalShortcuts);
+    window.addEventListener('keydown', handleLayoutShortcuts);
 });
 
 onUnmounted(() => {
     window.removeEventListener('resize', checkBreakpoint);
-    window.removeEventListener('keydown', handleGlobalShortcuts);
+    window.removeEventListener('keydown', handleLayoutShortcuts);
+    resetBackspaceCount(); // Clean up backspace timer
 });
 
 const toggleUserMenu = (event) => {

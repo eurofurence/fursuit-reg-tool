@@ -205,7 +205,7 @@ class FiskalyService
             ->put('tss/'.config('services.fiskaly.tss_id').'/tx/'.$checkout->remote_id.'?tx_revision='.$checkout->remote_rev_count, [
                 'client_id' => $checkout->machine->tseClient->remote_id,
                 'type' => 'RECEIPT',
-                'state' => $checkout->status,
+                'state' => 'ACTIVE',
                 'schema' => [
                     'standard_v1' => [
                         'receipt' => [
@@ -279,7 +279,24 @@ class FiskalyService
             return;
         }
 
-        // Call Fiskaly to update transaction state to CANCELLED
+        // If the transaction hasn't been created in Fiskaly yet (revision is 1),
+        // we need to create it first with ACTIVE state, then cancel it
+        if ($checkout->remote_rev_count <= 1) {
+            try {
+                // First create the transaction as ACTIVE
+                $this->updateOrCreateTransaction($checkout);
+                // Reload checkout to get updated revision count
+                $checkout->refresh();
+            } catch (\Exception $e) {
+                // If the transaction already exists or other error, log and continue
+                \Log::warning('Could not create transaction before cancelling', [
+                    'checkout_id' => $checkout->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Now cancel the transaction
         $this->updateTransactionState($checkout, 'CANCELLED');
     }
 
@@ -368,7 +385,13 @@ class FiskalyService
 
         // Update checkout with revision count and Fiskaly data
         // Don't update the status here - let the controller handle state transitions
-        $checkout->remote_rev_count = $fiskalyData['revision'] ?? ($checkout->remote_rev_count + 1);
+        // Always use the revision from Fiskaly response to stay in sync
+        if (isset($fiskalyData['revision'])) {
+            $checkout->remote_rev_count = $fiskalyData['revision'];
+        } else {
+            // Fallback if revision not in response
+            $checkout->increment('remote_rev_count');
+        }
         $checkout->fiskaly_data = $fiskalyData;
 
         // Extract TSE compliance data (including end signature)
