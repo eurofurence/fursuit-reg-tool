@@ -170,8 +170,8 @@ class Event extends Model
     public function isCatchEmAllActive(): bool
     {
         $now = now();
-        $catchEmAllStarted = !$this->catch_em_all_start || $this->catch_em_all_start <= $now;
-        $catchEmAllNotEnded = !$this->catch_em_all_end || $this->catch_em_all_end >= $now;
+        $catchEmAllStarted = $this->catch_em_all_start ? $this->catch_em_all_start <= $now : $this->starts_at <= $now;
+        $catchEmAllNotEnded = $this->catch_em_all_end ? $this->catch_em_all_end > $now : $this->ends_at >= $now;
 
         return $this->catch_em_all_enabled && $catchEmAllStarted && $catchEmAllNotEnded;
     }
