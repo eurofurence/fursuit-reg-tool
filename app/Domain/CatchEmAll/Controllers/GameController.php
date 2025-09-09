@@ -55,6 +55,8 @@ class GameController extends Controller
         // Get events for filter dropdown
         $eventsWithEntries = $this->getEventsWithEntries();
 
+        $isGameRunning = $currentEvent?->isCatchEmAllActive();
+
         // Check for recent catch
         $recentCatch = null;
         if (session()->has('caught_fursuit')) {
@@ -70,6 +72,7 @@ class GameController extends Controller
             'selectedEvent' => $filterEvent?->id ?? 'global',
             'isGlobal' => $isGlobal,
             'recentCatch' => $recentCatch,
+            'isGameRunning' => $isGameRunning,
         ]);
     }
 
@@ -83,6 +86,10 @@ class GameController extends Controller
         // Rate limiting
         if ($seconds = $this->isRateLimited(Auth::id())) {
             return to_route('catch-em-all.catch')->with('error', "You may try again in {$seconds} seconds.");
+        }
+
+        if (!$event->isCatchEmAllActive()) {
+            return to_route('catch-em-all.catch')->with('error', 'The Catch Em All game is not currently active.');
         }
 
         $catchCode = strtoupper($request->validated('catch_code'));

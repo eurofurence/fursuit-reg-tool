@@ -32,6 +32,7 @@ const props = defineProps<{
     achievements: Array<any>;
     recentCatch?: any | null;
     flash?: any;
+    isGameRunning: boolean;
 }>();
 
 const closedID = ref(null);
@@ -50,16 +51,20 @@ const showRecentCatch = computed({
 });
 
 const submit = () => {
-    if (form.processing) return // Prevent multiple submissions
+    if (form.processing) return; // Prevent multiple submissions
+    if (!props.isGameRunning) {
+        form.setError("catch_code", "The game is not currently running.");
+        return;
+    }
 
-    form.catch_code = form.catch_code.toUpperCase()
-    form.post(route('catch-em-all.catch.submit'), {
+    form.catch_code = form.catch_code.toUpperCase();
+    form.post(route("catch-em-all.catch.submit"), {
         onSuccess: () => {
-            form.reset()
+            form.reset();
         },
-        preserveScroll: true // Preserve scroll position
-    })
-}
+        preserveScroll: true, // Preserve scroll position
+    });
+};
 
 const formatCode = (value: string) => {
     return value
@@ -75,20 +80,20 @@ const onCodeInput = (event: any) => {
 };
 
 // Auto-focus input on mount and handle cleanup
-const codeInput = ref()
+const codeInput = ref();
 onMounted(() => {
     // Use nextTick to ensure component is mounted
     nextTick(() => {
         if (codeInput.value?.$el) {
-            codeInput.value.$el.focus()
+            codeInput.value.$el.focus();
         }
-    })
+    });
 
     // Reset form when navigating away
-    window.addEventListener('beforeunload', () => {
-        form.reset()
-    })
-})
+    window.addEventListener("beforeunload", () => {
+        form.reset();
+    });
+});
 
 const getRankIcon = (rank: number) => {
     if (rank === 1) return Crown;
@@ -121,7 +126,9 @@ const getRankIcon = (rank: number) => {
                     >
                         <Star class="w-8 h-8 text-green-400" />
                     </div>
-                    <h2 class="flex item-center text-xl font-bold text-green-400">
+                    <h2
+                        class="flex item-center text-xl font-bold text-green-400"
+                    >
                         Amazing Catch!
                     </h2>
                 </div>
@@ -269,7 +276,11 @@ const getRankIcon = (rank: number) => {
         <!-- Code Input Card -->
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
-                <form @submit.prevent="submit" class="space-y-4">
+                <form
+                    @submit.prevent="submit"
+                    class="space-y-4"
+                    v-if="isGameRunning"
+                >
                     <div class="text-center mb-4">
                         <div
                             class="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center"
@@ -321,6 +332,18 @@ const getRankIcon = (rank: number) => {
                         </div>
                     </div>
                 </form>
+                <div v-else class="text-center text-gray-400">
+                    <div
+                        class="w-16 h-16 mx-auto mb-3 bg-gray-700 rounded-full flex items-center justify-center"
+                    >
+                        <Target class="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h2 class="text-lg font-bold">Game Not Running</h2>
+                    <p class="text-sm">
+                        The Catch em All game is over! Thanks for playing! Stay
+                        tuned for the next Eurofurence.
+                    </p>
+                </div>
             </template>
         </Card>
     </CatchEmAllLayout>

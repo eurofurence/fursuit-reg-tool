@@ -72,6 +72,16 @@ class EventResource extends Resource
                         ->label('Catch-Em-All Enabled')
                         ->helperText('Enable catch-em-all functionality for this event')
                         ->default(true),
+                    Group::make([
+                        Forms\Components\DateTimePicker::make('catch_em_all_start')
+                            ->label('Catch-Em-All Start')
+                            ->helperText('When the catch-em-all game should start (leave empty to start with event)')
+                            ->nullable(),
+                        Forms\Components\DateTimePicker::make('catch_em_all_end')
+                            ->label('Catch-Em-All End')
+                            ->helperText(text: 'When the catch-em-all game should end (leave empty to end with event)')
+                            ->nullable(),
+                    ])->columns()->columnSpanFull(),
                     Forms\Components\Textarea::make('archival_notice')
                         ->label('Archival Notice')
                         ->helperText('Notice to display for archival/historical events')
@@ -95,25 +105,25 @@ class EventResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('starts_at')
                     ->date()
-                    ->description(fn (Event $record) => $record->starts_at?->diffForHumans())
+                    ->description(fn(Event $record) => $record->starts_at?->diffForHumans())
                     ->sortable(),
                 Tables\Columns\TextColumn::make('ends_at')
                     ->date()
-                    ->description(fn (Event $record) => $record->ends_at?->diffForHumans())
+                    ->description(fn(Event $record) => $record->ends_at?->diffForHumans())
                     ->sortable(),
                 Tables\Columns\TextColumn::make('mass_printed_at')
                     ->dateTime('d.m.Y H:i')
-                    ->description(fn (Event $record) => $record->mass_printed_at?->diffForHumans())
+                    ->description(fn(Event $record) => $record->mass_printed_at?->diffForHumans())
                     ->sortable(),
                 Tables\Columns\TextColumn::make('order_starts_at')
                     ->label('Order Start')
                     ->dateTime('d.m.Y H:i')
-                    ->description(fn (Event $record) => $record->order_starts_at?->diffForHumans())
+                    ->description(fn(Event $record) => $record->order_starts_at?->diffForHumans())
                     ->sortable(),
                 Tables\Columns\TextColumn::make('order_ends_at')
                     ->label('Order End')
                     ->dateTime('d.m.Y H:i')
-                    ->description(fn (Event $record) => $record->order_ends_at?->diffForHumans())
+                    ->description(fn(Event $record) => $record->order_ends_at?->diffForHumans())
                     ->sortable(),
                 Tables\Columns\IconColumn::make('catch_em_all_enabled')
                     ->label('Catch-Em-All')
@@ -122,7 +132,7 @@ class EventResource extends Resource
                 Tables\Columns\TextColumn::make('archival_notice')
                     ->label('Archival Notice')
                     ->limit(50)
-                    ->tooltip(fn (Event $record) => $record->archival_notice)
+                    ->tooltip(fn(Event $record) => $record->archival_notice)
                     ->placeholder('None')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
