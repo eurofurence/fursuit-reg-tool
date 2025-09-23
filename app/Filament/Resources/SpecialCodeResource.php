@@ -17,7 +17,7 @@ class SpecialCodeResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-qr-code';
 
-    protected static ?string $navigationGroup = 'Events & Registration';
+    protected static ?string $navigationGroup = 'Catch \'Em All';
 
     protected static ?int $navigationSort = 3;
 
