@@ -114,21 +114,19 @@ function imageUpdatedEvent(image) {
 const basePrice = computed(() => {
     let price = 0;
     if (props.badge.is_free_badge === false && !props.badge.extra_copy_of) {
-        price += 3;
+        price += 5;
     }
     return price;
 })
 
 const latePrice = computed(() => {
-    if (props.badge.apply_late_fee) {
-        return 3;
-    }
+    // No late fees
     return 0;
 })
 
 const total = computed(() => {
     if (props.badge.extra_copy_of) {
-        return 2;
+        return 5;
     }
     return basePrice.value + latePrice.value;
 })
@@ -413,7 +411,7 @@ function openImageModal() {
                             <div v-if="props.badge.extra_copy_of"
                                  class="flex justify-between mb-4 border-b border-dotted border-gray-900">
                                 <span>Spare Copy</span>
-                                <span>2,00 €</span>
+                                <span>5,00 €</span>
                             </div>
                             <!-- End Options -->
                             <div class="flex justify-between text-2xl border-b border-double border-gray-900">

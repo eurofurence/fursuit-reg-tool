@@ -349,7 +349,7 @@ const shouldShowRegMessage = computed(() => {
                                 <div class="bg-green-50 border border-green-200 rounded-lg p-4">
                                     <h3 class="font-semibold text-green-800 mb-3 flex items-center">
                                         <i class="pi pi-calendar mr-2"></i>
-                                        Before 17th August 2025 (Official Registration Period)
+                                        Before 1st August 2026 (Official Registration Period)
                                     </h3>
                                     <div class="space-y-3">
                                         <div class="flex items-start gap-3">
@@ -363,7 +363,7 @@ const shouldShowRegMessage = computed(() => {
                                         </div>
                                         <div class="flex items-start gap-3">
                                             <div class="w-16 flex-shrink-0">
-                                                <Chip label="2€" class="bg-blue-100 text-blue-800 w-full justify-center" />
+                                                <Chip label="5€" class="bg-blue-100 text-blue-800 w-full justify-center" />
                                             </div>
                                             <div class="flex-1">
                                                 <strong>Additional Badges</strong>
@@ -377,28 +377,22 @@ const shouldShowRegMessage = computed(() => {
                                 <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
                                     <h3 class="font-semibold text-orange-800 mb-3 flex items-center">
                                         <i class="pi pi-calendar mr-2"></i>
-                                        After 17th August 2025 (Late Orders)
+                                        After 1st August 2026 (Late Orders)
                                     </h3>
                                     <div class="space-y-3">
                                         <div class="flex items-start gap-3">
                                             <div class="w-16 flex-shrink-0">
-                                                <Chip label="3€" class="bg-orange-100 text-orange-800 w-full justify-center" />
+                                                <Chip label="5€" class="bg-orange-100 text-orange-800 w-full justify-center" />
                                             </div>
                                             <div class="flex-1">
                                                 <strong>All Badges</strong>
-                                                <p class="text-sm text-gray-600">All badges cost 3€ each, including first badge</p>
+                                                <p class="text-sm text-gray-600">All badges cost 5€ each, including first badge</p>
                                             </div>
                                         </div>
                                         <div class="bg-orange-100 rounded-md p-3">
                                             <p class="text-sm text-orange-800">
                                                 <i class="pi pi-info-circle mr-1"></i>
                                                 <strong>Pickup:</strong> Available from the 2nd convention day
-                                            </p>
-                                        </div>
-                                        <div class="bg-orange-100 rounded-md p-3">
-                                            <p class="text-sm text-orange-800">
-                                                <i class="pi pi-info-circle mr-1"></i>
-                                                <strong>Price Update:</strong> In order to offset costs we have increased the price to 3,- € for onsite orders.
                                             </p>
                                         </div>
                                     </div>

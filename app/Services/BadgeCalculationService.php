@@ -15,15 +15,15 @@ class BadgeCalculationService
         bool $isLate = false
     ): int {
         if ($isSpareCopy) {
-            return 200;
+            return 500;
         }
 
         if ($isFreeBadge) {
             return 0;
         }
 
-        // All non-prepaid badges cost 3€ (300 cents)
-        $baseFee = 300;
+        // All non-prepaid badges cost 5€ (500 cents)
+        $baseFee = 500;
 
         return $baseFee;
     }
