@@ -112,8 +112,8 @@ class User extends Authenticatable implements Customer, FilamentUser, WalletFloa
 
         $prepaidBadges = $eventUser->prepaid_badges;
 
-        // After the con start date, deduct 1 free badge (no longer honored)
-        if ($event->starts_at && now() > $event->starts_at) {
+        // After order start date, deduct 1 free badge (no longer honored)
+        if ($event->order_starts_at && now() > $event->order_starts_at) {
             $prepaidBadges = max(0, $prepaidBadges - 1);
         }
 
