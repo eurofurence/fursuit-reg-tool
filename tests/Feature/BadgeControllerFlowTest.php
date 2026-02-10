@@ -241,7 +241,7 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
         ]);
 
         $this->assertDatabaseHas('badges', [
-            'total' => 300, // 3€ in cents
+            'total' => 500, // 5€ in cents
         ]);
     });
 
