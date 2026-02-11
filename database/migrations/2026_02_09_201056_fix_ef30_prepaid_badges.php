@@ -54,7 +54,11 @@ return new class extends Migration
                 $badge->paid_at = now();
                 $badge->save();
 
-                $user->deposit(500, "Badge #{$badge->id} converted to free badge for event #30 due to prepaid badges issue");
+                $user->deposit(500, [
+                    'title' => 'Refund for badge '.$badge->id,
+                    'description' => 'Refund for badge '.$badge->id.' due to prepaid badge issue',
+                    'event_id' => 30,
+                ]);
             }
         }
     }
