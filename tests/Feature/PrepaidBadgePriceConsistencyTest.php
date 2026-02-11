@@ -99,7 +99,7 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         // Assert the badge was created as PAID (not free)
         $this->assertNotNull($newBadge, 'Badge should be created');
         $this->assertFalse($newBadge->is_free_badge, 'Badge should NOT be marked as free');
-        $this->assertEquals(300, $newBadge->total, 'Badge should cost 300 cents (3€)');
+        $this->assertEquals(500, $newBadge->total, 'Badge should cost 500 cents (5€)');
         $this->assertEquals('unpaid', $newBadge->status_payment, 'Badge should be unpaid');
     }
 
@@ -324,7 +324,7 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         // Verify consistency: if frontend shows 0 prepaid left, badge should be paid
         if ($prepaidBadgesLeft == 0) {
             $this->assertFalse($newBadge->is_free_badge, 'Badge should NOT be free when frontend shows 0 prepaid left');
-            $this->assertEquals(300, $newBadge->total, 'Badge should cost 3€ when no prepaid badges left');
+            $this->assertEquals(500, $newBadge->total, 'Badge should cost 5€ when no prepaid badges left');
         } else {
             $this->assertTrue($newBadge->is_free_badge, 'Badge should be free when prepaid badges available');
             $this->assertEquals(0, $newBadge->total, 'Badge should cost 0€ when prepaid badges available');
