@@ -6,10 +6,19 @@ use App\Filament\Resources\StaffResource\Pages;
 use App\Filament\Resources\StaffResource\RelationManagers;
 use App\Models\Staff;
 use App\Rules\SecurePinRule;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
 class StaffResource extends Resource
@@ -22,22 +31,21 @@ class StaffResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
-    /*
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('pin_code')
+                TextInput::make('pin_code')
                     ->nullable()
                     ->numeric()
                     ->length(6)
                     ->label('PIN Code (6 digits)')
                     ->helperText('Enter a secure 6-digit PIN code. Leave empty to require setup code first.')
                     ->rules([new SecurePinRule]),
-                Forms\Components\TextInput::make('setup_code')
+                TextInput::make('setup_code')
                     ->nullable()
                     ->length(6)
                     ->label('Setup Code')
@@ -45,10 +53,10 @@ class StaffResource extends Resource
                     ->extraAttributes(['style' => 'text-transform: uppercase'])
                     ->mutateDehydratedStateUsing(fn ($state) => strtoupper($state ?? ''))
                     ->suffixAction(
-                        Forms\Components\Actions\Action::make('generate_setup_code')
+                        Action::make('generate_setup_code')
                             ->label('Generate')
                             ->icon('heroicon-m-arrow-path')
-                            ->action(function (Forms\Set $set, ?Staff $record) {
+                            ->action(function (Set $set, ?Staff $record) {
                                 if ($record) {
                                     $code = $record->generateSetupCode();
                                 } else {
@@ -61,52 +69,51 @@ class StaffResource extends Resource
                             })
                             ->visible(fn ($record) => ! $record || ! $record->pin_code)
                     ),
-                Forms\Components\Toggle::make('is_active')
+                Toggle::make('is_active')
                     ->default(true)
                     ->label('Active')
                     ->helperText('Inactive staff cannot login to POS'),
             ]);
     }
-            */
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('pin_code')
+                TextColumn::make('pin_code')
                     ->label('PIN Code')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn ($state) => $state ? 'Set' : 'Not Set'),
-                Tables\Columns\IconColumn::make('is_active')
+                IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active'),
-                Tables\Columns\TextColumn::make('rfid_tags_count')
+                TextColumn::make('rfid_tags_count')
                     ->counts('rfidTags')
                     ->label('RFID Tags'),
-                Tables\Columns\TextColumn::make('last_login_at')
+                TextColumn::make('last_login_at')
                     ->dateTime()
                     ->sortable()
                     ->label('Last Login')
                     ->since(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
+                TernaryFilter::make('is_active')
                     ->label('Active Status'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->paginated(false);

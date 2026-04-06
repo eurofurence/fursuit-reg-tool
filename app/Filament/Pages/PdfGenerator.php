@@ -6,14 +6,14 @@ use App\Models\Badge\Badge;
 use App\Models\Badge\State_Payment\Paid;
 use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Event;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Mpdf\Mpdf;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Form;
 use Filament\Pages\Page;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -48,10 +48,9 @@ class PdfGenerator extends Page implements HasForms
         ]);
     }
 
-    /*
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Section::make('PDF Generation Options')
                     ->description('Generate PDFs for badge management')
@@ -125,7 +124,6 @@ class PdfGenerator extends Page implements HasForms
             ])
             ->statePath('data');
     }
-            */
 
     protected function getHeaderActions(): array
     {

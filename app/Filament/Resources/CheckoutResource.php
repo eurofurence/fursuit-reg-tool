@@ -11,11 +11,20 @@ use App\Enum\PrintJobStatusEnum;
 use App\Filament\Resources\CheckoutResource\Pages;
 use App\Filament\Resources\CheckoutResource\RelationManagers;
 use App\Jobs\CreateReceiptFromCheckoutJob;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -30,71 +39,70 @@ class CheckoutResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
-    /*
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\Section::make('Checkout Information')
+                Section::make('Checkout Information')
                     ->schema([
-                        Forms\Components\TextInput::make('remote_id')
+                        TextInput::make('remote_id')
                             ->label('Remote ID')
                             ->disabled(),
 
-                        Forms\Components\Select::make('user_id')
+                        Select::make('user_id')
                             ->label('Customer')
                             ->relationship('user', 'name')
                             ->disabled()
                             ->searchable(),
 
-                        Forms\Components\Select::make('cashier_id')
+                        Select::make('cashier_id')
                             ->label('Cashier')
                             ->relationship('cashier', 'name')
                             ->disabled(),
 
-                        Forms\Components\Select::make('machine_id')
+                        Select::make('machine_id')
                             ->label('Machine')
                             ->relationship('machine', 'name')
                             ->disabled(),
 
-                        Forms\Components\TextInput::make('status')
+                        TextInput::make('status')
                             ->disabled(),
 
-                        Forms\Components\TextInput::make('payment_method')
+                        TextInput::make('payment_method')
                             ->disabled(),
                     ])
                     ->columns(2),
 
-                Forms\Components\Section::make('Financial Details')
+                Section::make('Financial Details')
                     ->schema([
-                        Forms\Components\TextInput::make('subtotal')
+                        TextInput::make('subtotal')
                             ->prefix('€')
                             ->numeric()
                             ->disabled(),
 
-                        Forms\Components\TextInput::make('tax')
+                        TextInput::make('tax')
                             ->prefix('€')
                             ->numeric()
                             ->disabled(),
 
-                        Forms\Components\TextInput::make('total')
+                        TextInput::make('total')
                             ->prefix('€')
                             ->numeric()
                             ->disabled(),
                     ])
                     ->columns(3),
 
-                Forms\Components\Section::make('TSE Information')
+                Section::make('TSE Information')
                     ->schema([
-                        Forms\Components\DateTimePicker::make('tse_start_timestamp')
+                        DateTimePicker::make('tse_start_timestamp')
                             ->label('TSE Start')
                             ->disabled(),
 
-                        Forms\Components\DateTimePicker::make('tse_end_timestamp')
+                        DateTimePicker::make('tse_end_timestamp')
                             ->label('TSE End')
                             ->disabled(),
 
-                        Forms\Components\TextInput::make('tse_signature')
+                        TextInput::make('tse_signature')
                             ->label('TSE Signature')
                             ->disabled()
                             ->columnSpanFull(),
@@ -102,48 +110,47 @@ class CheckoutResource extends Resource
                     ->columns(2)
                     ->collapsed(),
 
-                Forms\Components\Section::make('Timestamps')
+                Section::make('Timestamps')
                     ->schema([
-                        Forms\Components\DateTimePicker::make('created_at')
+                        DateTimePicker::make('created_at')
                             ->disabled(),
 
-                        Forms\Components\DateTimePicker::make('updated_at')
+                        DateTimePicker::make('updated_at')
                             ->disabled(),
                     ])
                     ->columns(2)
                     ->collapsed(),
             ]);
     }
-            */
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')
+                TextColumn::make('id')
                     ->label('ID')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('user.name')
+                TextColumn::make('user.name')
                     ->label('Customer')
                     ->searchable()
                     ->sortable()
                     ->url(fn ($record) => $record->user ? UserResource::getUrl('index').'?tableSearch='.urlencode($record->user->name) : null),
 
-                Tables\Columns\TextColumn::make('cashier.name')
+                TextColumn::make('cashier.name')
                     ->label('Cashier')
                     ->searchable()
                     ->sortable()
                     ->default('-'),
 
-                Tables\Columns\TextColumn::make('machine.name')
+                TextColumn::make('machine.name')
                     ->label('Machine')
                     ->searchable()
                     ->sortable()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('status')
+                TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn ($state) => class_basename($state))
                     ->color(fn ($state) => match (true) {
@@ -153,7 +160,7 @@ class CheckoutResource extends Resource
                         default => 'gray',
                     }),
 
-                Tables\Columns\TextColumn::make('payment_method')
+                TextColumn::make('payment_method')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
                         'cash' => 'success',
@@ -161,25 +168,25 @@ class CheckoutResource extends Resource
                         default => 'gray',
                     }),
 
-                Tables\Columns\TextColumn::make('total')
+                TextColumn::make('total')
                     ->money('EUR', divideBy: 100)
                     ->sortable()
-                    ->summarize(Tables\Columns\Summarizers\Sum::make()
+                    ->summarize(Sum::make()
                         ->money('EUR', divideBy: 100)
                         ->label('Total')),
 
-                Tables\Columns\TextColumn::make('items_count')
+                TextColumn::make('items_count')
                     ->counts('items')
                     ->label('Items'),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->options([
                         Active::class => 'Active',
                         Finished::class => 'Finished',
@@ -187,20 +194,20 @@ class CheckoutResource extends Resource
                     ])
                     ->multiple(),
 
-                Tables\Filters\SelectFilter::make('payment_method')
+                SelectFilter::make('payment_method')
                     ->options([
                         'cash' => 'Cash',
                         'card' => 'Card',
                     ]),
 
-                Tables\Filters\SelectFilter::make('machine_id')
+                SelectFilter::make('machine_id')
                     ->label('Machine')
                     ->relationship('machine', 'name'),
 
-                Tables\Filters\Filter::make('created_at')
+                Filter::make('created_at')
                     ->form([
-                        Forms\Components\DatePicker::make('created_from'),
-                        Forms\Components\DatePicker::make('created_until'),
+                        DatePicker::make('created_from'),
+                        DatePicker::make('created_until'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -215,14 +222,14 @@ class CheckoutResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\Action::make('receipt')
+                ViewAction::make(),
+                Action::make('receipt')
                     ->label('Receipt')
                     ->icon('heroicon-o-document-text')
                     ->color('gray')
                     ->url(fn (Checkout $record): string => route('pos.checkout.receipt', $record))
                     ->openUrlInNewTab(),
-                Tables\Actions\Action::make('print')
+                Action::make('print')
                     ->label('Print')
                     ->icon('heroicon-o-printer')
                     ->color('info')

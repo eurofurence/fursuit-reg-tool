@@ -6,16 +6,25 @@ use App\Filament\Resources\FursuitResource\Pages;
 use App\Filament\Resources\FursuitResource\RelationManagers;
 use App\Filament\Traits\HasEventFilter;
 use App\Models\Fursuit\Fursuit;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Infolists\Components\Group;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
-use Filament\Tables;
+use Filament\Support\Enums\IconSize;
+use Filament\Support\Enums\TextSize;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class FursuitResource extends Resource
@@ -54,10 +63,9 @@ class FursuitResource extends Resource
         return $pendingCount > 0 ? 'warning' : 'success';
     }
 
-    /*
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist
+        return $schema
             ->schema([
                 Group::make([
                     Group::make([
@@ -73,21 +81,21 @@ class FursuitResource extends Resource
                             ->label('Name')
                             ->hint('Name of the fursuit on the Badge')
                             ->helperText('Should not contain profanities.')
-                            ->size(TextEntry\TextEntrySize::Large)
+                            ->size(TextSize::Large)
                             ->weight(FontWeight::Bold),
                         TextEntry::make('species.name')
                             ->label('Species')
                             ->hint('Name of the species on the Badge')
                             ->helperText('Should not contain profanities.')
-                            ->size(TextEntry\TextEntrySize::Large)
+                            ->size(TextSize::Large)
                             ->weight(FontWeight::Bold),
                         Group::make([
                             IconEntry::make('published')
-                                ->size(IconEntry\IconEntrySize::Large)
+                                ->size(IconSize::Large)
                                 ->hint('Publish your fursuit in our online gallery for everyone to see.')
                                 ->boolean(),
                             IconEntry::make('catch_em_all')
-                                ->size(IconEntry\IconEntrySize::Large)
+                                ->size(IconSize::Large)
                                 ->hint('Participate in the convention game to be catchable by other attendees.')
                                 ->boolean(),
                         ])->columns(),
@@ -102,70 +110,69 @@ class FursuitResource extends Resource
             ]);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\Select::make('user_id')
+                Select::make('user_id')
                     ->relationship('user', 'name')
                     ->required(),
-                Forms\Components\Select::make('species_id')
+                Select::make('species_id')
                     ->relationship('species', 'name')
                     ->required(),
-                Forms\Components\TextInput::make('event_id')
+                TextInput::make('event_id')
                     ->required()
                     ->numeric(),
-                Forms\Components\TextInput::make('status')
+                TextInput::make('status')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\FileUpload::make('image')
+                FileUpload::make('image')
                     ->image()
                     ->required(),
-                Forms\Components\Toggle::make('published')
+                Toggle::make('published')
                     ->required(),
-                Forms\Components\Toggle::make('catch_em_all')
+                Toggle::make('catch_em_all')
                     ->required(),
-                Forms\Components\DateTimePicker::make('approved_at'),
-                Forms\Components\DateTimePicker::make('rejected_at'),
+                DateTimePicker::make('approved_at'),
+                DateTimePicker::make('rejected_at'),
             ]);
     }
-            */
 
     public static function table(Table $table): Table
     {
         return $table
             ->modifyQueryUsing(fn ($query) => static::applyEventFilter($query))
             ->columns([
-                Tables\Columns\TextColumn::make('user.name')
+                TextColumn::make('user.name')
                     ->label('By')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('species.name')
+                TextColumn::make('species.name')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status')
+                TextColumn::make('status')
                     ->badge()
                     ->color(fn (Fursuit $fursuit) => $fursuit->status->color())
                     ->formatStateUsing(fn ($state) => ucfirst($state))
                     ->searchable(),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\ImageColumn::make('image')
+                ImageColumn::make('image')
                     ->disk('s3')
                     ->visibility('private')
                     ->circular()
                     ->checkFileExistence(false),
-                Tables\Columns\IconColumn::make('published')
+                IconColumn::make('published')
                     ->boolean(),
-                Tables\Columns\IconColumn::make('catch_em_all')
+                IconColumn::make('catch_em_all')
                     ->boolean(),
             ])
             ->filters([
                 // Status Filter
-                Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',
                         'approved' => 'Approved',
@@ -174,7 +181,7 @@ class FursuitResource extends Resource
                     ->default('pending'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                ViewAction::make(),
                 // Tables\Actions\EditAction::make(),
             ]);
     }

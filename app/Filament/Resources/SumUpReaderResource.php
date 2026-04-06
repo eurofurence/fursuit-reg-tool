@@ -5,8 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\SumUpReaderResource\Pages;
 use App\Models\SumUpReader;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -20,10 +20,9 @@ class SumUpReaderResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
-    /*
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
@@ -38,7 +37,6 @@ class SumUpReaderResource extends Resource
                     ->maxLength(255),
             ]);
     }
-            */
 
     public static function table(Table $table): Table
     {

@@ -6,9 +6,9 @@ use App\Models\Badge\Badge;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 
 class BadgePreview extends Page implements HasForms
 {
@@ -33,10 +33,9 @@ class BadgePreview extends Page implements HasForms
         $this->form->fill();
     }
 
-    /*
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 TextInput::make('customId')
                     ->label('Badge Custom ID')
@@ -45,7 +44,6 @@ class BadgePreview extends Page implements HasForms
                     ->maxLength(255),
             ]);
     }
-            */
 
     public function loadBadge(): void
     {

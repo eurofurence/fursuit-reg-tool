@@ -4,10 +4,17 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\MachineResource\Pages;
 use App\Models\Machine;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -21,28 +28,27 @@ class MachineResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    /*
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->required()
                     ->columnSpanFull()
                     ->maxLength(255),
                 // TSE Client
-                Forms\Components\Select::make('tse_client_id')
+                Select::make('tse_client_id')
                     ->label('TSE Client')
                     ->relationship('tseClient', 'remote_id')
                     ->getOptionLabelFromRecordUsing(fn ($record) => $record->remote_id ?? 'Unknown TSE Client')
                     ->columnSpanFull(),
                 // SumUp Reader
-                Forms\Components\Select::make('sumup_reader_id')
+                Select::make('sumup_reader_id')
                     ->label('SumUp Reader')
                     ->relationship('sumupReader', 'name')
                     ->getOptionLabelFromRecordUsing(fn ($record) => $record->name ?? 'Unknown SumUp Reader')
                     ->columnSpanFull(),
-                Forms\Components\Checkbox::make('should_discover_printers')
+                Checkbox::make('should_discover_printers')
                     ->columnSpanFull(),
             ]);
     }
@@ -51,20 +57,20 @@ class MachineResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('tseClient.remote_id')
+                TextColumn::make('tseClient.remote_id')
                     ->label('TSE Client')
                     ->placeholder('None assigned'),
-                Tables\Columns\TextColumn::make('sumupReader.name')
+                TextColumn::make('sumupReader.name')
                     ->label('SumUp Reader')
                     ->placeholder('None assigned'),
-                Tables\Columns\IconColumn::make('should_discover_printers')
+                IconColumn::make('should_discover_printers')
                     ->label('Auto-discover Printers')
                     ->boolean(),
             ])
             ->filters([
-                Tables\Filters\TernaryFilter::make('archived')
+                TernaryFilter::make('archived')
                     ->label('Archived')
                     ->placeholder('Active machines')
                     ->trueLabel('Archived machines')
@@ -78,8 +84,8 @@ class MachineResource extends Resource
             ->searchable(false)
             ->paginated(false)
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('archive')
+                EditAction::make(),
+                Action::make('archive')
                     ->label('Archive')
                     ->icon('heroicon-o-archive-box')
                     ->color('warning')
@@ -88,8 +94,8 @@ class MachineResource extends Resource
                     ->modalDescription('Are you sure you want to archive this machine? It will be hidden from normal view.')
                     ->modalSubmitActionLabel('Yes, archive it')
                     ->action(fn (Machine $record) => $record->archive())
-                    ->visible(fn (Machine $record) => !$record->isArchived()),
-                Tables\Actions\Action::make('unarchive')
+                    ->visible(fn (Machine $record) => ! $record->isArchived()),
+                Action::make('unarchive')
                     ->label('Restore')
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('success')
@@ -101,7 +107,7 @@ class MachineResource extends Resource
                     ->visible(fn (Machine $record) => $record->isArchived()),
             ])
             ->bulkActions([
-                Tables\Actions\BulkAction::make('archive')
+                BulkAction::make('archive')
                     ->label('Archive selected')
                     ->icon('heroicon-o-archive-box')
                     ->color('warning')
@@ -111,7 +117,7 @@ class MachineResource extends Resource
                     ->modalSubmitActionLabel('Yes, archive them')
                     ->action(fn ($records) => $records->each->archive())
                     ->deselectRecordsAfterCompletion(),
-                Tables\Actions\BulkAction::make('unarchive')
+                BulkAction::make('unarchive')
                     ->label('Restore selected')
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('success')
@@ -123,7 +129,6 @@ class MachineResource extends Resource
                     ->deselectRecordsAfterCompletion(),
             ]);
     }
-            */
 
     public static function getRelations(): array
     {

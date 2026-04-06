@@ -2,81 +2,87 @@
 
 namespace App\Filament\Resources\StaffResource\RelationManagers;
 
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
 class RfidTagsRelationManager extends RelationManager
 {
     protected static string $relationship = 'rfidTags';
 
-    /*
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\TextInput::make('content')
+                TextInput::make('content')
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(255)
                     ->label('RFID Code')
                     ->helperText('The unique identifier from the RFID tag'),
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->maxLength(255)
                     ->label('Tag Name (Optional)')
                     ->helperText('A friendly name for this RFID tag'),
-                Forms\Components\Toggle::make('is_active')
+                Toggle::make('is_active')
                     ->default(true)
                     ->label('Active')
                     ->helperText('Inactive tags cannot be used for authentication'),
             ]);
     }
-            */
 
     public function table(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('content')
             ->columns([
-                Tables\Columns\TextColumn::make('content')
+                TextColumn::make('content')
                     ->label('RFID Code')
                     ->searchable()
                     ->copyable(),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('Tag Name')
                     ->searchable()
                     ->placeholder('No name set'),
-                Tables\Columns\IconColumn::make('is_active')
+                IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active'),
-                Tables\Columns\TextColumn::make('last_login_at')
+                TextColumn::make('last_login_at')
                     ->dateTime()
                     ->sortable()
                     ->label('Last Used')
                     ->since()
                     ->placeholder('Never used'),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->label('Added')
                     ->since(),
             ])
             ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
+                TernaryFilter::make('is_active')
                     ->label('Active Status'),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
