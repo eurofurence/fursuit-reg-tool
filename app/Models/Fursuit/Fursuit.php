@@ -2,6 +2,7 @@
 
 namespace App\Models\Fursuit;
 
+use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\FCEA\UserCatchLog;
@@ -17,8 +18,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\ModelStates\HasStates;
 
 class Fursuit extends Model
@@ -195,7 +195,7 @@ class Fursuit extends Model
 
     public function catchedByUsers()
     {
-        return $this->hasMany(\App\Domain\CatchEmAll\Models\UserCatch::class);
+        return $this->hasMany(UserCatch::class);
     }
 
     /**

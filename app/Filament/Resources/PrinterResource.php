@@ -14,12 +14,13 @@ class PrinterResource extends Resource
 {
     protected static ?string $model = Printer::class;
 
-    protected static ?string $navigationGroup = 'POS';
+    protected static string|\UnitEnum|null $navigationGroup = 'POS';
 
-    protected static ?string $navigationIcon = 'heroicon-o-printer';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-printer';
 
     protected static ?int $navigationSort = 2;
 
+    /*
     public static function form(Form $form): Form
     {
         return $form
@@ -56,6 +57,7 @@ class PrinterResource extends Resource
                     ->columnSpanFull(),
             ]);
     }
+            */
 
     public static function table(Table $table): Table
     {

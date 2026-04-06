@@ -15,12 +15,13 @@ class SpecialCodeResource extends Resource
 {
     protected static ?string $model = SpecialCode::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-qr-code';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-qr-code';
 
-    protected static ?string $navigationGroup = 'Events & Registration';
+    protected static string|\UnitEnum|null $navigationGroup = 'Events & Registration';
 
     protected static ?int $navigationSort = 3;
 
+    /*
     public static function form(Form $form): Form
     {
         return $form
@@ -69,6 +70,7 @@ class SpecialCodeResource extends Resource
                     }),
             ]);
     }
+            */
 
     public static function table(Table $table): Table
     {

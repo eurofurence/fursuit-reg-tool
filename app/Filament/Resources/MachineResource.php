@@ -15,12 +15,13 @@ class MachineResource extends Resource
 {
     protected static ?string $model = Machine::class;
 
-    protected static ?string $navigationGroup = 'POS';
+    protected static string|\UnitEnum|null $navigationGroup = 'POS';
 
-    protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-computer-desktop';
 
     protected static ?int $navigationSort = 1;
 
+    /*
     public static function form(Form $form): Form
     {
         return $form
@@ -122,6 +123,7 @@ class MachineResource extends Resource
                     ->deselectRecordsAfterCompletion(),
             ]);
     }
+            */
 
     public static function getRelations(): array
     {

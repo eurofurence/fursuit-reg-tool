@@ -16,12 +16,13 @@ class StaffResource extends Resource
 {
     protected static ?string $model = Staff::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?string $navigationGroup = 'POS';
+    protected static string|\UnitEnum|null $navigationGroup = 'POS';
 
     protected static ?int $navigationSort = 3;
 
+    /*
     public static function form(Form $form): Form
     {
         return $form
@@ -66,6 +67,7 @@ class StaffResource extends Resource
                     ->helperText('Inactive staff cannot login to POS'),
             ]);
     }
+            */
 
     public static function table(Table $table): Table
     {

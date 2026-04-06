@@ -17,6 +17,7 @@ class ItemsRelationManager extends RelationManager
 
     protected static ?string $title = 'Checkout Items';
 
+    /*
     public function form(Form $form): Form
     {
         return $form
@@ -26,6 +27,7 @@ class ItemsRelationManager extends RelationManager
                     ->maxLength(255),
             ]);
     }
+            */
 
     public function table(Table $table): Table
     {
@@ -35,7 +37,7 @@ class ItemsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('name')
                     ->label('Item')
                     ->searchable(),
-                
+
                 Tables\Columns\TextColumn::make('description')
                     ->label('Features')
                     ->formatStateUsing(function ($state) {
@@ -45,7 +47,7 @@ class ItemsRelationManager extends RelationManager
                         return '-';
                     })
                     ->wrap(),
-                
+
                 Tables\Columns\TextColumn::make('payable')
                     ->label('Badge')
                     ->formatStateUsing(function ($record) {
@@ -62,17 +64,17 @@ class ItemsRelationManager extends RelationManager
                         return null;
                     })
                     ->openUrlInNewTab(),
-                
+
                 Tables\Columns\TextColumn::make('subtotal')
                     ->label('Subtotal')
                     ->money('EUR', divideBy: 100)
                     ->alignEnd(),
-                
+
                 Tables\Columns\TextColumn::make('tax')
                     ->label('Tax')
                     ->money('EUR', divideBy: 100)
                     ->alignEnd(),
-                
+
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
                     ->money('EUR', divideBy: 100)
@@ -93,22 +95,22 @@ class ItemsRelationManager extends RelationManager
             ])
             ->paginated(false);
     }
-    
+
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return true;
     }
-    
+
     protected function canCreate(): bool
     {
         return false;
     }
-    
+
     protected function canEdit(Model $record): bool
     {
         return false;
     }
-    
+
     protected function canDelete(Model $record): bool
     {
         return false;

@@ -7,8 +7,8 @@ use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Filament\Resources\PrintJobResource\Pages;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Form;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -18,12 +18,13 @@ class PrintJobResource extends Resource
 {
     protected static ?string $model = PrintJob::class;
 
-    protected static ?string $navigationGroup = 'POS';
+    protected static string|\UnitEnum|null $navigationGroup = 'POS';
 
-    protected static ?string $navigationIcon = 'heroicon-o-queue-list';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-queue-list';
 
     protected static ?int $navigationSort = 3;
 
+    /*
     public static function form(Form $form): Form
     {
         return $form
@@ -73,6 +74,7 @@ class PrintJobResource extends Resource
                     ->rows(2),
             ]);
     }
+            */
 
     public static function table(Table $table): Table
     {

@@ -12,6 +12,7 @@ class ActivitiesRelationManager extends RelationManager
 {
     protected static string $relationship = 'activities';
 
+    /*
     public function form(Form $form): Form
     {
         return $form
@@ -37,6 +38,7 @@ class ActivitiesRelationManager extends RelationManager
                     ->disabled(),
             ]);
     }
+            */
 
     public function table(Table $table): Table
     {

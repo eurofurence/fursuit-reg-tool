@@ -14,12 +14,13 @@ class SumUpReaderResource extends Resource
 {
     protected static ?string $model = SumUpReader::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationGroup = 'POS';
+    protected static string|\UnitEnum|null $navigationGroup = 'POS';
 
     protected static ?int $navigationSort = 4;
 
+    /*
     public static function form(Form $form): Form
     {
         return $form
@@ -37,6 +38,7 @@ class SumUpReaderResource extends Resource
                     ->maxLength(255),
             ]);
     }
+            */
 
     public static function table(Table $table): Table
     {

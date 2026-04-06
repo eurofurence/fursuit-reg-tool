@@ -24,9 +24,9 @@ class FursuitResource extends Resource
 
     protected static ?string $model = Fursuit::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-circle';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-circle';
 
-    protected static ?string $navigationGroup = 'Events & Registration';
+    protected static string|\UnitEnum|null $navigationGroup = 'Events & Registration';
 
     protected static ?int $navigationSort = 3;
 
@@ -54,6 +54,7 @@ class FursuitResource extends Resource
         return $pendingCount > 0 ? 'warning' : 'success';
     }
 
+    /*
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist
@@ -131,6 +132,7 @@ class FursuitResource extends Resource
                 Forms\Components\DateTimePicker::make('rejected_at'),
             ]);
     }
+            */
 
     public static function table(Table $table): Table
     {

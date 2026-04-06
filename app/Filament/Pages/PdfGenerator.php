@@ -24,11 +24,11 @@ class PdfGenerator extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
 
-    protected static string $view = 'filament.pages.pdf-generator';
+    protected string $view = 'filament.pages.pdf-generator';
 
-    protected static ?string $navigationGroup = 'Tools';
+    protected static string|\UnitEnum|null $navigationGroup = 'Tools';
 
     protected static ?string $title = 'PDF Generator';
 
@@ -48,6 +48,7 @@ class PdfGenerator extends Page implements HasForms
         ]);
     }
 
+    /*
     public function form(Form $form): Form
     {
         return $form
@@ -124,6 +125,7 @@ class PdfGenerator extends Page implements HasForms
             ])
             ->statePath('data');
     }
+            */
 
     protected function getHeaderActions(): array
     {
@@ -190,7 +192,7 @@ class PdfGenerator extends Page implements HasForms
                 'unpaid' => 'unpaid badges',
                 default => 'badges'
             };
-            
+
             Notification::make()
                 ->title('No Data')
                 ->body("No {$filterText} found for the current event.")
@@ -203,7 +205,7 @@ class PdfGenerator extends Page implements HasForms
         $customRanges = [];
         if (!empty($this->data['badge_ranges'])) {
             $customRanges = $this->parseRanges($this->data['badge_ranges']);
-            
+
             // Validate that we have at least one valid range
             if (empty($customRanges)) {
                 Notification::make()
@@ -217,7 +219,7 @@ class PdfGenerator extends Page implements HasForms
 
         // Group badges by ranges and attendees
         $groupedBadges = $this->groupBadgesByRangeAndAttendee($badges, $customRanges);
-        
+
         // Check if we have any badges in the defined ranges
         if (empty($groupedBadges)) {
             Notification::make()
@@ -297,7 +299,7 @@ class PdfGenerator extends Page implements HasForms
             'unpaid' => '-unpaid',
             default => ''
         };
-        
+
         return response()->streamDownload(function () use ($mpdf) {
             echo $mpdf->Output('', 'S');
         }, "badge-list-{$selectedEvent->name}{$paymentStatusSuffix}-" . now()->format('Y-m-d') . '.pdf');
@@ -387,19 +389,19 @@ class PdfGenerator extends Page implements HasForms
     {
         $ranges = [];
         $rangeParts = explode(',', $rangesString);
-        
+
         foreach ($rangeParts as $range) {
             $range = trim($range);
             if (empty($range)) {
                 continue;
             }
-            
+
             // Parse range like "1-1699" into [1, 1699]
             $parts = explode('-', $range);
             if (count($parts) === 2) {
                 $start = (int) trim($parts[0]);
                 $end = (int) trim($parts[1]);
-                
+
                 if ($start <= $end) {
                     $ranges[] = [
                         'start' => $start,
@@ -409,12 +411,12 @@ class PdfGenerator extends Page implements HasForms
                 }
             }
         }
-        
+
         // Sort ranges by start value
         usort($ranges, function ($a, $b) {
             return $a['start'] <=> $b['start'];
         });
-        
+
         return $ranges;
     }
 

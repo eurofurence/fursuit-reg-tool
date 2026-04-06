@@ -12,6 +12,7 @@ class RfidTagsRelationManager extends RelationManager
 {
     protected static string $relationship = 'rfidTags';
 
+    /*
     public function form(Form $form): Form
     {
         return $form
@@ -32,6 +33,7 @@ class RfidTagsRelationManager extends RelationManager
                     ->helperText('Inactive tags cannot be used for authentication'),
             ]);
     }
+            */
 
     public function table(Table $table): Table
     {
