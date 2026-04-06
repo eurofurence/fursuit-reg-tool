@@ -3,13 +3,14 @@
 namespace App\Domain\CatchEmAll\Models;
 
 use App\Domain\CatchEmAll\Enums\FursuitRarity;
+use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class UserCatch extends Model
 {
@@ -36,7 +37,7 @@ class UserCatch extends Model
 
     public function event(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Event::class);
+        return $this->belongsTo(Event::class);
     }
 
     public function getFursuitRarity(): FursuitRarity
@@ -64,6 +65,7 @@ class UserCatch extends Model
     {
         // Calculate rarity based on global frequency of fursuits
         $count = UserCatch::where('fursuit_id', $this->fursuit_id)->count();
+
         return $count;
     }
 
