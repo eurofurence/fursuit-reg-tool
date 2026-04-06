@@ -2,6 +2,8 @@
 
 use App\Enum\EventStateEnum;
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Fulfillment\Pending;
+use App\Models\Badge\State_Fulfillment\Printed;
 use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
@@ -241,7 +243,7 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
         ]);
 
         $this->assertDatabaseHas('badges', [
-            'total' => 300, // 3€ in cents
+            'total' => 500, // 5€ in cents
         ]);
     });
 
@@ -343,7 +345,7 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
             ->recycle($this->event)
             ->recycle($this->user)
             ->create([
-                'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
+                'status_fulfillment' => Pending::$name,
             ]);
 
         actingAs($this->user);
@@ -380,7 +382,7 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
             ->recycle($this->event)
             ->recycle($this->user)
             ->create([
-                'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
+                'status_fulfillment' => Pending::$name,
             ]);
 
         actingAs($this->user);
@@ -406,7 +408,7 @@ describe('Event State: Onsite Purchase Period (OPEN - During Event)', function (
             ->recycle($this->event)
             ->recycle($this->user)
             ->create([
-                'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Printed::$name,
+                'status_fulfillment' => Printed::$name,
             ]);
 
         actingAs($this->user);
