@@ -61,6 +61,9 @@ return new class extends Migration
         Schema::table('user_catches', function (Blueprint $table) {
             $table->unsignedBigInteger('event_user_id')->nullable(false)->index()->change();
             $table->unique(['fursuit_id', 'event_user_id']);
+
+            $table->dropIndex('idx_user_catches_user_created')
+
             $table->dropUnique('user_catches_user_id_fursuit_id_unique');
             $table->dropForeign(['user_id']);
             $table->dropColumn('user_id');
