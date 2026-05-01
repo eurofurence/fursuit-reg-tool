@@ -33,6 +33,9 @@ return new class extends Migration
         Schema::table('user_achievements', function (Blueprint $table) {
             $table->unsignedBigInteger('event_user_id')->nullable(false)->index()->change();
             $table->unique(['achievement', 'event_user_id']);
+
+            $table->dropIndex('user_achievements_user_id_earned_at_index')
+
             $table->dropUnique('user_achievements_user_id_achievement_unique');
             $table->dropForeign(['user_id']);
             $table->dropColumn('user_id');
