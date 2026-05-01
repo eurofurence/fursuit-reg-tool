@@ -3,8 +3,8 @@
 namespace App\Domain\CatchEmAll\Models;
 
 use App\Domain\CatchEmAll\Enums\FursuitRarity;
+use App\Models\EventUser;
 use App\Models\Fursuit\Fursuit;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,27 +16,21 @@ class UserCatch extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
-        'user_id',
+        'event_user_id',
         'fursuit_id',
-        'event_id',
     ];
 
     protected $casts = [
     ];
 
-    public function user(): BelongsTo
+    public function event_user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(EventUser::class);
     }
 
     public function fursuit(): BelongsTo
     {
         return $this->belongsTo(Fursuit::class);
-    }
-
-    public function event(): BelongsTo
-    {
-        return $this->belongsTo(\App\Models\Event::class);
     }
 
     public function getFursuitRarity(): FursuitRarity
@@ -64,12 +58,13 @@ class UserCatch extends Model
     {
         // Calculate rarity based on global frequency of fursuits
         $count = UserCatch::where('fursuit_id', $this->fursuit_id)->count();
+
         return $count;
     }
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['user_id', 'fursuit_id']);
+            ->logOnly(['event_user_id', 'fursuit_id']);
     }
 }
