@@ -63,6 +63,7 @@ return new class extends Migration
             $table->unique(['fursuit_id', 'event_user_id']);
 
             $table->dropIndex('idx_user_catches_user_created');
+            $table->dropIndex('idx_user_catches_user_fursuit');
 
             $table->dropUnique('user_catches_user_id_fursuit_id_unique');
             $table->dropForeign(['user_id']);
