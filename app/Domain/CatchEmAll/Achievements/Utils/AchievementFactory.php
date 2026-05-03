@@ -4,21 +4,18 @@ namespace App\Domain\CatchEmAll\Achievements\Utils;
 
 use App\Domain\CatchEmAll\Interface\Achievement;
 use App\Domain\CatchEmAll\Models\UserAchievement;
+use App\Models\EventUser;
 use App\Models\User;
 
 class AchievementFactory
 {
     /**
      * Create a new user achievement instance.
-     *
-     * @param User $user
-     * @param string $achievementId
-     * @return UserAchievement
      */
-    public static function createUserAchievement(User $user, Achievement $achievement): UserAchievement
+    public static function createUserAchievement(EventUser $eventUser, Achievement $achievement): UserAchievement
     {
         return UserAchievement::firstOrCreate([
-            'user_id' => $user->id,
+            'event_user_id' => $eventUser->id,
             'achievement' => $achievement->getId(),
             'progress' => 0,
         ]);
@@ -26,16 +23,11 @@ class AchievementFactory
 
     /**
      * Update the progress of a user achievement.
-     *
-     * @param User $user
-     * @param Achievement $achievement
-     * @param int $newProgress
-     * @return UserAchievement
      */
-    public static function updateUserAchievementProgress(User $user, Achievement $achievement, int $newProgress): UserAchievement
+    public static function updateUserAchievementProgress(EventUser $eventUser, Achievement $achievement, int $newProgress): UserAchievement
     {
         $existing = UserAchievement::firstOrCreate([
-            'user_id' => $user->id,
+            'event_user_id' => $eventUser->id,
             'achievement' => $achievement->getId(),
         ], [
             'progress' => 0,
@@ -43,7 +35,7 @@ class AchievementFactory
 
         $existing->progress = min($newProgress, $achievement->getMaxProgress());
 
-        if ($existing->progress >= $achievement->getMaxProgress() && !$existing->earned_at) {
+        if ($existing->progress >= $achievement->getMaxProgress() && ! $existing->earned_at) {
             $existing->earned_at = now();
         }
 
@@ -54,15 +46,11 @@ class AchievementFactory
 
     /**
      * Grant an achievement to a user.
-     *
-     * @param User $user
-     * @param Achievement $achievement
-     * @return UserAchievement
      */
-    public static function grantUserAchievement(User $user, Achievement $achievement): UserAchievement
+    public static function grantUserAchievement(EventUser $eventUser, Achievement $achievement): UserAchievement
     {
         $userAchievement = UserAchievement::firstOrCreate([
-            'user_id' => $user->id,
+            'event_user_id' => $eventUser->id,
             'achievement' => $achievement->getId(),
             'progress' => $achievement->getMaxProgress(),
         ]);
@@ -76,14 +64,11 @@ class AchievementFactory
     /**
      * Get all achievement data for a user with progress and completion status.
      * Filters out hidden achievements and secret achievements that haven't been earned yet.
-     *
-     * @param User $user
-     * @return array
      */
-    public static function getUserAchievementData(User $user): array
+    public static function getUserAchievementData(EventUser $eventUser): array
     {
         // Get all user achievements with their progress
-        $userAchievements = UserAchievement::where('user_id', $user->id)->get();
+        $userAchievements = UserAchievement::where('event_user_id', $eventUser->id)->get();
 
         // Get all registered achievements
         $allAchievements = AchievementRegister::getAllAchievementInstances();
@@ -106,7 +91,7 @@ class AchievementFactory
             $isCompleted = $userAchievement && $userAchievement->isCompleted();
 
             // Filter out secret achievements that haven't been earned yet
-            if ($achievement->isSecret() && !$isCompleted) {
+            if ($achievement->isSecret() && ! $isCompleted) {
                 continue; // Skip this achievement instead of throwing an exception
             }
 
