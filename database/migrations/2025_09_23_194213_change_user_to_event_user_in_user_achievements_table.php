@@ -31,14 +31,19 @@ return new class extends Migration
 
         // Step 3: Make event_user_id non-nullable and remove old user_id column
         Schema::table('user_achievements', function (Blueprint $table) {
-            $table->unsignedBigInteger('event_user_id')->nullable(false)->index()->change();
-            $table->unique(['achievement', 'event_user_id']);
+            // Drop foreign key FIRST before dropping dependent indexes
+            $table->dropForeign(['user_id']);
 
+            // Now drop indexes and unique constraints
+            $table->dropUnique('user_achievements_user_id_achievement_unique');
             $table->dropIndex('user_achievements_user_id_earned_at_index');
 
-            $table->dropUnique('user_achievements_user_id_achievement_unique');
-            $table->dropForeign(['user_id']);
+            // Drop the column last
             $table->dropColumn('user_id');
+
+            // Now modify event_user_id and add new constraints
+            $table->unsignedBigInteger('event_user_id')->nullable(false)->index()->change();
+            $table->unique(['achievement', 'event_user_id']);
         });
 
         // Step 4: Add new event_user_id column to user_catches
@@ -59,17 +64,22 @@ return new class extends Migration
 
         // Step 6: Remove old columns from user_catches
         Schema::table('user_catches', function (Blueprint $table) {
+            // Drop foreign keys FIRST before dropping dependent indexes
+            $table->dropForeign(['user_id']);
+            $table->dropForeign(['event_id']);
+
+            // Now drop indexes and unique constraints
+            $table->dropUnique('user_catches_user_id_fursuit_id_unique');
+            $table->dropIndex('idx_user_catches_user_fursuit');
+            $table->dropIndex('idx_user_catches_user_created');
+
+            // Drop columns
+            $table->dropColumn('user_id');
+            $table->dropColumn('event_id');
+
+            // Now modify event_user_id and add new constraints
             $table->unsignedBigInteger('event_user_id')->nullable(false)->index()->change();
             $table->unique(['fursuit_id', 'event_user_id']);
-
-            $table->dropIndex('idx_user_catches_user_created');
-            $table->dropIndex('idx_user_catches_user_fursuit');
-
-            $table->dropUnique('user_catches_user_id_fursuit_id_unique');
-            $table->dropForeign(['user_id']);
-            $table->dropColumn('user_id');
-            $table->dropForeign(['event_id']);
-            $table->dropColumn('event_id');
         });
     }
 
