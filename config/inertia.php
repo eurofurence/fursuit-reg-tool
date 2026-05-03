@@ -82,7 +82,7 @@ return [
 
     'testing' => [
 
-        'ensure_pages_exist' => true,
+        'ensure_pages_exist' => false,
 
         'page_paths' => [
 

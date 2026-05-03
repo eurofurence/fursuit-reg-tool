@@ -2,9 +2,17 @@
 
 namespace App\Filament\Resources\FursuitResource\RelationManagers;
 
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -12,18 +20,18 @@ class ActivitiesRelationManager extends RelationManager
 {
     protected static string $relationship = 'activities';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\TextInput::make('event')
+                TextInput::make('event')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('description')
+                TextInput::make('description')
                     ->required()
                     ->maxLength(255),
                 // Properties Meta Field
-                Forms\Components\Textarea::make('properties')
+                Textarea::make('properties')
                     ->label('Properties')
                     ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT))
                     ->json()
@@ -31,7 +39,7 @@ class ActivitiesRelationManager extends RelationManager
                     ->rows(25)
                     ->hint('Key-value pairs of properties'),
                 // Properties
-                Forms\Components\DateTimePicker::make('created_at')
+                DateTimePicker::make('created_at')
                     ->required()
                     ->default(now())
                     ->disabled(),
@@ -54,16 +62,16 @@ class ActivitiesRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                ViewAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
