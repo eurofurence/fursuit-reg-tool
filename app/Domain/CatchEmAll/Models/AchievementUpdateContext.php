@@ -4,6 +4,7 @@ namespace App\Domain\CatchEmAll\Models;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Models\Event;
+use App\Models\EventUser;
 use App\Models\User;
 
 /**
@@ -13,24 +14,20 @@ use App\Models\User;
 readonly class AchievementUpdateContext
 {
     public function __construct(
-        public User $user,
+        public EventUser $eventUser,
         public ?UserCatch $userCatch,
         public ?SpecialCodeType $specialCodeType,
         public int $userTotalCatches,
         public int $totalCatchableFursuits,
         public int $userUniqueFursuits,
-    ) {
-    }
+    ) {}
 
     /**
      * Create an AchievementUpdateContext from a new catch.
      *
-     * @param User $user
-     * @param UserCatch $userCatch
-     * @param SpecialCodeType|null $specialCodeType Optional special code that triggered this catch
-     * @return self
+     * @param  SpecialCodeType|null  $specialCodeType  Optional special code that triggered this catch
      */
-    public static function fromCatch(User $user, ?UserCatch $userCatch = null, ?SpecialCodeType $specialCodeType = null): self
+    public static function fromCatch(EventUser $eventUser, ?UserCatch $userCatch = null, ?SpecialCodeType $specialCodeType = null): self
     {
         if ($userCatch === null && $specialCodeType === null) {
             throw new \InvalidArgumentException('Either userCatch or specialCodeType must be provided');
@@ -39,19 +36,19 @@ readonly class AchievementUpdateContext
         $currentEvent = Event::latest('starts_at')->first();
 
         // Calculate user statistics
-        $userTotalCatches = UserCatch::where('user_id', $user->id)
+        $userTotalCatches = UserCatch::where('user_id', $eventUser->id)
             ->where('event_id', operator: $currentEvent->id)
             ->count();
         $totalCatchableFursuits = \App\Models\Fursuit\Fursuit::where('event_id', operator: $currentEvent->id)
             ->where('catch_em_all', true)
             ->count();
-        $userUniqueFursuits = UserCatch::where('user_id', $user->id)
+        $userUniqueFursuits = UserCatch::where('user_id', $eventUser->user()->id)
             ->where('event_id', operator: $currentEvent->id)
             ->distinct('fursuit_id')
             ->count();
 
         return new self(
-            user: $user,
+            eventUser: $eventUser,
             userCatch: $userCatch,
             specialCodeType: $specialCodeType,
             userTotalCatches: $userTotalCatches,
@@ -62,8 +59,6 @@ readonly class AchievementUpdateContext
 
     /**
      * Check if this context contains a catch (vs. special code trigger).
-     *
-     * @return bool
      */
     public function hasCatch(): bool
     {
@@ -72,8 +67,6 @@ readonly class AchievementUpdateContext
 
     /**
      * Check if this context is for a special code trigger.
-     *
-     * @return bool
      */
     public function isSpecialCodeTrigger(): bool
     {

@@ -2,15 +2,14 @@
 
 namespace App\Domain\CatchEmAll\Models;
 
-
-use App\Models\User;
+use App\Models\EventUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserAchievement extends Model
 {
     protected $fillable = [
-        'user_id',
+        'event_user_id',
         'achievement',
         'earned_at',
         'progress',
@@ -24,9 +23,9 @@ class UserAchievement extends Model
         'max_progress' => 'integer',
     ];
 
-    public function user(): BelongsTo
+    public function eventUser(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(EventUser::class);
     }
 
     public function isCompleted(): bool

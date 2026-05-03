@@ -6,7 +6,6 @@ namespace App\Models;
 use App\Models\Badge\Badge;
 use App\Models\Fursuit\Fursuit;
 use Bavix\Wallet\Interfaces\Customer;
-use Bavix\Wallet\Interfaces\Wallet;
 use Bavix\Wallet\Interfaces\WalletFloat;
 use Bavix\Wallet\Traits\CanPayFloat;
 use Filament\Models\Contracts\FilamentUser;
@@ -58,11 +57,6 @@ class User extends Authenticatable implements Customer, FilamentUser, WalletFloa
     public function fursuits()
     {
         return $this->hasMany(Fursuit::class);
-    }
-
-    public function fursuitsCatched()
-    {
-        return $this->hasMany(\App\Domain\CatchEmAll\Models\UserCatch::class);
     }
 
     public function eventUsers()

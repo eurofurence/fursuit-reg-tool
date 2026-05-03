@@ -5,6 +5,7 @@ namespace App\Models\Fursuit;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Badge\Badge;
 use App\Models\Event;
+use App\Models\EventUser;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\Fursuit\States\FursuitStatusState;
 use App\Models\Species;
