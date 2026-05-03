@@ -16,7 +16,7 @@ class SpeciesSeeder extends Seeder
             'Husky',
             'Tiger',
             'Dog',
-            'cat',
+            'Cat',
             'Lion',
             'Sergal',
             'German Shepherd',
