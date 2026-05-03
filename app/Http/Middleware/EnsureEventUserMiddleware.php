@@ -71,27 +71,9 @@ class EnsureEventUserMiddleware
                 return redirect()->route('welcome')->with('message', 'Please register for the convention first before trying to obtain a fursuit badge.');
             }
 
-            // Get registration status
-            $statusResponse = Http::attsrv()
-                ->withToken($accessToken)
-                ->get('/attendees/'.$regId.'/status');
-
-            if (! $statusResponse->successful()) {
-                Log::warning('Failed to get registration status', ['user_id' => $user->id, 'reg_id' => $regId]);
-                Auth::logout();
-
-                return redirect()->route('welcome')->with('message', 'Unable to verify your registration status. Please log in again.');
-            }
-
-            $statusData = $statusResponse->json();
-            $validRegistration = in_array($statusData['status'], ['paid', 'checked in']);
-
-            if (! $validRegistration) {
-                Log::info('User has invalid registration', ['user_id' => $user->id, 'status' => $statusData['status']]);
-                Auth::logout();
-
-                return redirect()->route('welcome')->with('message', 'Please complete your convention registration payment before accessing fursuit badges.');
-            }
+            // User has a registration entry - that's all we need
+            // Payment status doesn't matter, they can customize their badge before paying
+            $validRegistration = true;
 
             // Create or update EventUser relationship
             $eventUser = EventUser::updateOrCreate([

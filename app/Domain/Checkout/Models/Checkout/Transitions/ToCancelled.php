@@ -19,7 +19,7 @@ class ToCancelled extends Transition
             $this->checkout->save();
 
             $fiskalyService = new FiskalyService;
-            $fiskalyService->updateOrCreateTransaction($this->checkout);
+            $fiskalyService->cancelTransaction($this->checkout);
 
             activity()
                 ->performedOn($this->checkout)

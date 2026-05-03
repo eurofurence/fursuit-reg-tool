@@ -98,9 +98,9 @@ function imageUpdatedEvent(image) {
 
 const basePrice = computed(() => {
     let price = 0;
-    // Charge 3€ if no prepaid badges left
+    // Charge 5€ if no prepaid badges left
     if (props.prepaidBadgesLeft === 0) {
-        price += 3;
+        price += 5;
     }
     return price;
 })
@@ -113,7 +113,7 @@ const latePrice = computed(() => {
 const copiesPrice = computed(() => {
     let price = 0
     if (form.upgrades.spareCopy) {
-        price += 2;
+        price += 5;
     }
     return price;
 })
@@ -337,7 +337,7 @@ const total = computed(() => {
                                 </div>
                                 <div>
                                     <label class="font-semibold block" for="extra2">Spare Copy
-                                        <Tag value="+2,00 €"></Tag>
+                                        <Tag value="+5,00 €"></Tag>
                                     </label>
                                     <small
                                         id="extra2-help">Get a spare copy of your badge. This is useful if you want to have a backup or if you want to give it to a friend.</small>

@@ -51,7 +51,16 @@ function changeHandout(badgeId, undo) {
         <Column v-if="!props.readonly" selectionMode="multiple" headerStyle="width: 3rem"></Column>
         <Column field="custom_id" header="ID"></Column>
         <Column field="fursuit.name" header="Fursuit"></Column>
-        <Column field="fursuit.status" header="Fursuit Status"></Column>
+        <Column field="fursuit.status" header="Approval">
+            <template #body="slotProps">
+                <Tag 
+                    :severity="slotProps.data.fursuit.status === 'approved' ? 'success' : 
+                              slotProps.data.fursuit.status === 'rejected' ? 'danger' : 
+                              'warning'"
+                    :value="slotProps.data.fursuit.status ? slotProps.data.fursuit.status.charAt(0).toUpperCase() + slotProps.data.fursuit.status.slice(1) : 'Unknown'" 
+                />
+            </template>
+        </Column>
         <Column field="printed_at" header="Print">
             <template #body="slotProps">
                 {{ (slotProps.data.printed_at) ? dayjs(slotProps.data.printed_at).format('DD.MM.YY') : '-' }}
@@ -87,7 +96,7 @@ function changeHandout(badgeId, undo) {
                     <Button severity="secondary" v-if="slotProps.data.status_fulfillment !== 'pending'"
                         @click="emit('printBadge', slotProps.data.id)">Reprint</Button>
 
-                    <Button v-if="slotProps.data.status_fulfillment === 'ready_for_pickup'"
+                    <Button v-if="slotProps.data.status_fulfillment === 'ready_for_pickup' || slotProps.data.status_fulfillment === 'processing'"
                         @click="changeHandout(slotProps.data.id, false)">Handout</Button>
                     <Button severity="warning" v-if="slotProps.data.status_fulfillment === 'picked_up'"
                         @click="changeHandout(slotProps.data.id, true)">Undo Handout</Button>

@@ -5,7 +5,7 @@ import InputOtp from 'primevue/inputotp';
 import SimpleKeyboard from "@/Components/SimpleKeyboard.vue";
 import Message from 'primevue/message';
 import {useForm} from "laravel-precognition-vue-inertia";
-import {ref, watch, onMounted, onUnmounted} from "vue";
+import {ref, watch, onMounted, onUnmounted, nextTick} from "vue";
 import sjcl from 'sjcl';
 import POSLayout from "@/Layouts/POSLayout.vue";
 
@@ -30,6 +30,7 @@ const authMode = ref('rfid'); // 'rfid' or 'pin'
 const rfidCode = ref('');
 const pinCode = ref('');
 const isListening = ref(true);
+const pinInputRef = ref(null);
 
 // Keyboard configuration for PIN entry - NUMBERS ONLY
 const keyboardOptions = {
@@ -57,6 +58,27 @@ const RFID_MIN_LENGTH = 8; // Minimum length for RFID codes
 const KEY_TIMEOUT = 100; // Milliseconds between keys to detect scanner
 
 const handleKeyPress = (event) => {
+    // Handle Backspace to go back from PIN mode to RFID mode
+    if (authMode.value === 'pin' && event.key === 'Backspace') {
+        // Check if we're not typing in an input field
+        const activeElement = document.activeElement;
+        const isInInput = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
+        
+        // If PIN code is empty and we're not in an input, go back
+        if (pinCode.value === '' && !isInInput) {
+            event.preventDefault();
+            switchToRfid();
+            return;
+        }
+    }
+    
+    // Handle NumpadDivide (/) to switch to PIN mode from RFID mode
+    if (authMode.value === 'rfid' && event.code === 'NumpadDivide') {
+        event.preventDefault();
+        switchToPin();
+        return;
+    }
+    
     if (!isListening.value || authMode.value !== 'rfid') return;
     
     // Clear previous timer
@@ -130,6 +152,15 @@ const switchToPin = () => {
     authMode.value = 'pin';
     isListening.value = false;
     pinCode.value = '';
+    // Focus the PIN input after switching
+    nextTick(() => {
+        if (pinInputRef.value && pinInputRef.value.$el) {
+            const firstInput = pinInputRef.value.$el.querySelector('input');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }
+    });
 };
 
 const switchToRfid = () => {
@@ -219,6 +250,7 @@ onUnmounted(() => {
                                 <div class="mb-6">
                                     <div class="flex justify-center">
                                         <InputOtp 
+                                            ref="pinInputRef"
                                             :invalid="form.invalid('code')" 
                                             :autofocus="true" 
                                             :length="6" 

@@ -8,6 +8,7 @@ use App\Domain\Checkout\Models\TseClient;
 use App\Domain\Checkout\Services\FiskalyService;
 use App\Models\Badge\Badge;
 use App\Models\Machine;
+use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -17,7 +18,7 @@ class CheckoutFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $cashier;
+    private Staff $cashier;
 
     private User $customer;
 
@@ -29,7 +30,7 @@ class CheckoutFlowTest extends TestCase
     {
         parent::setUp();
 
-        $this->cashier = User::factory()->create(['name' => 'Test Cashier']);
+        $this->cashier = Staff::factory()->create(['name' => 'Test Cashier']);
         $this->customer = User::factory()->create(['name' => 'Test Customer']);
         $this->tseClient = TseClient::create([
             'remote_id' => 'client-test-123',

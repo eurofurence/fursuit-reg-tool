@@ -6,7 +6,6 @@ use App\Domain\Checkout\Models\Checkout\Checkout;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\EventUser;
-use App\Models\Fursuit\States\Rejected;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,11 +57,8 @@ class AttendeeController extends Controller
 
         $user = $eventUser->user;
 
-        // Get all badges for the user
+        // Get all badges for the user (including rejected ones)
         $allBadges = $user->badges()
-            ->whereHas('fursuit', function ($query) {
-                $query->where('status', '!=', Rejected::$name);
-            })
             ->with(['fursuit.species', 'fursuit.event'])
             ->get()
             ->load('wallet');

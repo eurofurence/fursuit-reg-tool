@@ -150,7 +150,7 @@ function getActionableStatuses(badge) {
                         size="small"
                         icon="pi pi-plus"
                         class="w-full sm:w-auto"
-                        label="Purchase Badge (3€)"
+                        label="Purchase Badge (5€)"
                     />
                 </div>
             </div>

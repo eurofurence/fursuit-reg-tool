@@ -5,13 +5,13 @@ namespace App\Domain\CatchEmAll\Controllers;
 use App\Domain\CatchEmAll\Achievements\Utils\AchievementFactory;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Models\SpecialCode;
-use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Domain\CatchEmAll\Services\AchievementService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserCatchRequest;
 use App\Models\Event;
+use App\Models\EventUser;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
@@ -27,33 +27,33 @@ class GameController extends Controller
     public function __construct(
         private AchievementService $achievementService,
         private GameStatsService $gameStatsService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
         $user = Auth::user();
         $selectedEventId = $request->get('event');
-        $isGlobal = $selectedEventId === 'global';
 
-        // Get current event
-        $currentEvent = $this->getCurrentEvent();
-        $filterEvent = $this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
+        // Get event
+        $selectedEvent = $this->getCurrentEvent(); // TODO: Add fetch method for Selected Event based on filter
+        $eventUser = $this->getEventUser($user, $selectedEvent);
 
         // Get user's game stats
-        $gameStats = $this->gameStatsService->getUserStats($user, $filterEvent, $isGlobal);
+        $gameStats = $this->gameStatsService->getUserStats($eventUser);
 
         // Get leaderboard data
-        $leaderboard = $this->gameStatsService->getLeaderboard($filterEvent, $isGlobal);
+        $leaderboard = $this->gameStatsService->getLeaderboard($selectedEvent);
 
         // Get user's collection progress
-        $collection = $this->gameStatsService->getUserCollection($user, $filterEvent, $isGlobal);
+        $collection = $this->gameStatsService->getUserCollection($eventUser);
 
         // Get user's achievements
-        $achievements = AchievementFactory::getUserAchievementData($user);
+        $achievements = AchievementFactory::getUserAchievementData($eventUser);
 
         // Get events for filter dropdown
         $eventsWithEntries = $this->getEventsWithEntries();
+
+        $isGameRunning = $selectedEvent?->isCatchEmAllActive();
 
         // Check for recent catch
         $recentCatch = null;
@@ -67,9 +67,9 @@ class GameController extends Controller
             'collection' => $collection,
             'achievements' => $achievements,
             'eventsWithEntries' => $eventsWithEntries,
-            'selectedEvent' => $selectedEventId ?: ($filterEvent?->id ?? 'global'),
-            'isGlobal' => $isGlobal,
+            'selectedEvent' => $selectedEvent?->id,
             'recentCatch' => $recentCatch,
+            'isGameRunning' => $isGameRunning,
         ]);
     }
 
@@ -85,8 +85,13 @@ class GameController extends Controller
             return to_route('catch-em-all.catch')->with('error', "You may try again in {$seconds} seconds.");
         }
 
+        if (! $event->isCatchEmAllActive()) {
+            return to_route('catch-em-all.catch')->with('error', 'The Catch Em All game is not currently active.');
+        }
+
         $catchCode = strtoupper($request->validated('catch_code'));
         $user = Auth::user();
+        $eventUser = $this->getEventUser($user, $event);
 
         // Log the attempt
         $logEntry = $this->createCatchLog($event, $user, $catchCode);
@@ -99,10 +104,13 @@ class GameController extends Controller
             ->where('code', $catchCode)
             ->first();
 
-        $fursuit = $this->findFursuitByCode($catchCode);
+        $fursuit = Fursuit::where('event_id', $event->id)
+            ->where('catch_code', $catchCode)
+            ->where('catch_em_all', true)
+            ->first();
 
         // If neither exists, it's an invalid code
-        if (!$specialCode && !$fursuit) {
+        if (! $specialCode && ! $fursuit) {
             $logEntry->save();
 
             return to_route('catch-em-all.catch')->with('error', 'Invalid Code - Try Again!');
@@ -119,7 +127,7 @@ class GameController extends Controller
         if ($specialCode) {
             try {
                 $actionInstance = $specialCode->createActionInstance();
-                $specialCodeType = $actionInstance->use($user);
+                $specialCodeType = $actionInstance->use($eventUser);
             } catch (\Exception $e) {
                 $errors[] = 'Error processing special code';
             }
@@ -128,29 +136,28 @@ class GameController extends Controller
         // Check if user is trying to catch themselves
         if ($fursuit) {
             if ($user->id === $fursuit->user_id) {
-                if (!$specialCode) {
+                if (! $specialCode) {
                     $errors[] = "You can't catch yourself!";
                     $wasSuccessful = false;
                 }
             } else {
                 // Check if already caught
-                $alreadyCaught = UserCatch::where('user_id', $user->id)
+                $alreadyCaught = UserCatch::where('event_user_id', $user->id)
                     ->where('fursuit_id', $fursuit->id)
                     ->exists();
 
                 $logEntry->already_caught = $alreadyCaught;
 
                 if ($alreadyCaught) {
-                    if (!$specialCode) {
+                    if (! $specialCode) {
                         $errors[] = 'Already caught this fursuiter!';
                         $wasSuccessful = false;
                     }
                 } else {
                     // Success! Create the catch record
                     $userCatch = new UserCatch([
-                        'user_id' => $user->id,
+                        'event_user_id' => $eventUser->id,
                         'fursuit_id' => $fursuit->id,
-                        'event_id' => $event->id,
                     ]);
                     $userCatch->save();
                 }
@@ -159,7 +166,7 @@ class GameController extends Controller
 
         if ($wasSuccessful) {
             $this->achievementService->processAchievements(
-                $user,
+                $eventUser,
                 $userCatch,
                 $specialCodeType,
             );
@@ -170,13 +177,13 @@ class GameController extends Controller
         $logEntry->save();
 
         // If there were errors and no successes, return the first error
-        if (!$wasSuccessful && !empty($errors)) {
+        if (! $wasSuccessful && ! empty($errors)) {
             return to_route('catch-em-all.catch')->with('error', $errors[0]);
         }
 
         // Clear caches if any action was successful
         if ($wasSuccessful) {
-            $this->clearGameCaches($event->id, $user->id);
+            $this->clearGameCaches($eventUser);
         }
 
         // Determine response message and redirect
@@ -200,30 +207,29 @@ class GameController extends Controller
     public function leaderboard(Request $request)
     {
         $selectedEventId = $request->get('event');
-        $isGlobal = $selectedEventId === 'global';
         $rankCutoff = 3;
 
-        $currentEvent = $this->getCurrentEvent();
-        $filterEvent = $this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
+        $selectedEvent = $this->getCurrentEvent(); // TODO: Add fetch method for Selected Event based on filter
 
         // Get leaderboard data
-        $leaderboard = $this->gameStatsService->getLeaderboard($filterEvent, $isGlobal, 50, $rankCutoff); // Show more players
+        $leaderboard = $this->gameStatsService->getLeaderboard($selectedEvent, 50, $rankCutoff); // Show more players
 
         // Get events for filter dropdown
         $eventsWithEntries = $this->getEventsWithEntries();
 
         $user = Auth::user();
-        $userStat = $this->gameStatsService->getUserStats($user, $selectedEventId, $isGlobal);
+        $eventUser = $this->getEventUser($user, $selectedEvent);
+        $userStat = $this->gameStatsService->getUserStats($eventUser);
 
         $userLeaderboard = [];
         if ($userStat['rank'] > $rankCutoff && $userStat['totalCatches'] > 0) {
-            $userLeaderboard = $this->gameStatsService->getUserLeaderboard($user->id,
+            $userLeaderboard = $this->gameStatsService->getUserLeaderboard(
+                $eventUser,
                 $userStat['rank'],
                 $userStat['totalCatches'],
                 $user->name,
-                $rankCutoff,
-                $selectedEventId,
-                $isGlobal);
+                $rankCutoff
+            );
         }
 
         return Inertia::render('CatchEmAll/Leaderboard', [
@@ -231,8 +237,7 @@ class GameController extends Controller
             'leaderboard' => $leaderboard,
             'userLeaderboard' => $userLeaderboard,
             'eventsWithEntries' => $eventsWithEntries,
-            'selectedEvent' => $selectedEventId ?: ($filterEvent?->id ?? 'global'),
-            'isGlobal' => $isGlobal,
+            'selectedEvent' => $selectedEvent?->id,
         ]);
     }
 
@@ -240,26 +245,25 @@ class GameController extends Controller
     {
         $user = Auth::user();
         $selectedEventId = $request->get('event');
-        $isGlobal = $selectedEventId === 'global';
 
-        $currentEvent = $this->getCurrentEvent();
-        $filterEvent = $this->getFilterEvent($selectedEventId, $isGlobal, $currentEvent);
+        $selectedEvent = $this->getCurrentEvent();
+        $eventUser = $this->getEventUser($user, $selectedEvent);
 
-        $collection = $this->gameStatsService->getUserCollection($user, $filterEvent, $isGlobal);
+        $collection = $this->gameStatsService->getUserCollection($eventUser);
         $eventsWithEntries = $this->getEventsWithEntries();
 
         return Inertia::render('CatchEmAll/Collection', [
             'collection' => $collection,
             'eventsWithEntries' => $eventsWithEntries,
-            'selectedEvent' => $selectedEventId ?: ($filterEvent?->id ?? 'global'),
-            'isGlobal' => $isGlobal,
+            'selectedEvent' => $selectedEvent->id,
         ]);
     }
 
     public function achievements()
     {
         $user = Auth::user();
-        $achievements = AchievementFactory::getUserAchievementData($user);
+        $eventUser = $this->getEventUser($user, $this->getCurrentEvent());
+        $achievements = AchievementFactory::getUserAchievementData($eventUser);
 
         return Inertia::render('CatchEmAll/Achievements', [
             'achievements' => $achievements,
@@ -271,25 +275,21 @@ class GameController extends Controller
         return Inertia::render('CatchEmAll/Introduction');
     }
 
+    public function profile()
+    {
+        return Inertia::render('CatchEmAll/Profile');
+    }
+
     public function completeIntroduction(Request $request)
     {
         $user = Auth::user();
-        $currentEvent = Event::latest('starts_at')->first();
-
-        if (! $currentEvent) {
-            return redirect()->route('catch-em-all.introduction')->with('error', 'No active event found.');
-        }
-
-        // Get or create event user relationship
-        $eventUser = $user->eventUsers()->where('event_id', $currentEvent->id)->first();
+        $eventUser = $this->getEventUser($user, $this->getCurrentEvent());
 
         // Mark as introduced
         $eventUser->update(['catch_em_all_introduced' => true]);
 
         // Log for debugging
         \Log::info('User introduction completed', [
-            'user_id' => $user->id,
-            'event_id' => $currentEvent->id,
             'event_user_id' => $eventUser->id,
             'introduced' => $eventUser->fresh()->catch_em_all_introduced,
         ]);
@@ -302,13 +302,11 @@ class GameController extends Controller
         return Event::latest('starts_at')->first();
     }
 
-    private function getFilterEvent($selectedEventId, bool $isGlobal, $currentEvent)
+    private function getEventUser(User $user, Event $event): ?EventUser
     {
-        if ($isGlobal || ! $selectedEventId) {
-            return $isGlobal ? null : $currentEvent;
-        }
-
-        return Event::find($selectedEventId);
+        return EventUser::where('user_id', $user->id)
+            ->where('event_id', $event->id)
+            ->first();
     }
 
     private function getEventsWithEntries()
@@ -321,8 +319,9 @@ class GameController extends Controller
     private function getRecentCatchData($fursuitId)
     {
         $fursuit = Fursuit::with(['species', 'user'])->find($fursuitId);
-        if (!$fursuit)
+        if (! $fursuit) {
             return null;
+        }
 
         $userCatch = new UserCatch(['fursuit_id' => $fursuitId]);
         $rarity = $userCatch->getFursuitRarity();
@@ -343,6 +342,13 @@ class GameController extends Controller
         ];
     }
 
+    /**
+     * @todo UPDATE DB AND THIS TO TAKE EVENTUSERS AS INPUT
+     *
+     * @param  mixed  $event
+     * @param  mixed  $user
+     * @param  mixed  $catchCode
+     */
     private function createCatchLog($event, $user, $catchCode): UserCatchLog
     {
         return new UserCatchLog([
@@ -352,13 +358,6 @@ class GameController extends Controller
             'is_successful' => false,
             'already_caught' => false,
         ]);
-    }
-
-    private function findFursuitByCode(string $code): ?Fursuit
-    {
-        return Fursuit::where('catch_code', $code)
-            ->where('catch_em_all', true)
-            ->first();
     }
 
     private function isRateLimited(int $userId): int
@@ -375,22 +374,14 @@ class GameController extends Controller
         return 0;
     }
 
-    private function clearGameCaches(int $eventId, int $userId): void
+    private function clearGameCaches(EventUser $eventUser): void
     {
         $keys = [
-            'game_stats_global',
-            "game_stats_{$eventId}",
-            "game_stats_global_{$userId}",
-            "game_stats_{$eventId}_{$userId}",
-            "leaderboard_global",
-            "leaderboard_{$eventId}",
-            'collection_global',
-            "collection_{$eventId}",
-            "collection_global_{$userId}",
-            "collection_{$eventId}_{$userId}",
-            "total_fursuiters_{$eventId}", // TODO: Forget when new fursuit gets approved and not here
-            "user_leaderboard_global",
-            "user_leaderboard_{$eventId}",
+            "game_stats_{$eventUser->id}",
+            "leaderboard_{$eventUser->event_id}",
+            "user_leaderboard_{$eventUser->id}",
+            "collection_{$eventUser->id}",
+            "total_fursuiters_{$eventUser->event_id}", // TODO: Forget when new fursuit gets approved and not here
         ];
 
         foreach ($keys as $key) {

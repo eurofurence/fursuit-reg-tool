@@ -1,10 +1,17 @@
 <template>
-  <Dialog v-model:visible="visible" modal header="Keyboard Shortcuts" :style="{ width: '400px' }">
+  <Dialog v-model:visible="visible" modal header="Keyboard Shortcuts" :style="{ width: '500px' }">
     <div class="space-y-3">
+      <h4 class="font-bold text-sm mb-2">Standard Shortcuts</h4>
       <div><b>Search Attendee:</b> <kbd>Ctrl</kbd> + <kbd>K</kbd></div>
       <div><b>Start Payment for All:</b> <kbd>Ctrl</kbd> + <kbd>P</kbd></div>
       <div><b>Handout All Items:</b> <kbd>Ctrl</kbd> + <kbd>H</kbd></div>
       <div><b>Confirm Dialogs:</b> <kbd>Enter</kbd></div>
+      
+      <h4 class="font-bold text-sm mb-2 mt-4">Numpad Shortcuts</h4>
+      <div><b>Search Attendee:</b> <kbd>/</kbd> (Numpad Divide)</div>
+      <div><b>Start Card Payment:</b> <kbd>/</kbd> (on payment screen)</div>
+      <div><b>Handout All Items:</b> <kbd>*</kbd> (Numpad Multiply)</div>
+      <div><b>Go Back:</b> <kbd>Backspace</kbd> (on attendee page)</div>
     </div>
     <template #footer>
       <Button label="Close" @click="visible = false" autofocus />

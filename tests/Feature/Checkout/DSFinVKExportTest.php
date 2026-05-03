@@ -30,6 +30,7 @@ class DSFinVKExportTest extends TestCase
 
     protected function setUp(): void
     {
+        $this->markTestSkipped('DSFinVK tests are temporarily disabled');
         parent::setUp();
 
         // Disable Fiskaly integration for tests

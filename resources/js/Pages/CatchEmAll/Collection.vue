@@ -304,7 +304,7 @@ const getRarityBgColor = (textColor: string) => {
                     "
                 >
                     <!-- Event Filter -->
-                    <div v-if="eventOptions.length > 2" class="flex-1 min-w-20">
+                    <!-- <div v-if="eventOptions.length > 2" class="flex-1 min-w-20">
                         <label
                             class="block text-sm font-medium text-gray-700 mb-2"
                             >Event:</label
@@ -318,7 +318,7 @@ const getRarityBgColor = (textColor: string) => {
                             @change="onEventChange"
                             fluid
                         />
-                    </div>
+                    </div> -->
 
                     <!-- Rarity Filter -->
                     <div class="flex-1 min-w-20">

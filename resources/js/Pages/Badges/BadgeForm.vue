@@ -151,41 +151,39 @@ function deleteBadge() {
 const basePrice = computed(() => {
     if (isEditMode.value) {
         if (props.badge.is_free_badge === false && !props.badge.extra_copy_of) {
-            return 3;
+            return 5;
         }
         return 0;
     }
-    
+
     let price = 0;
-    // Check if user has prepaid badges left, otherwise charge 3€
+    // Check if user has prepaid badges left, otherwise charge 5€
     if (props.prepaidBadgesLeft === 0 || props.prepaidBadgesLeft === undefined) {
-        price += 3;
+        price += 5;
     }
     return price;
 })
 
 const latePrice = computed(() => {
-    if (isEditMode.value) {
-        return props.badge.apply_late_fee ? 3 : 0;
-    }
-    return 0; // No late fees in new system
+    // No late fees
+    return 0;
 })
 
 const copiesPrice = computed(() => {
     if (isEditMode.value) {
-        return props.badge.extra_copy_of ? 2 : 0;
+        return props.badge.extra_copy_of ? 5 : 0;
     }
-    
+
     let price = 0;
     if (form.upgrades.spareCopy) {
-        price += 2;
+        price += 5;
     }
     return price;
 })
 
 const total = computed(() => {
     if (isEditMode.value && props.badge.extra_copy_of) {
-        return 2;
+        return 5;
     }
     return basePrice.value + latePrice.value + copiesPrice.value;
 })
@@ -531,7 +529,7 @@ const canEditFields = computed(() => {
                                             <label for="spareCopy" class="font-medium text-gray-900 cursor-pointer">
                                                 Spare Copy
                                             </label>
-                                            <Tag value="+2,00 €" severity="success"/>
+                                            <Tag value="+5,00 €" severity="success"/>
                                         </div>
                                         <p class="text-sm text-gray-600">
                                             Get an additional copy of your badge. Perfect as a backup or to share with friends.
