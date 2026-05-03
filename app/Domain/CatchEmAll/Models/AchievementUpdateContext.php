@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Models;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
+use App\Models\Fursuit\Fursuit;
 use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
@@ -46,6 +47,7 @@ readonly class AchievementUpdateContext
             ->where('event_id', operator: $currentEvent->id)
             ->distinct('fursuit_id')
             ->count();
+        $userOwnedFursuits = Fursuit::where('user_id', $user->id)->count();
 
         return new self(
             eventUser: $eventUser,
@@ -54,6 +56,7 @@ readonly class AchievementUpdateContext
             userTotalCatches: $userTotalCatches,
             totalCatchableFursuits: $totalCatchableFursuits,
             userUniqueFursuits: $userUniqueFursuits,
+            userOwnedFursuits: $userOwnedFursuits,
         );
     }
 

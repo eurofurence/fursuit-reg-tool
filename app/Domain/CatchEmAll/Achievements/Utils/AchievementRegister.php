@@ -6,10 +6,12 @@ use App\Domain\CatchEmAll\Achievements\Archivist;
 use App\Domain\CatchEmAll\Achievements\BugBountyHunter;
 use App\Domain\CatchEmAll\Achievements\Collector;
 use App\Domain\CatchEmAll\Achievements\Curator;
+use App\Domain\CatchEmAll\Achievements\DoubleAgent;
 use App\Domain\CatchEmAll\Achievements\FirstCatch;
 use App\Domain\CatchEmAll\Achievements\FuredexComplete;
 use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
 use App\Domain\CatchEmAll\Achievements\Nice;
+use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
@@ -34,6 +36,8 @@ class AchievementRegister
         Nice::class,
         TheLegendary151::class,
         FuredexComplete::class,
+        DoubleAgent::class,
+        NightOwl::class,
         // Add new achievements here in the format:
         // AchievementClassName::class,
     ];
