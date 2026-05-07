@@ -324,7 +324,7 @@ class GameController extends Controller
         }
 
         $userCatch = new UserCatch(['fursuit_id' => $fursuitId]);
-        $rarity = $userCatch->getFursuitRarity();
+        $ranking = $userCatch->getFursuitRanking();
 
         return [
             'id' => $fursuit->id,
@@ -332,12 +332,12 @@ class GameController extends Controller
             'species' => $fursuit->species->name ?? 'Unknown',
             'user' => $fursuit->user->name ?? 'Anonymous',
             'image' => $fursuit->image_webp_url,
-            'rarity' => [
-                'level' => $rarity->value,
-                'label' => $rarity->getLabel(),
-                'color' => $rarity->getColor(),
-                'gradient' => $rarity->getGradient(),
-                'icon' => $rarity->getIcon(),
+            'ranking' => [
+                'level' => $ranking->value,
+                'label' => $ranking->getLabel(),
+                'color' => $ranking->getColor(),
+                'gradient' => $ranking->getGradient(),
+                'icon' => $ranking->getIcon(),
             ],
         ];
     }
