@@ -2,7 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Services;
 
-use App\Domain\CatchEmAll\Enums\FursuitRarity;
+use App\Domain\CatchEmAll\Enums\FursuitRanking;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Event;
 use App\Models\EventUser;
@@ -25,8 +25,8 @@ class GameStatsService
             // Calculate rank
             $rank = $this->calculateUserRank($totalCatches);
 
-            // Calculate rarity distribution
-            $rarityStats = $this->calculateRarityDistribution($catches);
+            // Calculate ranking distribution
+            $rankingStats = $this->calculateRankingDistribution($catches);
 
             // Get available fursuiters count
             $totalAvailable = $this->getTotalAvailableFursuiters($eventUser->event);
@@ -37,7 +37,7 @@ class GameStatsService
                 'uniqueSpecies' => $uniqueSpecies,
                 'totalAvailable' => $totalAvailable,
                 'completionPercentage' => $totalAvailable > 0 ? round(($totalCatches / $totalAvailable) * 100, 1) : 0,
-                'rarityStats' => $rarityStats,
+                'rankingStats' => $rankingStats,
             ];
         });
     }
@@ -165,22 +165,25 @@ class GameStatsService
             $query = UserCatch::where('event_user_id', $eventUser->id)
                 ->with(['fursuit']);
 
+            /**
+             * @var Collection<UserCatch>|UserCatch[] $catches
+             */
             $catches = $query->get();
             $fursuits = [];
             $speciesIndex = [];
 
             foreach ($catches as $catch) {
-                $rarity = $catch->getFursuitRarity();
+                $ranking = $catch->getFursuitRanking();
                 $specie = $catch->getFursuitSpecies();
                 $catch_count = $catch->getCatches();
                 $fursuits[] = [
                     'species' => $specie,
                     'count' => $catch_count,
-                    'rarity' => [
-                        'level' => $rarity->value,
-                        'label' => $rarity->getLabel(),
-                        'color' => $rarity->getColor(),
-                        'icon' => $rarity->getIcon(),
+                    'ranking' => [
+                        'level' => $ranking->value,
+                        'label' => $ranking->getLabel(),
+                        'color' => $ranking->getColor(),
+                        'icon' => $ranking->getIcon(),
                     ],
                     'gallery' => [
                         'id' => $catch->fursuit->id,
@@ -211,11 +214,14 @@ class GameStatsService
         $query = UserCatch::where('event_user_id', $eventUser->id)
             ->with(['fursuit.species', 'fursuit.user']);
 
+        /**
+         * @var Collection<UserCatch>|UserCatch[] $catches
+         */
         $catches = $query->orderByDesc('created_at')->get();
 
         $result = [];
         foreach ($catches as $catch) {
-            $rarity = $catch->getFursuitRarity();
+            $ranking = $catch->getFursuitRanking();
 
             $result[] = [
                 'id' => $catch->id,
@@ -224,12 +230,12 @@ class GameStatsService
                 'owner' => $catch->fursuit?->user?->name ?? 'Anonymous',
                 'image' => $catch->fursuit?->image,
                 'caughtAt' => $catch->created_at,
-                'rarity' => [
-                    'level' => $rarity->value,
-                    'label' => $rarity->getLabel(),
-                    'color' => $rarity->getColor(),
-                    'gradient' => $rarity->getGradient(),
-                    'icon' => $rarity->getIcon(),
+                'ranking' => [
+                    'level' => $ranking->value,
+                    'label' => $ranking->getLabel(),
+                    'color' => $ranking->getColor(),
+                    'gradient' => $ranking->getGradient(),
+                    'icon' => $ranking->getIcon(),
                 ],
             ];
         }
@@ -250,27 +256,27 @@ class GameStatsService
     }
 
     /**
-     * Summary of calculateRarityDistribution
+     * Summary of calculateRankingDistribution
      *
      * @param  UserCatch[]  $catches
      * @return array<array{color: string, count: int, icon: string, label: string|int[]>}
      */
-    private function calculateRarityDistribution(Collection $catches): array
+    private function calculateRankingDistribution(Collection $catches): array
     {
         $distribution = [];
 
-        foreach (FursuitRarity::cases() as $rarity) {
-            $distribution[$rarity->value] = [
+        foreach (FursuitRanking::cases() as $ranking) {
+            $distribution[$ranking->value] = [
                 'count' => 0,
-                'label' => $rarity->getLabel(),
-                'color' => $rarity->getColor(),
-                'icon' => $rarity->getIcon(),
+                'label' => $ranking->getLabel(),
+                'color' => $ranking->getColor(),
+                'icon' => $ranking->getIcon(),
             ];
         }
 
         foreach ($catches as $catch) {
-            $rarity = $catch->getFursuitRarity();
-            $distribution[$rarity->value]['count']++;
+            $ranking = $catch->getFursuitRanking();
+            $distribution[$ranking->value]['count']++;
         }
 
         return $distribution;
