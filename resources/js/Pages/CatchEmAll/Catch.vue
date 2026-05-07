@@ -27,7 +27,7 @@ const props = defineProps<{
         uniqueSpecies: number;
         totalAvailable: number;
         completionPercentage: number;
-        rarityStats: Record<string, any>;
+        rankingStats: Record<string, any>;
     };
     achievements: Array<any>;
     recentCatch?: any | null;
@@ -137,7 +137,7 @@ const getRankIcon = (rank: number) => {
             <div v-if="recentCatch" class="text-center space-y-4">
                 <div
                     class="relative mx-auto w-24 h-24 rounded-full overflow-hidden border-4"
-                    :class="`border-${recentCatch.rarity.color.replace(
+                    :class="`border-${recentCatch.ranking.color.replace(
                         'text-',
                         ''
                     )}-500`"
@@ -159,7 +159,7 @@ const getRankIcon = (rank: number) => {
                     >
                         <Star
                             class="w-4 h-4"
-                            :class="recentCatch.rarity.color"
+                            :class="recentCatch.ranking.color"
                         />
                     </div>
                 </div>
@@ -176,9 +176,9 @@ const getRankIcon = (rank: number) => {
 
                 <div
                     class="bg-gradient-to-r p-3 rounded-lg text-white"
-                    :class="recentCatch.rarity.gradient"
+                    :class="recentCatch.ranking.gradient"
                 >
-                    <div class="font-bold">{{ recentCatch.rarity.label }}</div>
+                    <div class="font-bold">{{ recentCatch.ranking.label }}</div>
                 </div>
 
                 <Button
