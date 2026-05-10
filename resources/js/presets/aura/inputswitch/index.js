@@ -24,13 +24,13 @@ export default {
             'before:h-4 before:w-4',
             'before:rounded-full',
             'before:duration-200',
-            'before:bg-surface-0 before:dark:bg-surface-500',
+            'before:bg-surface-0 dark:before:bg-surface-500',
 
             // Colors
             {
                 'bg-surface-300 dark:bg-surface-800': !(props.modelValue == props.trueValue) && !props.invalid,
                 'bg-primary': props.modelValue == props.trueValue && !props.invalid,
-                'before:dark:bg-surface-950': props.modelValue == props.trueValue
+                'dark:before:bg-surface-950': props.modelValue == props.trueValue
             },
 
             // Invalid State
@@ -69,7 +69,7 @@ export default {
             // Shape
             'opacity-0',
             'rounded-2xl',
-            'outline-none',
+            'outline-hidden',
 
             // Misc
             'appearance-none',

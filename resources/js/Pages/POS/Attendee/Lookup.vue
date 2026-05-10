@@ -68,7 +68,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="flex-grow w-full max-w-xl mx-auto p-10 flex flex-col gap-4 justify-center">
+    <div class="grow w-full max-w-xl mx-auto p-10 flex flex-col gap-4 justify-center">
         <Message v-if="form.invalid('attendeeId')" severity="error">{{ form.errors.attendeeId }}</Message>
         <InputText ref="attendeeIdInput" v-model="attendeeId" class="w-full text-2xl" type="text" size="large" placeholder="Attendee ID" :maxlength="maxAttendeeIdLength" @keydown="handleKeydown" />
         <SimpleKeyboard @onKeyPress="keyPress" :options='keyboardOptions'></SimpleKeyboard>

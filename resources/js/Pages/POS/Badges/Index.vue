@@ -165,7 +165,7 @@ watchEffect(() => {
                         This will print up to 50 unprinted badges, starting with the lowest attendee IDs. 
                         Optionally select a specific printer:
                     </p>
-                    <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                    <div class="bg-blue-50 border border-blue-200 rounded-sm p-3">
                         <div class="flex items-start">
                             <i class="pi pi-info-circle text-blue-500 mt-0.5 mr-2"></i>
                             <div class="text-sm text-blue-700">
@@ -208,7 +208,7 @@ watchEffect(() => {
         </div>
 
         <div class="grid grid-cols-1 gap-4 p-4">
-            <div class="bg-white p-4 mb-4 rounded-lg shadow">
+            <div class="bg-white p-4 mb-4 rounded-lg shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
                         <h1 class="text-2xl font-bold">Badge Management</h1>

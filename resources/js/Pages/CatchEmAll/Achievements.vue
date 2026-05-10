@@ -118,7 +118,7 @@ const formatDate = (dateString: string) => {
         icon="gem"
     >
         <!-- Stats Overview -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
+        <Card class="bg-gray-800 border border-gray-700 shadow-xs">
             <template #content>
                 <div class="grid grid-cols-3 gap-4">
                     <div
@@ -164,7 +164,7 @@ const formatDate = (dateString: string) => {
                 <Card
                     v-for="achievement in completedAchievements"
                     :key="achievement.id"
-                    class="bg-white shadow-sm border border-gray-700"
+                    class="bg-white shadow-xs border border-gray-700"
                 >
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
@@ -227,7 +227,7 @@ const formatDate = (dateString: string) => {
                 <Card
                     v-for="achievement in inProgressAchievements"
                     :key="achievement.id"
-                    class="bg-white shadow-sm border border-gray-700"
+                    class="bg-white shadow-xs border border-gray-700"
                 >
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
@@ -272,7 +272,7 @@ const formatDate = (dateString: string) => {
                                         class="h-3 bg-gray-200 rounded-full overflow-hidden"
                                     >
                                         <div
-                                            class="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                                            class="h-full bg-linear-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
                                             :style="`width: ${achievement.progressPercentage}%`"
                                         ></div>
                                     </div>
@@ -294,7 +294,7 @@ const formatDate = (dateString: string) => {
                 <Card
                     v-for="achievement in lockedAchievements"
                     :key="achievement.id"
-                    class="bg-white shadow-sm opacity-75 border border-gray-700"
+                    class="bg-white shadow-xs opacity-75 border border-gray-700"
                 >
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">

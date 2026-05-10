@@ -47,8 +47,8 @@ export default {
             'h-[20px]',
             'w-[20px]',
             {
-                'top-[50%] -mt-[10px] -ml-[10px]': props.orientation == 'horizontal',
-                'left-[50%] -mb-[10px] -ml-[10px]': props.orientation == 'vertical'
+                'top-[50%] mt-[-10px] ml-[-10px]': props.orientation == 'horizontal',
+                'left-[50%] mb-[-10px] ml-[-10px]': props.orientation == 'vertical'
             },
 
             // Shape
@@ -60,7 +60,7 @@ export default {
             'bg-surface-200 dark:bg-surface-800',
 
             // States
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring-1',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-1',
             'ring-primary-500 dark:ring-primary-400',
 
             // Transitions
@@ -79,8 +79,8 @@ export default {
             'h-[20px]',
             'w-[20px]',
             {
-                'top-[50%] -mt-[10px] -ml-[10px]': props.orientation == 'horizontal',
-                'left-[50%] -mb-[10px] -ml-[10px]': props.orientation == 'vertical'
+                'top-[50%] mt-[-10px] ml-[-10px]': props.orientation == 'horizontal',
+                'left-[50%] mb-[-10px] ml-[-10px]': props.orientation == 'vertical'
             },
 
             // Shape
@@ -92,7 +92,7 @@ export default {
             'bg-surface-200 dark:bg-surface-800',
 
             // States
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring-1',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-1',
             'ring-primary-500 dark:ring-primary-400',
 
             // Transitions
@@ -111,8 +111,8 @@ export default {
             'h-[20px]',
             'w-[20px]',
             {
-                'top-[50%] -mt-[10px] -ml-[10px]': props.orientation == 'horizontal',
-                'left-[50%] -mb-[10px] -ml-[10px]': props.orientation == 'vertical'
+                'top-[50%] mt-[-10px] ml-[-10px]': props.orientation == 'horizontal',
+                'left-[50%] mb-[-10px] ml-[-10px]': props.orientation == 'vertical'
             },
 
             // Shape
@@ -124,7 +124,7 @@ export default {
             'bg-surface-200 dark:bg-surface-800',
 
             // States
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring-1',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-1',
             'ring-primary-500 dark:ring-primary-400',
 
             // Transitions

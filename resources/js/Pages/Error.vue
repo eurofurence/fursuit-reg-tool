@@ -90,7 +90,7 @@ const currentError = errorInfo[props.status] || {
                         <Link :href="route('welcome')" class="flex-1">
                             <Button 
                                 icon="pi pi-home"
-                                class="w-full text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white"
+                                class="w-full text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white"
                                 size="large"
                                 label="Go Home"
                             />

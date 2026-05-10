@@ -167,7 +167,7 @@ const shouldShowRegMessage = computed(() => {
                             <Button
                                 @click="router.visit(route('badges.create'))"
                                 icon="pi pi-star"
-                                class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 border-0 text-white"
+                                class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 border-0 text-white"
                                 fluid
                                 size="large"
                                 :label="`Customize Prepaid Badge${prepaidBadgesLeft > 1 ? 's' : ''}`"
@@ -192,7 +192,7 @@ const shouldShowRegMessage = computed(() => {
                             <Button
                                 @click="router.visit(route('badges.create'))"
                                 icon="pi pi-id-card"
-                                class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white"
+                                class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white"
                                 fluid
                                 size="large"
                                 :label="userBadgeStatus?.action || 'Create Your Badge'"
@@ -227,7 +227,7 @@ const shouldShowRegMessage = computed(() => {
 
                         <!-- Status Info -->
                         <div v-if="currentEventBadgeCount > 0" class="flex justify-center mt-6">
-                            <div class="bg-green-500/90 backdrop-blur-sm rounded-lg px-6 py-2 text-white shadow-lg">
+                            <div class="bg-green-500/90 backdrop-blur-xs rounded-lg px-6 py-2 text-white shadow-lg">
                                 <i class="pi pi-check mr-2"></i>
                                 {{ currentEventBadgeCount }} Badge{{ currentEventBadgeCount > 1 ? 's' : '' }} Ordered
                             </div>
@@ -302,7 +302,7 @@ const shouldShowRegMessage = computed(() => {
                     <Link method="POST" :href="route('auth.login.redirect')" class="w-full">
                         <Button
                             icon="pi pi-sign-in"
-                            class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white text-2xl py-4 px-8 font-bold shadow-2xl transform hover:scale-105 transition-all duration-200"
+                            class="w-full bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white text-2xl py-4 px-8 font-bold shadow-2xl transform hover:scale-105 transition-all duration-200"
                             size="large"
                             label="Login with Eurofurence Identity"
                         />
@@ -353,7 +353,7 @@ const shouldShowRegMessage = computed(() => {
                                     </h3>
                                     <div class="space-y-3">
                                         <div class="flex items-start gap-3">
-                                            <div class="w-16 flex-shrink-0">
+                                            <div class="w-16 shrink-0">
                                                 <Chip label="FREE" class="bg-green-100 text-green-800 w-full justify-center" />
                                             </div>
                                             <div class="flex-1">
@@ -362,7 +362,7 @@ const shouldShowRegMessage = computed(() => {
                                             </div>
                                         </div>
                                         <div class="flex items-start gap-3">
-                                            <div class="w-16 flex-shrink-0">
+                                            <div class="w-16 shrink-0">
                                                 <Chip label="5€" class="bg-blue-100 text-blue-800 w-full justify-center" />
                                             </div>
                                             <div class="flex-1">
@@ -381,7 +381,7 @@ const shouldShowRegMessage = computed(() => {
                                     </h3>
                                     <div class="space-y-3">
                                         <div class="flex items-start gap-3">
-                                            <div class="w-16 flex-shrink-0">
+                                            <div class="w-16 shrink-0">
                                                 <Chip label="5€" class="bg-orange-100 text-orange-800 w-full justify-center" />
                                             </div>
                                             <div class="flex-1">

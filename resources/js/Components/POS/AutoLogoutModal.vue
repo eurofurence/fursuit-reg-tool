@@ -126,7 +126,7 @@ const formatTimeout = (seconds) => {
                     <div 
                         v-for="option in timeoutOptions" 
                         :key="option.value" 
-                        class="flex items-center space-x-3 p-2 rounded hover:bg-slate-50 transition-colors"
+                        class="flex items-center space-x-3 p-2 rounded-sm hover:bg-slate-50 transition-colors"
                     >
                         <RadioButton 
                             v-model="form.auto_logout_timeout"

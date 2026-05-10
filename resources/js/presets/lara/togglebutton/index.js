@@ -38,7 +38,7 @@ export default {
             {
                 'peer-hover:bg-surface-50 dark:peer-hover:bg-surface-800/80 peer-hover:border-surface-200 dark:peer-hover:bg-surface-700 peer-hover:text-surface-700 dark:peer-hover:text-white/80': !props.modelValue && !props.invalid,
                 'peer-hover:bg-primary-hover peer-hover:border-primary-hover': props.modelValue,
-                'peer-focus-visible:ring peer-focus-visible:ring-primary-400/50 dark:peer-focus-visible:ring-primary-300/50': !props.disabled
+                'peer-focus-visible:ring-3 peer-focus-visible:ring-primary-400/50 dark:peer-focus-visible:ring-primary-300/50': !props.disabled
             },
 
             // Transitions
@@ -71,7 +71,7 @@ export default {
             // Shape
             'opacity-0',
             'rounded-md',
-            'outline-none',
+            'outline-hidden',
             'border border-surface-200 dark:border-surface-700',
 
             // Misc
