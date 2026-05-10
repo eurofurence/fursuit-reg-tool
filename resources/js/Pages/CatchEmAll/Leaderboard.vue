@@ -90,7 +90,7 @@ const getProperCatch = (catchCount: number) => {
         icon="medal"
     >
         <!-- Event Filter -->
-        <!-- <Card v-if="eventOptions.length > 2" class="bg-gray-800 border border-gray-700 shadow-sm">
+        <!-- <Card v-if="eventOptions.length > 2" class="bg-gray-800 border border-gray-700 shadow-xs">
             <template #content>
                 <div class="space-y-3">
                     <label class="block text-sm font-medium text-gray-300"
@@ -110,11 +110,11 @@ const getProperCatch = (catchCount: number) => {
         </Card> -->
 
         <!-- Leaderboard -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
+        <Card class="bg-gray-800 border border-gray-700 shadow-xs">
             <template #content>
                 <div class="text-center justify-center mb-6">
                     <div
-                        class="w-20 h-20 m-auto rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mb-2 border-4 border-yellow-200 shadow-lg"
+                        class="w-20 h-20 m-auto rounded-full bg-linear-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mb-2 border-4 border-yellow-200 shadow-lg"
                     >
                         <Crown class="w-10 h-10 text-white" />
                     </div>
@@ -137,7 +137,7 @@ const getProperCatch = (catchCount: number) => {
                             <!-- 2nd Place -->
                             <div class="flex flex-col items-center">
                                 <div
-                                    class="w-16 h-16 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center mb-2 border-4 border-gray-200"
+                                    class="w-16 h-16 rounded-full bg-linear-to-br from-gray-300 to-gray-500 flex items-center justify-center mb-2 border-4 border-gray-200"
                                 >
                                     <Crown class="w-8 h-8 text-white" />
                                 </div>
@@ -156,7 +156,7 @@ const getProperCatch = (catchCount: number) => {
                             <!-- 1st Place -->
                             <div class="flex flex-col items-center -mt-4">
                                 <div
-                                    class="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mb-2 border-4 border-yellow-200 shadow-lg"
+                                    class="w-20 h-20 rounded-full bg-linear-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mb-2 border-4 border-yellow-200 shadow-lg"
                                 >
                                     <Crown class="w-10 h-10 text-white" />
                                 </div>
@@ -175,7 +175,7 @@ const getProperCatch = (catchCount: number) => {
                             <!-- 3rd Place -->
                             <div class="flex flex-col items-center">
                                 <div
-                                    class="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center mb-2 border-4 border-amber-200"
+                                    class="w-16 h-16 rounded-full bg-linear-to-br from-amber-500 to-amber-700 flex items-center justify-center mb-2 border-4 border-amber-200"
                                 >
                                     <Crown class="w-8 h-8 text-white" />
                                 </div>
@@ -200,9 +200,9 @@ const getProperCatch = (catchCount: number) => {
                             :key="player.id"
                             class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
                             :class="[
-                                player.rank === 1 ? 'ring-2 ring-yellow-300 bg-gradient-to-r from-yellow-900/50 to-yellow-900/40 border-yellow-700'
-                                    : player.rank === 2 ? 'bg-gradient-to-r from-gray-700/30 to-gray-900/30'
-                                    : player.rank === 3 ? 'bg-gradient-to-r from-orange-900/30 to-orange-900/20'
+                                player.rank === 1 ? 'ring-2 ring-yellow-300 bg-linear-to-r from-yellow-900/50 to-yellow-900/40 border-yellow-700'
+                                    : player.rank === 2 ? 'bg-linear-to-r from-gray-700/30 to-gray-900/30'
+                                    : player.rank === 3 ? 'bg-linear-to-r from-orange-900/30 to-orange-900/20'
                                     : ' bg-gray-700/50 border-gray-600',
                             ]"
                         >
@@ -277,7 +277,7 @@ const getProperCatch = (catchCount: number) => {
                                     :key="player.id"
                                     class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
                                     :class="[
-                                player.id === user.id ? 'ring-1 ring-white bg-gradient-to-r from-blue-900/40 to-blue-900/20 border-white'
+                                player.id === user.id ? 'ring-1 ring-white bg-linear-to-r from-blue-900/40 to-blue-900/20 border-white'
                                     : ' bg-gray-700/50 border-gray-600',
                             ]"
                                 >

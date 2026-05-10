@@ -45,7 +45,7 @@ export default {
             'bg-surface-0 dark:bg-surface-700 sm:bg-transparent dark:sm:bg-transparent',
 
             // Misc
-            'outline-none'
+            'outline-hidden'
         ]
     }),
     menuitem: ({ props }) => ({
@@ -145,7 +145,7 @@ export default {
         class: 'w-full sm:w-1/2'
     },
     submenu: {
-        class: ['m-0 list-none', 'py-1 px-2 w-full sm:min-w-[14rem]']
+        class: ['m-0 list-none', 'py-1 px-2 w-full sm:min-w-56']
     },
     submenuheader: {
         class: [
@@ -181,8 +181,8 @@ export default {
             // States
             'hover:text-surface-600 dark:hover:text-white/60',
             'hover:bg-surface-100 dark:hover:bg-surface-600/80',
-            'focus:outline-none focus:outline-offset-0',
-            'focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
+            'focus:outline-hidden focus:outline-offset-0',
+            'focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
             // Transitions
             'transition duration-200 ease-in-out',

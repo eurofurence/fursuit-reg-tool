@@ -21,7 +21,7 @@ const props = defineProps<{
     collection: {
         suits: Array<{
             species: string;
-            rarity: {
+            ranking: {
                 level: string;
                 label: string;
                 color: string;
@@ -71,15 +71,18 @@ const onEventChange = () => {
         {
             preserveState: false,
             replace: true,
-        }
+        },
     );
 };
 
-
-
 onMounted(() => {
-    const savedViewMode = localStorage.getItem("catch-em-all-collection-view-mode");
-    if (savedViewMode && (savedViewMode === "grid" || savedViewMode === "list")) {
+    const savedViewMode = localStorage.getItem(
+        "catch-em-all-collection-view-mode",
+    );
+    if (
+        savedViewMode &&
+        (savedViewMode === "grid" || savedViewMode === "list")
+    ) {
         viewMode.value = savedViewMode;
     }
 });
@@ -88,54 +91,59 @@ watch(viewMode, (newMode) => {
     localStorage.setItem("catch-em-all-collection-view-mode", newMode);
 });
 
-// Rarity filter
-const selectedRarity = ref<string>("all");
-const rarityOptions = [
-    { label: "All Rarities", value: "all" },
-    { label: "Common", value: "common" },
-    { label: "Uncommon", value: "uncommon" },
-    { label: "Rare", value: "rare" },
-    { label: "Epic", value: "epic" },
-    { label: "Legendary", value: "legendary" },
+// Ranking filter
+const selectedRanking = ref<string>("all");
+const rankingOptions = [
+    { label: "All Rankings", value: "all" },
+    { label: "Bronze", value: "bronze" },
+    { label: "Silver", value: "silver" },
+    { label: "Gold", value: "gold" },
+    { label: "Platinum", value: "platinum" },
+    { label: "Diamond", value: "diamond" },
 ];
 const colorMap: Record<string, string> = {
     "text-yellow-600": "bg-yellow-600",
     "text-purple-600": "bg-purple-600",
     "text-blue-600": "bg-blue-600",
     "text-green-600": "bg-green-600",
-    "text-gray-600": "bg-gray-500"
+    "text-gray-600": "bg-gray-500",
 };
 
 // Handle click outside to hide tooltip
 const handleClickOutside = (event: Event) => {
     const target = event.target as HTMLElement;
-    const tooltipContainer = target.closest('.tooltip-container');
+    const tooltipContainer = target.closest(".tooltip-container");
     if (!tooltipContainer && showTooltip.value) {
         showTooltip.value = false;
     }
 };
 
 onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
 });
 
 onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
+    document.removeEventListener("click", handleClickOutside);
 });
 
 // Load counter preference from localStorage
 onMounted(() => {
-    const savedCounterPreference = localStorage.getItem("catch-em-all-show-counters");
+    const savedCounterPreference = localStorage.getItem(
+        "catch-em-all-show-counters",
+    );
     if (savedCounterPreference !== null) {
         showCounters.value = JSON.parse(savedCounterPreference);
     }
 });
 
 watch(showCounters, (newValue) => {
-    localStorage.setItem("catch-em-all-show-counters", JSON.stringify(newValue));
+    localStorage.setItem(
+        "catch-em-all-show-counters",
+        JSON.stringify(newValue),
+    );
 });
 
-// Filter collection by rarity
+// Filter collection by ranking
 const filteredCollection = computed(() => {
     //TODO: figure out if having props.collection.species "isEmpty" check is necessary
 
@@ -143,73 +151,36 @@ const filteredCollection = computed(() => {
     if (!props.collection?.suits) {
         return [];
     }
-    if (selectedRarity.value === "all") {
+    if (selectedRanking.value === "all") {
         return props.collection.suits;
     }
     return props.collection.suits.filter(
-        (suit) => suit.rarity.level === selectedRarity.value
+        (suit) => suit.ranking.level === selectedRanking.value,
     );
 });
 
-// Group species by rarity
-const collectionByRarity = computed(() => {
-    const grouped = {
-        legendary: [],
-        epic: [],
-        rare: [],
-        uncommon: [],
-        common: [],
+// Get ranking stats
+const rankingStats = computed(() => {
+    const stats: Record<string, number> = {
+        //TODO: type this better
+        diamond: 0,
+        platinum: 0,
+        gold: 0,
+        silver: 0,
+        bronze: 0,
     };
 
     props.collection.suits.forEach((suit) => {
-        const rarity = suit.rarity.level;
-        if (grouped[rarity]) {
-            grouped[rarity].push(suit);
-        }
-    });
-
-    return grouped;
-});
-
-// Get rarity icon
-const getRarityIcon = (rarity: string) => {
-    switch (rarity) {
-        case "legendary":
-            return Crown;
-        case "epic":
-            return Gem;
-        case "rare":
-            return Sparkles;
-        case "uncommon":
-            return Star;
-        case "common":
-            return BookOpen;
-        default:
-            return Star;
-    }
-};
-
-// Get rarity stats
-const rarityStats = computed(() => {
-    const stats = {
-        legendary: 0,
-        epic: 0,
-        rare: 0,
-        uncommon: 0,
-        common: 0,
-    };
-
-    props.collection.suits.forEach((suit) => {
-        const rarity = suit.rarity.level;
-        if (stats[rarity] !== undefined) {
-            stats[rarity] += 1;
+        const ranking = suit.ranking.level;
+        if (stats[ranking] !== undefined) {
+            stats[ranking] += 1;
         }
     });
 
     return stats;
 });
 
-const getRarityBgColor = (textColor: string) => {
+const getRankingBgColor = (textColor: string) => {
     return colorMap[textColor] || "bg-gray-500";
 };
 </script>
@@ -222,7 +193,7 @@ const getRarityBgColor = (textColor: string) => {
         icon="library"
     >
         <!-- Collection Stats -->
-        <Card class="bg-white shadow-sm border border-gray-700">
+        <Card class="bg-white shadow-xs border border-gray-700">
             <template #content>
                 <div class="text-center mb-4">
                     <h2 class="text-xl font-bold text-gray-200">
@@ -232,9 +203,7 @@ const getRarityBgColor = (textColor: string) => {
                         class="text-sm text-gray-300"
                         v-if="collection?.species !== undefined"
                     >
-                        {{
-                            Object.keys(props.collection.species).length
-                        }}
+                        {{ Object.keys(props.collection.species).length }}
                         unique species • {{ collection.totalCatches }} total
                         catches
                     </p>
@@ -243,59 +212,59 @@ const getRarityBgColor = (textColor: string) => {
                     </p>
                 </div>
 
-                <!-- Rarity Distribution -->
+                <!-- Ranking Distribution -->
                 <div class="grid grid-cols-5 gap-2 mb-4">
                     <div
                         class="icon-box text-center bg-yellow-50 rounded-lg border border-yellow-200 rarity-tile"
                     >
                         <Crown class="w-5 h-5 mx-auto mb-1 text-yellow-800" />
                         <div class="text-sm font-bold text-yellow-800">
-                            {{ rarityStats.legendary }}
+                            {{ rankingStats.diamond }}
                         </div>
-                        <div class="icon-text text-yellow-800">Legendary</div>
+                        <div class="icon-text text-yellow-800">Diamond</div>
                     </div>
                     <div
                         class="icon-box text-center bg-purple-50 rounded-lg border border-purple-200 rarity-tile"
                     >
                         <Gem class="w-5 h-5 mx-auto mb-1 text-purple-800" />
                         <div class="text-sm font-bold text-purple-800">
-                            {{ rarityStats.epic }}
+                            {{ rankingStats.platinum }}
                         </div>
-                        <div class="icon-text text-purple-800">Epic</div>
+                        <div class="icon-text text-purple-800">Platinum</div>
                     </div>
                     <div
                         class="icon-box text-center bg-blue-50 rounded-lg border border-blue-200 rarity-tile"
                     >
                         <Sparkles class="w-5 h-5 mx-auto mb-1 text-blue-800" />
                         <div class="text-sm font-bold text-blue-800">
-                            {{ rarityStats.rare }}
+                            {{ rankingStats.gold }}
                         </div>
-                        <div class="icon-text text-blue-800">Rare</div>
+                        <div class="icon-text text-blue-800">Gold</div>
                     </div>
                     <div
                         class="icon-box text-center bg-green-50 rounded-lg border border-green-200 rarity-tile"
                     >
                         <Star class="w-5 h-5 mx-auto mb-1 text-green-800" />
                         <div class="text-sm font-bold text-green-800">
-                            {{ rarityStats.uncommon }}
+                            {{ rankingStats.silver }}
                         </div>
-                        <div class="icon-text text-green-800">Uncommon</div>
+                        <div class="icon-text text-green-800">Silver</div>
                     </div>
                     <div
                         class="icon-box text-center bg-gray-50 rounded-lg border border-gray-200 rarity-tile"
                     >
                         <BookOpen class="w-5 h-5 mx-auto mb-1 text-gray-800" />
                         <div class="text-sm font-bold text-gray-800">
-                            {{ rarityStats.common }}
+                            {{ rankingStats.bronze }}
                         </div>
-                        <div class="icon-text text-gray-800">Common</div>
+                        <div class="icon-text text-gray-800">Bronze</div>
                     </div>
                 </div>
             </template>
         </Card>
 
         <!-- Filters and Controls -->
-        <Card class="bg-white shadow-sm border border-gray-700">
+        <Card class="bg-white shadow-xs border border-gray-700">
             <template #content>
                 <div
                     class="flex flex-col gap-4 items-start sm:items-center justify-between"
@@ -320,15 +289,15 @@ const getRarityBgColor = (textColor: string) => {
                         />
                     </div> -->
 
-                    <!-- Rarity Filter -->
+                    <!-- Ranking Filter -->
                     <div class="flex-1 min-w-20">
                         <label
                             class="block text-sm font-medium text-gray-300 mb-2"
-                            >Rarity:</label
+                            >Ranking:</label
                         >
                         <Dropdown
-                            v-model="selectedRarity"
-                            :options="rarityOptions"
+                            v-model="selectedRanking"
+                            :options="rankingOptions"
                             optionLabel="label"
                             optionValue="value"
                             class="w-full"
@@ -336,7 +305,7 @@ const getRarityBgColor = (textColor: string) => {
                         />
                     </div>
                     <!-- View Mode Toggle -->
-                    <div class="flex-shrink-0">
+                    <div class="shrink-0">
                         <label
                             class="block text-sm font-medium text-gray-300 mb-2"
                             >View:</label
@@ -370,7 +339,7 @@ const getRarityBgColor = (textColor: string) => {
                     </div>
 
                     <!-- Counter Toggle -->
-                    <div class="flex-shrink-0 relative tooltip-container">
+                    <div class="shrink-0 relative tooltip-container">
                         <label
                             class="block text-sm font-medium text-gray-300 mb-2"
                             >Counters:</label
@@ -384,15 +353,17 @@ const getRarityBgColor = (textColor: string) => {
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-white text-gray-600 hover:bg-gray-50'
                                 "
-                                :title="showCounters 
-                                    ? 'Hide scoring numbers on fursuit cards' 
-                                    : 'Show scoring numbers on fursuit cards'"
+                                :title="
+                                    showCounters
+                                        ? 'Hide scoring numbers on fursuit cards'
+                                        : 'Show scoring numbers on fursuit cards'
+                                "
                             >
                                 <span class="text-sm font-medium">
-                                    {{ showCounters ? 'Hide' : 'Show' }}
+                                    {{ showCounters ? "Hide" : "Show" }}
                                 </span>
                             </button>
-                            
+
                             <!-- Mobile Tooltip Info Button -->
                             <button
                                 @click="showTooltip = !showTooltip"
@@ -402,14 +373,16 @@ const getRarityBgColor = (textColor: string) => {
                                 <Info class="w-2.5 h-2.5" />
                             </button>
                         </div>
-                        
+
                         <!-- Mobile Tooltip -->
-                        <div 
+                        <div
                             v-show="showTooltip"
-                            class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap md:hidden"
+                            class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded-sm shadow-lg z-10 whitespace-nowrap md:hidden"
                         >
                             Shows total catches made by all players
-                            <div class="absolute -top-1 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-gray-800"></div>
+                            <div
+                                class="absolute -top-1 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-gray-800"
+                            ></div>
                         </div>
                     </div>
                 </div>
@@ -417,7 +390,7 @@ const getRarityBgColor = (textColor: string) => {
         </Card>
 
         <!-- Collection Display -->
-        <Card class="bg-white shadow-sm border border-gray-700">
+        <Card class="bg-white shadow-xs border border-gray-700">
             <template #content>
                 <!-- Grid View -->
                 <div
@@ -429,7 +402,11 @@ const getRarityBgColor = (textColor: string) => {
                         :key="fursuit.gallery.id"
                         class="cursor-pointer transform transition-transform hover:scale-105"
                     >
-                        <GalleryItem :fursuit="fursuit.gallery" :rarity="fursuit.rarity" :hideCount="!showCounters" />
+                        <GalleryItem
+                            :fursuit="fursuit.gallery"
+                            :ranking="fursuit.ranking"
+                            :hideCount="!showCounters"
+                        />
                     </div>
                 </div>
 
@@ -438,7 +415,7 @@ const getRarityBgColor = (textColor: string) => {
                     <div
                         v-for="fursuit in filteredCollection"
                         :key="fursuit.gallery.id"
-                        class="flex items-center p-3 bg-gray-800 rounded-lg shadow-sm border border-gray-700"
+                        class="flex items-center p-3 bg-gray-800 rounded-lg shadow-xs border border-gray-700"
                     >
                         <img
                             :src="fursuit.gallery.image"
@@ -453,18 +430,26 @@ const getRarityBgColor = (textColor: string) => {
                                 {{ fursuit.species }}
                             </p>
                         </div>
-                        
-                        <!-- Combined Rarity and Counter Badge -->
+
+                        <!-- Combined Ranking and Counter Badge -->
                         <div class="text-center mx-4">
                             <span
                                 class="px-2 py-1 text-xs font-semibold text-white rounded-full whitespace-nowrap"
-                                :class="getRarityBgColor(fursuit.rarity.color)"
+                                :class="
+                                    getRankingBgColor(fursuit.ranking.color)
+                                "
                             >
-                                <template v-if="fursuit.gallery.scoring > 0 && showCounters">
-                                    {{ fursuit.gallery.scoring }} · {{ fursuit.rarity.label }}
+                                <template
+                                    v-if="
+                                        fursuit.gallery.scoring > 0 &&
+                                        showCounters
+                                    "
+                                >
+                                    {{ fursuit.gallery.scoring }} ·
+                                    {{ fursuit.ranking.label }}
                                 </template>
                                 <template v-else>
-                                    {{ fursuit.rarity.label }}
+                                    {{ fursuit.ranking.label }}
                                 </template>
                             </span>
                         </div>
@@ -477,19 +462,19 @@ const getRarityBgColor = (textColor: string) => {
                     class="text-center py-12"
                 >
                     <Filter
-                        v-if="selectedRarity !== 'all'"
+                        v-if="selectedRanking !== 'all'"
                         class="w-16 h-16 mx-auto mb-4 text-gray-300"
                     />
                     <h3 class="text-lg font-medium text-gray-200 mb-2">
                         {{
-                            selectedRarity !== "all"
+                            selectedRanking !== "all"
                                 ? "No species found"
                                 : "No collection yet"
                         }}
                     </h3>
                     <p class="text-gray-300">
                         {{
-                            selectedRarity !== "all"
+                            selectedRanking !== "all"
                                 ? "Try a different rarity filter or start catching more fursuiters!"
                                 : "Start catching fursuiters to build your collection!"
                         }}

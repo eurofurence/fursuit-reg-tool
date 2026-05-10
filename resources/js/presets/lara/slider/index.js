@@ -57,7 +57,7 @@ export default {
 
             // States
             'hover:bg-primary-hover',
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-3',
             'ring-primary-400/50 dark:ring-primary-300/50',
 
             // Transitions
@@ -90,7 +90,7 @@ export default {
 
             // States
             'hover:bg-primary-hover',
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-3',
             'focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
 
             // Transitions
@@ -123,7 +123,7 @@ export default {
 
             // States
             'hover:bg-primary-hover',
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-3',
             'focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
 
             // Transitions
