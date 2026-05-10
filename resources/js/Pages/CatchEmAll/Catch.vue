@@ -150,7 +150,7 @@ const getRankIcon = (rank: number) => {
                     />
                     <div
                         v-else
-                        class="w-full h-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center"
+                        class="w-full h-full bg-linear-to-br from-gray-200 to-gray-400 flex items-center justify-center"
                     >
                         <User class="w-8 h-8 text-white" />
                     </div>
@@ -175,7 +175,7 @@ const getRankIcon = (rank: number) => {
                 </div>
 
                 <div
-                    class="bg-gradient-to-r p-3 rounded-lg text-white"
+                    class="bg-linear-to-r p-3 rounded-lg text-white"
                     :class="recentCatch.ranking.gradient"
                 >
                     <div class="font-bold">{{ recentCatch.ranking.label }}</div>
@@ -193,14 +193,14 @@ const getRankIcon = (rank: number) => {
         </Dialog>
 
         <!-- Stats Overview Card -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
+        <Card class="bg-gray-800 border border-gray-700 shadow-xs">
             <template #content>
                 <div class="space-y-4">
                     <!-- User Stats Row -->
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
                             <div
-                                class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"
+                                class="w-12 h-12 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center"
                             >
                                 <component
                                     :is="getRankIcon(gameStats.rank)"
@@ -233,7 +233,7 @@ const getRankIcon = (rank: number) => {
                             class="h-2 bg-gray-200 rounded-full overflow-hidden"
                         >
                             <div
-                                class="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500"
+                                class="h-full bg-linear-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500"
                                 :style="`width: ${gameStats.completionPercentage}%`"
                             ></div>
                         </div>
@@ -274,7 +274,7 @@ const getRankIcon = (rank: number) => {
         </Card>
 
         <!-- Code Input Card -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
+        <Card class="bg-gray-800 border border-gray-700 shadow-xs">
             <template #content>
                 <form
                     @submit.prevent="submit"
@@ -283,7 +283,7 @@ const getRankIcon = (rank: number) => {
                 >
                     <div class="text-center mb-4">
                         <div
-                            class="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center"
+                            class="w-16 h-16 mx-auto mb-3 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center"
                         >
                             <Target class="w-8 h-8 text-white" />
                         </div>
@@ -314,7 +314,7 @@ const getRankIcon = (rank: number) => {
                         <Button
                             type="submit"
                             :loading="form.processing"
-                            class="w-full py-3 text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-lg"
+                            class="w-full py-3 text-lg font-bold bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-lg"
                             :disabled="form.catch_code.length !== 5"
                         >
                             <Zap class="w-5 h-5 mr-2" />

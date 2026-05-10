@@ -31,10 +31,10 @@ const currentIcon = computed(() => {
 
 <template>
     <!-- Header -->
-    <div class="fixed top-0 w-full z-50 shadow-sm border-b border-gray-700 bg-gray-800">
+    <div class="fixed top-0 w-full z-50 shadow-xs border-b border-gray-700 bg-gray-800">
         <div class="px-4 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <div class="w-8 h-8 bg-linear-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <component :is="currentIcon" class="w-5 h-5 text-white" />
                 </div>
                 <div>

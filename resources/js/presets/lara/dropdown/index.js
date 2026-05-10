@@ -9,7 +9,7 @@ export default {
             { 'rounded-md': parent.instance.$name !== 'InputGroup' },
             { 'first:rounded-l-md rounded-none last:rounded-r-md': parent.instance.$name == 'InputGroup' },
             { 'border-0 border-y border-l last:border-r': parent.instance.$name == 'InputGroup' },
-            { 'first:ml-0 ml-[-1px]': parent.instance.$name == 'InputGroup' && !props.showButtons },
+            { 'first:ml-0 -ml-px': parent.instance.$name == 'InputGroup' && !props.showButtons },
 
             // Color and Background
             'bg-surface-0 dark:bg-surface-900',
@@ -28,7 +28,7 @@ export default {
 
             // States
             { 'hover:border-primary': !props.invalid },
-            { 'outline-none outline-offset-0 ring ring-primary-400/50 dark:ring-primary-300/50': state.focused },
+            { 'outline-hidden outline-offset-0 ring-3 ring-primary-400/50 dark:ring-primary-300/50': state.focused },
 
             // Misc
             'cursor-pointer',
@@ -64,7 +64,7 @@ export default {
             'duration-200',
 
             // States
-            'focus:outline-none focus:shadow-none',
+            'focus:outline-hidden focus:shadow-none',
 
             // Filled State *for FloatLabel
             { filled: parent.instance?.$name == 'FloatLabel' && props.modelValue !== null },
@@ -72,7 +72,7 @@ export default {
             // Misc
             'relative',
             'cursor-pointer',
-            'overflow-hidden overflow-ellipsis',
+            'overflow-hidden text-ellipsis',
             'whitespace-nowrap',
             'appearance-none'
         ]
@@ -153,7 +153,7 @@ export default {
             //States
             { 'hover:bg-surface-100 dark:hover:bg-surface-600/80': !context.focused && !context.selected },
             { 'hover:bg-primary-highlight-hover': context.selected },
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring focus-visible:ring-inset focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
 
             // Transitions
             'transition-shadow',
@@ -242,7 +242,7 @@ export default {
 
             // States
             'hover:border-primary',
-            'focus:ring focus:outline-none focus:outline-offset-0',
+            'focus:ring-3 focus:outline-hidden focus:outline-offset-0',
             'focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
             // Misc
@@ -271,7 +271,7 @@ export default {
     },
     transition: {
         enterFromClass: 'opacity-0 scale-y-[0.8]',
-        enterActiveClass: 'transition-[transform,opacity] duration-[120ms] ease-[cubic-bezier(0,0,0.2,1)]',
+        enterActiveClass: 'transition-[transform,opacity] duration-120 ease-out',
         leaveActiveClass: 'transition-opacity duration-100 ease-linear',
         leaveToClass: 'opacity-0'
     }

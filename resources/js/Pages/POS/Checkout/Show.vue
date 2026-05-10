@@ -247,7 +247,7 @@ function receiptForm(via) {
                                         <button v-for="denomination in cashDenominations.banknotes"
                                                 :key="denomination"
                                                 @click="addCash(denomination)"
-                                                class="aspect-[3/2] hover:bg-blue-50 transition-colors rounded">
+                                                class="aspect-3/2 hover:bg-blue-50 transition-colors rounded-sm">
                                             <CashSVG :denomination="denomination" size="large" />
                                         </button>
                                     </div>
@@ -257,7 +257,7 @@ function receiptForm(via) {
                                         <button v-for="denomination in cashDenominations.coins"
                                                 :key="denomination"
                                                 @click="addCash(denomination)"
-                                                class="flex-1 hover:bg-blue-50 transition-colors rounded">
+                                                class="flex-1 hover:bg-blue-50 transition-colors rounded-sm">
                                             <CashSVG :denomination="denomination" size="normal" />
                                         </button>
                                     </div>

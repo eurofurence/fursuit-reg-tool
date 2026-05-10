@@ -20,7 +20,7 @@ export default {
 
             // Before
             'before:absolute before:left-1 before:top-1 before:w-[calc(100%-0.5rem)] before:h-[calc(100%-0.5rem)] before:rounded-[4px] before:z-0',
-            '[&>*]:z-10',
+            '*:z-10',
 
             // Color
             'bg-surface-100 dark:bg-surface-950',
@@ -33,7 +33,7 @@ export default {
             { 'border first:border-r-0 last:border-l-0 border-red-500 dark:border-red-400': props.invalid },
 
             // States
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring-1 focus-visible:ring-primary-500 dark:focus-visible:ring-primary-400 focus:z-10',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-1 focus-visible:ring-primary-500 dark:focus-visible:ring-primary-400 focus:z-10',
             {
                 'hover:text-surface-800 dark:hover:text-white/80': !context.active && !props.invalid
             },

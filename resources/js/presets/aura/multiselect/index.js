@@ -27,7 +27,7 @@ export default {
 
             // States
             { 'hover:border-surface-400 dark:hover:border-surface-700': !props.invalid },
-            { 'outline-none outline-offset-0 z-10 ring-1 ring-primary-500 dark:ring-primary-400': state.focused },
+            { 'outline-hidden outline-offset-0 z-10 ring-1 ring-primary-500 dark:ring-primary-400': state.focused },
 
             // Misc
             'cursor-pointer',
@@ -57,7 +57,7 @@ export default {
             'transition duration-200',
 
             // Misc
-            'overflow-hidden whitespace-nowrap cursor-pointer overflow-ellipsis'
+            'overflow-hidden whitespace-nowrap cursor-pointer text-ellipsis'
         ]
     }),
     token: {
@@ -69,7 +69,7 @@ export default {
             'py-1 px-3 m-0 mr-1',
 
             // Shape
-            'rounded',
+            'rounded-sm',
 
             // Colors
             'bg-surface-100 dark:bg-surface-700',
@@ -82,7 +82,7 @@ export default {
     removeTokenIcon: {
         class: [
             // Spacing
-            'ml-[0.375rem]',
+            'ml-1.5',
 
             // Size
             'w-4 h-4',
@@ -193,7 +193,7 @@ export default {
                 'h-5',
 
                 // Shape
-                'rounded',
+                'rounded-sm',
                 'border',
 
                 // Colors
@@ -212,7 +212,7 @@ export default {
                 {
                     'peer-hover:border-surface-400 dark:peer-hover:border-surface-600': !props.disabled && !context.checked && !props.invalid,
                     'peer-hover:bg-primary-hover peer-hover:border-primary-hover': !props.disabled && context.checked,
-                    'peer-focus-visible:z-10 peer-focus-visible:outline-none peer-focus-visible:outline-offset-0 peer-focus-visible:ring-1 peer-focus-visible:ring-primary-500 dark:peer-focus-visible:ring-primary-400': !props.disabled,
+                    'peer-focus-visible:z-10 peer-focus-visible:outline-hidden peer-focus-visible:outline-offset-0 peer-focus-visible:ring-1 peer-focus-visible:ring-primary-500 dark:peer-focus-visible:ring-primary-400': !props.disabled,
                     'bg-surface-200 dark:bg-surface-700 select-none pointer-events-none cursor-default': props.disabled
                 },
 
@@ -240,8 +240,8 @@ export default {
 
                 // Shape
                 'opacity-0',
-                'rounded',
-                'outline-none',
+                'rounded-sm',
+                'outline-hidden',
                 'border border-surface-300 dark:border-surface-700',
 
                 // Misc
@@ -252,8 +252,8 @@ export default {
         icon: {
             class: [
                 // Size
-                'w-[0.875rem]',
-                'h-[0.875rem]',
+                'w-3.5',
+                'h-3.5',
 
                 // Colors
                 'text-white dark:text-surface-950',
@@ -297,7 +297,7 @@ export default {
                 'h-5',
 
                 // Shape
-                'rounded',
+                'rounded-sm',
                 'border',
 
                 // Colors
@@ -316,7 +316,7 @@ export default {
                 {
                     'peer-hover:border-surface-400 dark:peer-hover:border-surface-600': !props.disabled && !context.checked && !props.invalid,
                     'peer-hover:bg-primary-hover peer-hover:border-primary-hover': !props.disabled && context.checked,
-                    'peer-focus-visible:z-10 peer-focus-visible:outline-none peer-focus-visible:outline-offset-0 peer-focus-visible:ring-1 peer-focus-visible:ring-primary-500 dark:peer-focus-visible:ring-primary-400': !props.disabled,
+                    'peer-focus-visible:z-10 peer-focus-visible:outline-hidden peer-focus-visible:outline-offset-0 peer-focus-visible:ring-1 peer-focus-visible:ring-primary-500 dark:peer-focus-visible:ring-primary-400': !props.disabled,
                     'bg-surface-200 dark:bg-surface-700 select-none pointer-events-none cursor-default': props.disabled
                 },
 
@@ -344,8 +344,8 @@ export default {
 
                 // Shape
                 'opacity-0',
-                'rounded',
-                'outline-none',
+                'rounded-sm',
+                'outline-hidden',
                 'border border-surface-300 dark:border-surface-700',
 
                 // Misc
@@ -356,8 +356,8 @@ export default {
         icon: {
             class: [
                 // Size
-                'w-[0.875rem]',
-                'h-[0.875rem]',
+                'w-3.5',
+                'h-3.5',
 
                 // Colors
                 'text-white dark:text-surface-950',
@@ -394,7 +394,7 @@ export default {
             // States
             'hover:text-surface-700 dark:hover:text-white/80',
             'hover:bg-surface-100 dark:hover:bg-surface-800/80',
-            'focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-inset',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-1 focus:ring-inset',
             'focus:ring-primary-500 dark:focus:ring-primary-400',
 
             // Misc
@@ -428,7 +428,7 @@ export default {
             'first:mt-0 mt-[2px]',
 
             // Shape
-            'border-0 rounded',
+            'border-0 rounded-sm',
 
             // Colors
             {
@@ -495,7 +495,7 @@ export default {
 
             // States
             'hover:border-surface-400 dark:hover:border-surface-600',
-            'focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 focus:z-10',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 focus:z-10',
 
             // Misc
             'appearance-none'
@@ -536,7 +536,7 @@ export default {
     },
     transition: {
         enterFromClass: 'opacity-0 scale-y-[0.8]',
-        enterActiveClass: 'transition-[transform,opacity] duration-[120ms] ease-[cubic-bezier(0,0,0.2,1)]',
+        enterActiveClass: 'transition-[transform,opacity] duration-120 ease-out',
         leaveActiveClass: 'transition-opacity duration-100 ease-linear',
         leaveToClass: 'opacity-0'
     }

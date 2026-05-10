@@ -48,11 +48,11 @@ export default {
             'bg-surface-0 dark:bg-surface-900 sm:bg-transparent',
 
             // Misc
-            'outline-none'
+            'outline-hidden'
         ]
     }),
     menuitem: {
-        class: 'sm:relative sm:w-auto w-full static my-[2px] [&:first-child]:mt-0'
+        class: 'sm:relative sm:w-auto w-full static my-[2px] first:mt-0'
     },
     content: ({ props, context }) => ({
         class: [
@@ -119,7 +119,7 @@ export default {
         class: [
             // Size
             'rounded-md',
-            'min-w-[12.5rem]',
+            'min-w-50',
 
             // Spacing
             'p-1',
@@ -160,7 +160,7 @@ export default {
             // States
             'hover:text-surface-600 dark:hover:text-white/60',
             'hover:bg-surface-100 dark:hover:bg-[rgba(255,255,255,0.03)]',
-            'focus:outline-none focus:outline-offset-0',
+            'focus:outline-hidden focus:outline-offset-0',
             'focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400',
 
             // Transitions

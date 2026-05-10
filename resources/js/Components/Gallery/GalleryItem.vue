@@ -45,16 +45,16 @@ const rankingConfig = computed(() => {
             shadowClass: 'shadow-lg shadow-violet-300/60',
             cardGlow: 'shadow-violet-400/40 hover:shadow-violet-400/60 epic-glow',
             cardRing: 'ring-1 ring-violet-400/30',
-            badgeClass: 'bg-gradient-to-br from-violet-600 to-violet-700 text-white border-violet-400/40 shadow-violet-300/60'
+            badgeClass: 'bg-linear-to-br from-violet-600 to-violet-700 text-white border-violet-400/40 shadow-violet-300/60'
         },
         'diamond': {
-            bgClass: 'bg-gradient-to-r from-amber-200/95 to-orange-200/95',
+            bgClass: 'bg-linear-to-r from-amber-200/95 to-orange-200/95',
             titleClass: 'text-amber-900 font-bold',
             speciesClass: 'text-amber-800 font-medium',
             shadowClass: 'shadow-xl shadow-amber-300/70',
             cardGlow: 'shadow-amber-400/50 hover:shadow-amber-400/70 legendary-glow',
             cardRing: 'ring-1 ring-amber-400/30',
-            badgeClass: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-300/50 shadow-amber-300/70'
+            badgeClass: 'bg-linear-to-br from-amber-500 to-orange-600 text-white border-amber-300/50 shadow-amber-300/70'
         }
     };
 
@@ -77,7 +77,7 @@ const rankingConfig = computed(() => {
         </div>
 
         <!-- Overlay with fursuit info -->
-        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div class="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <div class="absolute bottom-0 left-0 right-0 p-4 text-white">
                 <h3 class="text-lg font-bold mb-1 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 drop-shadow-lg">
                     {{ fursuit.name }}
@@ -89,7 +89,7 @@ const rankingConfig = computed(() => {
         </div>
 
         <!-- Always visible info bar at bottom -->
-        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300"
+        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-xs p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300"
              :class="[rankingConfig.bgClass, rankingConfig.shadowClass]">
             <h4 class="text-sm truncate" :class="[rankingConfig.titleClass]">{{ fursuit.name }}</h4>
             <p class="text-xs truncate" :class="[rankingConfig.speciesClass]">{{ fursuit.species }}</p>
