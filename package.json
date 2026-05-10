@@ -7,30 +7,30 @@
         "build": "vite build"
     },
     "devDependencies": {
-        "@inertiajs/vue3": "^2.0.0",
-        "@tailwindcss/forms": "^0.5.3",
+        "@inertiajs/vue3": "^2.3.23",
+        "@tailwindcss/forms": "^0.5.11",
         "@tailwindcss/postcss": "^4.3.0",
-        "@vitejs/plugin-vue": "^5.0.0",
-        "laravel-echo": "^2.2.0",
-        "laravel-vite-plugin": "^1.0",
-        "postcss": "^8.4.31",
-        "pusher-js": "^8.4.0",
+        "@vitejs/plugin-vue": "^6.0.6",
+        "laravel-echo": "^2.3.4",
+        "laravel-vite-plugin": "^3.1",
+        "postcss": "^8.5.14",
+        "pusher-js": "^8.5.0",
         "tailwindcss": "^4.3.0",
-        "vite": "^5.0",
-        "vue": "^3.5.3"
+        "vite": "^8.0",
+        "vue": "^3.5.34"
     },
     "dependencies": {
-        "chart.js": "^4.5.0",
-        "chokidar": "^3.6.0",
-        "dayjs": "^1.11.11",
-        "laravel-precognition-vue-inertia": "^0.5.5",
-        "lucide-vue-next": "^0.536.0",
+        "chart.js": "^4.5.1",
+        "chokidar": "^5.0.0",
+        "dayjs": "^1.11.20",
+        "laravel-precognition-vue-inertia": "^0.8.0",
+        "lucide-vue-next": "^1.0.0",
         "pica": "^9.0.1",
         "primeicons": "^7.0.0",
-        "primevue": "^3.52.0",
-        "qz-tray": "^2.2.4",
-        "simple-keyboard": "^3.7.83",
-        "sjcl": "^1.0.8",
-        "vue-advanced-cropper": "^2.8.8"
+        "primevue": "^4.5.5",
+        "qz-tray": "^2.2.6",
+        "simple-keyboard": "^3.8.140",
+        "sjcl": "^1.0.9",
+        "vue-advanced-cropper": "^2.8.9"
     }
 }
