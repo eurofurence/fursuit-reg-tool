@@ -2,7 +2,7 @@ export default {
     root: {
         class: [
             // Sizing and Shape
-            'min-w-[12rem]',
+            'min-w-48',
             'rounded-md',
             // Spacing
             'py-2',
@@ -18,7 +18,7 @@ export default {
             'list-none',
             'm-0',
             'p-0',
-            'outline-none'
+            'outline-hidden'
         ]
     },
     content: ({ context }) => ({
@@ -89,7 +89,7 @@ export default {
     },
     transition: {
         enterFromClass: 'opacity-0 scale-y-[0.8]',
-        enterActiveClass: 'transition-[transform,opacity] duration-[120ms] ease-[cubic-bezier(0,0,0.2,1)]',
+        enterActiveClass: 'transition-[transform,opacity] duration-120 ease-out',
         leaveActiveClass: 'transition-opacity duration-100 ease-linear',
         leaveToClass: 'opacity-0'
     }

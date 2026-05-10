@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7-labs
-FROM php:8.4-alpine as base
+FROM php:8.5-alpine as base
 WORKDIR /app
 
 ENV COMPOSER_MEMORY_LIMIT=-1

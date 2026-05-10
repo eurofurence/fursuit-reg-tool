@@ -2,6 +2,7 @@
 
 namespace App\Models\Fursuit;
 
+use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\EventUser;
@@ -18,8 +19,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\ModelStates\HasStates;
 
 class Fursuit extends Model
@@ -82,10 +83,10 @@ class Fursuit extends Model
                 if (! $this->image_webp && $this->image) {
                     try {
                         $originalImage = Storage::get($this->image);
-                        $manager = new ImageManager(new Driver);
+                        $manager = ImageManager::usingDriver(Driver::class);
                         $path = 'gallery/fursuits/'.pathinfo($this->image, PATHINFO_FILENAME).'.webp';
 
-                        $webp = $manager->read($originalImage)->toWebp();
+                        $webp = $manager->decode($originalImage)->encodeUsingFileExtension('webp', quality: 10);
                         Storage::put($path, $webp);
                         $this->update(['image_webp' => $path]);
 
@@ -196,7 +197,7 @@ class Fursuit extends Model
 
     public function catchedByUsers()
     {
-        return $this->hasMany(\App\Domain\CatchEmAll\Models\UserCatch::class);
+        return $this->hasMany(UserCatch::class);
     }
 
     /**

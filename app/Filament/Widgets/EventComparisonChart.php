@@ -12,7 +12,7 @@ class EventComparisonChart extends ChartWidget
 {
     use HasEventFilter;
 
-    protected static ?string $heading = 'Event Comparison';
+    protected ?string $heading = 'Event Comparison';
 
     protected static ?int $sort = 2;
 

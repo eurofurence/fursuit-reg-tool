@@ -15,7 +15,7 @@ export default {
             'dark:text-white/80',
 
             // Spacing
-            'p-[1.125rem]',
+            'p-4.5',
             'gap-2',
 
             // Borders
@@ -54,7 +54,7 @@ export default {
 
             // States
             'hover:bg-primary-hover',
-            'focus:outline-none focus:outline-offset-0 focus:ring-1',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
             'focus:ring-primary',
 
             // Misc
@@ -90,7 +90,7 @@ export default {
             'dark:text-white/80',
 
             // Spacing
-            'p-[1.125rem]',
+            'p-4.5',
 
             // Borders
             'border border-t-0',
@@ -120,7 +120,7 @@ export default {
             'gap-2',
 
             // Shape
-            'rounded'
+            'rounded-sm'
         ]
     },
     thumbnail: {

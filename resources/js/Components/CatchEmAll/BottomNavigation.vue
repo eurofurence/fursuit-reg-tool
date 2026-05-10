@@ -44,7 +44,7 @@ const navItems = [
         label: 'Catch!',
         icon: Target,
         route: 'catch-em-all.catch',
-        color: 'text-white bg-gradient-to-br from-blue-600 to-purple-600 scale-110 shadow-lg',
+        color: 'text-white bg-linear-to-br from-blue-600 to-purple-600 scale-110 shadow-lg',
         isCenter: true
     },
     {

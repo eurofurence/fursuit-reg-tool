@@ -13,7 +13,7 @@ export default {
             { 'first:ml-0 -ml-px': parent.instance.$name == 'InputGroup' && !props.showButtons },
 
             //Sizing
-            { '!w-16': props.showButtons && props.buttonLayout == 'vertical' }
+            { 'w-16!': props.showButtons && props.buttonLayout == 'vertical' }
         ]
     }),
     input: {
@@ -53,7 +53,7 @@ export default {
 
                 // States
                 { 'hover:border-primary': !parent.props.invalid },
-                'focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 focus:z-10',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 focus:z-10',
                 { 'bg-surface-200 dark:bg-surface-700 select-none pointer-events-none cursor-default': context.disabled },
 
                 // Filled State *for FloatLabel
@@ -99,7 +99,7 @@ export default {
                 { 'border-b-0': parent.props.showButtons && parent.props.buttonLayout !== 'stacked' && parent.props.buttonLayout == 'vertical' },
 
                 // Sizing
-                'w-[3rem]',
+                'w-12',
                 { 'px-4 py-3': parent.props.showButtons && parent.props.buttonLayout !== 'stacked' },
                 { 'p-0': parent.props.showButtons && parent.props.buttonLayout == 'stacked' },
                 { 'w-full': parent.props.showButtons && parent.props.buttonLayout == 'vertical' },
@@ -147,7 +147,7 @@ export default {
                 { 'border-t-0': parent.props.showButtons && parent.props.buttonLayout !== 'stacked' && parent.props.buttonLayout == 'vertical' },
 
                 // Sizing
-                'w-[3rem]',
+                'w-12',
                 { 'px-4 py-3': parent.props.showButtons && parent.props.buttonLayout !== 'stacked' },
                 { 'p-0': parent.props.showButtons && parent.props.buttonLayout == 'stacked' },
                 { 'w-full': parent.props.showButtons && parent.props.buttonLayout == 'vertical' },

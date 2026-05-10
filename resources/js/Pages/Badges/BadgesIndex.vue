@@ -115,7 +115,7 @@ function getActionableStatuses(badge) {
 
 <template>
     <Head title="Manage your Fursuit Badges"/>
-    <div class="pt-8 px-6 xl:px-0 max-w-screen-lg mx-auto">
+    <div class="pt-8 px-6 xl:px-0 max-w-(--breakpoint-lg) mx-auto">
         <!-- Header Section -->
         <div class="mb-8">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

@@ -16,7 +16,7 @@ export default {
             'flex items-center flex-wrap gap-2',
 
             // Spacing
-            'm-0 py-[0.375rem] px-3',
+            'm-0 py-1.5 px-3',
 
             // Size
             'w-full',
@@ -37,9 +37,9 @@ export default {
 
             // States
             { 'hover:border-primary': !props.invalid },
-            'focus:outline-none focus:outline-offset-0',
-            { 'ring ring-primary-400/50 dark:ring-primary-300/50': state.focused },
-            { 'ring ring-primary-400/50 dark:ring-primary-300/50': state.hovered },
+            'focus:outline-hidden focus:outline-offset-0',
+            { 'ring-3 ring-primary-400/50 dark:ring-primary-300/50': state.focused },
+            { 'ring-3 ring-primary-400/50 dark:ring-primary-300/50': state.hovered },
 
             // Filled State *for FloatLabel
             { filled: parent.instance?.$name == 'FloatLabel' && props.modelValue !== null && props.modelValue?.length !== 0 },
@@ -69,7 +69,7 @@ export default {
 
             // Shape
             'appearance-none rounded-none',
-            'border-0 outline-none',
+            'border-0 outline-hidden',
             'shadow-none',
 
             // Color

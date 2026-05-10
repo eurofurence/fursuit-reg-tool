@@ -6,10 +6,19 @@ use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Filament\Resources\PrintJobResource\Pages;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,29 +27,29 @@ class PrintJobResource extends Resource
 {
     protected static ?string $model = PrintJob::class;
 
-    protected static ?string $navigationGroup = 'POS';
+    protected static string|\UnitEnum|null $navigationGroup = 'POS';
 
-    protected static ?string $navigationIcon = 'heroicon-o-queue-list';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-queue-list';
 
     protected static ?int $navigationSort = 3;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\Select::make('printer_id')
+                Select::make('printer_id')
                     ->label('Printer')
                     ->relationship('printer', 'name')
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\Select::make('type')
+                Select::make('type')
                     ->options([
                         PrintJobTypeEnum::Badge->value => 'Badge',
                         PrintJobTypeEnum::Receipt->value => 'Receipt',
                     ])
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\Select::make('status')
+                Select::make('status')
                     ->options([
                         PrintJobStatusEnum::Pending->value => 'Pending',
                         PrintJobStatusEnum::Queued->value => 'Queued',
@@ -51,24 +60,24 @@ class PrintJobResource extends Resource
                     ])
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('priority')
+                TextInput::make('priority')
                     ->numeric()
                     ->default(0)
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('retry_count')
+                TextInput::make('retry_count')
                     ->numeric()
                     ->default(0)
                     ->columnSpanFull(),
-                Forms\Components\Textarea::make('error_message')
+                Textarea::make('error_message')
                     ->columnSpanFull()
                     ->rows(3),
-                Forms\Components\TextInput::make('qz_job_name')
+                TextInput::make('qz_job_name')
                     ->maxLength(255)
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('last_qz_status')
+                TextInput::make('last_qz_status')
                     ->maxLength(255)
                     ->columnSpanFull(),
-                Forms\Components\Textarea::make('last_qz_message')
+                Textarea::make('last_qz_message')
                     ->columnSpanFull()
                     ->rows(2),
             ]);
@@ -78,20 +87,22 @@ class PrintJobResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')
+                TextColumn::make('id')
                     ->label('ID')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('printer.name')
+                TextColumn::make('printer.name')
                     ->label('Printer')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\BadgeColumn::make('type')
+                TextColumn::make('type')
+                    ->badge()
                     ->getStateUsing(fn (PrintJob $record): string => $record->type->value)
                     ->colors([
                         'primary' => 'badge',
                         'secondary' => 'receipt',
                     ]),
-                Tables\Columns\BadgeColumn::make('status')
+                TextColumn::make('status')
+                    ->badge()
                     ->getStateUsing(fn (PrintJob $record): string => $record->status->value)
                     ->colors([
                         'warning' => 'pending',
@@ -101,7 +112,7 @@ class PrintJobResource extends Resource
                         'danger' => 'failed',
                         'secondary' => 'retrying',
                     ]),
-                Tables\Columns\TextColumn::make('printable')
+                TextColumn::make('printable')
                     ->label('Printable')
                     ->getStateUsing(function (PrintJob $record): string {
                         if ($record->printable_type === 'App\\Models\\Badge\\Badge') {
@@ -110,7 +121,7 @@ class PrintJobResource extends Resource
 
                         return class_basename($record->printable_type)." #{$record->printable_id}";
                     }),
-                Tables\Columns\TextColumn::make('priority')
+                TextColumn::make('priority')
                     ->sortable()
                     ->badge()
                     ->color(fn (int $state): string => match (true) {
@@ -119,7 +130,7 @@ class PrintJobResource extends Resource
                         $state >= 1 => 'info',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('retry_count')
+                TextColumn::make('retry_count')
                     ->label('Retries')
                     ->badge()
                     ->color(fn (int $state): string => match (true) {
@@ -127,18 +138,18 @@ class PrintJobResource extends Resource
                         $state >= 1 => 'warning',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('processingMachine.name')
+                TextColumn::make('processingMachine.name')
                     ->label('Machine')
                     ->placeholder('Not assigned'),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Created')
                     ->dateTime()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('printed_at')
+                TextColumn::make('printed_at')
                     ->label('Printed')
                     ->dateTime()
                     ->placeholder('Not printed'),
-                Tables\Columns\TextColumn::make('error_message')
+                TextColumn::make('error_message')
                     ->label('Error')
                     ->limit(50)
                     ->placeholder('None')
@@ -163,9 +174,9 @@ class PrintJobResource extends Resource
                     ]),
                 SelectFilter::make('printer')
                     ->relationship('printer', 'name'),
-                \Filament\Tables\Filters\Filter::make('printable_id')
+                Filter::make('printable_id')
                     ->form([
-                        \Filament\Forms\Components\TextInput::make('value')
+                        TextInput::make('value')
                             ->label('Printable ID')
                             ->numeric(),
                     ])
@@ -179,11 +190,12 @@ class PrintJobResource extends Resource
                         if (! $data['value']) {
                             return null;
                         }
-                        return 'Printable ID: ' . $data['value'];
+
+                        return 'Printable ID: '.$data['value'];
                     }),
-                \Filament\Tables\Filters\Filter::make('printable_type')
+                Filter::make('printable_type')
                     ->form([
-                        \Filament\Forms\Components\TextInput::make('value')
+                        TextInput::make('value')
                             ->label('Printable Type'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -196,19 +208,20 @@ class PrintJobResource extends Resource
                         if (! $data['value']) {
                             return null;
                         }
-                        return 'Type: ' . class_basename($data['value']);
+
+                        return 'Type: '.class_basename($data['value']);
                     }),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('retry')
+                ViewAction::make(),
+                EditAction::make(),
+                Action::make('retry')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
                     ->visible(fn (PrintJob $record): bool => $record->canRetry())
                     ->action(function (PrintJob $record) {
                         $retryJob = $record->createRetryJob(reassignPrinter: true);
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->success()
                             ->title("Created retry job #{$retryJob->id}")
                             ->send();
@@ -216,8 +229,8 @@ class PrintJobResource extends Resource
                     ->requiresConfirmation(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('id', 'desc')

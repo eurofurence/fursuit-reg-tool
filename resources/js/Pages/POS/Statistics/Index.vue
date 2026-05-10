@@ -108,7 +108,7 @@ const statusColors = {
     <div class="w-full p-4">
         <!-- Header -->
         <div class="mb-6">
-            <Card class="shadow-lg border-0 bg-gradient-to-r from-green-600 to-green-700 text-white">
+            <Card class="shadow-lg border-0 bg-linear-to-r from-green-600 to-green-700 text-white">
                 <template #content>
                     <div class="p-6">
                         <div class="flex items-center justify-between">

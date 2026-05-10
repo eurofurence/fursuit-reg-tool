@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\EventComparisonChart;
 use App\Http\Middleware\FilamentEventSelector;
 use App\Models\Event;
 use Filament\Http\Middleware\Authenticate;
@@ -40,7 +41,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                Widgets\StatsOverviewWidget::class,
+                EventComparisonChart::class,
             ])
             ->middleware([
                 EncryptCookies::class,

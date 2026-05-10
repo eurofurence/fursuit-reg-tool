@@ -11,8 +11,8 @@ const page = usePage().props;
     <div class="bg-gray-100">
         <div class="min-h-screen w-full mx-auto flex flex-col">
             <!--- Logo -->
-            <div class="bg-primary-500 relative z-10 pl-4 drop-shadow">
-                <div class="text-white max-w-screen-lg mx-auto flex gap-3">
+            <div class="bg-primary-500 relative z-10 pl-4 drop-shadow-sm">
+                <div class="text-white max-w-(--breakpoint-lg) mx-auto flex gap-3">
                     <Link as="div" :href="route('welcome')" class="cursor-pointer relative h-16 flex gap-3">
                         <img src="../../assets/ef.svg"
                              class="hidden sm:block rounded-full bg-primary-500 h-24 px-2 pb-2 pt-2 -mt-2 absolute z-100"

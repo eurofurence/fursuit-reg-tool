@@ -104,7 +104,7 @@ export default {
     nodetoggler: {
         class: [
             // Position
-            'absolute bottom-[-0.75rem] left-2/4 -ml-3',
+            'absolute -bottom-3 left-2/4 -ml-3',
             'z-20',
 
             // Flexbox
@@ -120,7 +120,7 @@ export default {
             'bg-inherit text-inherit',
 
             // Focus
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
             // Misc
             'cursor-pointer no-underline select-none'

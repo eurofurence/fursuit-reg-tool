@@ -131,7 +131,7 @@ const startTimer = () => {
         } else if (elapsedSeconds >= INACTIVITY_WARNING_TIME.value) {
             // Show warning
             if (!isWarning.value) {
-                console.log('[InactivityTimer] WARNING TIME - showing blur effect');
+                console.log('[InactivityTimer] WARNING TIME - showing blur-sm effect');
                 isWarning.value = true;
                 startWarningEffect();
             }
