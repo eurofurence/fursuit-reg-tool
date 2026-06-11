@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Migrations\SchemaGuard;
 use Bavix\Wallet\Models\Transfer;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -11,16 +12,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table($this->table(), static function (Blueprint $table) {
-            $table->json('extra')
-                ->nullable()
-                ->after('fee');
+        $tableName = $this->table();
+        Schema::table($tableName, static function (Blueprint $table) use ($tableName) {
+            if (SchemaGuard::missingColumn($tableName, 'extra')) {
+                $table->json('extra')
+                    ->nullable()
+                    ->after('fee');
+            }
         });
     }
 
     public function down(): void
     {
-        Schema::dropColumns($this->table(), ['extra']);
+        if (SchemaGuard::hasColumn($this->table(), 'extra')) {
+            Schema::dropColumns($this->table(), ['extra']);
+        }
     }
 
     private function table(): string

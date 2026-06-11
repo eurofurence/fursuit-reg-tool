@@ -11,6 +11,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('user_catch_rankings')) {
+            return;
+        }
+
         Schema::create('user_catch_rankings', function (Blueprint $table) {
             $table->integer('id');
             $table->integer('rank');

@@ -8,13 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('sumup_readers', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('remote_id')->nullable();
-            $table->string('paring_code');
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('sumup_readers')) {
+            Schema::create('sumup_readers', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('remote_id')->nullable();
+                $table->string('paring_code');
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void

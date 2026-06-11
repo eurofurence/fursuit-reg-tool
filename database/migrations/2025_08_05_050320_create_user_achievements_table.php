@@ -11,18 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('user_achievements', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('achievement', 50);
-            $table->integer('progress')->default(0);
-            $table->integer('max_progress')->default(1);
-            $table->timestamp('earned_at')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('user_achievements')) {
+            Schema::create('user_achievements', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id')->constrained()->onDelete('cascade');
+                $table->string('achievement', 50);
+                $table->integer('progress')->default(0);
+                $table->integer('max_progress')->default(1);
+                $table->timestamp('earned_at')->nullable();
+                $table->timestamps();
 
-            $table->unique(['user_id', 'achievement']);
-            $table->index(['user_id', 'earned_at']);
-        });
+                $table->unique(['user_id', 'achievement']);
+                $table->index(['user_id', 'earned_at']);
+            });
+        }
     }
 
     /**

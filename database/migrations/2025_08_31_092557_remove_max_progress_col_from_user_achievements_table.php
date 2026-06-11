@@ -1,18 +1,22 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::table('user_achievements', function (Blueprint $table) {
-            $table->dropColumn('max_progress');
-        });
+        if (SchemaGuard::hasColumn('user_achievements', 'max_progress')) {
+            Schema::table('user_achievements', function (Blueprint $table) {
+                $table->dropColumn('max_progress');
+            });
+        }
     }
 
     /**
@@ -20,8 +24,10 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table('user_achievements', function (Blueprint $table) {
-            $table->integer('max_progress')->default(0);
-        });
+        if (SchemaGuard::missingColumn('user_achievements', 'max_progress')) {
+            Schema::table('user_achievements', function (Blueprint $table) {
+                $table->integer('max_progress')->default(0);
+            });
+        }
     }
 };

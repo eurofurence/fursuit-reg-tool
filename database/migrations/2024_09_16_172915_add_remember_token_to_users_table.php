@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +11,9 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->after('pin_code', function (Blueprint $table) {
-                $table->rememberToken();
+                if (SchemaGuard::missingColumn('users', 'remember_token')) {
+                    $table->rememberToken();
+                }
             });
         });
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,7 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('events', function (Blueprint $table) {
-            $table->string('badge_class')->nullable()->after('name');
+            if (SchemaGuard::missingColumn('events', 'badge_class')) {
+                $table->string('badge_class')->nullable()->after('name');
+            }
         });
     }
 
@@ -22,7 +25,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('events', function (Blueprint $table) {
-            $table->dropColumn('badge_class');
+            if (SchemaGuard::hasColumn('events', 'badge_class')) {
+                $table->dropColumn('badge_class');
+            }
         });
     }
 };
