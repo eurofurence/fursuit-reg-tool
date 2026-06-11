@@ -49,6 +49,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Disable the automatic "latest" tag (default is latest=auto, which also
+          # tags latest on every semver Git tag push). "latest" is controlled
+          # explicitly below so it is only applied for the main branch.
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=branch
             type=ref,event=pr
