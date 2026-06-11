@@ -38,7 +38,12 @@ class BadgePolicy
             return false;
         }
 
-        // Check if user has prepaid badges left FIRST - these bypass order window restrictions
+        // Check if user has prepaid badges left FIRST - these bypass order window restrictions.
+        // NOTE: this is the raw prepaid allowance (prepaid_badges - already ordered) and is
+        // intentionally NOT the same as User::getPrepaidBadgesLeft(), which additionally
+        // subtracts the now-unhonored free badge. This decides whether the user may create a
+        // badge *at all* (it may end up being a paid badge); getPrepaidBadgesLeft() only
+        // decides whether that badge is free. See PrepaidBadgePriceConsistencyTest.
         $eventUser = $user->eventUser($event->id);
         if ($eventUser) {
             $prepaidBadges = $eventUser->prepaid_badges;
