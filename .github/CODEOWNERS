@@ -1,0 +1,8 @@
+## Format: <path> <owner(s)>
+
+# Securing the CODEOWNERS file against unauthorized changes
+/.github/CODEOWNERS @Corborax @fenrikur @RustyBraze
+/.github/workflows @Corborax @fenrikur @RustyBraze
+
+# Enforces a code review
+* @RustyBraze @takemurahusky @TLTimeplex
