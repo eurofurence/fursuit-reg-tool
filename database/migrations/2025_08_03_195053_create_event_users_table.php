@@ -11,17 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('event_users', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('event_id')->constrained()->onDelete('cascade');
-            $table->string('attendee_id');
-            $table->boolean('valid_registration')->default(false);
-            $table->integer('prepaid_badges')->default(0);
-            $table->timestamps();
+        if (! Schema::hasTable('event_users')) {
+            Schema::create('event_users', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id')->constrained()->onDelete('cascade');
+                $table->foreignId('event_id')->constrained()->onDelete('cascade');
+                $table->string('attendee_id');
+                $table->boolean('valid_registration')->default(false);
+                $table->integer('prepaid_badges')->default(0);
+                $table->timestamps();
 
-            $table->unique(['user_id', 'event_id']);
-        });
+                $table->unique(['user_id', 'event_id']);
+            });
+        }
     }
 
     /**

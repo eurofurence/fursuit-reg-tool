@@ -11,18 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('rfid_tags', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('staff_id')->constrained()->onDelete('cascade');
-            $table->string('content')->unique();
-            $table->string('name')->nullable(); // Optional name for the tag
-            $table->boolean('is_active')->default(true);
-            $table->timestamp('last_login_at')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('rfid_tags')) {
+            Schema::create('rfid_tags', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('staff_id')->constrained()->onDelete('cascade');
+                $table->string('content')->unique();
+                $table->string('name')->nullable(); // Optional name for the tag
+                $table->boolean('is_active')->default(true);
+                $table->timestamp('last_login_at')->nullable();
+                $table->timestamps();
 
-            $table->index('content');
-            $table->index(['staff_id', 'is_active']);
-        });
+                $table->index('content');
+                $table->index(['staff_id', 'is_active']);
+            });
+        }
     }
 
     /**

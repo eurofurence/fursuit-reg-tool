@@ -8,16 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('print_jobs', function (Blueprint $table) {
-            $table->id();
-            $table->foreignIdFor(\App\Domain\Printing\Models\Printer::class)->constrained()->cascadeOnDelete();
-            $table->morphs('printable');
-            $table->string('type');
-            $table->string('status');
-            $table->string('file');
-            $table->dateTime('printed_at')->nullable();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('print_jobs')) {
+            Schema::create('print_jobs', function (Blueprint $table) {
+                $table->id();
+                $table->foreignIdFor(\App\Domain\Printing\Models\Printer::class)->constrained()->cascadeOnDelete();
+                $table->morphs('printable');
+                $table->string('type');
+                $table->string('status');
+                $table->string('file');
+                $table->dateTime('printed_at')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void

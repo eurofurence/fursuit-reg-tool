@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,9 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('machines', function (Blueprint $table) {
-            $table->timestamp('archived_at')->nullable()->index();
-        });
+        if (SchemaGuard::missingColumn('machines', 'archived_at')) {
+            Schema::table('machines', function (Blueprint $table) {
+                $table->timestamp('archived_at')->nullable()->index();
+            });
+        }
     }
 
     /**
@@ -21,8 +24,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('machines', function (Blueprint $table) {
-            $table->dropColumn('archived_at');
-        });
+        if (SchemaGuard::hasColumn('machines', 'archived_at')) {
+            Schema::table('machines', function (Blueprint $table) {
+                $table->dropColumn('archived_at');
+            });
+        }
     }
 };

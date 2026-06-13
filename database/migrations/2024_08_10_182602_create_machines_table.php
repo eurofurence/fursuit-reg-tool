@@ -8,11 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('machines', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->rememberToken();
-        });
+        if (! Schema::hasTable('machines')) {
+            Schema::create('machines', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->rememberToken();
+            });
+        }
     }
 
     public function down(): void

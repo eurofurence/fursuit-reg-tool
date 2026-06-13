@@ -10,18 +10,20 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('fursuits', function (Blueprint $table) {
-            $table->id();
-            $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
-            $table->foreignIdFor(Species::class)->constrained()->cascadeOnDelete();
-            $table->foreignIdFor(\App\Models\Event::class)->constrained()->cascadeOnDelete(); // When fursuit was created, can be updated to current year at any time
-            $table->string('status');
-            $table->string('name');
-            $table->string('image');
-            $table->timestamp('approved_at')->nullable();
-            $table->timestamp('rejected_at')->nullable();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('fursuits')) {
+            Schema::create('fursuits', function (Blueprint $table) {
+                $table->id();
+                $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
+                $table->foreignIdFor(Species::class)->constrained()->cascadeOnDelete();
+                $table->foreignIdFor(\App\Models\Event::class)->constrained()->cascadeOnDelete(); // When fursuit was created, can be updated to current year at any time
+                $table->string('status');
+                $table->string('name');
+                $table->string('image');
+                $table->timestamp('approved_at')->nullable();
+                $table->timestamp('rejected_at')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void
