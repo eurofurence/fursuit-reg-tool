@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Event;
 use App\Models\EventUser;
-use App\Models\User;
 use App\Models\Species;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -24,22 +24,24 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
     /** @test */
     public function it_correctly_calculates_badge_as_paid_when_prepaid_badges_exhausted_after_order_starts()
     {
-        // Create an event with order_starts_at in the past (so the -1 deduction applies)
+        // Create an event with an open order window (a paid additional badge must stay orderable)
         $event = Event::factory()->create([
+            'starts_at' => now()->subDays(5),
+            'ends_at' => now()->addDays(30),
             'order_starts_at' => now()->subDays(5),
             'order_ends_at' => now()->addDays(30),
             'mass_printed_at' => now()->addDays(10),
         ]);
 
-        // Create a user with 2 prepaid badges
+        // Create a user with 1 prepaid badge (entitlement fully used once 1 is ordered)
         $user = User::factory()->create();
         $this->actingAs($user);
 
         EventUser::create([
             'user_id' => $user->id,
             'event_id' => $event->id,
-            'attendee_id' => 'TEST-' . $user->id,
-            'prepaid_badges' => 2,
+            'attendee_id' => 'TEST-'.$user->id,
+            'prepaid_badges' => 1,
             'valid_registration' => true,
         ]);
 
@@ -70,8 +72,8 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
 
         // Check what the frontend would see
         $prepaidBadgesLeft = $user->getPrepaidBadgesLeft($event->id);
-        
-        // After order_starts_at: 2 prepaid - 1 (deduction) - 1 (already ordered) = 0
+
+        // Full entitlement is honored: 1 prepaid - 1 (already ordered) = 0 free badges left
         $this->assertEquals(0, $prepaidBadgesLeft, 'Frontend should see 0 prepaid badges left');
 
         // Now create a new badge via the controller
@@ -120,7 +122,7 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         EventUser::create([
             'user_id' => $user->id,
             'event_id' => $event->id,
-            'attendee_id' => 'TEST-' . $user->id,
+            'attendee_id' => 'TEST-'.$user->id,
             'prepaid_badges' => 3,
             'valid_registration' => true,
         ]);
@@ -152,9 +154,9 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
 
         // Check what the frontend would see
         $prepaidBadgesLeft = $user->getPrepaidBadgesLeft($event->id);
-        
-        // After order_starts_at: 3 prepaid - 1 (deduction) - 1 (already ordered) = 1
-        $this->assertEquals(1, $prepaidBadgesLeft, 'Frontend should see 1 prepaid badge left');
+
+        // Full entitlement is honored: 3 prepaid - 1 (already ordered) = 2 free badges left
+        $this->assertEquals(2, $prepaidBadgesLeft, 'Frontend should see 2 prepaid badges left');
 
         // Now create a new badge via the controller
         $response = $this->post(route('badges.store'), [
@@ -203,14 +205,14 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         EventUser::create([
             'user_id' => $user->id,
             'event_id' => $event->id,
-            'attendee_id' => 'TEST-' . $user->id,
+            'attendee_id' => 'TEST-'.$user->id,
             'prepaid_badges' => 1,
             'valid_registration' => true,
         ]);
 
         // Check what the frontend would see
         $prepaidBadgesLeft = $user->getPrepaidBadgesLeft($event->id);
-        
+
         // Before order_starts_at: 1 prepaid - 0 (no deduction) - 0 (no orders) = 1
         $this->assertEquals(1, $prepaidBadgesLeft, 'Frontend should see 1 prepaid badge left before order starts');
 
@@ -259,7 +261,7 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         EventUser::create([
             'user_id' => $user->id,
             'event_id' => $event->id,
-            'attendee_id' => 'TEST-' . $user->id,
+            'attendee_id' => 'TEST-'.$user->id,
             'prepaid_badges' => 2,
             'valid_registration' => true,
         ]);
@@ -292,12 +294,12 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         // Visit the create page to see what frontend would display
         $response = $this->get(route('badges.create'));
         $response->assertOk();
-        
+
         // Check the prepaidBadgesLeft value passed to frontend
         $prepaidBadgesLeft = $response->viewData('page')['props']['prepaidBadgesLeft'];
-        
-        // After order_starts_at: 2 prepaid - 1 (deduction) - 1 (already ordered) = 0
-        $this->assertEquals(0, $prepaidBadgesLeft, 'Frontend should receive 0 prepaid badges left');
+
+        // Full entitlement is honored: 2 prepaid - 1 (already ordered) = 1 free badge left
+        $this->assertEquals(1, $prepaidBadgesLeft, 'Frontend should receive 1 prepaid badge left');
 
         // Now create a badge and verify it's consistent
         $storeResponse = $this->post(route('badges.store'), [

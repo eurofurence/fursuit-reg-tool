@@ -5,12 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Environment Setup
+
 The project supports two development environments:
 
 **Nix / devenv (primary)** — `.envrc` uses `direnv` + `use flake`. With direnv allowed, the
 toolchain (PHP 8.3, Node) is provided automatically and a `sail` alias is exported.
 
 **Laravel Sail (Docker)** — the classic path:
+
 ```bash
 # Initial setup
 cp .env.example .env       # or: mv .env.example .env
@@ -31,6 +33,7 @@ npm run build
 > (and the `DB_*` host vars) if you run against the Sail database.
 
 ### Development Commands
+
 ```bash
 # Frontend development
 npm run dev           # Start Vite dev server with hot reload
@@ -54,6 +57,7 @@ npm run build         # Build production assets
 ```
 
 ### Event State Management
+
 ```bash
 # Useful for development/testing - sets up an event in a given state.
 # Accepted states: pre-order | order | event-order | closed  (open = legacy alias)
@@ -62,6 +66,7 @@ php artisan event:state closed     # Orders closed
 ```
 
 ### Other Useful Artisan Commands
+
 ```bash
 php artisan badges:print                  # Print all unprinted badges
 php artisan badges:unprint                # Revert badges to unprinted
@@ -79,6 +84,7 @@ php artisan tse:update-state              # Fiskaly TSE state management (also t
 ## Architecture Overview
 
 ### Core System
+
 This is a **Laravel 11 + Inertia.js + Vue 3** application for managing fursuit badge
 registration at the Eurofurence convention. It covers the full lifecycle from badge creation
 through on-site pickup, with integrated payment processing (wallet + SumUp), German fiscal
@@ -93,6 +99,7 @@ determine when badges can be ordered. Event state is computed dynamically (see
 
 **Badge Lifecycle**: Badges use Spatie Model States with two parallel state machines
 (in `app/Models/Badge/`):
+
 - Payment states (`State_Payment/`): `Unpaid` → `Paid`
 - Fulfillment states (`State_Fulfillment/`): `Pending` → `Processing` → `ReadyForPickup` → `PickedUp`
   (a `Printed` state also exists; transitions live in the `Transitions/` subfolders, and POS
@@ -109,6 +116,7 @@ wraps this with its own models, services, and states.
 ### Application Structure
 
 **Multi-Interface Design**:
+
 - `/` — Public fursuit badge registration interface (Vue/Inertia)
 - `/admin` — Filament admin panel for staff
 - `/pos` — Point-of-sale system for on-site operations (machine + staff PIN auth)
@@ -120,6 +128,7 @@ wraps this with its own models, services, and states.
 cert/signing), `catch-em-all.php`, `gallery.php`, `api.php`, `channels.php`, `console.php`.
 
 **Key Directories**:
+
 - `app/Models/Badge/` — Badge model with the two state machines
 - `app/Models/Fursuit/` — Fursuit management with approval workflow
 - `app/Models/FCEA/` — Catch-Em-All catch/log/ranking models
@@ -136,11 +145,13 @@ cert/signing), `catch-em-all.php`, `gallery.php`, `api.php`, `channels.php`, `co
   `CatchEmAll/`, `FCEA/`, `Gallery/`, `Statistics/`, `Auth/`
 
 ### State Management Pattern
+
 The system heavily uses **Spatie Model States** for complex entity lifecycles (Badges,
 Fursuits, Checkouts). When working with these entities, always consider the current state and
 the available transitions rather than mutating state properties directly.
 
 ### Event-Driven Architecture
+
 - Badge creation triggers notifications
 - State transitions are logged via `spatie/laravel-activitylog`
 - Background jobs handle printing, ranking updates, and receipt generation
@@ -149,6 +160,7 @@ the available transitions rather than mutating state properties directly.
   (every 15 min), and stuck-print-job checks (every 3 min)
 
 ### Badge Generation System
+
 - Badges are rendered as PDFs using custom badge classes in `app/Badges/`
 - Each badge type (e.g. `EF28_Badge`, `EF29_Badge`) extends `BadgeBase_V1` (in `Bases/`) and
   defines positioning/fonts; reusable field/layout helpers live in `app/Badges/Components/`
@@ -156,6 +168,7 @@ the available transitions rather than mutating state properties directly.
 - QR codes are generated for the Catch-Em-All game integration
 
 ### Printing System
+
 - On-site printing is driven through **QZ Tray** (browser-to-printer bridge); the POS exposes
   certificate and signing endpoints (`pos-auth.php`) for QZ
 - Print jobs and printer state are modeled in `app/Domain/Printing/` with their own enums
@@ -163,12 +176,14 @@ the available transitions rather than mutating state properties directly.
 - See `PRINTING_SYSTEM.md` and the `PRINTING_SYSTEM_IMPROVEMENTS*.md` docs for design notes
 
 ### Fiscal Compliance (German market)
+
 - SumUp card readers handle on-site card payments (`SumUpReader` model)
 - A Fiskaly **TSE** (Technical Security System) signs transactions; managed via the `tse:*`
   commands. See `TSE.md`
 - DSFinV-K exports are produced by `dsfin:generate-direct-export`. See `DSFinV_K_2_4.pdf`
 
 ### Database Design Notes
+
 - Default connection is SQLite (`.env.example`); Sail provisions MySQL
 - Events use computed state (no `state` column) based on date comparisons
 - Badges have `custom_id` for human-readable identification
@@ -176,6 +191,7 @@ the available transitions rather than mutating state properties directly.
 - Activity logging tracks all important changes
 
 ### Testing Approach
+
 - Uses **Pest PHP** testing framework (`tests/Feature`, `tests/Unit`)
 - Feature tests cover critical user journeys (badge flow, checkout, printing, notifications,
   event order state)
@@ -183,10 +199,12 @@ the available transitions rather than mutating state properties directly.
 - Event state can be manipulated via the `event:state` command for testing
 
 ### Observability
+
 - **Sentry** (`sentry/sentry-laravel`) for error tracking
 - **Clockwork** (`itsgoingd/clockwork`) for local request profiling/debugging
 
 ### Development Environment
+
 - **Nix / devenv** (`.envrc` + flake) or **Laravel Sail** for Docker-based development
 - **Laravel Octane** (Swoole) is available as the production app server
 - **Laravel Reverb** provides WebSockets; the frontend uses `laravel-echo`
@@ -196,23 +214,31 @@ the available transitions rather than mutating state properties directly.
 
 ### Domain Gotchas
 
-**Prepaid badges: "can create" vs. "free badges left" are two different things.** There are two
-intentionally different prepaid calculations — do **not** merge their values:
-- `App\Policies\BadgePolicy::create()` uses `prepaid_badges − ordered` (raw allowance) to decide
-  whether a user may create a badge **at all** (the badge may end up **paid**). A prepaid
-  allowance bypasses the closed order-window restriction.
-- `App\Models\User::getPrepaidBadgesLeft()` subtracts an additional `1` after `order_starts_at`
-  (the included free badge is "no longer honored" / becomes paid) and answers **how many free
-  badges remain**; it drives badge **pricing** in `BadgeController@store`.
+**Prepaid badges: "can create" vs. "free badges left" are two different things.** Two related
+prepaid calculations — do **not** merge their values:
 
-Because of this, a user can have `getPrepaidBadgesLeft() == 0` yet still be allowed to order an
-additional **paid** badge. The public Welcome page (`Welcome.vue`) therefore gates its
-create/customize button on the authoritative `canCreate` (`Gate::allows('create', Badge::class)`)
-passed by `WelcomeController`, not on `prepaidBadgesLeft`. `PrepaidBadgePriceConsistencyTest`
-locks in that paid additional badges stay orderable once the free allowance is used.
-See `docs/bugfix-01-result.md` and `docs/handoff.md`.
+- `App\Policies\BadgePolicy::create()` uses `prepaid_badges − ordered` to decide whether a user
+  may create a badge **at all** (the badge may end up **paid**). A prepaid allowance bypasses the
+  closed order-window restriction.
+- `App\Models\User::getPrepaidBadgesLeft()` = `prepaid_badges − orderedMainBadges` (only main
+  badges count; spare copies — `extra_copy_of != null` — are always separately paid and never
+  consume the allowance). It answers **how many free badges remain** and drives badge **pricing**
+  in `BadgeController@store`.
+
+The **full** `prepaid_badges` entitlement is honored as free. (Until bugfix-03 this method also
+deducted an extra `1` after `order_starts_at` — "the included badge is no longer honored" — which
+wrongly **charged** the user's last prepaid badge; that `−1` is gone. See
+`docs/bugfix-03-fix.md`.)
+
+A user with `getPrepaidBadgesLeft() == 0` can still order an additional **paid** badge while the
+order window is open. The public Welcome page (`Welcome.vue`) therefore gates its create/customize
+button on the authoritative `canCreate` (`Gate::allows('create', Badge::class)`) passed by
+`WelcomeController`, not on `prepaidBadgesLeft`. `PrepaidBadgePriceConsistencyTest` locks in the
+pricing; `FreeBadgeRepairService` (admin → Maintenance → DB Service) repairs already-wrongly-charged
+badges. See `docs/bugfix-01-result.md`, `docs/bugfix-03-fix.md`, and `docs/handoff.md`.
 
 ### Migrations must be idempotent
+
 Migrations run as an ArgoCD PreSync **Job** (`php artisan migrate --force`) against MySQL, and
 **MySQL DDL is not transactional** — a migration that fails partway leaves its applied steps in
 place but is never recorded, so the next run hits "Duplicate column / key / table" and blocks every
@@ -220,6 +246,7 @@ later migration (this caused a dev outage; see `docs/bugfix-02-*.md`).
 
 Every migration must therefore be safe to re-run. Guard each operation with
 `App\Support\Migrations\SchemaGuard`:
+
 - `Schema::create('t', …)` → wrap in `if (SchemaGuard::missingTable('t')) { … }` (and use
   `Schema::dropIfExists` in `down()`).
 - add/drop column → `SchemaGuard::missingColumn(...)` / `SchemaGuard::hasColumn(...)`.
@@ -232,6 +259,7 @@ Every migration must therefore be safe to re-run. Guard each operation with
 `tests/Feature/MigrationIdempotencyTest.php` locks in the helper's behaviour.
 
 ### Additional Documentation
+
 The repo root contains focused design docs worth consulting: `CATCH.md` (Catch-Em-All game),
 `PRINTING_SYSTEM*.md` (printing), `TSE.md` + `zebra.md` (fiscal/printer hardware),
 `openapi.yml` (API spec), and `README.md` (setup). Bugfix write-ups live in `docs/`.
