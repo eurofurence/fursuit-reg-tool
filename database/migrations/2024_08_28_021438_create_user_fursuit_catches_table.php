@@ -11,14 +11,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('user_catches', function (Blueprint $table) {
-            $table->id();
-            $table->foreignIdFor(Event::class)->constrained()->cascadeOnDelete();
-            $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
-            $table->foreignIdFor(Fursuit::class)->constrained()->cascadeOnDelete();
-            $table->timestamps();
-            $table->unique(['user_id', 'fursuit_id']);
-        });
+        if (! Schema::hasTable('user_catches')) {
+            Schema::create('user_catches', function (Blueprint $table) {
+                $table->id();
+                $table->foreignIdFor(Event::class)->constrained()->cascadeOnDelete();
+                $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
+                $table->foreignIdFor(Fursuit::class)->constrained()->cascadeOnDelete();
+                $table->timestamps();
+                $table->unique(['user_id', 'fursuit_id']);
+            });
+        }
     }
 
     public function down(): void

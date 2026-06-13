@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +11,9 @@ return new class extends Migration
     {
         Schema::table('fursuits', function (Blueprint $table) {
             $table->after('image', function (Blueprint $table) {
-                $table->string('image_webp')->nullable();
+                if (SchemaGuard::missingColumn('fursuits', 'image_webp')) {
+                    $table->string('image_webp')->nullable();
+                }
             });
         });
     }
@@ -18,7 +21,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('fursuits', function (Blueprint $table) {
-            $table->dropColumn('image_webp');
+            if (SchemaGuard::hasColumn('fursuits', 'image_webp')) {
+                $table->dropColumn('image_webp');
+            }
         });
     }
 };

@@ -11,23 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('printer_events', function (Blueprint $table) {
-            $table->id();
-            $table->string('printer_name');
-            $table->string('event_type'); // PRINTER, JOB, etc.
-            $table->string('status'); // OFFLINE, ONLINE, PAPER_OUT, etc.
-            $table->string('severity')->default('INFO'); // INFO, WARN, ERROR, FATAL
-            $table->text('message');
-            $table->string('machine_name')->nullable();
-            $table->json('raw_event')->nullable(); // Store the full QZ event
-            $table->boolean('handled')->default(false); // Whether this event triggered an action
-            $table->timestamp('event_time');
-            $table->timestamps();
+        if (! Schema::hasTable('printer_events')) {
+            Schema::create('printer_events', function (Blueprint $table) {
+                $table->id();
+                $table->string('printer_name');
+                $table->string('event_type'); // PRINTER, JOB, etc.
+                $table->string('status'); // OFFLINE, ONLINE, PAPER_OUT, etc.
+                $table->string('severity')->default('INFO'); // INFO, WARN, ERROR, FATAL
+                $table->text('message');
+                $table->string('machine_name')->nullable();
+                $table->json('raw_event')->nullable(); // Store the full QZ event
+                $table->boolean('handled')->default(false); // Whether this event triggered an action
+                $table->timestamp('event_time');
+                $table->timestamps();
 
-            $table->index(['printer_name', 'event_time']);
-            $table->index(['status', 'severity']);
-            $table->index('handled');
-        });
+                $table->index(['printer_name', 'event_time']);
+                $table->index(['status', 'severity']);
+                $table->index('handled');
+            });
+        }
     }
 
     /**

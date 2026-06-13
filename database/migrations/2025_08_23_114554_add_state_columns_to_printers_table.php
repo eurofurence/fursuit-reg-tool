@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -14,14 +15,28 @@ return new class extends Migration
     {
         Schema::table('printers', function (Blueprint $table) {
             $table->after('is_active', function (Blueprint $table) {
-                $table->string('status')->default('idle');
-                $table->unsignedBigInteger('current_job_id')->nullable();
-                $table->text('last_error_message')->nullable();
-                $table->timestamp('last_state_update')->useCurrent();
-                $table->string('handling_machine_name')->nullable();
+                if (SchemaGuard::missingColumn('printers', 'status')) {
+                    $table->string('status')->default('idle');
+                }
+                if (SchemaGuard::missingColumn('printers', 'current_job_id')) {
+                    $table->unsignedBigInteger('current_job_id')->nullable();
+                }
+                if (SchemaGuard::missingColumn('printers', 'last_error_message')) {
+                    $table->text('last_error_message')->nullable();
+                }
+                if (SchemaGuard::missingColumn('printers', 'last_state_update')) {
+                    $table->timestamp('last_state_update')->useCurrent();
+                }
+                if (SchemaGuard::missingColumn('printers', 'handling_machine_name')) {
+                    $table->string('handling_machine_name')->nullable();
+                }
 
-                $table->index(['status', 'last_state_update']);
-                $table->foreign('current_job_id')->references('id')->on('print_jobs')->onDelete('set null');
+                if (! SchemaGuard::hasIndex('printers', ['status', 'last_state_update'])) {
+                    $table->index(['status', 'last_state_update']);
+                }
+                if (! SchemaGuard::hasForeignKeyOn('printers', 'current_job_id')) {
+                    $table->foreign('current_job_id')->references('id')->on('print_jobs')->onDelete('set null');
+                }
             });
         });
 
@@ -46,15 +61,17 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('printers', function (Blueprint $table) {
-            $table->dropForeign(['current_job_id']);
-            $table->dropIndex(['status', 'last_state_update']);
-            $table->dropColumn([
-                'status',
-                'current_job_id',
-                'last_error_message',
-                'last_state_update',
-                'handling_machine_name',
-            ]);
+            if (SchemaGuard::hasForeignKeyOn('printers', 'current_job_id')) {
+                $table->dropForeign(['current_job_id']);
+            }
+            if (SchemaGuard::hasIndex('printers', ['status', 'last_state_update'])) {
+                $table->dropIndex(['status', 'last_state_update']);
+            }
+            foreach (['status', 'current_job_id', 'last_error_message', 'last_state_update', 'handling_machine_name'] as $column) {
+                if (SchemaGuard::hasColumn('printers', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
 };

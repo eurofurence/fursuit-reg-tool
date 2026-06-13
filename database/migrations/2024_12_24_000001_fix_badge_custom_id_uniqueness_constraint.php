@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,10 +14,14 @@ return new class extends Migration
     {
         Schema::table('badges', function (Blueprint $table) {
             // Drop the global unique constraint on custom_id
-            $table->dropUnique(['custom_id']);
+            if (SchemaGuard::hasIndex('badges', ['custom_id'])) {
+                $table->dropUnique(['custom_id']);
+            }
 
             // Add an index for performance, but not unique globally
-            $table->index('custom_id');
+            if (! SchemaGuard::hasIndex('badges', 'custom_id')) {
+                $table->index('custom_id');
+            }
         });
     }
 
@@ -27,10 +32,14 @@ return new class extends Migration
     {
         Schema::table('badges', function (Blueprint $table) {
             // Drop the index
-            $table->dropIndex(['custom_id']);
+            if (SchemaGuard::hasIndex('badges', ['custom_id'])) {
+                $table->dropIndex(['custom_id']);
+            }
 
             // Re-add the global unique constraint
-            $table->unique('custom_id');
+            if (! SchemaGuard::hasIndex('badges', 'custom_id')) {
+                $table->unique('custom_id');
+            }
         });
     }
 };

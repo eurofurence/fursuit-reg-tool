@@ -23,7 +23,8 @@ const props = defineProps({
     showState: String,
     event: Object,
     prepaidBadgesLeft: Number,
-    currentEventBadgeCount: Number
+    currentEventBadgeCount: Number,
+    canCreate: Boolean
 });
 
 const currentTime = ref(dayjs());
@@ -160,8 +161,8 @@ const shouldShowRegMessage = computed(() => {
 
                 <!-- Action Buttons -->
                 <div v-if="user" class="w-full max-w-2xl mx-auto">
-                    <!-- Show prepaid badge button even when orders are closed -->
-                    <div v-if="prepaidBadgesLeft > 0" class="space-y-6">
+                    <!-- Show prepaid badge button even when orders are closed (only if creation is actually allowed) -->
+                    <div v-if="canCreate && prepaidBadgesLeft > 0" class="space-y-6">
                         <div class="flex flex-row gap-3 mt-6">
                             <!-- Prepaid Badge Button -->
                             <Button
@@ -185,7 +186,7 @@ const shouldShowRegMessage = computed(() => {
                         </div>
                     </div>
 
-                    <div v-else-if="orderStatus.status === 'open'" class="space-y-6">
+                    <div v-else-if="canCreate" class="space-y-6">
                         <!-- Action Buttons - Max 2 buttons side by side -->
                         <div class="flex flex-row gap-3 mt-6">
                             <!-- Primary Action Button -->
