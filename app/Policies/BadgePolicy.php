@@ -80,9 +80,17 @@ class BadgePolicy
             return false;
         }
 
-        // Cannot edit when no active event or event has ended
+        // Cannot edit when there is no active event, or once the event itself has ended.
+        //
+        // NOTE: this deliberately checks the *event end* (ends_at), NOT the order window
+        // (allowsOrders()/order_ends_at). Editing a not-yet-printed badge must stay possible
+        // after ordering closes but while the event is still running — otherwise owners of
+        // already-ordered (paid, non-free) badges lose their edit button during the valid
+        // pre-printing period, while free-badge owners keep it. Gating on the order window was
+        // the cause of that "some users can't edit" bug. Printed badges are blocked below; this
+        // mirrors the delete() policy and the "regardless of event order window" comment there.
         $event = \App\Models\Event::getActiveEvent();
-        if ($event === null || ! $event->allowsOrders() && ! $badge->is_free_badge) {
+        if ($event === null || $event->ends_at < now()) {
             return false;
         }
 
