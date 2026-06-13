@@ -104,17 +104,18 @@ class User extends Authenticatable implements Customer, FilamentUser, WalletFloa
             return 0;
         }
 
+        // The user's full prepaid entitlement is honored as free badges. (Historically this
+        // deducted an extra 1 after order_starts_at — "the included badge is no longer honored" —
+        // which wrongly charged the user's last prepaid badge. See docs/bugfix-03-fix.md.)
         $prepaidBadges = $eventUser->prepaid_badges;
 
-        // After order start date, deduct 1 free badge (no longer honored)
-        if ($event->order_starts_at && now() > $event->order_starts_at) {
-            $prepaidBadges = max(0, $prepaidBadges - 1);
-        }
-
+        // Only main badges consume the prepaid allowance; spare copies are always separately
+        // paid (extra_copy_of !== null) and must not eat into the free entitlement.
         $orderedBadges = $this->badges()
             ->whereHas('fursuit.event', function ($query) use ($event) {
                 $query->where('id', $event->id);
             })
+            ->whereNull('extra_copy_of')
             ->count();
 
         return max(0, $prepaidBadges - $orderedBadges);

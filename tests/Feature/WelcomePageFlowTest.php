@@ -201,12 +201,13 @@ describe('Welcome Page User Interface States', function () {
 
 describe('Welcome Page create-button permission (bugfix-01)', function () {
     test('passes canCreate=true so the button shows when a paid badge can still be ordered with 0 free badges left', function () {
-        // Order window has CLOSED, but the event itself is still running.
+        // Order window is OPEN; the user has used their full free entitlement but may still
+        // order an additional *paid* badge.
         $event = Event::factory()->create([
             'starts_at' => now()->subDays(5),
             'ends_at' => now()->addDays(20),
             'order_starts_at' => now()->subDays(10),
-            'order_ends_at' => now()->subDays(1),
+            'order_ends_at' => now()->addDays(5),
         ]);
 
         EventUser::create([
@@ -214,7 +215,7 @@ describe('Welcome Page create-button permission (bugfix-01)', function () {
             'event_id' => $event->id,
             'attendee_id' => 'TEST-'.$this->user->id,
             'valid_registration' => true,
-            'prepaid_badges' => 2, // an unused prepaid slot remains after the free one
+            'prepaid_badges' => 1, // single free entitlement, used up by the badge below
         ]);
 
         // User has already ordered their (free) first badge for this event.
