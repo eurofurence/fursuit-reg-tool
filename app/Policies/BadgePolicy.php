@@ -38,7 +38,12 @@ class BadgePolicy
             return false;
         }
 
-        // Check if user has prepaid badges left FIRST - these bypass order window restrictions
+        // Check if user has prepaid badges left FIRST - these bypass order window restrictions.
+        // NOTE: this is the raw prepaid allowance (prepaid_badges - already ordered) and is
+        // intentionally NOT the same as User::getPrepaidBadgesLeft(), which additionally
+        // subtracts the now-unhonored free badge. This decides whether the user may create a
+        // badge *at all* (it may end up being a paid badge); getPrepaidBadgesLeft() only
+        // decides whether that badge is free. See PrepaidBadgePriceConsistencyTest.
         $eventUser = $user->eventUser($event->id);
         if ($eventUser) {
             $prepaidBadges = $eventUser->prepaid_badges;
@@ -75,9 +80,17 @@ class BadgePolicy
             return false;
         }
 
-        // Cannot edit when no active event or event has ended
+        // Cannot edit when there is no active event, or once the event itself has ended.
+        //
+        // NOTE: this deliberately checks the *event end* (ends_at), NOT the order window
+        // (allowsOrders()/order_ends_at). Editing a not-yet-printed badge must stay possible
+        // after ordering closes but while the event is still running — otherwise owners of
+        // already-ordered (paid, non-free) badges lose their edit button during the valid
+        // pre-printing period, while free-badge owners keep it. Gating on the order window was
+        // the cause of that "some users can't edit" bug. Printed badges are blocked below; this
+        // mirrors the delete() policy and the "regardless of event order window" comment there.
         $event = \App\Models\Event::getActiveEvent();
-        if ($event === null || ! $event->allowsOrders() && ! $badge->is_free_badge) {
+        if ($event === null || $event->ends_at < now()) {
             return false;
         }
 

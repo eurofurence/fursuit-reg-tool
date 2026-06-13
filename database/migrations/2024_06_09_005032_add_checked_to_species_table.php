@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -9,7 +10,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('species', function (Blueprint $table) {
-            $table->boolean('checked')->default(false)->after('type');
+            if (SchemaGuard::missingColumn('species', 'checked')) {
+                $table->boolean('checked')->default(false)->after('type');
+            }
         });
     }
 

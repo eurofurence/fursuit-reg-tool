@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,7 +13,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('events', function (Blueprint $table) {
-            $table->dropColumn(['preorder_starts_at', 'preorder_ends_at']);
+            if (SchemaGuard::hasColumn('events', 'preorder_starts_at')) {
+                $table->dropColumn('preorder_starts_at');
+            }
+            if (SchemaGuard::hasColumn('events', 'preorder_ends_at')) {
+                $table->dropColumn('preorder_ends_at');
+            }
         });
     }
 
@@ -22,8 +28,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('events', function (Blueprint $table) {
-            $table->dateTime('preorder_starts_at')->nullable()->after('ends_at');
-            $table->dateTime('preorder_ends_at')->after('preorder_starts_at');
+            if (SchemaGuard::missingColumn('events', 'preorder_starts_at')) {
+                $table->dateTime('preorder_starts_at')->nullable()->after('ends_at');
+            }
+            if (SchemaGuard::missingColumn('events', 'preorder_ends_at')) {
+                $table->dateTime('preorder_ends_at')->after('preorder_starts_at');
+            }
         });
     }
 };

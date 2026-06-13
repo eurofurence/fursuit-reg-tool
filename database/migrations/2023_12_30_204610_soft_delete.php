@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Migrations\SchemaGuard;
 use Bavix\Wallet\Models\Transaction;
 use Bavix\Wallet\Models\Transfer;
 use Bavix\Wallet\Models\Wallet;
@@ -13,27 +14,45 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table((new Wallet)->getTable(), static function (Blueprint $table) {
-            $table->softDeletesTz();
+        $walletTable = (new Wallet)->getTable();
+        Schema::table($walletTable, static function (Blueprint $table) use ($walletTable) {
+            if (SchemaGuard::missingColumn($walletTable, 'deleted_at')) {
+                $table->softDeletesTz();
+            }
         });
-        Schema::table((new Transfer)->getTable(), static function (Blueprint $table) {
-            $table->softDeletesTz();
+        $transferTable = (new Transfer)->getTable();
+        Schema::table($transferTable, static function (Blueprint $table) use ($transferTable) {
+            if (SchemaGuard::missingColumn($transferTable, 'deleted_at')) {
+                $table->softDeletesTz();
+            }
         });
-        Schema::table((new Transaction)->getTable(), static function (Blueprint $table) {
-            $table->softDeletesTz();
+        $transactionTable = (new Transaction)->getTable();
+        Schema::table($transactionTable, static function (Blueprint $table) use ($transactionTable) {
+            if (SchemaGuard::missingColumn($transactionTable, 'deleted_at')) {
+                $table->softDeletesTz();
+            }
         });
     }
 
     public function down(): void
     {
-        Schema::table((new Wallet)->getTable(), static function (Blueprint $table) {
-            $table->dropSoftDeletes();
+        $walletTable = (new Wallet)->getTable();
+        Schema::table($walletTable, static function (Blueprint $table) use ($walletTable) {
+            if (SchemaGuard::hasColumn($walletTable, 'deleted_at')) {
+                $table->dropSoftDeletes();
+            }
         });
-        Schema::table((new Transfer)->getTable(), static function (Blueprint $table) {
-            $table->dropSoftDeletes();
+        $transferTable = (new Transfer)->getTable();
+        Schema::table($transferTable, static function (Blueprint $table) use ($transferTable) {
+            if (SchemaGuard::hasColumn($transferTable, 'deleted_at')) {
+                $table->dropSoftDeletes();
+            }
         });
-        Schema::table((new Transaction)->getTable(), static function (Blueprint $table) {
-            $table->dropSoftDeletes();
+        $transactionTable = (new Transaction)->getTable();
+        Schema::table($transactionTable, static function (Blueprint $table) use ($transactionTable) {
+            if (SchemaGuard::hasColumn($transactionTable, 'deleted_at')) {
+                $table->dropSoftDeletes();
+            }
         });
     }
 };

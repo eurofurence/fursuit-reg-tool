@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Badge\Badge;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class WelcomeController extends Controller
@@ -15,10 +17,15 @@ class WelcomeController extends Controller
 
         $prepaidBadgesLeft = 0;
         $currentEventBadgeCount = 0;
+        $canCreate = false;
         if ($event && Auth::check()) {
             $user = Auth::user();
             $prepaidBadgesLeft = $user->getPrepaidBadgesLeft($event->id);
             $currentEventBadgeCount = $user->badges()->where('event_id', $event->id)->count();
+            // Authoritative permission flag - the Welcome page shows the create/customize
+            // button off this rather than inferring it from the order window, so the button
+            // can never disagree with whether the user may actually create a badge.
+            $canCreate = Gate::allows('create', Badge::class);
         }
 
         return Inertia::render('Welcome', [
@@ -33,6 +40,7 @@ class WelcomeController extends Controller
             ] : null,
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
             'currentEventBadgeCount' => $currentEventBadgeCount,
+            'canCreate' => $canCreate,
         ]);
     }
 }

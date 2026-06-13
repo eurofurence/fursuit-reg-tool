@@ -11,16 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('staff', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('pin_code');
-            $table->boolean('is_active')->default(true);
-            $table->timestamp('last_login_at')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('staff')) {
+            Schema::create('staff', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('pin_code');
+                $table->boolean('is_active')->default(true);
+                $table->timestamp('last_login_at')->nullable();
+                $table->timestamps();
 
-            $table->index('pin_code');
-        });
+                $table->index('pin_code');
+            });
+        }
     }
 
     /**

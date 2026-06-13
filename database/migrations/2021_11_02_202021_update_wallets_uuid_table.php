@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Migrations\SchemaGuard;
 use Bavix\Wallet\Internal\Service\UuidFactoryServiceInterface;
 use Bavix\Wallet\Models\Wallet;
 use Illuminate\Database\Migrations\Migration;
@@ -40,7 +41,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropColumns($this->table(), ['uuid']);
+        if (SchemaGuard::hasColumn($this->table(), 'uuid')) {
+            Schema::dropColumns($this->table(), ['uuid']);
+        }
     }
 
     private function table(): string

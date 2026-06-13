@@ -198,3 +198,86 @@ describe('Welcome Page User Interface States', function () {
         );
     });
 });
+
+describe('Welcome Page create-button permission (bugfix-01)', function () {
+    test('passes canCreate=true so the button shows when a paid badge can still be ordered with 0 free badges left', function () {
+        // Order window has CLOSED, but the event itself is still running.
+        $event = Event::factory()->create([
+            'starts_at' => now()->subDays(5),
+            'ends_at' => now()->addDays(20),
+            'order_starts_at' => now()->subDays(10),
+            'order_ends_at' => now()->subDays(1),
+        ]);
+
+        EventUser::create([
+            'user_id' => $this->user->id,
+            'event_id' => $event->id,
+            'attendee_id' => 'TEST-'.$this->user->id,
+            'valid_registration' => true,
+            'prepaid_badges' => 2, // an unused prepaid slot remains after the free one
+        ]);
+
+        // User has already ordered their (free) first badge for this event.
+        $species = \App\Models\Species::factory()->create();
+        $this->user->fursuits()->create([
+            'event_id' => $event->id,
+            'species_id' => $species->id,
+            'name' => 'First Fursuit',
+            'image' => 'fursuits/test.jpg',
+            'status' => 'approved',
+            'published' => false,
+            'catch_em_all' => false,
+        ])->badges()->create([
+            'status_fulfillment' => 'pending',
+            'status_payment' => 'paid',
+            'subtotal' => 0,
+            'tax_rate' => 0.19,
+            'tax' => 0,
+            'total' => 0,
+            'is_free_badge' => true,
+            'dual_side_print' => true,
+            'apply_late_fee' => false,
+            'paid_at' => now(),
+        ]);
+
+        actingAs($this->user);
+
+        $response = get(route('welcome'));
+
+        $response->assertSuccessful();
+        // The free allowance is used up (0 free badges left)...
+        expect($this->user->getPrepaidBadgesLeft($event->id))->toBe(0);
+        // ...but a paid badge can still be ordered, so the button must be driven by canCreate.
+        $response->assertInertia(fn ($page) => $page
+            ->where('prepaidBadgesLeft', 0)
+            ->where('canCreate', true)
+        );
+    });
+
+    test('passes canCreate=false when orders are closed and the user has no prepaid allowance', function () {
+        $event = Event::factory()->create([
+            'starts_at' => now()->subDays(5),
+            'ends_at' => now()->addDays(20),
+            'order_starts_at' => now()->subDays(10),
+            'order_ends_at' => now()->subDays(1),
+        ]);
+
+        EventUser::create([
+            'user_id' => $this->user->id,
+            'event_id' => $event->id,
+            'attendee_id' => 'TEST-'.$this->user->id,
+            'valid_registration' => true,
+            'prepaid_badges' => 0,
+        ]);
+
+        actingAs($this->user);
+
+        $response = get(route('welcome'));
+
+        $response->assertSuccessful();
+        $response->assertInertia(fn ($page) => $page
+            ->where('prepaidBadgesLeft', 0)
+            ->where('canCreate', false)
+        );
+    });
+});

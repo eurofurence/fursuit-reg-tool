@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +14,9 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->after('pin_code', function (Blueprint $table) {
-                $table->string('rfid_code')->nullable()->unique();
+                if (SchemaGuard::missingColumn('users', 'rfid_code')) {
+                    $table->string('rfid_code')->nullable()->unique();
+                }
             });
         });
     }
@@ -24,7 +27,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('rfid_code');
+            if (SchemaGuard::hasColumn('users', 'rfid_code')) {
+                $table->dropColumn('rfid_code');
+            }
         });
     }
 };

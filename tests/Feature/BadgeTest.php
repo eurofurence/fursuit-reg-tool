@@ -115,11 +115,16 @@ test('user cannot create badge when event has ended', function () {
 });
 
 test('user cannot update badge when event has ended', function () {
+    // Force a still-editable (Pending) paid badge so this genuinely exercises the
+    // event-ended gate rather than passing by accident on the printed-status gate.
     $badge = Badge::factory()
         ->recycle(\App\Models\Event::first())
         ->recycle($this->user)
-        ->create();
-    travelTo(\Carbon\Carbon::parse('2024-07-01'));
+        ->create([
+            'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
+            'is_free_badge' => false,
+        ]);
+    travelTo(\Carbon\Carbon::parse('2024-07-01')); // after ends_at (2024-06-30)
     actingAs($this->user);
     putJson(route('badges.update', $badge->id), [
         'species' => 'Wolf',
@@ -127,4 +132,32 @@ test('user cannot update badge when event has ended', function () {
         'catchEmAll' => true,
         'publish' => true,
     ])->assertForbidden();
+});
+
+test('user can update paid badge after order window closes but before event ends', function () {
+    // Regression for the "some users can't edit their badge" bug: editing a not-yet-printed
+    // badge must stay possible after the order window (order_ends_at) closes while the event
+    // is still running — for paid (non-free) badges, not just free ones.
+    $badge = Badge::factory()
+        ->recycle(\App\Models\Event::first())
+        ->recycle($this->user)
+        ->create([
+            'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
+            'is_free_badge' => false,
+        ]);
+
+    // order_ends_at is 2024-06-25, event ends_at is 2024-06-30 — this sits in between.
+    travelTo(\Carbon\Carbon::parse('2024-06-27'));
+    actingAs($this->user);
+
+    putJson(route('badges.update', $badge->id), [
+        'species' => 'Wolf',
+        'name' => 'Updated Badge Name',
+        'catchEmAll' => true,
+        'publish' => true,
+    ])->assertRedirect(route('badges.index'));
+
+    $this->assertDatabaseHas('fursuits', [
+        'name' => 'Updated Badge Name',
+    ]);
 });
