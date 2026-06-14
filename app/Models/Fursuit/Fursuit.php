@@ -4,7 +4,6 @@ namespace App\Models\Fursuit;
 
 use App\Models\Badge\Badge;
 use App\Models\Event;
-use App\Models\EventUser;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\Fursuit\States\FursuitStatusState;
 use App\Models\Species;
@@ -25,6 +24,12 @@ use Spatie\ModelStates\HasStates;
 class Fursuit extends Model
 {
     use HasFactory, HasStates, LogsActivity, SoftDeletes;
+
+    /**
+     * Guard flag set while a fursuit is cascading its own deletion to its badges, so the badge
+     * delete events don't try to (re-)delete the fursuit. See FursuitObserver / BadgeObserver.
+     */
+    public static bool $isCascadingDelete = false;
 
     protected $guarded = [];
 

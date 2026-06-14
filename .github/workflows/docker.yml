@@ -6,8 +6,7 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]'
       - 'v[0-9]+.[0-9]+.[0-9]-**'
-      - 'v*.*.*-*'
-      - 'v*'
+
 jobs:
   build-and-push-image:
     uses: eurofurence/workflows/.github/workflows/docker-buildx-push.yml@main
