@@ -9,14 +9,14 @@
     "devDependencies": {
         "@inertiajs/vue3": "^2.0.0",
         "@tailwindcss/forms": "^0.5.3",
-        "@vitejs/plugin-vue": "^5.0.0",
+        "@vitejs/plugin-vue": "^6.0.7",
         "autoprefixer": "^10.4.12",
         "laravel-echo": "^2.2.0",
-        "laravel-vite-plugin": "^1.0",
-        "postcss": "^8.4.31",
+        "laravel-vite-plugin": "^3.1",
+        "postcss": "^8.5.15",
         "pusher-js": "^8.4.0",
         "tailwindcss": "^3.2.1",
-        "vite": "^5.0",
+        "vite": "^8.0",
         "vue": "^3.5.3"
     },
     "dependencies": {
@@ -30,7 +30,7 @@
         "primevue": "^3.52.0",
         "qz-tray": "^2.2.4",
         "simple-keyboard": "^3.7.83",
-        "sjcl": "^1.0.8",
+        "sjcl": "^1.0.9",
         "vue-advanced-cropper": "^2.8.8"
     }
 }
