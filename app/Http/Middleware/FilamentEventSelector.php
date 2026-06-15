@@ -12,7 +12,7 @@ class FilamentEventSelector
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->has('selected_event_id')) {
-            $eventId = $request->get('selected_event_id');
+            $eventId = $request->input('selected_event_id');
             if ($eventId === 'all') {
                 session()->forget('filament_selected_event_id');
             } else {

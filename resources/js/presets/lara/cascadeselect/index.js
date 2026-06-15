@@ -22,7 +22,7 @@ export default {
 
             // States
             { 'hover:border-primary': !props.invalid },
-            { 'outline-none outline-offset-0 ring ring-primary-400/50 dark:ring-primary-300/50': state.focused },
+            { 'outline-hidden outline-offset-0 ring-3 ring-primary-400/50 dark:ring-primary-300/50': state.focused },
 
             // Misc
             'cursor-pointer',
@@ -56,12 +56,12 @@ export default {
             'duration-200',
 
             // States
-            'focus:outline-none focus:shadow-none',
+            'focus:outline-hidden focus:shadow-none',
 
             // Misc
             'relative',
             'cursor-pointer',
-            'overflow-hidden overflow-ellipsis',
+            'overflow-hidden text-ellipsis',
             'whitespace-nowrap',
             'appearance-none'
         ]
@@ -200,7 +200,7 @@ export default {
     },
     transition: {
         enterFromClass: 'opacity-0 scale-y-[0.8]',
-        enterActiveClass: 'transition-[transform,opacity] duration-[120ms] ease-[cubic-bezier(0,0,0.2,1)]',
+        enterActiveClass: 'transition-[transform,opacity] duration-120 ease-out',
         leaveActiveClass: 'transition-opacity duration-100 ease-linear',
         leaveToClass: 'opacity-0'
     }

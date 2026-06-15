@@ -6,7 +6,7 @@ export default {
 
             // Position
             'relative',
-            { '!transition-none !transform-none !w-screen !h-screen !max-h-full !top-0 !left-0': props.position == 'full' },
+            { 'transition-none! transform-none! w-screen! h-screen! max-h-full! top-0! left-0!': props.position == 'full' },
 
             // Size
             {
@@ -77,7 +77,7 @@ export default {
             // States
             'hover:text-surface-700 dark:hover:text-white/80',
             'hover:bg-surface-100 dark:hover:bg-surface-800/80',
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-inset',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-inset',
             'focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
             // Misc
@@ -115,7 +115,7 @@ export default {
             { 'p-5': !props.position == 'full' },
 
             // Background and Effects
-            { 'has-[.mask-active]:bg-transparent bg-black/40': props.modal, 'has-[.mask-active]:backdrop-blur-none backdrop-blur-sm': props.modal }
+            { 'has-[.mask-active]:bg-transparent bg-black/40': props.modal, 'has-[.mask-active]:backdrop-blur-none backdrop-blur-xs': props.modal }
         ]
     }),
     transition: ({ props }) => {

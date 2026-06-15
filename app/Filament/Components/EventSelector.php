@@ -3,8 +3,8 @@
 namespace App\Filament\Components;
 
 use App\Models\Event;
-use Filament\View\Component;
 use Illuminate\Contracts\View\View;
+use Illuminate\View\Component;
 
 class EventSelector extends Component
 {

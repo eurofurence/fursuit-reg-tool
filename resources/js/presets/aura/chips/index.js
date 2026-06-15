@@ -41,7 +41,7 @@ export default {
 
             // States
             { 'hover:border-surface-400 dark:hover:border-surface-700': !props.invalid },
-            { 'outline-none outline-offset-0 z-10 ring-1 ring-primary-500 dark:ring-primary-400': state.focused },
+            { 'outline-hidden outline-offset-0 z-10 ring-1 ring-primary-500 dark:ring-primary-400': state.focused },
 
             // Filled State *for FloatLabel
             { filled: parent.instance?.$name == 'FloatLabel' && props.modelValue !== null && props.modelValue?.length !== 0 },
@@ -69,7 +69,7 @@ export default {
 
             // Shape
             'appearance-none rounded-none',
-            'border-0 outline-none',
+            'border-0 outline-hidden',
             'shadow-none',
 
             // Color
@@ -86,7 +86,7 @@ export default {
             'py-1 px-3 m-0',
 
             // Shape
-            'rounded',
+            'rounded-sm',
 
             // Colors
             'bg-surface-100 dark:bg-surface-700',
@@ -99,7 +99,7 @@ export default {
     removeTokenIcon: {
         class: [
             // Spacing
-            'ml-[0.375rem]',
+            'ml-1.5',
 
             // Size
             'w-4 h-4',

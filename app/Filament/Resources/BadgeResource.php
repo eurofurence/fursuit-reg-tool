@@ -2,23 +2,39 @@
 
 namespace App\Filament\Resources;
 
+use App\Badges\EF28_Badge;
+use App\Badges\EF29_Badge;
 use App\Domain\Printing\Models\Printer;
+use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Filament\Resources\BadgeResource\Pages;
 use App\Filament\Traits\HasEventFilter;
 use App\Jobs\Printing\PrintBadgeJob;
 use App\Models\Badge\Badge;
-use App\Models\Event;
 use App\Models\Badge\State_Fulfillment\BadgeFulfillmentStatusState;
 use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Payment\BadgePaymentStatusState;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Storage;
 
 class BadgeResource extends Resource
 {
@@ -26,9 +42,9 @@ class BadgeResource extends Resource
 
     protected static ?string $model = Badge::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-identification';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-identification';
 
-    protected static ?string $navigationGroup = 'Events & Registration';
+    protected static string|\UnitEnum|null $navigationGroup = 'Events & Registration';
 
     protected static ?int $navigationSort = 2;
 
@@ -42,17 +58,17 @@ class BadgeResource extends Resource
         return (string) Badge::whereHas('fursuit', fn ($q) => $q->where('event_id', $eventId))->count();
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\Section::make('Badge Information')
+                Section::make('Badge Information')
                     ->description('Basic badge details and associated fursuit')
                     ->icon('heroicon-o-identification')
                     ->schema([
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
-                                Forms\Components\Select::make('fursuit_id')
+                                Select::make('fursuit_id')
                                     ->label('Fursuit')
                                     ->disabled()
                                     ->relationship('fursuit', 'name')
@@ -60,16 +76,16 @@ class BadgeResource extends Resource
                                     ->helperText('The fursuit this badge belongs to (cannot be changed)')
                                     ->columnSpan(1),
 
-                                Forms\Components\TextInput::make('custom_id')
+                                TextInput::make('custom_id')
                                     ->label('Badge ID')
                                     ->disabled()
                                     ->helperText('Unique badge identifier (auto-generated)')
                                     ->columnSpan(1),
                             ]),
 
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
-                                Forms\Components\TextInput::make('species_name')
+                                TextInput::make('species_name')
                                     ->label('Species')
                                     ->disabled()
                                     ->dehydrated(false)
@@ -77,7 +93,7 @@ class BadgeResource extends Resource
                                     ->helperText('The fursuit species')
                                     ->columnSpan(1),
 
-                                Forms\Components\TextInput::make('owner_name')
+                                TextInput::make('owner_name')
                                     ->label('Owner')
                                     ->disabled()
                                     ->dehydrated(false)
@@ -87,13 +103,13 @@ class BadgeResource extends Resource
                             ]),
                     ]),
 
-                Forms\Components\Section::make('Status Management')
+                Section::make('Status Management')
                     ->description('Current fulfillment and payment status of the badge')
                     ->icon('heroicon-o-flag')
                     ->schema([
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
-                                Forms\Components\Select::make('status_fulfillment')
+                                Select::make('status_fulfillment')
                                     ->label('Fulfillment Status')
                                     ->options(BadgeFulfillmentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key
                                     ) => [$key => match ($key) {
@@ -107,7 +123,7 @@ class BadgeResource extends Resource
                                     ->helperText('Current fulfillment stage of the badge')
                                     ->columnSpan(1),
 
-                                Forms\Components\Select::make('status_payment')
+                                Select::make('status_payment')
                                     ->label('Payment Status')
                                     ->options(BadgePaymentStatusState::getStateMapping()->keys()->mapWithKeys(fn ($key
                                     ) => [$key => ucfirst($key)]))
@@ -117,13 +133,13 @@ class BadgeResource extends Resource
                             ]),
                     ]),
 
-                Forms\Components\Section::make('Pricing Details')
+                Section::make('Pricing Details')
                     ->description('Badge pricing breakdown and financial information')
                     ->icon('heroicon-o-banknotes')
                     ->schema([
-                        Forms\Components\Grid::make(3)
+                        Grid::make(3)
                             ->schema([
-                                Forms\Components\TextInput::make('total')
+                                TextInput::make('total')
                                     ->label('Total (€)')
                                     ->prefix('€')
                                     ->numeric()
@@ -132,7 +148,7 @@ class BadgeResource extends Resource
                                     ->helperText('Total amount in euros')
                                     ->columnSpan(1),
 
-                                Forms\Components\TextInput::make('subtotal')
+                                TextInput::make('subtotal')
                                     ->label('Subtotal (€)')
                                     ->prefix('€')
                                     ->disabled()
@@ -140,7 +156,7 @@ class BadgeResource extends Resource
                                     ->helperText('Amount before tax')
                                     ->columnSpan(1),
 
-                                Forms\Components\TextInput::make('tax')
+                                TextInput::make('tax')
                                     ->label('Tax (€)')
                                     ->prefix('€')
                                     ->disabled()
@@ -149,15 +165,15 @@ class BadgeResource extends Resource
                                     ->columnSpan(1),
                             ]),
 
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
-                                Forms\Components\Toggle::make('is_free_badge')
+                                Toggle::make('is_free_badge')
                                     ->label('Free Badge')
                                     ->disabled()
                                     ->helperText('Whether this badge was provided for free')
                                     ->inline(false),
 
-                                Forms\Components\Toggle::make('extra_copy')
+                                Toggle::make('extra_copy')
                                     ->label('Extra Copy')
                                     ->disabled()
                                     ->helperText('Whether this is an additional copy of another badge')
@@ -165,20 +181,20 @@ class BadgeResource extends Resource
                             ]),
                     ]),
 
-                Forms\Components\Section::make('Badge Features & Upgrades')
+                Section::make('Badge Features & Upgrades')
                     ->description('Special features and upgrade options applied to this badge')
                     ->icon('heroicon-o-star')
                     ->collapsed()
                     ->schema([
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
-                                Forms\Components\Toggle::make('dual_side_print')
+                                Toggle::make('dual_side_print')
                                     ->label('Double-Sided Print')
                                     ->disabled()
                                     ->helperText('Whether the badge is printed on both sides')
                                     ->inline(false),
 
-                                Forms\Components\Toggle::make('apply_late_fee')
+                                Toggle::make('apply_late_fee')
                                     ->label('Late Fee Applied')
                                     ->disabled()
                                     ->helperText('Whether a late fee was applied to this badge')
@@ -186,26 +202,26 @@ class BadgeResource extends Resource
                             ]),
                     ]),
 
-                Forms\Components\Section::make('Timeline & Processing')
+                Section::make('Timeline & Processing')
                     ->description('Key dates and processing timestamps')
                     ->icon('heroicon-o-clock')
                     ->collapsed()
                     ->schema([
-                        Forms\Components\Grid::make(3)
+                        Grid::make(3)
                             ->schema([
-                                Forms\Components\DateTimePicker::make('created_at')
+                                DateTimePicker::make('created_at')
                                     ->label('Created At')
                                     ->disabled()
                                     ->helperText('When the badge was initially created')
                                     ->columnSpan(1),
 
-                                Forms\Components\DateTimePicker::make('printed_at')
+                                DateTimePicker::make('printed_at')
                                     ->label('Printed At')
                                     ->disabled()
                                     ->helperText('When the badge was printed')
                                     ->columnSpan(1),
 
-                                Forms\Components\DateTimePicker::make('picked_up_at')
+                                DateTimePicker::make('picked_up_at')
                                     ->label('Picked Up At')
                                     ->disabled()
                                     ->helperText('When the badge was collected by the owner')
@@ -233,44 +249,44 @@ class BadgeResource extends Resource
             })
             ->columns([
                 // Fursuit Image as first column
-                Tables\Columns\ImageColumn::make('fursuit.image')
+                ImageColumn::make('fursuit.image')
                     ->label('Image')
                     ->disk('s3')
                     ->visibility('private')
                     ->circular()
-                    ->size(40)
+                    ->imageSize(40)
                     ->defaultImageUrl(url('/images/placeholder.png'))
                     ->checkFileExistence(false),
 
                 // Fursuit Name
-                Tables\Columns\TextColumn::make('fursuit.name')
+                TextColumn::make('fursuit.name')
                     ->searchable()
                     ->label('Fursuit')
                     ->sortable()
                     ->url(fn (Badge $record): string => route('filament.admin.resources.fursuits.view', ['record' => $record->fursuit->id])),
 
                 // Species
-                Tables\Columns\TextColumn::make('fursuit.species.name')
+                TextColumn::make('fursuit.species.name')
                     ->label('Species')
                     ->color('gray')
                     ->toggleable(),
 
                 // User Info
-                Tables\Columns\TextColumn::make('fursuit.user.name')
+                TextColumn::make('fursuit.user.name')
                     ->label('Owner')
                     ->searchable()
                     ->toggleable()
                     ->url(fn (Badge $record): string => '/admin/users?tableSearch='.urlencode($record->fursuit->user->name)),
 
                 // Badge ID
-                Tables\Columns\TextColumn::make('custom_id')
+                TextColumn::make('custom_id')
                     ->label('Badge ID')
                     ->searchable()
                     ->copyable()
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 // Attendee ID
-                Tables\Columns\TextColumn::make('sort_attendee_id')
+                TextColumn::make('sort_attendee_id')
                     ->label('Attendee ID')
                     ->formatStateUsing(fn ($state) => $state ?? 'N/A')
                     ->sortable(query: function ($query, string $direction) {
@@ -279,7 +295,7 @@ class BadgeResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 // Print Jobs Column
-                Tables\Columns\TextColumn::make('print_jobs_count')
+                TextColumn::make('print_jobs_count')
                     ->label('Print Jobs')
                     ->badge()
                     ->url(fn (Badge $record): string => route('filament.admin.resources.print-jobs.index', [
@@ -293,26 +309,40 @@ class BadgeResource extends Resource
                         $failed = $jobs->where('status', 'failed')->count();
                         $printed = $jobs->where('status', 'printed')->count();
 
-                        if ($total === 0) return '0';
-                        if ($failed > 0) return "{$total} ({$failed} failed)";
-                        if ($pending > 0) return "{$total} ({$pending} pending)";
+                        if ($total === 0) {
+                            return '0';
+                        }
+                        if ($failed > 0) {
+                            return "{$total} ({$failed} failed)";
+                        }
+                        if ($pending > 0) {
+                            return "{$total} ({$pending} pending)";
+                        }
+
                         return "{$total}";
                     })
                     ->color(function (Badge $record): string {
                         $jobs = $record->printJobs()->get();
-                        if ($jobs->count() === 0) return 'gray';
+                        if ($jobs->count() === 0) {
+                            return 'gray';
+                        }
 
                         $hasFailed = $jobs->where('status', 'failed')->count() > 0;
                         $hasPending = $jobs->whereIn('status', ['pending', 'queued', 'printing', 'retrying'])->count() > 0;
 
-                        if ($hasFailed) return 'warning';
-                        if ($hasPending) return 'info';
+                        if ($hasFailed) {
+                            return 'warning';
+                        }
+                        if ($hasPending) {
+                            return 'info';
+                        }
+
                         return 'success';
                     })
                     ->alignCenter(),
 
                 // Status Badges
-                Tables\Columns\TextColumn::make('status_fulfillment')
+                TextColumn::make('status_fulfillment')
                     ->label('Fulfillment')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -323,13 +353,13 @@ class BadgeResource extends Resource
                         default => ucfirst($state)
                     }),
 
-                Tables\Columns\TextColumn::make('status_payment')
+                TextColumn::make('status_payment')
                     ->label('Payment')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => ucfirst($state)),
 
                 // Badge Features
-                Tables\Columns\IconColumn::make('extra_copy')
+                IconColumn::make('extra_copy')
                     ->label('Extra Copy')
                     ->boolean()
                     ->trueIcon('heroicon-o-document-plus')
@@ -337,32 +367,32 @@ class BadgeResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 // Pricing Info
-                Tables\Columns\TextColumn::make('total')
+                TextColumn::make('total')
                     ->label('Total')
                     ->money('EUR')
                     ->alignEnd()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 // Timestamps
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Created')
                     ->dateTime('M j, Y')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('printed_at')
+                TextColumn::make('printed_at')
                     ->label('Printed At')
                     ->dateTime('M j, Y H:i')
                     ->placeholder('Not printed')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('picked_up_at')
+                TextColumn::make('picked_up_at')
                     ->label('Picked Up')
                     ->dateTime('M j, Y H:i')
                     ->placeholder('Not picked up')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status_fulfillment')
+                SelectFilter::make('status_fulfillment')
                     ->options([
                         'pending' => 'Pending',
                         'processing' => 'Processing',
@@ -373,7 +403,7 @@ class BadgeResource extends Resource
                     ->multiple()
                     ->placeholder('All Statuses'),
 
-                Tables\Filters\SelectFilter::make('status_payment')
+                SelectFilter::make('status_payment')
                     ->options([
                         'unpaid' => 'Unpaid',
                         'paid' => 'Paid',
@@ -382,19 +412,19 @@ class BadgeResource extends Resource
                     ->multiple()
                     ->placeholder('All Payments'),
 
-                Tables\Filters\TernaryFilter::make('is_free_badge')
+                TernaryFilter::make('is_free_badge')
                     ->label('Free Badge')
                     ->placeholder('All Badges')
                     ->trueLabel('Free Badges Only')
                     ->falseLabel('Paid Badges Only'),
 
-                Tables\Filters\Filter::make('attendee_id_range')
+                Filter::make('attendee_id_range')
                     ->form([
-                        Forms\Components\TextInput::make('from_attendee_id')
+                        TextInput::make('from_attendee_id')
                             ->label('From Attendee ID')
                             ->numeric()
                             ->placeholder('e.g., 1'),
-                        Forms\Components\TextInput::make('to_attendee_id')
+                        TextInput::make('to_attendee_id')
                             ->label('To Attendee ID')
                             ->numeric()
                             ->placeholder('e.g., 1000'),
@@ -427,23 +457,21 @@ class BadgeResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('printBadge')
+                EditAction::make(),
+                Action::make('printBadge')
                     ->color('warning')
                     ->icon('heroicon-o-printer')
                     ->requiresConfirmation(true)
                     ->label('Print Badge')
-                    ->action(function (Badge $record) {
-                        return static::printBadge($record);
-                    }),
+                    ->action(static::printBadge(...)),
             ])
             ->bulkActions([
-                Tables\Actions\BulkAction::make('printBadgeBulk')
+                BulkAction::make('printBadgeBulk')
                     ->label('Print Badges')
                     ->icon('heroicon-o-printer')
                     ->color('warning')
                     ->form([
-                        Forms\Components\Select::make('printer_id')
+                        Select::make('printer_id')
                             ->label('Select Printer')
                             ->options(
                                 Printer::where('type', PrintJobTypeEnum::Badge)
@@ -476,7 +504,7 @@ class BadgeResource extends Resource
                         // Create a Laravel batch with proper chaining
                         Bus::batch([
                             // wrap in array to chain!
-                            $printJobs
+                            $printJobs,
                         ])
                             ->name("Badge Bulk Print - {$records->count()} badges")
                             ->onQueue('batch-print')
@@ -529,9 +557,9 @@ class BadgeResource extends Resource
         $badgeClass = $badge->fursuit->event->badge_class ?? 'EF28_Badge';
 
         $printer = match ($badgeClass) {
-            'EF29_Badge' => new \App\Badges\EF29_Badge,
-            'EF28_Badge' => new \App\Badges\EF28_Badge,
-            default => new \App\Badges\EF28_Badge,
+            'EF29_Badge' => new EF29_Badge,
+            'EF28_Badge' => new EF28_Badge,
+            default => new EF28_Badge,
         };
 
         // Generate PDF content
@@ -539,13 +567,13 @@ class BadgeResource extends Resource
 
         // Store PDF Content in PrintJobs Storage
         $filePath = 'badges/'.$badge->id.'.pdf';
-        \Illuminate\Support\Facades\Storage::put($filePath, $pdfContent);
+        Storage::put($filePath, $pdfContent);
 
         // Create PrintJob with the specified printer and file
         $badge->printJobs()->create([
             'printer_id' => $printerId,
             'type' => PrintJobTypeEnum::Badge,
-            'status' => \App\Enum\PrintJobStatusEnum::Pending,
+            'status' => PrintJobStatusEnum::Pending,
             'file' => $filePath,
             'queued_at' => now(),
             'priority' => 1,

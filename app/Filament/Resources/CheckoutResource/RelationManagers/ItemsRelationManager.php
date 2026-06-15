@@ -4,10 +4,10 @@ namespace App\Filament\Resources\CheckoutResource\RelationManagers;
 
 use App\Filament\Resources\BadgeResource;
 use App\Models\Badge\Badge;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,11 +17,11 @@ class ItemsRelationManager extends RelationManager
 
     protected static ?string $title = 'Checkout Items';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -32,11 +32,11 @@ class ItemsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('Item')
                     ->searchable(),
-                
-                Tables\Columns\TextColumn::make('description')
+
+                TextColumn::make('description')
                     ->label('Features')
                     ->formatStateUsing(function ($state) {
                         if (is_array($state) && !empty($state)) {
@@ -45,8 +45,8 @@ class ItemsRelationManager extends RelationManager
                         return '-';
                     })
                     ->wrap(),
-                
-                Tables\Columns\TextColumn::make('payable')
+
+                TextColumn::make('payable')
                     ->label('Badge')
                     ->formatStateUsing(function ($record) {
                         if ($record->payable_type === Badge::class && $record->payable) {
@@ -62,18 +62,18 @@ class ItemsRelationManager extends RelationManager
                         return null;
                     })
                     ->openUrlInNewTab(),
-                
-                Tables\Columns\TextColumn::make('subtotal')
+
+                TextColumn::make('subtotal')
                     ->label('Subtotal')
                     ->money('EUR', divideBy: 100)
                     ->alignEnd(),
-                
-                Tables\Columns\TextColumn::make('tax')
+
+                TextColumn::make('tax')
                     ->label('Tax')
                     ->money('EUR', divideBy: 100)
                     ->alignEnd(),
-                
-                Tables\Columns\TextColumn::make('total')
+
+                TextColumn::make('total')
                     ->label('Total')
                     ->money('EUR', divideBy: 100)
                     ->alignEnd()
@@ -93,22 +93,22 @@ class ItemsRelationManager extends RelationManager
             ])
             ->paginated(false);
     }
-    
+
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return true;
     }
-    
+
     protected function canCreate(): bool
     {
         return false;
     }
-    
+
     protected function canEdit(Model $record): bool
     {
         return false;
     }
-    
+
     protected function canDelete(Model $record): bool
     {
         return false;

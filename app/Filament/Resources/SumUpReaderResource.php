@@ -4,34 +4,39 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SumUpReaderResource\Pages;
 use App\Models\SumUpReader;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class SumUpReaderResource extends Resource
 {
     protected static ?string $model = SumUpReader::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationGroup = 'POS';
+    protected static string|\UnitEnum|null $navigationGroup = 'POS';
 
     protected static ?int $navigationSort = 4;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->required()
                     ->columnSpanFull()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('remote_id')
+                TextInput::make('remote_id')
                     ->columnSpanFull()
                     ->readOnly(),
-                Forms\Components\TextInput::make('paring_code')
+                TextInput::make('paring_code')
                     ->required()
                     ->columnSpanFull()
                     ->maxLength(255),
@@ -42,19 +47,19 @@ class SumUpReaderResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name'),
-                Tables\Columns\TextColumn::make('remote_id'),
-                Tables\Columns\TextColumn::make('paring_code'),
+                TextColumn::make('name'),
+                TextColumn::make('remote_id'),
+                TextColumn::make('paring_code'),
             ])
             ->filters([
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

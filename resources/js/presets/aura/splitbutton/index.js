@@ -142,7 +142,7 @@ export default {
                 { 'text-surface-900 dark:text-surface-0 border border-surface-900 dark:border-surface-0': parent.props.outlined && parent.props.severity === 'contrast' && !parent.props.plain },
 
                 // --- Severity Button States ---
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
 
                 // Link
                 { 'focus:ring-primary': parent.props.link },
@@ -345,7 +345,7 @@ export default {
                 { 'text-surface-900 dark:text-surface-0 border border-surface-900 dark:border-surface-0': parent.props.outlined && parent.props.severity === 'contrast' && !parent.props.plain },
 
                 // --- Severity Button States ---
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
 
                 // Link
                 { 'focus:ring-primary': parent.props.link },
@@ -418,7 +418,7 @@ export default {
         root: {
             class: [
                 // Sizing and Shape
-                'min-w-[12.5rem]',
+                'min-w-50',
                 'rounded-md',
 
                 // Spacing
@@ -436,11 +436,11 @@ export default {
                 'list-none',
                 'm-0',
                 'p-0',
-                'outline-none'
+                'outline-hidden'
             ]
         },
         menuitem: {
-            class: 'relative my-[2px] [&:first-child]:mt-0'
+            class: 'relative my-[2px] first:mt-0'
         },
         content: ({ context }) => ({
             class: [
@@ -530,7 +530,7 @@ export default {
         submenu: {
             class: [
                 // Sizing and Shape
-                'min-w-[12.5rem]',
+                'min-w-50',
                 'rounded-md',
 
                 // Spacing

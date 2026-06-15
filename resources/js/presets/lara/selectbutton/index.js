@@ -30,7 +30,7 @@ export default {
             { 'border-red-500 dark:border-red-400': props.invalid },
 
             // States
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50 focus:z-10',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50 focus:z-10',
             {
                 'hover:bg-surface-50 dark:hover:bg-surface-800/80': !context.active && !props.invalid,
                 'hover:bg-primary-hover': context.active

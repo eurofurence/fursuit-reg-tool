@@ -51,7 +51,7 @@ export default {
 
             // States
             { 'hover:border-surface-400 dark:hover:border-surface-700': !props.invalid },
-            { 'outline-none outline-offset-0 z-10 ring-1 ring-primary-500 dark:ring-primary-400': state.focused },
+            { 'outline-hidden outline-offset-0 z-10 ring-1 ring-primary-500 dark:ring-primary-400': state.focused },
 
             // Transition
             'transition duration-200 ease-in-out',
@@ -71,7 +71,7 @@ export default {
             // Shape
             'appearance-none rounded-md',
             { 'rounded-tr-none rounded-br-none': props.dropdown },
-            { 'outline-none shadow-none rounded-none': props.multiple },
+            { 'outline-hidden shadow-none rounded-none': props.multiple },
 
             // Size
             { 'w-full': props.multiple },
@@ -93,7 +93,7 @@ export default {
             { 'border-red-500 dark:border-red-400': props.invalid },
 
             // States
-            { 'focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 focus:z-10': !props.multiple },
+            { 'focus:outline-hidden focus:outline-offset-0 focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 focus:z-10': !props.multiple },
 
             // Filled State *for FloatLabel
             { filled: parent.instance?.$name == 'FloatLabel' && props.modelValue !== '' },
@@ -111,7 +111,7 @@ export default {
             'py-1 px-3 m-0',
 
             // Shape
-            'rounded',
+            'rounded-sm',
 
             // Colors
             'bg-surface-100 dark:bg-surface-700',
@@ -124,7 +124,7 @@ export default {
     removeTokenIcon: {
         class: [
             // Spacing
-            'ml-[0.375rem]',
+            'ml-1.5',
 
             // Size
             'w-4 h-4',
@@ -154,14 +154,14 @@ export default {
                 'border border-primary',
 
                 // States
-                'focus:outline-none focus:outline-offset-0 focus:ring-1 ',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1 ',
                 'hover:bg-primary-hover hover:border-primary-hover',
                 'focus:ring-primary-500 dark:focus:ring-primary-400'
             ]
         }
     },
     loadingicon: {
-        class: ['text-surface-500 dark:text-surface-0/70', 'absolute top-[50%] right-[0.5rem] -mt-2 animate-spin']
+        class: ['text-surface-500 dark:text-surface-0/70', 'absolute top-[50%] right-2 -mt-2 animate-spin']
     },
     panel: {
         class: [
@@ -193,7 +193,7 @@ export default {
             'first:mt-0 mt-[2px]',
 
             // Shape
-            'border-0 rounded',
+            'border-0 rounded-sm',
 
             // Colors
             {
@@ -246,7 +246,7 @@ export default {
     },
     transition: {
         enterFromClass: 'opacity-0 scale-y-[0.8]',
-        enterActiveClass: 'transition-[transform,opacity] duration-[120ms] ease-[cubic-bezier(0,0,0.2,1)]',
+        enterActiveClass: 'transition-[transform,opacity] duration-120 ease-out',
         leaveActiveClass: 'transition-opacity duration-100 ease-linear',
         leaveToClass: 'opacity-0'
     }

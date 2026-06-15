@@ -11,7 +11,7 @@ class BadgeStatusChart extends ChartWidget
 {
     use HasEventFilter;
 
-    protected static ?string $heading = 'Current Event Badge Status';
+    protected ?string $heading = 'Current Event Badge Status';
 
     protected static ?int $sort = 3;
 

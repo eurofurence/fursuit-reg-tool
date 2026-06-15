@@ -222,7 +222,7 @@ const getRarityBgColor = (textColor: string) => {
         icon="library"
     >
         <!-- Collection Stats -->
-        <Card class="bg-white shadow-sm border border-gray-700">
+        <Card class="bg-white shadow-xs border border-gray-700">
             <template #content>
                 <div class="text-center mb-4">
                     <h2 class="text-xl font-bold text-gray-200">
@@ -295,7 +295,7 @@ const getRarityBgColor = (textColor: string) => {
         </Card>
 
         <!-- Filters and Controls -->
-        <Card class="bg-white shadow-sm border border-gray-700">
+        <Card class="bg-white shadow-xs border border-gray-700">
             <template #content>
                 <div
                     class="flex flex-col gap-4 items-start sm:items-center justify-between"
@@ -336,7 +336,7 @@ const getRarityBgColor = (textColor: string) => {
                         />
                     </div>
                     <!-- View Mode Toggle -->
-                    <div class="flex-shrink-0">
+                    <div class="shrink-0">
                         <label
                             class="block text-sm font-medium text-gray-300 mb-2"
                             >View:</label
@@ -370,7 +370,7 @@ const getRarityBgColor = (textColor: string) => {
                     </div>
 
                     <!-- Counter Toggle -->
-                    <div class="flex-shrink-0 relative tooltip-container">
+                    <div class="shrink-0 relative tooltip-container">
                         <label
                             class="block text-sm font-medium text-gray-300 mb-2"
                             >Counters:</label
@@ -406,7 +406,7 @@ const getRarityBgColor = (textColor: string) => {
                         <!-- Mobile Tooltip -->
                         <div 
                             v-show="showTooltip"
-                            class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap md:hidden"
+                            class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded-sm shadow-lg z-10 whitespace-nowrap md:hidden"
                         >
                             Shows total catches made by all players
                             <div class="absolute -top-1 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-gray-800"></div>
@@ -417,7 +417,7 @@ const getRarityBgColor = (textColor: string) => {
         </Card>
 
         <!-- Collection Display -->
-        <Card class="bg-white shadow-sm border border-gray-700">
+        <Card class="bg-white shadow-xs border border-gray-700">
             <template #content>
                 <!-- Grid View -->
                 <div
@@ -438,7 +438,7 @@ const getRarityBgColor = (textColor: string) => {
                     <div
                         v-for="fursuit in filteredCollection"
                         :key="fursuit.gallery.id"
-                        class="flex items-center p-3 bg-gray-800 rounded-lg shadow-sm border border-gray-700"
+                        class="flex items-center p-3 bg-gray-800 rounded-lg shadow-xs border border-gray-700"
                     >
                         <img
                             :src="fursuit.gallery.image"

@@ -4,65 +4,72 @@ namespace App\Filament\Resources;
 
 use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Filament\Resources\SpecialCodeResource\Pages;
+use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class SpecialCodeResource extends Resource
 {
     protected static ?string $model = SpecialCode::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-qr-code';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-qr-code';
 
-    protected static ?string $navigationGroup = 'Events & Registration';
+    protected static string|\UnitEnum|null $navigationGroup = 'Events & Registration';
 
     protected static ?int $navigationSort = 3;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\Select::make('event_id')
+                Select::make('event_id')
                     ->label('Event')
                     ->helperText('Event in which the code can be used')
                     ->options(
-                        \App\Models\Event::all()->pluck('name', 'id')
+                        Event::all()->pluck('name', 'id')
                     )
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\Select::make('class_name')
+                Select::make('class_name')
                     ->label('Class')
                     ->helperText('PHP class used for code handling')
                     ->options([
                         'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
                     ])
                     ->columnSpanFull(),
-                Forms\Components\Textarea::make('constructor_data')
+                Textarea::make('constructor_data')
                     ->label('Constructor Data')
                     ->helperText('Data to be passed to the constructor of the action class')
                     ->rows(3)
                     ->columnSpanFull()
-                    ->disabled(fn($get) => match ($get('class_name')) {
+                    ->disabled(fn ($get) => match ($get('class_name')) {
                         'EXAMPLE' => false,
                         default => true
                     })
-                    ->placeholder(fn($get) => match ($get('class_name')) {
+                    ->placeholder(fn ($get) => match ($get('class_name')) {
                         'EXAMPLE' => '{"amount": 100, "reason": "An Example"}',
                         default => '',
                     })
                     ->rules(['nullable', 'json']),
 
-                Forms\Components\TextInput::make('code')
+                TextInput::make('code')
                     ->label('Code')
                     ->helperText('E.g. ABC45')
                     ->maxLength(5)
                     ->minLength(5)
                     ->required()
                     ->unique(ignoreRecord: true, table: 'special_codes', column: 'code')
-                    ->rule(fn() => function ($attribute, $value, $fail) {
+                    ->rule(fn () => function ($attribute, $value, $fail) {
                         if (Fursuit::where('catch_code', $value)->exists()) {
                             $fail('This code is already used in Fursuits.');
                         }
@@ -74,34 +81,34 @@ class SpecialCodeResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('code')
+                TextColumn::make('code')
                     ->label('Code')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('class_name')
+                TextColumn::make('class_name')
                     ->label('Class')
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
                         'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
                         default => $state
                     })
                     ->sortable(),
-                Tables\Columns\TextColumn::make('constructor_data')
+                TextColumn::make('constructor_data')
                     ->label('Data')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('event_id')
+                TextColumn::make('event_id')
                     ->label('Event')
-                    ->formatStateUsing(fn(string $state): string => \App\Models\Event::where('id', $state)->pluck('name')->first())
+                    ->formatStateUsing(fn (string $state): string => Event::where('id', $state)->pluck('name')->first())
                     ->sortable(),
             ])
             ->filters([
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

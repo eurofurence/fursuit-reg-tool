@@ -95,7 +95,7 @@ export default {
             'hover:bg-surface-0/10 hover:text-white',
 
             // Focus Effects
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
         ]
     },
     thumbnailitemscontainer: {
@@ -126,7 +126,7 @@ export default {
             'opacity-50',
 
             // States
-            '[&[data-p-active="true"]]:opacity-100',
+            'data-[p-active="true"]:opacity-100',
             'hover:opacity-100',
 
             // Transitions
@@ -151,7 +151,7 @@ export default {
             'hover:bg-surface-0/10 hover:text-white',
 
             // Focus Effects
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
         ]
     },
     indicators: ({ parent }) => ({
@@ -198,7 +198,7 @@ export default {
             'rounded-full transition duration-200',
 
             // Focus Effects
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
             // Conditional Appearance: Not Highlighted
             { 'bg-surface-200 hover:bg-surface-300 dark:bg-surface-700 dark:hover:bg-surface-600': !context.highlighted },
@@ -213,7 +213,7 @@ export default {
     closebutton: {
         class: [
             // Positioning
-            '!absolute top-0 right-0',
+            'absolute! top-0 right-0',
 
             // Display & Flexbox
             'flex justify-center items-center overflow-hidden',
@@ -228,7 +228,7 @@ export default {
             'hover:text-white hover:bg-surface-0/10',
 
             // Focus Effects
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
         ]
     },
     closeicon: {
@@ -249,17 +249,17 @@ export default {
             'mx-2',
 
             // Positioning
-            'top-1/2 mt-[-0.5rem] left-0',
+            'top-1/2 -mt-2 left-0',
             {
-                '!absolute': parent.props.showItemNavigators,
-                '!fixed': !parent.props.showItemNavigators
+                'absolute!': parent.props.showItemNavigators,
+                'fixed!': !parent.props.showItemNavigators
             },
 
             // Hover Effect
             'hover:bg-surface-0/10 hover:text-white',
 
             // Focus Effects
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
         ]
     }),
     nextitembutton: ({ parent }) => ({
@@ -277,17 +277,17 @@ export default {
             'mx-2',
 
             // Positioning
-            'top-1/2 mt-[-0.5rem] right-0',
+            'top-1/2 -mt-2 right-0',
             {
-                '!absolute': parent.props.showItemNavigators,
-                '!fixed': !parent.props.showItemNavigators
+                'absolute!': parent.props.showItemNavigators,
+                'fixed!': !parent.props.showItemNavigators
             },
 
             // Hover Effect
             'hover:bg-surface-0/10 hover:text-white',
 
             // Focus Effects
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
         ]
     }),
     caption: {

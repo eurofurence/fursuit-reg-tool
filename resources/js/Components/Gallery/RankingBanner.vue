@@ -12,7 +12,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <div class="ranking-banner flex flex-col justify-between items-center bg-primary-500/60 shadow rounded py-2">
+    <div class="ranking-banner flex flex-col justify-between items-center bg-primary-500/60 shadow-sm rounded-sm py-2">
         <h2 class="text-center font-bold mb-4">This year's Catch-am-all winners</h2>
         <div class="ranking-items flex justify-between w-full">
             <div class="ranking-item text-silver font-bold" @mouseover="showScore(1)" @mouseleave="showName(1)">
