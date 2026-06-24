@@ -34,6 +34,7 @@ class EventResource extends Resource
                     ->options([
                         'EF28_Badge' => 'EF28 Badge',
                         'EF29_Badge' => 'EF29 Badge',
+                        'EF30_Badge' => 'EF30 Badge',
                     ])
                     ->columnSpanFull(),
                 Group::make([
