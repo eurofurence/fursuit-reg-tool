@@ -28,8 +28,6 @@ abstract class BadgeBase_V2 implements BadgeInterface_V2
 
     protected string $file_format = 'png';
 
-    protected bool $text_filter_active = false;
-
     /**
      * @return void
      */
