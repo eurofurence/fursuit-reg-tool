@@ -529,6 +529,7 @@ class BadgeResource extends Resource
         $badgeClass = $badge->fursuit->event->badge_class ?? 'EF28_Badge';
 
         $printer = match ($badgeClass) {
+            'EF30_Badge' => new \App\Badges\EF30_Badge,
             'EF29_Badge' => new \App\Badges\EF29_Badge,
             'EF28_Badge' => new \App\Badges\EF28_Badge,
             default => new \App\Badges\EF28_Badge,

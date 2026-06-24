@@ -4,6 +4,7 @@ namespace App\Jobs\Printing;
 
 use App\Badges\EF28_Badge;
 use App\Badges\EF29_Badge;
+use App\Badges\EF30_Badge;
 use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
@@ -56,6 +57,7 @@ class PrintBadgeJob implements ShouldQueue
         $badgeClass = $this->badge->fursuit->event->badge_class ?? 'EF28_Badge';
 
         $printer = match ($badgeClass) {
+            'EF30_Badge' => new EF30_Badge,
             'EF29_Badge' => new EF29_Badge,
             'EF28_Badge' => new EF28_Badge,
             default => new EF28_Badge, // Fallback to EF28 for safety
