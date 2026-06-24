@@ -101,6 +101,8 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
         return $image;
     }
 
+    private static ?array $greenBoundingBox = null;
+
     private function addGreenscreenLayer(ImageInterface $badge_object, Box $size): void
     {
         // Load the overlay image in which green is to be replaced
@@ -112,13 +114,46 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
         // Load the image to be used as a replacement for green
         $replacementImageUrl = Storage::temporaryUrl($this->badge->fursuit->image, now()->addMinutes(1));
         $replacementImage = $this->imagine->open($replacementImageUrl);
-        $replacementImage->resize(new Box(350, 455));
+
+        if (self::$greenBoundingBox === null) {
+            $minX = $size->getWidth();
+            $maxX = 0;
+            $minY = $size->getHeight();
+            $maxY = 0;
+            $found = false;
+
+            for ($x = 35; $x < $size->getWidth() - 600; $x++) {
+                for ($y = 10; $y < $size->getHeight() - 90; $y++) {
+                    $color = $overlayImage->getColorAt(new Point($x, $y));
+                    $red = $color->getValue(ColorInterface::COLOR_RED);
+                    $green = $color->getValue(ColorInterface::COLOR_GREEN);
+                    $blue = $color->getValue(ColorInterface::COLOR_BLUE);
+
+                    if (abs($red - 147) <= 10 && abs($green - 192) <= 10 && abs($blue - 152) <= 10) {
+                        if ($x < $minX) $minX = $x;
+                        if ($x > $maxX) $maxX = $x;
+                        if ($y < $minY) $minY = $y;
+                        if ($y > $maxY) $maxY = $y;
+                        $found = true;
+                    }
+                }
+            }
+            self::$greenBoundingBox = $found ? ['minX' => $minX, 'maxX' => $maxX, 'minY' => $minY, 'maxY' => $maxY] : false;
+        }
+
+        if (self::$greenBoundingBox === false) {
+            $badge_object->paste($overlayImage, new Point(0, 0));
+            return;
+        }
+
+        $box = self::$greenBoundingBox;
+        $targetWidth = $box['maxX'] - $box['minX'] + 1;
+        $targetHeight = $box['maxY'] - $box['minY'] + 1;
+
+        // Resize replacement image to fit the bounding box
+        $replacementImage->resize(new Box($targetWidth, $targetHeight));
 
         $replacementSize = $replacementImage->getSize();
-
-        // Define the offsets for the shift
-        $xOffset = 30; // For example, move it 30 pixels to the right
-        $yOffset = 35; // For example, move it down by 35 pixels
 
         // Check whether the file is a PNG
         $isPng = false;
@@ -128,34 +163,30 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
         }
 
         // Replace green areas in the overlay image with the replacement image
-        for ($x = 35; $x < $size->getWidth() - 600; $x++) {
-            for ($y = 10; $y < $size->getHeight() - 150; $y++) {
+        for ($x = $box['minX']; $x <= $box['maxX']; $x++) {
+            for ($y = $box['minY']; $y <= $box['maxY']; $y++) {
                 // Get the color of the pixel in the overlay image
                 $color = $overlayImage->getColorAt(new Point($x, $y));
-
-                // Get the RGB values of the pixel
                 $red = $color->getValue(ColorInterface::COLOR_RED);
                 $green = $color->getValue(ColorInterface::COLOR_GREEN);
                 $blue = $color->getValue(ColorInterface::COLOR_BLUE);
 
-                // Define the area for "green"
-                if ($red == 134 && $green == 194 && $blue == 148) {
-                    // Calculate the position in the replacementImage taking into account the offsets
-                    $replacementX = $x - $xOffset;
-                    $replacementY = $y - $yOffset;
+                // Define the area for "green" (with tolerance)
+                if (abs($red - 147) <= 10 && abs($green - 192) <= 10 && abs($blue - 152) <= 10) {
 
-                    // Check whether the calculated coordinates are within the replacementImage
+                    // Map the current pixel to the replacement image
+                    $replacementX = $x - $box['minX'];
+                    $replacementY = $y - $box['minY'];
+
                     if (
                         $replacementX >= 0 && $replacementX < $replacementSize->getWidth() &&
                         $replacementY >= 0 && $replacementY < $replacementSize->getHeight()
                     ) {
-
                         $replacementColor = $replacementImage->getColorAt(new Point($replacementX, $replacementY));
 
-                        if ($isPng) {
-                            if ($replacementColor->getAlpha() <= 80) {
-                                $replacementColor = $badge_object->getColorAt(new Point($replacementX + 30, $replacementY + 35));
-                            }
+                        if ($isPng && $replacementColor->getAlpha() <= 80) {
+                            // If transparent, keep the overlay pixel
+                            continue;
                         }
 
                         $overlayImage->draw()->dot(new Point($x, $y), $replacementColor);
