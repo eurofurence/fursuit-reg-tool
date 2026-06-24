@@ -54,13 +54,13 @@ class PrintBadgeJob implements ShouldQueue
         // The transition to ReadyForPickup happens when the print job is marked as completed
 
         // Determine badge class based on event badge_class column
-        $badgeClass = $this->badge->fursuit->event->badge_class ?? 'EF28_Badge';
+        $badgeClass = $this->badge->fursuit->event->badge_class ?? 'EF30_Badge';
 
         $printer = match ($badgeClass) {
             'EF30_Badge' => new EF30_Badge,
             'EF29_Badge' => new EF29_Badge,
             'EF28_Badge' => new EF28_Badge,
-            default => new EF28_Badge, // Fallback to EF28 for safety
+            default => new EF30_Badge, // Fallback to EF28 for safety
         };
 
         // Generate PDF content

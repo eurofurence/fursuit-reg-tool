@@ -526,13 +526,13 @@ class BadgeResource extends Resource
         }
 
         // Generate PDF content synchronously (like PrintBadgeJob does)
-        $badgeClass = $badge->fursuit->event->badge_class ?? 'EF28_Badge';
+        $badgeClass = $badge->fursuit->event->badge_class ?? 'EF30_Badge';
 
         $printer = match ($badgeClass) {
             'EF30_Badge' => new \App\Badges\EF30_Badge,
             'EF29_Badge' => new \App\Badges\EF29_Badge,
             'EF28_Badge' => new \App\Badges\EF28_Badge,
-            default => new \App\Badges\EF28_Badge,
+            default => new \App\Badges\EF30_Badge,
         };
 
         // Generate PDF content
