@@ -83,12 +83,29 @@ function getActionableStatuses(badge) {
         });
     }
 
-    // Add approval status if pending and fursuit not approved (actionable)
-    if (badge.status_fulfillment === 'pending' && badge.fursuit.status === 'pending') {
-        statuses.push({
-            value: 'Pending Approval',
-            severity: 'warning'
-        });
+    const fursuitStatus = badge.fursuit?.status;
+
+    // While the badge is still pending fulfillment, its status depends on the
+    // fursuit approval outcome. Each branch must emit a tag so the badge never
+    // renders with an empty Status column (e.g. approved + queued for print).
+    if (badge.status_fulfillment === 'pending') {
+        if (fursuitStatus === 'rejected') {
+            statuses.push({
+                value: 'Rejected',
+                severity: 'danger'
+            });
+        } else if (fursuitStatus === 'approved') {
+            statuses.push({
+                value: 'In Queue',
+                severity: 'info' // Approved and queued for production
+            });
+        } else {
+            // Pending review (or unknown/missing fursuit status)
+            statuses.push({
+                value: 'Pending Approval',
+                severity: 'warning'
+            });
+        }
     }
 
     // Add fulfillment status
