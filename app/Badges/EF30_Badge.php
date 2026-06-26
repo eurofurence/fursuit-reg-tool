@@ -4,7 +4,7 @@ namespace App\Badges;
 
 use App\Badges\Bases\BadgeBase_V2;
 use App\Badges\Components\TextAlignment;
-use App\Badges\Components\TextField;
+use App\Badges\Components\TextField_v2 as TextField;
 use App\Interfaces\BadgeInterface_V2;
 use App\Models\Badge\Badge;
 use Illuminate\Support\Facades\Storage;
@@ -27,8 +27,10 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
         $this->height_px = 648;
         $this->width_px = 1024;
         $this->font_color = '#FFFFFF';
-        $this->font_path = resource_path('badges/ef30/fonts/Zhurzh.ttf');
-        $this->file_format = 'png';
+        $this->font_path = resource_path('badges/ef30/fonts/classic_market.ttf');
+        $this->file_format = 'jpg';
+
+        $this->text_filter_active = false;
     }
 
     public function getPng(Badge $badge, bool $flip = false): string
@@ -83,6 +85,16 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
         return $mpdf->Output($badge->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     }
 
+    private function filterText(string $text): string
+    {
+        if ($this->text_filter_active) {
+            $search  = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü'];
+            $replace = ['ae', 'oe', 'ue', 'Ae', 'Oe', 'Ue'];
+            return str_replace($search, $replace, $text);
+        }
+        return $text;
+    }
+
     private function addBaseLayerWithCode(Box $size): ImageInterface
     {
         // Add background
@@ -106,7 +118,7 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
     private function addGreenscreenLayer(ImageInterface $badge_object, Box $size): void
     {
         // Load the overlay image in which green is to be replaced
-        $overlayImage = $this->imagine->open(resource_path('badges/ef30/images/greenscreeen.png'));
+        $overlayImage = $this->imagine->open(resource_path('badges/ef30/images/greenscreen.png'));
 
         // Adjust to badge size
         $overlayImage->resize($size);
@@ -202,10 +214,10 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
     private function addTextLayerWithCode(ImageInterface $badge_object): void
     {
         // Texts
-        $text_attendee_id = $this->badge->custom_id;
-        $text_name = $this->badge->fursuit->name;
-        $text_species = $this->badge->fursuit->species->name;
-        $text_code = $this->badge->fursuit->catch_code;
+        $text_attendee_id = $this->filterText($this->badge->custom_id);
+        $text_name = $this->filterText($this->badge->fursuit->name);
+        $text_species = $this->filterText($this->badge->fursuit->species->name);
+        $text_code = $this->filterText($this->badge->fursuit->catch_code);
 
         // Fonts and color definitions
         $font_path = $this->font_path; // Path to the font file
@@ -266,7 +278,7 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
 
         new TextField(
             $text_name,
-            321, // Width of the text field
+            100, // Width of the text field
             42, // Height of the text field
             18, // Minimum font size
             40, // Start font size
@@ -275,7 +287,7 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
             $badge_object,
             $position_name,
             TextAlignment::LEFT, // Centered alignment
-            1, // Maximum number of lines
+            2, // Maximum number of lines
         );
 
         new TextField(
@@ -298,10 +310,9 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
     private function addTextLayerWithoutCode(ImageInterface $badge_object): void
     {
         // Texts
-        $text_attendee_id = $this->badge->custom_id;
-        $text_name = $this->badge->fursuit->name;
-        $text_species = $this->badge->fursuit->species->name;
-        $text_code = $this->badge->fursuit->catch_code;
+        $text_attendee_id = $this->filterText($this->badge->custom_id);
+        $text_name = $this->filterText($this->badge->fursuit->name);
+        $text_species = $this->filterText($this->badge->fursuit->species->name);
 
         // Fonts and color definitions
         $font_path = $this->font_path; // Path to the font file
