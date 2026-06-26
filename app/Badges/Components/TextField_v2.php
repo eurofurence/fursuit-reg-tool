@@ -162,7 +162,6 @@ class TextField_v2
 
     private function wrapText(string $text, int $fontSize, int $maxWidth): string
     {
-        // Simple Word-Break Logic
         $words = explode(' ', $text);
         $lines = [];
         $currentLine = '';
@@ -170,12 +169,33 @@ class TextField_v2
         $font = new Font($this->font_path, $fontSize, $this->font_color);
 
         foreach ($words as $word) {
-            $testLine = $currentLine . ($currentLine === '' ? '' : ' ') . $word;
-            if ($font->box($testLine)->getWidth() <= $maxWidth) {
-                $currentLine = $testLine;
+            // Check if even a single word exceeds maxWidth
+            if ($font->box($word)->getWidth() > $maxWidth) {
+                // If the word itself is too long, break it by characters
+                if ($currentLine !== '') {
+                    $lines[] = $currentLine;
+                    $currentLine = '';
+                }
+
+                $chars = mb_str_split($word);
+                foreach ($chars as $char) {
+                    $testLine = $currentLine . $char;
+                    if ($font->box($testLine)->getWidth() <= $maxWidth) {
+                        $currentLine = $testLine;
+                    } else {
+                        $lines[] = $currentLine;
+                        $currentLine = $char;
+                    }
+                }
             } else {
-                $lines[] = $currentLine;
-                $currentLine = $word;
+                // Normal word processing
+                $testLine = $currentLine . ($currentLine === '' ? '' : ' ') . $word;
+                if ($font->box($testLine)->getWidth() <= $maxWidth) {
+                    $currentLine = $testLine;
+                } else {
+                    $lines[] = $currentLine;
+                    $currentLine = $word;
+                }
             }
         }
         $lines[] = $currentLine;
