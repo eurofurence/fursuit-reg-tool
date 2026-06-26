@@ -96,8 +96,8 @@ function getActionableStatuses(badge) {
             });
         } else if (fursuitStatus === 'approved') {
             statuses.push({
-                value: 'In Queue',
-                severity: 'info' // Approved and queued for production
+                value: 'Approved',
+                severity: 'success'
             });
         } else {
             // Pending review (or unknown/missing fursuit status)
