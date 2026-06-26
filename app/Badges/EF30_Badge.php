@@ -329,23 +329,18 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
 
         $position_species = new Point(
             $this->width_px - 321 - 316, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 100 // Y-Position
+            $this->height_px - 67 - 133 // Y-Position
         );
 
         $position_name = new Point(
             $this->width_px - 321 - 316, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 220 // Y-Position
-        );
-
-        $position_catch_code = new Point(
-            $this->width_px - 321 - 316, // X-Position (adapted for the width of the text box)
-            $this->height_px - 67 - 50 // Y-Position
+            $this->height_px - 67 - 255 // Y-Position
         );
 
         // Create TextField objects and draw text on the image
         new TextField(
             $text_attendee_id,
-            321, // Width of the text field
+            350, // Width of the text field
             67, // Height of the text field
             16, // Minimum font size
             25, // Start font size
@@ -359,7 +354,7 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
 
         new TextField(
             $text_species,
-            321, // Width of the text field
+            320, // Width of the text field
             42, // Height of the text field
             18, // Minimum font size
             40, // Start font size
@@ -368,12 +363,12 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
             $badge_object,
             $position_species,
             TextAlignment::LEFT, // Centered alignment
-            1, // Maximum number of lines
+            2, // Maximum number of lines
         );
 
         new TextField(
             $text_name,
-            321, // Width of the text field
+            310, // Width of the text field
             42, // Height of the text field
             18, // Minimum font size
             40, // Start font size
@@ -382,7 +377,7 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
             $badge_object,
             $position_name,
             TextAlignment::LEFT, // Centered alignment
-            1, // Maximum number of lines
+            2, // Maximum number of lines
         );
 
         // The text is drawn automatically when the TextField object is created.
