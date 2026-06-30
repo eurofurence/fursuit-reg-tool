@@ -26,7 +26,7 @@ export default {
         ]
     },
     node: {
-        class: ['p-1', 'rounded-md', 'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-inset focus:ring-primary-400/50 dark:focus:ring-primary-300/50']
+        class: ['p-1', 'rounded-md', 'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-inset focus:ring-primary-400/50 dark:focus:ring-primary-300/50']
     },
     content: ({ context, props }) => ({
         class: [
@@ -76,7 +76,7 @@ export default {
 
             // States
             'hover:bg-surface-200/20 dark:hover:bg-surface-500/20',
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
             // Transition
             'transition duration-200',
@@ -160,7 +160,7 @@ export default {
                 // Shape
                 'opacity-0',
                 'rounded-md',
-                'outline-none',
+                'outline-hidden',
                 'border-2 border-surface-200 dark:border-surface-700',
 
                 // Misc
@@ -236,7 +236,7 @@ export default {
 
             // States
             'hover:border-primary',
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-500/50 dark:focus:ring-primary-400/50',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-500/50 dark:focus:ring-primary-400/50',
 
             // Transition & Misc
             'appearance-none',

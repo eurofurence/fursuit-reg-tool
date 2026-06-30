@@ -86,7 +86,7 @@ const keyPress = (event) => {
         />
     </div>
     <div class="grow flex flex-col gap-3 items-center w-full max-w-lg mx-auto">
-        <Message v-if="form.invalid('amount')" class="w-full !my-0" severity="error" :closable="false">{{ form.errors.amount }}</Message>
+        <Message v-if="form.invalid('amount')" class="w-full my-0!" severity="error" :closable="false">{{ form.errors.amount }}</Message>
         <div class="text-6xl text-gray-700 my-3">
             {{ (parseInt(amount || 0) / 100.0).toFixed(2) }} €
         </div>

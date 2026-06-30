@@ -17,7 +17,7 @@ export default {
             // Before
             'before:border-t',
             'before:border-surface-200',
-            'before:dark:border-surface-700',
+            'dark:before:border-surface-700',
             'before:w-full',
             'before:absolute',
             'before:top-1/2',
@@ -41,7 +41,7 @@ export default {
             'dark:bg-transparent',
 
             // States
-            'focus:outline-none focus:outline-offset-0 focus:ring',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
             'focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
             // Misc
@@ -62,10 +62,10 @@ export default {
             'border',
 
             // Size
-            'w-[2rem]',
-            'h-[2rem]',
+            'w-8',
+            'h-8',
             'text-sm',
-            'leading-[2rem]',
+            'leading-8',
 
             // Colors
             {
@@ -104,7 +104,7 @@ export default {
             // Text and Overflow
             'whitespace-nowrap',
             'overflow-hidden',
-            'overflow-ellipsis',
+            'text-ellipsis',
             'max-w-full'
         ]
     })

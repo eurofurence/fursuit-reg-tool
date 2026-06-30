@@ -99,7 +99,7 @@ export default {
                 // States
                 {
                     'hover:border-primary': !context.disabled && !parent.props.invalid,
-                    'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-500/50 dark:focus:ring-primary-400/50 focus:z-10': !context.disabled,
+                    'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-500/50 dark:focus:ring-primary-400/50 focus:z-10': !context.disabled,
                     'opacity-60 select-none pointer-events-none cursor-default': context.disabled
                 },
 
@@ -114,7 +114,7 @@ export default {
     },
     transition: {
         enterFromClass: 'opacity-0 scale-y-[0.8]',
-        enterActiveClass: 'transition-[transform,opacity] duration-[120ms] ease-[cubic-bezier(0,0,0.2,1)]',
+        enterActiveClass: 'transition-[transform,opacity] duration-120 ease-out',
         leaveActiveClass: 'transition-opacity duration-100 ease-linear',
         leaveToClass: 'opacity-0'
     }

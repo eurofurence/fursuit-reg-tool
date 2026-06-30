@@ -29,7 +29,7 @@ export default {
 
             // States
             'hover:border-surface-400 dark:hover:border-surface-600',
-            'focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 focus:z-10',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 focus:z-10',
 
             // Transition
             'transition-colors duration-200',
@@ -80,7 +80,7 @@ export default {
             'h-[10px] w-[10px]',
 
             // Spacing
-            '-ml-[5px] -mt-[5px]',
+            'ml-[-5px] mt-[-5px]',
 
             // Colors
             'border-white',
@@ -105,7 +105,7 @@ export default {
     huehandle: {
         class: [
             // Position
-            'absolute left-0 -ml-[2px] -mt-[5px]',
+            'absolute left-0 ml-[-2px] mt-[-5px]',
 
             // Size
             'h-[10px] w-[21px]',
@@ -119,7 +119,7 @@ export default {
     },
     transition: {
         enterFromClass: 'opacity-0 scale-y-[0.8]',
-        enterActiveClass: 'transition-[transform,opacity] duration-[120ms] ease-[cubic-bezier(0,0,0.2,1)]',
+        enterActiveClass: 'transition-[transform,opacity] duration-120 ease-out',
         leaveActiveClass: 'transition-opacity duration-100 ease-linear',
         leaveToClass: 'opacity-0'
     }

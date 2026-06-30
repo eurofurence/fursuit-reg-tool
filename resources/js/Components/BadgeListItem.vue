@@ -81,7 +81,7 @@ function getBadgeTooltipText(status) {
 </script>
 
 <template>
-    <div class="py-3 hover:bg-gray-50 duration-200 rounded cursor-pointer">
+    <div class="py-3 hover:bg-gray-50 duration-200 rounded-sm cursor-pointer">
         <div class="flex flex-col md:flex-row text-center md:text-left">
             <div class="flex flex-col justify-center items-center">
                 <img 

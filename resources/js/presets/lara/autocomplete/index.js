@@ -50,9 +50,9 @@ export default {
 
             // States
             { 'hover:border-primary': !props.invalid },
-            'focus:outline-none focus:outline-offset-0',
-            { 'ring ring-primary-400/50 dark:ring-primary-300/50': state.focused },
-            { 'ring ring-primary-400/50 dark:ring-primary-300/50': state.hovered },
+            'focus:outline-hidden focus:outline-offset-0',
+            { 'ring-3 ring-primary-400/50 dark:ring-primary-300/50': state.focused },
+            { 'ring-3 ring-primary-400/50 dark:ring-primary-300/50': state.hovered },
             // Transition
             'transition duration-200 ease-in-out',
 
@@ -71,7 +71,7 @@ export default {
             // Shape
             'appearance-none rounded-md',
             { 'rounded-tr-none rounded-br-none': props.dropdown },
-            { 'outline-none shadow-none rounded-none': props.multiple },
+            { 'outline-hidden shadow-none rounded-none': props.multiple },
 
             // Size
             { 'w-full': props.multiple },
@@ -93,7 +93,7 @@ export default {
             { 'border-red-500 dark:border-red-400': props.invalid },
 
             // States
-            { 'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50': !props.multiple },
+            { 'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50': !props.multiple },
 
             // Filled State *for FloatLabel
             { filled: parent.instance?.$name == 'FloatLabel' && props.modelValue !== '' },
@@ -162,14 +162,14 @@ export default {
                 'border border-primary',
 
                 // States
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'hover:bg-primary-hover hover:border-primary-hover',
                 'focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
             ]
         }
     },
     loadingicon: {
-        class: ['text-surface-500 dark:text-surface-0/70', 'absolute top-[50%] right-[0.5rem] -mt-2 animate-spin']
+        class: ['text-surface-500 dark:text-surface-0/70', 'absolute top-[50%] right-2 -mt-2 animate-spin']
     },
     panel: {
         class: [
@@ -215,7 +215,7 @@ export default {
             //States
             { 'hover:bg-surface-100 dark:hover:bg-surface-600/80': !context.focused && !context.selected },
             { 'hover:bg-primary-highlight-hover': context.selected },
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring focus-visible:ring-inset focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
 
             // Transition
             'transition-shadow duration-200',
@@ -254,7 +254,7 @@ export default {
     },
     transition: {
         enterFromClass: 'opacity-0 scale-y-[0.8]',
-        enterActiveClass: 'transition-[transform,opacity] duration-[120ms] ease-[cubic-bezier(0,0,0.2,1)]',
+        enterActiveClass: 'transition-[transform,opacity] duration-120 ease-out',
         leaveActiveClass: 'transition-opacity duration-100 ease-linear',
         leaveToClass: 'opacity-0'
     }

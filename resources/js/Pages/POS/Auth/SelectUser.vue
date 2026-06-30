@@ -46,7 +46,7 @@ function selectUser(userId) {
                                     @click="selectUser(user.id)" 
                                     v-for="user in users" 
                                     :key="user.id"
-                                    class="user-select-btn h-16 text-lg font-medium border-2 border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-1"
+                                    class="user-select-btn h-16 text-lg font-medium border-2 border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 transition-all duration-200 shadow-xs hover:shadow-md transform hover:-translate-y-1"
                                     :aria-label="`Select user ${user.name}`"
                                 >
                                     <div class="flex flex-col items-center space-y-2">

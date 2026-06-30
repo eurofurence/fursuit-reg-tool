@@ -212,7 +212,7 @@ const backRoute = computed(() => {
         @pending-jobs-updated="handlePendingJobsUpdate"
         @printer-states-updated="handlePrinterStatesUpdate"
     />
-    <div class="min-h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
+    <div class="min-h-screen w-full flex flex-col bg-linear-to-br from-slate-50 to-slate-100">
         <!-- Compact System Bar -->
         <header class="bg-white border-b border-slate-200 h-8" v-if="page.props.auth.user">
             <div class="px-2 h-full flex items-center justify-between text-xs">

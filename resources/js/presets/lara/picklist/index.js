@@ -38,7 +38,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -80,7 +80,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -122,7 +122,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -164,7 +164,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -207,7 +207,7 @@ export default {
             'list-none m-0 p-0',
 
             // Size
-            'min-h-[12rem] max-h-[24rem]',
+            'min-h-48 max-h-96',
 
             // Shape
             'rounded-b-md',
@@ -221,7 +221,7 @@ export default {
             'py-3 px-0',
 
             // Focus & Outline
-            'outline-none',
+            'outline-hidden',
 
             // Misc
             'overflow-auto'
@@ -282,7 +282,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -324,7 +324,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -366,7 +366,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -408,7 +408,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -453,7 +453,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -495,7 +495,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -537,7 +537,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -579,7 +579,7 @@ export default {
 
                 // State
                 'hover:bg-primary-hover hover:border-primary-hover',
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'focus:ring-primary/50',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -622,7 +622,7 @@ export default {
             'list-none m-0 p-0',
 
             // Size
-            'min-h-[12rem] max-h-[24rem]',
+            'min-h-48 max-h-96',
 
             // Shape
             'rounded-b-md',
@@ -636,16 +636,16 @@ export default {
             'py-3 px-0',
 
             // Focus & Outline
-            'outline-none',
+            'outline-hidden',
 
             // Misc
             'overflow-auto'
         ]
     },
     transition: {
-        enterFromClass: '!transition-none',
-        enterActiveClass: '!transition-none',
-        leaveActiveClass: '!transition-none',
-        leaveToClass: '!transition-none'
+        enterFromClass: 'transition-none!',
+        enterActiveClass: 'transition-none!',
+        leaveActiveClass: 'transition-none!',
+        leaveToClass: 'transition-none!'
     }
 };

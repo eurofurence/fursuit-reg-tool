@@ -4,7 +4,7 @@
     </label>
     <select 
         id="event-selector"
-        class="fi-input block w-auto rounded-lg border-gray-300 shadow-sm transition duration-75 focus:border-primary-500 focus:ring-1 focus:ring-inset focus:ring-primary-500 dark:border-white/10 dark:bg-white/5 dark:text-white sm:text-sm"
+        class="fi-input block w-auto rounded-lg border-gray-300 shadow-xs transition duration-75 focus:border-primary-500 focus:ring-1 focus:ring-inset focus:ring-primary-500 dark:border-white/10 dark:bg-white/5 dark:text-white sm:text-sm"
         onchange="window.location.href = updateQueryStringParameter(window.location.href, 'selected_event_id', this.value)"
     >
         @foreach($events as $event)

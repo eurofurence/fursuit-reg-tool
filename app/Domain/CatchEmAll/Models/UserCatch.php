@@ -2,7 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Models;
 
-use App\Domain\CatchEmAll\Enums\FursuitRarity;
+use App\Domain\CatchEmAll\Enums\FursuitRanking;
 use App\Models\EventUser;
 use App\Models\Fursuit\Fursuit;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -33,20 +33,19 @@ class UserCatch extends Model
         return $this->belongsTo(Fursuit::class);
     }
 
-    public function getFursuitRarity(): FursuitRarity
+    public function getFursuitRanking(): FursuitRanking
     {
-        // Calculate rarity based on global frequency of fursuits
         $count = $this->getCatches();
 
-        $rarity = match (true) {
-            $count >= config('fcea.species_rarity_threshold_legendary') => FursuitRarity::LEGENDARY,
-            $count >= config('fcea.species_rarity_threshold_epic') => FursuitRarity::EPIC,
-            $count >= config('fcea.species_rarity_threshold_rare') => FursuitRarity::RARE,
-            $count >= config('fcea.species_rarity_threshold_uncommon') => FursuitRarity::UNCOMMON,
-            default => FursuitRarity::COMMON,
+        $ranking = match (true) {
+            $count >= config('fcea.fursuit_ranking_threshold_diamond') => FursuitRanking::DIAMOND,
+            $count >= config('fcea.fursuit_ranking_threshold_platinum') => FursuitRanking::PLATINUM,
+            $count >= config('fcea.fursuit_ranking_threshold_gold') => FursuitRanking::GOLD,
+            $count >= config('fcea.fursuit_ranking_threshold_silver') => FursuitRanking::SILVER,
+            default => FursuitRanking::BRONZE,
         };
 
-        return $rarity;
+        return $ranking;
     }
 
     public function getFursuitSpecies(): string
@@ -56,7 +55,6 @@ class UserCatch extends Model
 
     public function getCatches(): int
     {
-        // Calculate rarity based on global frequency of fursuits
         $count = UserCatch::where('fursuit_id', $this->fursuit_id)->count();
 
         return $count;

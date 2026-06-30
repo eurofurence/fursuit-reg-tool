@@ -39,7 +39,7 @@ export default {
                 // States
                 'hover:bg-surface-100 dark:hover:bg-surface-700/40',
                 'hover:text-surface-900',
-                'focus:outline-none focus:outline-offset-0 focus-visible:ring focus-visible:ring-primary-400/50 ring-inset dark:focus-visible:ring-primary-300/50', // Focus
+                'focus:outline-hidden focus:outline-offset-0 focus-visible:ring-3 focus-visible:ring-primary-400/50 ring-inset dark:focus-visible:ring-primary-300/50', // Focus
 
                 // Misc
                 'cursor-pointer no-underline select-none'
@@ -71,7 +71,7 @@ export default {
             enterActiveClass: 'overflow-hidden transition-[max-height] duration-1000 ease-[cubic-bezier(0.42,0,0.58,1)]',
             enterToClass: 'max-h-[1000px]',
             leaveFromClass: 'max-h-[1000px]',
-            leaveActiveClass: 'overflow-hidden transition-[max-height] duration-[450ms] ease-[cubic-bezier(0,1,0,1)]',
+            leaveActiveClass: 'overflow-hidden transition-[max-height] duration-450 ease-[cubic-bezier(0,1,0,1)]',
             leaveToClass: 'max-h-0'
         }
     }

@@ -64,11 +64,11 @@ const steps = [
 </script>
 
 <template>
-    <div class="dark min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <div class="dark min-h-screen bg-linear-to-br from-gray-900 to-gray-800 text-white">
         <!-- Hero Section -->
         <div class="relative px-4 pt-12 pb-8">
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                <h1 class="text-3xl font-bold mb-3 bg-linear-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                     Welcome to the Fursuit Catch 'Em All
                 </h1>
                 <p class="text-gray-300 text-lg leading-relaxed">
@@ -118,7 +118,7 @@ const steps = [
 
                     <div class="space-y-4">
                         <div class="flex items-start space-x-3">
-                            <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shrink-0 mt-0.5">
                                 <div class="w-2 h-2 bg-white rounded-full"></div>
                             </div>
                             <div>
@@ -128,7 +128,7 @@ const steps = [
                         </div>
 
                         <div class="flex items-start space-x-3">
-                            <div class="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <div class="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center shrink-0 mt-0.5">
                                 <div class="w-2 h-2 bg-white rounded-full"></div>
                             </div>
                             <div>
@@ -146,7 +146,7 @@ const steps = [
             <Button
                 @click="submit"
                 :loading="form.processing"
-                class="w-full py-4 text-lg font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-xl shadow-lg"
+                class="w-full py-4 text-lg font-bold text-white bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-xl shadow-lg"
             >
                 <Play class="w-6 h-6 mr-3" />
                 {{ form.processing ? 'Getting Ready...' : 'Start collecting!' }}

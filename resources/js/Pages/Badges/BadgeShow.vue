@@ -239,7 +239,7 @@ function cancelBadge() {
 <template>
     <Head :title="`Badge: ${badge.fursuit.name}`"/>
 
-    <div class="max-w-screen-lg mx-auto py-12">
+    <div class="max-w-(--breakpoint-lg) mx-auto py-12">
         <!-- Progress Tracker -->
         <Card class="mb-6">
             <template #title>
@@ -309,7 +309,7 @@ function cancelBadge() {
                         <!-- Step Circle -->
                         <div
                             :class="[
-                                'w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-200 bg-white flex-shrink-0 relative z-10',
+                                'w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-200 bg-white shrink-0 relative z-10',
                                 getStepClass(getStepStatus(step))
                             ]"
                         >
@@ -369,7 +369,7 @@ function cancelBadge() {
                     <template #content>
                         <div class="flex gap-6">
                             <!-- Badge Image - Left Side -->
-                            <div class="flex-shrink-0">
+                            <div class="shrink-0">
                                 <img
                                     :src="badge.fursuit.image_url || '/images/placeholder.png'"
                                     :alt="badge.fursuit.name"

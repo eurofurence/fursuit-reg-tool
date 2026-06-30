@@ -236,7 +236,7 @@ function openImageModal() {
                 <li>Available without requiring login or registration</li>
             </ul>
             
-            <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mt-4">
+            <div class="bg-yellow-50 border border-yellow-200 rounded-sm p-3 mt-4">
                 <p class="text-sm">
                     <strong>Note:</strong> You can withdraw consent at any time by contacting our support team. 
                     Your data will then be removed from public display within 48 hours.
@@ -248,7 +248,7 @@ function openImageModal() {
         </div>
     </Dialog>
     <!-- Fursuit Creator -->
-    <div class="pt-8 px-6 xl:px-0 max-w-screen-lg mx-auto">
+    <div class="pt-8 px-6 xl:px-0 max-w-(--breakpoint-lg) mx-auto">
         <div class="mb-8 lg:flex justify-between">
             <div>
                 <h1 class="text-xl sm:text-2xl md:text-3xl font-semibold font-main">Eurofurence Fursuit Badge Creator</h1>
@@ -281,7 +281,7 @@ function openImageModal() {
         </Message>
         <!-- Group 1 -- Fursuit Details -->
         <div class="space-y-8">
-            <div class="md:border-2 md:shadow md:bg-white md:rounded-lg md:p-8">
+            <div class="md:border-2 md:shadow-sm md:bg-white md:rounded-lg md:p-8">
                 <div class="mb-8 ">
                     <h2 class="text-lg font-semibold">Your Eurofurence Fursuit Badge</h2>
                     <p>Please enter the Information below, this will be displayed on your Fursuit Badge.</p>
@@ -291,7 +291,7 @@ function openImageModal() {
                     <div class="w-48 mx-auto shrink-0">
                         <div class="block md:flex gap-6 justify-center mb-1">
                             <div v-if="!previewImage" @click="openImageModal"
-                                 class="bg-primary-600 h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 flex items-center justify-center cursor-pointer">
+                                 class="bg-primary-600 h-64 w-48 rounded-lg drop-shadow-sm mx-auto md:mx-0 flex items-center justify-center cursor-pointer">
                                 <div class="text-primary-100 text-center text-sm px-4">
                                     Click/Tap here to upload a photo of your fursuit
                                 </div>
@@ -304,7 +304,7 @@ function openImageModal() {
                                     <div class="text-white mb-2">Edit Image</div>
                                 </div>
                                 <img :src="previewImage" alt=""
-                                     class="h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 block z-25">
+                                     class="h-64 w-48 rounded-lg drop-shadow-sm mx-auto md:mx-0 block z-25">
                             </div>
                         </div>
                         <div class="text-center text-xs text-gray-500" v-if="canEdit">
