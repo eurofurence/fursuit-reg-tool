@@ -70,6 +70,8 @@ class GameController extends Controller
             'selectedEvent' => $selectedEvent?->id,
             'recentCatch' => $recentCatch,
             'isGameRunning' => $isGameRunning,
+            'code' => $request->has('code') ? $request->input('code') : '',
+            'autoCatch' => $request->has('auto') && $request->has('code'),
         ]);
     }
 

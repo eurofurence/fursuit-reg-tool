@@ -18,8 +18,6 @@ import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import { computed, nextTick, onMounted, ref } from "vue";
 
-const form = useForm({ catch_code: "" });
-
 const props = defineProps<{
     gameStats: {
         rank: number;
@@ -33,7 +31,12 @@ const props = defineProps<{
     recentCatch?: any | null;
     flash?: any;
     isGameRunning: boolean;
+    code: string | "";
+    autoCatch: boolean;
 }>();
+
+const form = useForm({ catch_code: "" });
+form.catch_code = props.code.toUpperCase();
 
 const closedID = ref(null);
 const showRecentCatch = computed({
@@ -48,6 +51,13 @@ const showRecentCatch = computed({
             closedID.value = props.recentCatch?.id;
         }
     },
+});
+
+// When page loaded, if autoCatch is true and code is provided, submit the form automatically
+onMounted(() => {
+    if (props.autoCatch && props.code) {
+        submit();
+    }
 });
 
 const submit = () => {
@@ -139,7 +149,7 @@ const getRankIcon = (rank: number) => {
                     class="relative mx-auto w-24 h-24 rounded-full overflow-hidden border-4"
                     :class="`border-${recentCatch.rarity.color.replace(
                         'text-',
-                        ''
+                        '',
                     )}-500`"
                 >
                     <img
