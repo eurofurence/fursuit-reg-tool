@@ -38,8 +38,6 @@ const props = defineProps<{
 const form = useForm({ catch_code: "" });
 form.catch_code = props.code.toUpperCase();
 
-console.log(props.code);
-
 const closedID = ref(null);
 const showRecentCatch = computed({
     get: () => {
