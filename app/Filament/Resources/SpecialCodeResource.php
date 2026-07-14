@@ -45,11 +45,11 @@ class SpecialCodeResource extends Resource
                     ->helperText('Data to be passed to the constructor of the action class')
                     ->rows(3)
                     ->columnSpanFull()
-                    ->disabled(fn($get) => match ($get('class_name')) {
+                    ->disabled(fn ($get) => match ($get('class_name')) {
                         'EXAMPLE' => false,
                         default => true
                     })
-                    ->placeholder(fn($get) => match ($get('class_name')) {
+                    ->placeholder(fn ($get) => match ($get('class_name')) {
                         'EXAMPLE' => '{"amount": 100, "reason": "An Example"}',
                         default => '',
                     })
@@ -62,11 +62,19 @@ class SpecialCodeResource extends Resource
                     ->minLength(5)
                     ->required()
                     ->unique(ignoreRecord: true, table: 'special_codes', column: 'code')
-                    ->rule(fn() => function ($attribute, $value, $fail) {
+                    ->rule(fn () => function ($attribute, $value, $fail) {
                         if (Fursuit::where('catch_code', $value)->exists()) {
                             $fail('This code is already used in Fursuits.');
                         }
                     }),
+
+                Forms\Components\TextInput::make('catch_url')
+                    ->label('Catch URL')
+                    ->helperText('URL to catch the fursuiter with this code')
+                    ->readOnly()
+                    ->columnSpanFull()
+                    ->dehydrated(false)
+                    ->formatStateUsing(fn ($state, $get) => self::buildCatchAutoUrl($get('code') ?? '')),
             ]);
     }
 
@@ -79,7 +87,7 @@ class SpecialCodeResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('class_name')
                     ->label('Class')
-                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
                         'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
                         default => $state
                     })
@@ -89,7 +97,7 @@ class SpecialCodeResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('event_id')
                     ->label('Event')
-                    ->formatStateUsing(fn(string $state): string => \App\Models\Event::where('id', $state)->pluck('name')->first())
+                    ->formatStateUsing(fn (string $state): string => \App\Models\Event::where('id', $state)->pluck('name')->first())
                     ->sortable(),
             ])
             ->filters([
@@ -112,5 +120,18 @@ class SpecialCodeResource extends Resource
         return [
             'index' => Pages\ManageSpecialCodes::route('/'),
         ];
+    }
+
+    private static function buildCatchAutoUrl(string $code): string
+    {
+        $scheme = parse_url(config('app.url'), PHP_URL_SCHEME) ?: 'https';
+        $baseDomain = (string) config('fcea.domain', 'catch.localhost');
+
+        return sprintf(
+            '%s://%s/?code=%s&auto',
+            $scheme,
+            $baseDomain,
+            urlencode($code)
+        );
     }
 }
