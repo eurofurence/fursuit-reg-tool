@@ -40,17 +40,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Fursuit Species Rarity Threshold
+    | Fursuit Ranking Threshold
     |--------------------------------------------------------------------------
     |
-    | Fursuit Species is given a rarity based on the amount it appears among all fursuiter
-    | If a species appear more often than the threshold, it is considered this rarity
+    | Fursuit is given a ranking based on the amount it got caught globally.
+    | The thresholds for the rankings can be configured here.
     |
+    | BRONZE - SILVER - GOLD - PLATINUM - DIAMOND
     */
 
-    'species_rarity_threshold_uncommon' => env('SPECIES_RARITY_THRESHOLD_UNCOMMON', 5),
-    'species_rarity_threshold_rare' => env('SPECIES_RARITY_THRESHOLD_RARE', 10),
-    'species_rarity_threshold_epic' => env('SPECIES_RARITY_THRESHOLD_EPIC', 20),
-    'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 50),
-    // If none of this applies, the species is considered common
+    'fursuit_ranking_threshold_silver' => env('FURSUIT_RANKING_THRESHOLD_SILVER', 5),
+    'fursuit_ranking_threshold_gold' => env('FURSUIT_RANKING_THRESHOLD_GOLD', 10),
+    'fursuit_ranking_threshold_platinum' => env('FURSUIT_RANKING_THRESHOLD_PLATINUM', 20),
+    'fursuit_ranking_threshold_diamond' => env('FURSUIT_RANKING_THRESHOLD_DIAMOND', 50),
+    // If none of this applies, the fursuit is considered bronze
 ];
