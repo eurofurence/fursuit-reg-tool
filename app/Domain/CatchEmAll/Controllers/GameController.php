@@ -31,27 +31,7 @@ class GameController extends Controller
 
     public function index(Request $request)
     {
-        $user = Auth::user();
-        $selectedEventId = $request->get('event');
-
-        // Get event
         $selectedEvent = $this->getCurrentEvent(); // TODO: Add fetch method for Selected Event based on filter
-        $eventUser = $this->getEventUser($user, $selectedEvent);
-
-        // Get user's game stats
-        $gameStats = $this->gameStatsService->getUserStats($eventUser);
-
-        // Get leaderboard data
-        $leaderboard = $this->gameStatsService->getLeaderboard($selectedEvent);
-
-        // Get user's collection progress
-        $collection = $this->gameStatsService->getUserCollection($eventUser);
-
-        // Get user's achievements
-        $achievements = AchievementFactory::getUserAchievementData($eventUser);
-
-        // Get events for filter dropdown
-        $eventsWithEntries = $this->getEventsWithEntries();
 
         $isGameRunning = $selectedEvent?->isCatchEmAllActive();
 
@@ -62,12 +42,6 @@ class GameController extends Controller
         }
 
         return Inertia::render('CatchEmAll/Catch', [
-            'gameStats' => $gameStats,
-            'leaderboard' => $leaderboard,
-            'collection' => $collection,
-            'achievements' => $achievements,
-            'eventsWithEntries' => $eventsWithEntries,
-            'selectedEvent' => $selectedEvent?->id,
             'recentCatch' => $recentCatch,
             'isGameRunning' => $isGameRunning,
             'code' => $request->has('code') ? $request->input('code') : '',
