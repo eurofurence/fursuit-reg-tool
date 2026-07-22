@@ -25,7 +25,6 @@ class AchievementRegister
      * @var array<class-string<Achievement>>
      */
     private static array $achievementClasses = [
-        BugBountyHunter::class,
         FirstCatch::class,
         Collector::class,
         Curator::class,
@@ -34,6 +33,9 @@ class AchievementRegister
         Nice::class,
         TheLegendary151::class,
         FuredexComplete::class,
+        // Special achievements
+        BugBountyHunter::class,
+        CEATeam::class,
         // Add new achievements here in the format:
         // AchievementClassName::class,
     ];

@@ -38,6 +38,7 @@ class SpecialCodeResource extends Resource
                     ->helperText('PHP class used for code handling')
                     ->options([
                         'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
+                        'App\\Domain\\CatchEmAll\\SpecialActions\\CatchEmAllTeamAction' => 'Catch \'Em All Team',
                     ])
                     ->columnSpanFull(),
                 Forms\Components\Textarea::make('constructor_data')
@@ -89,6 +90,7 @@ class SpecialCodeResource extends Resource
                     ->label('Class')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
+                        'App\\Domain\\CatchEmAll\\SpecialActions\\CatchEmAllTeamAction' => 'Catch \'Em All Team',
                         default => $state
                     })
                     ->sortable(),
