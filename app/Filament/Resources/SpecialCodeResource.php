@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Domain\CatchEmAll\Models\SpecialCode;
+use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Filament\Resources\SpecialCodeResource\Pages;
 use App\Models\Fursuit\Fursuit;
 use Filament\Forms;
@@ -29,18 +30,19 @@ class SpecialCodeResource extends Resource
                     ->label('Event')
                     ->helperText('Event in which the code can be used')
                     ->options(
-                        \App\Models\Event::all()->pluck('name', 'id')
+                        \App\Models\Event::all()->sortByDesc('name')->pluck('name', 'id')
                     )
+                    ->default(\App\Models\Event::latest('starts_at')->first()?->id)
                     ->required()
                     ->columnSpanFull(),
                 Forms\Components\Select::make('class_name')
                     ->label('Class')
                     ->helperText('PHP class used for code handling')
-                    ->options([
-                        'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
-                        'App\\Domain\\CatchEmAll\\SpecialActions\\CatchEmAllTeamAction' => 'Catch \'Em All Team',
-                    ])
+                    ->options(SpecialActionsRegister::getSpecialCodeDisplayNames())
+                    ->live()
+                    ->afterStateUpdated(fn (Forms\Set $set, ?string $state) => $set('type', SpecialActionsRegister::getSpecialCodeTypeValueForClass($state)))
                     ->columnSpanFull(),
+                Forms\Components\Hidden::make('type'),
                 Forms\Components\Textarea::make('constructor_data')
                     ->label('Constructor Data')
                     ->helperText('Data to be passed to the constructor of the action class')
@@ -88,11 +90,10 @@ class SpecialCodeResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('class_name')
                     ->label('Class')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
-                        'App\\Domain\\CatchEmAll\\SpecialActions\\CatchEmAllTeamAction' => 'Catch \'Em All Team',
-                        default => $state
-                    })
+                    ->formatStateUsing(fn (string $state): string => SpecialActionsRegister::getDisplayNameForClass($state) ?? $state)
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Type')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('constructor_data')
                     ->label('Data')

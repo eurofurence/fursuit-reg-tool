@@ -24,4 +24,19 @@ interface SpecialCodeAction
      * @return SpecialCodeType The result of the action
      */
     public function use(EventUser $eventUser): SpecialCodeType;
+
+    /**
+     * Get the associated SpecialCodeType for this action.
+     */
+    public static function getSpecialCodeType(): SpecialCodeType;
+
+    /**
+     * Get the displayed name for the admin panel for this action.
+     */
+    public static function getDisplayName(): string;
+
+    /**
+     * Get the config data for this action, if any.
+     */
+    public static function getConfigData(): ?array;
 }

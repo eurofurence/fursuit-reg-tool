@@ -3,7 +3,6 @@
 namespace App\Domain\CatchEmAll\SpecialActions;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
-use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Models\EventUser;
 
 class CatchEmAllTeamAction extends AbstractSpecialCodeAction
@@ -19,5 +18,15 @@ class CatchEmAllTeamAction extends AbstractSpecialCodeAction
     {
         // Return the CATCH_EM_ALL_TEAM enum
         return SpecialCodeType::CATCH_EM_ALL_TEAM;
+    }
+
+    public static function getSpecialCodeType(): SpecialCodeType
+    {
+        return SpecialCodeType::CATCH_EM_ALL_TEAM;
+    }
+
+    public static function getDisplayName(): string
+    {
+        return 'Catch \'Em All Team';
     }
 }

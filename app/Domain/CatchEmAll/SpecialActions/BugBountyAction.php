@@ -26,4 +26,14 @@ class BugBountyAction extends AbstractSpecialCodeAction
         // Return the BUG_BOUNTY enum
         return SpecialCodeType::BUG_BOUNTY;
     }
+
+    public static function getSpecialCodeType(): SpecialCodeType
+    {
+        return SpecialCodeType::BUG_BOUNTY;
+    }
+
+    public static function getDisplayName(): string
+    {
+        return 'Bug Bounty';
+    }
 }

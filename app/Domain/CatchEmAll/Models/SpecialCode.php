@@ -2,7 +2,11 @@
 
 namespace App\Domain\CatchEmAll\Models;
 
+use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\SpecialCodeAction;
+use App\Domain\CatchEmAll\SpecialActions\BugBountyAction;
+use App\Domain\CatchEmAll\SpecialActions\CatchEmAllTeamAction;
+use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Models\Event;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +22,13 @@ class SpecialCode extends Model
         'constructor_data' => 'object',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $specialCode): void {
+            $specialCode->type = SpecialActionsRegister::getSpecialCodeTypeForClass($specialCode->class_name)?->name ?? null;
+        });
+    }
+
     /**
      * Get the event that owns the special code.
      */
@@ -28,14 +39,12 @@ class SpecialCode extends Model
 
     /**
      * Create an instance of the action class with the stored constructor data.
-     *
-     * @return \App\Domain\CatchEmAll\Interface\SpecialCodeAction
      */
     public function createActionInstance(): SpecialCodeAction
     {
         $className = $this->class_name;
 
-        if (!class_exists($className)) {
+        if (! class_exists($className)) {
             throw new \InvalidArgumentException("Class {$className} does not exist.");
         }
 

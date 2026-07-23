@@ -12,6 +12,7 @@ use App\Domain\CatchEmAll\Achievements\Nice;
 use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\Special\BugBountyHunter;
 use App\Domain\CatchEmAll\Achievements\Special\CEATeam;
+use App\Domain\CatchEmAll\Achievements\Special\Explorer;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
@@ -40,6 +41,7 @@ class AchievementRegister
         // Special achievements
         BugBountyHunter::class,
         CEATeam::class,
+        Explorer::class,
         // Add new achievements here in the format:
         // AchievementClassName::class,
     ];

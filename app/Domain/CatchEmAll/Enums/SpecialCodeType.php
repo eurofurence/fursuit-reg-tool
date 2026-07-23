@@ -14,4 +14,6 @@ enum SpecialCodeType
     case SECRET_CODE;
     // Bug Bounty Hunter
     case BUG_BOUNTY;
+    // Location Explorer
+    case EXPLORER;
 }
