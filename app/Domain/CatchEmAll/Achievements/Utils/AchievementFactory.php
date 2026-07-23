@@ -112,11 +112,6 @@ class AchievementFactory
             if ($achievement instanceof LockedBy) {
                 $lockedByAchievements = $achievement->lockedBy();
                 foreach ($lockedByAchievements as $lockedById) {
-                    $lockedByAchievement = AchievementRegister::getAchievementById($lockedById);
-                    if (! $lockedByAchievement) {
-                        throw new \Exception("Locked by achievement with ID '{$lockedById}' does not exist.");
-                    }
-
                     $lockedByUserAchievement = $userAchievements->firstWhere('achievement', $lockedById);
                     if (! $lockedByUserAchievement || ! $lockedByUserAchievement->isCompleted()) {
                         $isLocked = true;
