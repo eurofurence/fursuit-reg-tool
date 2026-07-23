@@ -9,6 +9,7 @@ use App\Domain\CatchEmAll\Achievements\FirstCatch;
 use App\Domain\CatchEmAll\Achievements\FuredexComplete;
 use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
 use App\Domain\CatchEmAll\Achievements\Nice;
+use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\Special\BugBountyHunter;
 use App\Domain\CatchEmAll\Achievements\Special\CEATeam;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
@@ -33,6 +34,7 @@ class AchievementRegister
         Archivist::class,
         GottaCatchEmAll::class,
         Nice::class,
+        NightOwl::class,
         TheLegendary151::class,
         FuredexComplete::class,
         // Special achievements
