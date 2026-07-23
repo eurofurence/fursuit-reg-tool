@@ -5,7 +5,7 @@ namespace App\Domain\CatchEmAll\Models;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Models\Event;
 use App\Models\EventUser;
-use App\Models\User;
+use App\Models\Fursuit\Fursuit;
 
 /**
  * Readonly context object that contains the essential data for achievement updates.
@@ -20,6 +20,7 @@ readonly class AchievementUpdateContext
         public int $userTotalCatches,
         public int $totalCatchableFursuits,
         public int $userUniqueFursuits,
+        public int $userUniqueSpecies,
     ) {}
 
     /**
@@ -38,12 +39,16 @@ readonly class AchievementUpdateContext
         // Calculate user statistics
         $userTotalCatches = UserCatch::where('event_user_id', $eventUser->id)
             ->count();
-        $totalCatchableFursuits = \App\Models\Fursuit\Fursuit::where('event_id', operator: $currentEvent->id)
+        $totalCatchableFursuits = Fursuit::where('event_id', operator: $currentEvent->id)
             ->where('catch_em_all', true)
             ->count();
         $userUniqueFursuits = UserCatch::where('event_user_id', $eventUser->id)
             ->distinct('fursuit_id')
             ->count();
+        $userUniqueSpecies = UserCatch::where('event_user_id', $eventUser->id)
+            ->fursuit()
+            ->distinct('species_id')
+            ->count('species_id');
 
         return new self(
             eventUser: $eventUser,
@@ -52,6 +57,7 @@ readonly class AchievementUpdateContext
             userTotalCatches: $userTotalCatches,
             totalCatchableFursuits: $totalCatchableFursuits,
             userUniqueFursuits: $userUniqueFursuits,
+            userUniqueSpecies: $userUniqueSpecies,
         );
     }
 

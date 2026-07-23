@@ -108,8 +108,9 @@ class AchievementFactory
             $result[] = [
                 'id' => $achievement->getId(),
                 'achievement' => $achievement->getId(), // Using ID as achievement identifier
-                'title' => $achievement->getTile(),
+                'title' => $achievement->getTitle(),
                 'description' => $achievement->getDescription(),
+                'task' => $achievement->getTask(),
                 'icon' => $achievement->getIcon(),
                 'completed' => $isCompleted,
                 'progress' => $currentProgress,

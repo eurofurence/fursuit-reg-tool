@@ -2,29 +2,24 @@
 
 namespace App\Domain\CatchEmAll\Achievements;
 
+use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
 use App\Domain\CatchEmAll\Interface\Achievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class Nice implements Achievement
+class Nice extends SimpleAchievement
 {
-    public function getId(): string
+    public function __construct()
     {
-        return 'nice';
-    }
-
-    public function getTile(): string
-    {
-        return 'Nice';
-    }
-
-    public function getDescription(): string
-    {
-        return 'Nice.';
-    }
-
-    public function getIcon(): string
-    {
-        return '😏';
+        parent::__construct(
+            id: 'nice',
+            title: 'Nice',
+            description: 'Nice ^^.',
+            task: 'Catch 69 Fursuits.',
+            icon: '😏',
+            isSecret: true,
+            isOptional: false,
+            isHidden: false
+        );
     }
 
     public function getMaxProgress(): int
@@ -32,25 +27,10 @@ class Nice implements Achievement
         return 69;
     }
 
-    public function isSecret(): bool
-    {
-        return true;
-    }
-
-    public function isOptional(): bool
-    {
-        return false;
-    }
-
-    public function isHidden(): bool
-    {
-        return false;
-    }
-
     public function updateAchievementProgress(AchievementUpdateContext $context): int
     {
         // Only trigger on actual catches, not special codes
-        if (!$context->hasCatch()) {
+        if (! $context->hasCatch()) {
             return -1; // Ignore this update
         }
 

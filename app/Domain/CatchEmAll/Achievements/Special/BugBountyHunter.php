@@ -2,58 +2,32 @@
 
 namespace App\Domain\CatchEmAll\Achievements\Special;
 
+use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class BugBountyHunter implements SpecialAchievement
+class BugBountyHunter extends SimpleAchievement implements SpecialAchievement
 {
 
-    public function getId(): string
+    public function __construct()
     {
-        return 'bug_bounty_hunter';
-    }
-
-
-    public function getTile(): string
-    {
-        return 'Bug Bounty Hunter';
-    }
-
-
-    public function getDescription(): string
-    {
-        return 'Thanks for the QA! Your contribution is noted.';
-    }
-
-
-    public function getIcon(): string
-    {
-        return '🐛';
+        parent::__construct(
+            id: 'bug_bounty_hunter',
+            title: 'Bug Bounty Hunter',
+            description: 'Thanks for the QA! Your contribution is noted.',
+            task: 'Report a bug or issue to the development team.',
+            icon: '🐛',
+            isSecret: true,
+            isOptional: true,
+            isHidden: false
+        );
     }
 
 
     public function getMaxProgress(): int
     {
         return 1;
-    }
-
-
-    public function isSecret(): bool
-    {
-        return true;
-    }
-
-
-    public function isOptional(): bool
-    {
-        return true;
-    }
-
-
-    public function isHidden(): bool
-    {
-        return false;
     }
 
 

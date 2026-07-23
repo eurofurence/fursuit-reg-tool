@@ -2,29 +2,23 @@
 
 namespace App\Domain\CatchEmAll\Achievements;
 
-use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class FirstCatch implements Achievement
+class FirstCatch extends SimpleAchievement
 {
-    public function getId(): string
+    public function __construct()
     {
-        return 'first_catch';
-    }
-
-    public function getTile(): string
-    {
-        return 'First Catch';
-    }
-
-    public function getDescription(): string
-    {
-        return 'You have successfully made your first catch.';
-    }
-
-    public function getIcon(): string
-    {
-        return '🎣';
+        parent::__construct(
+            id: 'first_catch',
+            title: 'First Catch',
+            description: 'You have successfully made your first catch.',
+            task: 'Catch your first Fursuit.',
+            icon: '🎣',
+            isSecret: false,
+            isOptional: false,
+            isHidden: false
+        );
     }
 
     public function getMaxProgress(): int
@@ -32,25 +26,10 @@ class FirstCatch implements Achievement
         return 1;
     }
 
-    public function isSecret(): bool
-    {
-        return false;
-    }
-
-    public function isOptional(): bool
-    {
-        return false;
-    }
-
-    public function isHidden(): bool
-    {
-        return false;
-    }
-
     public function updateAchievementProgress(AchievementUpdateContext $context): int
     {
         // Only trigger on actual catches, not special codes
-        if (!$context->hasCatch()) {
+        if (! $context->hasCatch()) {
             return -1; // Ignore this update
         }
 

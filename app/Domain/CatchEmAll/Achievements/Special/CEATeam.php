@@ -2,50 +2,30 @@
 
 namespace App\Domain\CatchEmAll\Achievements\Special;
 
+use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class CEATeam implements SpecialAchievement
+class CEATeam extends SimpleAchievement implements SpecialAchievement
 {
-    public function getId(): string
+    public function __construct()
     {
-        return 'cea_team';
-    }
-
-    public function getTile(): string
-    {
-        return 'Catch \'Em All Team';
-    }
-
-    public function getDescription(): string
-    {
-        return 'You found someone that made this game!';
-    }
-
-    public function getIcon(): string
-    {
-        return '👑';
+        parent::__construct(
+            id: 'cea_team',
+            title: 'Catch \'Em All Team',
+            description: 'You found someone that made this game!',
+            task: 'Find a member of the Catch \'Em All development team.',
+            icon: '👑',
+            isSecret: false,
+            isOptional: false,
+            isHidden: false
+        );
     }
 
     public function getMaxProgress(): int
     {
         return 1;
-    }
-
-    public function isSecret(): bool
-    {
-        return false;
-    }
-
-    public function isOptional(): bool
-    {
-        return false;
-    }
-
-    public function isHidden(): bool
-    {
-        return false;
     }
 
     public function updateAchievementProgress(AchievementUpdateContext $context): int
