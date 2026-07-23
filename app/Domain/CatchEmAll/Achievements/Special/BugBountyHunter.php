@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domain\CatchEmAll\Achievements;
+namespace App\Domain\CatchEmAll\Achievements\Special;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
