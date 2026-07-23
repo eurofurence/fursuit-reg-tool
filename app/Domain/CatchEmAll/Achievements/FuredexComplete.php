@@ -28,7 +28,11 @@ class FuredexComplete extends SimpleAchievement
     {
         $currentEvent = Event::latest('starts_at')->first();
 
-        return Fursuit::where('event_id', $currentEvent->id)->distinct('species_id')->count('species_id');
+        return Fursuit::where('event_id', $currentEvent->id)
+            ->join('species', 'fursuits.species_id', '=', 'species.id')
+            ->where('species.checked', true)
+            ->distinct('fursuits.species_id')
+            ->count('fursuits.species_id');
     }
 
     public function updateAchievementProgress(AchievementUpdateContext $context): int

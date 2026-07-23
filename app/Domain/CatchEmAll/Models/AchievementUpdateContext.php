@@ -39,16 +39,18 @@ readonly class AchievementUpdateContext
         // Calculate user statistics
         $userTotalCatches = UserCatch::where('event_user_id', $eventUser->id)
             ->count();
-        $totalCatchableFursuits = Fursuit::where('event_id', operator: $currentEvent->id)
+        $totalCatchableFursuits = Fursuit::where('event_id', $currentEvent->id)
             ->where('catch_em_all', true)
             ->count();
         $userUniqueFursuits = UserCatch::where('event_user_id', $eventUser->id)
             ->distinct('fursuit_id')
             ->count();
         $userUniqueSpecies = UserCatch::where('event_user_id', $eventUser->id)
-            ->fursuit()
-            ->distinct('species_id')
-            ->count('species_id');
+            ->join('fursuits', 'user_catches.fursuit_id', '=', 'fursuits.id')
+            ->join('species', 'fursuits.species_id', '=', 'species.id')
+            ->where('species.checked', true)
+            ->distinct('fursuits.species_id')
+            ->count('fursuits.species_id');
 
         return new self(
             eventUser: $eventUser,
