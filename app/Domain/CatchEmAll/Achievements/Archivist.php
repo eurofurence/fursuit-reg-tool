@@ -3,9 +3,11 @@
 namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class Archivist extends SimpleAchievement
+class Archivist extends SimpleAchievement implements HiddenIfLocked, LockedBy
 {
     public function __construct()
     {
@@ -37,5 +39,12 @@ class Archivist extends SimpleAchievement
         $currentProgress = min($context->userTotalCatches, $this->getMaxProgress());
 
         return $currentProgress;
+    }
+
+    public function lockedBy(): array
+    {
+        return [
+            'gotta_catch_em_all',
+        ];
     }
 }

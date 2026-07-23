@@ -3,6 +3,8 @@
 namespace App\Domain\CatchEmAll\Achievements\Utils;
 
 use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Models\EventUser;
 use App\Models\User;
@@ -105,6 +107,24 @@ class AchievementFactory
             // Get earned timestamp
             $earnedAt = $isCompleted && $userAchievement ? $userAchievement->earned_at : null;
 
+            // Check if the achievement is locked by other achievements
+            $isLocked = false;
+            if ($achievement instanceof LockedBy) {
+                $lockedByAchievements = $achievement->lockedBy();
+                foreach ($lockedByAchievements as $lockedById) {
+                    $lockedByAchievement = AchievementRegister::getAchievementById($lockedById);
+                    if (! $lockedByAchievement) {
+                        throw new \Exception("Locked by achievement with ID '{$lockedById}' does not exist.");
+                    }
+
+                    $lockedByUserAchievement = $userAchievements->firstWhere('achievement', $lockedById);
+                    if (! $lockedByUserAchievement || ! $lockedByUserAchievement->isCompleted()) {
+                        $isLocked = true;
+                        break;
+                    }
+                }
+            }
+
             $result[] = [
                 'id' => $achievement->getId(),
                 'achievement' => $achievement->getId(), // Using ID as achievement identifier
@@ -119,6 +139,8 @@ class AchievementFactory
                 'earnedAt' => $earnedAt,
                 'isSecret' => $achievement->isSecret(),
                 'isOptional' => $achievement->isOptional(),
+                'isLocked' => $isLocked,
+                'hiddenByLock' => $achievement instanceof HiddenIfLocked && $isLocked,
             ];
         }
 

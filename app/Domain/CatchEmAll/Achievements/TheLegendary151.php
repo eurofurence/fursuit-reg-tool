@@ -3,10 +3,11 @@
 namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
-use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class TheLegendary151 extends SimpleAchievement
+class TheLegendary151 extends SimpleAchievement implements HiddenIfLocked, LockedBy
 {
     public function __construct()
     {
@@ -30,7 +31,7 @@ class TheLegendary151 extends SimpleAchievement
     public function updateAchievementProgress(AchievementUpdateContext $context): int
     {
         // Only trigger on actual catches, not special codes
-        if (!$context->hasCatch()) {
+        if (! $context->hasCatch()) {
             return -1; // Ignore this update
         }
 
@@ -38,5 +39,12 @@ class TheLegendary151 extends SimpleAchievement
         $currentProgress = min($context->userUniqueFursuits, $this->getMaxProgress());
 
         return $currentProgress;
+    }
+
+    public function lockedBy(): array
+    {
+        return [
+            'archivist',
+        ];
     }
 }

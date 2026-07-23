@@ -19,20 +19,22 @@ const props = defineProps<{
     flash?: any;
 }>();
 
+console.log("Achievements Props:", props.achievements);
+
 // Group achievements by completion status and sort by progress
 const completedAchievements = props.achievements
     .filter((a) => a.completed)
     .sort(
         (a, b) =>
-            new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime()
+            new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime(),
     ); // Most recently earned first
 
 const inProgressAchievements = props.achievements
-    .filter((a) => !a.completed && a.progress > 0)
+    .filter((a) => !a.completed && !a.isLocked)
     .sort((a, b) => b.progressPercentage - a.progressPercentage); // Highest progress first
 
 const lockedAchievements = props.achievements
-    .filter((a) => !a.completed && a.progress === 0)
+    .filter((a) => !a.completed && a.isLocked)
     .sort((a, b) => a.title.localeCompare(b.title)); // Alphabetical order
 
 // Get achievement category icon
@@ -250,7 +252,7 @@ const formatDate = (dateString: string) => {
                                     {{ achievement.title }}
                                 </h4>
                                 <p class="text-sm text-gray-300 mb-3">
-                                    {{ achievement.description }}
+                                    {{ achievement.task }}
                                 </p>
 
                                 <!-- Progress Bar -->
@@ -288,11 +290,14 @@ const formatDate = (dateString: string) => {
         <div v-if="lockedAchievements.length > 0">
             <h3 class="text-lg font-bold text-gray-100 mb-3 flex items-center">
                 <Circle class="w-6 h-6 mr-2 text-gray-400" />
-                Locked ({{ lockedAchievements.length }})
+                Locked ({{ lockedAchievements.length }}) (Hidden:
+                {{ lockedAchievements.filter((a) => a.hiddenByLock).length }}
+                )
             </h3>
             <div class="space-y-3">
                 <Card
                     v-for="achievement in lockedAchievements"
+                    :hidden="achievement.hiddenByLock"
                     :key="achievement.id"
                     class="bg-white shadow-sm opacity-75 border border-gray-700"
                 >
@@ -316,10 +321,11 @@ const formatDate = (dateString: string) => {
                                     {{ achievement.title }}
                                 </h4>
                                 <p class="text-sm text-gray-300 mb-2">
-                                    {{ achievement.description }}
+                                    {{ achievement.task }}
                                 </p>
                                 <div class="text-xs text-gray-400 font-medium">
-                                    🔒 Start hunting to unlock!
+                                    🔒 You need to do more tasks to unlock this
+                                    achievement!
                                 </div>
                             </div>
                         </div>

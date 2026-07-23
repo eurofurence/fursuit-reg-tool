@@ -3,9 +3,11 @@
 namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class GottaCatchEmAll extends SimpleAchievement
+class GottaCatchEmAll extends SimpleAchievement implements LockedBy, HiddenIfLocked
 {
     public function __construct()
     {
@@ -37,5 +39,12 @@ class GottaCatchEmAll extends SimpleAchievement
         $currentProgress = min($context->userTotalCatches, $this->getMaxProgress());
 
         return $currentProgress;
+    }
+
+    public function lockedBy(): array
+    {
+        return [
+            'curator',
+        ];
     }
 }

@@ -14,6 +14,7 @@ use App\Domain\CatchEmAll\Achievements\Special\CEATeam;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
 use Illuminate\Support\Facades\Log;
 
@@ -102,6 +103,9 @@ class AchievementRegister
 
         // Calculate achievement counts
         self::calculateAchievementCounts();
+
+        // Check if lockedBy dependencies are valid
+        self::validateLockedByDependencies();
 
         // Log initialization
         Log::info('AchievementRegister initialized with '.count(self::$achievements).' achievements', [
@@ -198,6 +202,28 @@ class AchievementRegister
                 self::$optionalAchievementCount++;
             } else {
                 self::$requiredAchievementCount++;
+            }
+        }
+    }
+
+    /**
+     * Validate that all lockedBy dependencies are valid.
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected static function validateLockedByDependencies(): void
+    {
+        foreach (self::$achievements as $achievement) {
+            if ($achievement instanceof LockedBy) {
+                $lockedByIds = $achievement->lockedBy();
+
+                foreach ($lockedByIds as $lockedById) {
+                    if (! isset(self::$idIndex[$lockedById])) {
+                        throw new \InvalidArgumentException(
+                            "Achievement '{$achievement->getId()}' is locked by unknown achievement ID '{$lockedById}'."
+                        );
+                    }
+                }
             }
         }
     }

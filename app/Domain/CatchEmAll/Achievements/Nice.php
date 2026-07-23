@@ -3,7 +3,6 @@
 namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
-use App\Domain\CatchEmAll\Interface\Achievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
 class Nice extends SimpleAchievement
