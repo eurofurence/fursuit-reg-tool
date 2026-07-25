@@ -7,6 +7,7 @@ use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 use App\Domain\CatchEmAll\Models\SpecialCode;
+use App\Models\Event;
 
 class Explorer extends SimpleAchievement implements SpecialAchievement
 {
@@ -26,7 +27,11 @@ class Explorer extends SimpleAchievement implements SpecialAchievement
 
     public function getMaxProgress(): int
     {
-        return SpecialCode::where('type', SpecialCodeType::EXPLORER->name)->count();
+        $currentEvent = Event::latest('starts_at')->first();
+
+        return SpecialCode::where('type', SpecialCodeType::EXPLORER)
+            ->where('event_id', $currentEvent->id)
+            ->count();
     }
 
     public function updateAchievementProgress(AchievementUpdateContext $context): int
@@ -37,7 +42,7 @@ class Explorer extends SimpleAchievement implements SpecialAchievement
         }
 
         // Return completion progress - achievement granting is handled by AchievementService
-        return -1;
+        return min($context->locationsExplored, $this->getMaxProgress());
     }
 
     public function getSpecialCode(): SpecialCodeType

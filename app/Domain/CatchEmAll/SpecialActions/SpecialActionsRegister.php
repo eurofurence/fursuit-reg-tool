@@ -16,23 +16,22 @@ class SpecialActionsRegister
     private static array $specialCodeActionClasses = [
         BugBountyAction::class,
         CatchEmAllTeamAction::class,
+        ExplorerAction::class,
     ];
 
     /**
-     * Instances of all registered special action classes.
-     * This array is populated during the init() method.
+     * Indexed by ::class
      *
-     * @var array<class-string<SpecialCodeAction>, string> Display names of all registered special action classes.
+     * @var array<class-string<SpecialCodeAction>, array>
      */
-    protected static array $specialCodeDisplayName = [];
+    protected static array $specialCodeClassNameIndex = [];
 
     /**
-     * Mapping of SpecialCodeType to their corresponding action classes.
-     * This array is populated during the init() method.
+     * Indexed by SpecialCodeType->name
      *
-     * @var array<class-string<SpecialCodeAction>, SpecialCodeType>
+     * @var array<int, array>
      */
-    protected static array $specialCodeTypeMapping = [];
+    protected static array $specialCodeTypeIndex = [];
 
     /**
      * Initial Checks of all classes and generation of all arrays
@@ -41,7 +40,7 @@ class SpecialActionsRegister
     {
         self::checkSpecialCodeActionClasses();
 
-        self::generateSpecialCodeTypeMapping();
+        self::generateIndexes();
     }
 
     /**
@@ -60,66 +59,89 @@ class SpecialActionsRegister
     /**
      * Generate a mapping of SpecialCodeType to their corresponding action classes.
      */
-    private static function generateSpecialCodeTypeMapping(): void
+    private static function generateIndexes(): void
     {
         foreach (self::$specialCodeActionClasses as $class) {
-            self::$specialCodeDisplayName[$class] = $class::getDisplayName();
-            self::$specialCodeTypeMapping[$class] = $class::getSpecialCodeType();
+            if (! is_subclass_of($class, SpecialCodeAction::class)) {
+                throw new \Exception("Class {$class} must implement the SpecialCodeAction interface.");
+            }
+
+            if (isset(self::$specialCodeTypeIndex[$class::getSpecialCodeType()->value])) {
+                throw new \Exception("Duplicate SpecialCodeType: {$class::getSpecialCodeType()->value} by {$class} and ".self::$specialCodeTypeIndex[$class::getSpecialCodeType()->value]['class']);
+            }
+
+            self::$specialCodeClassNameIndex[$class] = [
+                'display_name' => $class::getDisplayName(),
+                'type' => $class::getSpecialCodeType(),
+                'config' => $class::getConfigData(),
+            ];
+
+            self::$specialCodeTypeIndex[$class::getSpecialCodeType()->value] = [
+                'class' => $class,
+                'display_name' => $class::getDisplayName(),
+                'config' => $class::getConfigData(),
+            ];
         }
     }
 
-    /**
-     * Get the display name for a given special action class.
-     *
-     * @param  class-string<SpecialCodeAction>  $class
-     */
-    public static function getDisplayNameForClass(string $class): ?string
+    public static function getDisplayNameForClass(string $className): ?string
     {
-        return self::$specialCodeDisplayName[$class] ?? null;
+        return self::$specialCodeClassNameIndex[$className]['display_name'] ?? null;
+    }
+
+    public static function getSpecialCodeTypeForClass(string $className): ?SpecialCodeType
+    {
+        return self::$specialCodeClassNameIndex[$className]['type'] ?? null;
+    }
+
+    public static function getConfigDataForClass(string $className): ?array
+    {
+        return self::$specialCodeClassNameIndex[$className]['config'] ?? null;
+    }
+
+    public static function getClassForSpecialCodeType(SpecialCodeType $type): ?string
+    {
+        return self::$specialCodeTypeIndex[$type->value]['class'] ?? null;
+    }
+
+    public static function getDisplayNameForSpecialCodeType(SpecialCodeType $type): ?string
+    {
+        return self::$specialCodeTypeIndex[$type->value]['display_name'] ?? null;
+    }
+
+    public static function getConfigDataForSpecialCodeType(SpecialCodeType $type): ?array
+    {
+        return self::$specialCodeTypeIndex[$type->value]['config'] ?? null;
     }
 
     /**
-     * Get the SpecialCodeType for a given special action class.
+     * Get all available classes::class
      *
-     * @param  class-string<SpecialCodeAction>  $class
+     * @return array<class-string<SpecialCodeAction>>
      */
-    public static function getSpecialCodeTypeForClass(string $class): ?SpecialCodeType
+    public static function getAllClasses(): array
     {
-        return self::$specialCodeTypeMapping[$class] ?? null;
+        return array_keys(self::$specialCodeClassNameIndex);
     }
 
     /**
-     * Get the SpecialCodeType for a given special action class.
+     * Get all available SpecialCodesTypes that are available
      *
-     * @param  class-string<SpecialCodeAction>  $class
+     * @return array<SpecialCodeType>
      */
-    public static function getSpecialCodeTypeValueForClass(string $class): ?string
+    public static function getAllSpecialCodeTypes(): array
     {
-        return self::$specialCodeTypeMapping[$class]->value ?? null;
+        return array_map(SpecialCodeType::from(...), array_keys(self::$specialCodeTypeIndex));
     }
 
-    public static function getSpecialCodeActionClassForType(SpecialCodeType $type): ?string
+    public static function getFillamentOptions(): array
     {
-        return array_search($type, self::$specialCodeTypeMapping, true) ?: null;
-    }
+        $result = [];
 
-    public static function getSpecialCodeActionClasses(): array
-    {
-        return self::$specialCodeActionClasses;
-    }
+        foreach (self::$specialCodeTypeIndex as $key => $entry) {
+            $result[$key] = $entry['display_name'] ?? null;
+        }
 
-    public static function getSpecialCodeDisplayNames(): array
-    {
-        return self::$specialCodeDisplayName;
-    }
-
-    public static function getSpecialCodeTypeMapping(): array
-    {
-        return self::$specialCodeTypeMapping;
-    }
-
-    public static function getSpecialCodeTypeValueMapping(): array
-    {
-        return array_map(fn (SpecialCodeType $type) => $type->value, self::$specialCodeTypeMapping);
+        return $result;
     }
 }

@@ -13,9 +13,9 @@ interface SpecialCodeAction
      *
      * @param  int  $eventId  The event ID from the special_codes table
      * @param  string  $code  The special code from the special_codes table
-     * @param  object|null  $constructorData  Optional data from the constructor_data JSON field
+     * @param  array|null  $constructorData  Optional data from the constructor_data JSON field
      */
-    public function __construct(int $eventId, string $code, ?object $constructorData = null);
+    public function __construct(int $eventId, string $code, ?array $constructorData = null);
 
     /**
      * Execute the special code action for the given user.

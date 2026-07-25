@@ -21,6 +21,7 @@ readonly class AchievementUpdateContext
         public int $totalCatchableFursuits,
         public int $userUniqueFursuits,
         public int $userUniqueSpecies,
+        public int $locationsExplored
     ) {}
 
     /**
@@ -51,6 +52,19 @@ readonly class AchievementUpdateContext
             ->where('species.checked', true)
             ->distinct('fursuits.species_id')
             ->count('fursuits.species_id');
+        if ($specialCodeType !== SpecialCodeType::EXPLORER) {
+            $locationsExplored = 0;
+        } else {
+            // TODO: OPTIMIZATION: Count this in a separate table
+            $locationsExplored = SpecialCode::where('type', SpecialCodeType::EXPLORER)
+                ->where('special_codes.event_id', $currentEvent->id)
+                ->join('user_catch_logs', 'special_codes.code', '=', 'user_catch_logs.catch_code')
+                ->where('user_catch_logs.user_id', $eventUser->user_id)
+                ->where('user_catch_logs.is_successful', true)
+                ->distinct('code')
+                ->count();
+            $locationsExplored++; // Lacy Updated because it reads the log
+        }
 
         return new self(
             eventUser: $eventUser,
@@ -60,6 +74,7 @@ readonly class AchievementUpdateContext
             totalCatchableFursuits: $totalCatchableFursuits,
             userUniqueFursuits: $userUniqueFursuits,
             userUniqueSpecies: $userUniqueSpecies,
+            locationsExplored: $locationsExplored
         );
     }
 

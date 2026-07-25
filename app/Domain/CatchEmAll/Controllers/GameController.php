@@ -101,11 +101,22 @@ class GameController extends Controller
         $specialCodeType = null;
 
         if ($specialCode) {
-            try {
-                $actionInstance = $specialCode->createActionInstance();
-                $specialCodeType = $actionInstance->use($eventUser);
-            } catch (\Exception $e) {
-                $errors[] = 'Error processing special code';
+            // Check if it was already claimed by this user
+            $alreadyClaimed = UserCatchLog::where('event_id', $event->id)
+                ->where('user_id', $user->id)
+                ->where('catch_code', $catchCode)
+                ->where('is_successful', true)
+                ->exists();
+            if ($alreadyClaimed) {
+                $errors[] = 'Special code already claimed!';
+                $wasSuccessful = false;
+            } else {
+                try {
+                    $actionInstance = $specialCode->createActionInstance();
+                    $specialCodeType = $actionInstance->use($eventUser);
+                } catch (\Exception $e) {
+                    $errors[] = 'Error processing special code';
+                }
             }
         }
 
