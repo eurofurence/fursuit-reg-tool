@@ -3,7 +3,6 @@ import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import { router } from "@inertiajs/vue3";
 import { Award, Crown, Star, TrendingUp, Trophy } from "lucide-vue-next";
 import Card from "primevue/card";
-import Dropdown from "primevue/dropdown";
 import { computed, ref } from "vue";
 
 const props = defineProps<{
@@ -12,12 +11,6 @@ const props = defineProps<{
         name : string;
     };
     leaderboard: Array<{
-        id : number;
-        name : string;
-        rank : number;
-        catches : number;
-    }>;
-    userLeaderboard: Array<{
         id : number;
         name : string;
         rank : number;
@@ -258,76 +251,6 @@ const getProperCatch = (catchCount: number) => {
                                 <div class="text-xs text-gray-300">{{ getProperCatch(player.catches) }}</div>
                             </div>
                         </div>
-                        <div v-if="userLeaderboard.length > 0">
-                            <!-- Transition Card -->
-                            <div v-if="userLeaderboard[0].rank - leaderboard[leaderboard.length - 1].rank > 1">
-                                <div class="flex items-center justify-between mb-2 rounded-lg border transition-all hover:shadow-md bg-gray-700/50 border-gray-600">
-                                    <div
-                                        class="space-y-2 w-full">
-                                        <p class="text-md text-center text-white">
-                                            . . .
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- User Leaderboard -->
-                            <div class="space-y-2">
-                                <div
-                                    v-for="(player) in userLeaderboard"
-                                    :key="player.id"
-                                    class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
-                                    :class="[
-                                player.id === user.id ? 'ring-1 ring-white bg-gradient-to-r from-blue-900/40 to-blue-900/20 border-white'
-                                    : ' bg-gray-700/50 border-gray-600',
-                            ]"
-                                >
-                                    <div class="flex items-center space-x-4">
-                                        <!-- Rank Number -->
-                                        <div
-                                            class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg"
-                                            :class="player.id === user.id ? 'bg-purple-900/30 text-purple-200'
-                                                : 'bg-blue-900/30 text-blue-200'"
-                                        >
-                                            <p
-                                                class="w-10 h-6 leading-6 text-center m-auto"
-                                                :class="player.rank > 99 ? 'text-sm' : ''"
-                                            >
-                                                #{{player.rank}}
-                                            </p>
-                                        </div>
-
-                                        <!-- Player Info -->
-                                        <div>
-                                            <div class="flex items-center space-x-2">
-                                                <div
-                                                    class="font-semibold text-gray-100"
-                                                >
-                                                    {{ player.name }}
-                                                </div>
-                                            </div>
-                                            <div class="text-sm text-gray-300">
-                                                {{ player.catches }} {{ getProperCatch(player.catches) }}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Points -->
-                                    <div class="text-right">
-                                        <div
-                                            class="font-bold text-xl"
-                                            :class="
-                                        player.rank <= 3
-                                            ? 'text-blue-400'
-                                            : 'text-gray-100'
-                                    "
-                                        >
-                                            {{ player.catches }}
-                                        </div>
-                                        <div class="text-xs text-gray-300">{{ getProperCatch(player.catches) }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         <!-- Empty State -->
                         <div
                             v-if="leaderboard.length === 0"
@@ -350,13 +273,6 @@ const getProperCatch = (catchCount: number) => {
 </template>
 
 <style scoped>
-/* Enhanced card styling for dark mode */
-:deep(.p-card) {
-    border-radius: 12px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
-    background: transparent !important;
-}
-
 /* Podium animation */
 @keyframes crown-glow {
     0%,
@@ -366,9 +282,5 @@ const getProperCatch = (catchCount: number) => {
     50% {
         transform: scale(1.05);
     }
-}
-
-.podium-crown {
-    animation: crown-glow 2s ease-in-out infinite;
 }
 </style>
