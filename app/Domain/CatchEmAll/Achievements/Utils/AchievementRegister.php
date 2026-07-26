@@ -13,6 +13,7 @@ use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\Special\BugBountyHunter;
 use App\Domain\CatchEmAll\Achievements\Special\CEATeam;
 use App\Domain\CatchEmAll\Achievements\Special\Explorer;
+use App\Domain\CatchEmAll\Achievements\TheCompletionist;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
@@ -38,6 +39,7 @@ class AchievementRegister
         NightOwl::class,
         TheLegendary151::class,
         FuredexComplete::class,
+        TheCompletionist::class,
         // Special achievements
         BugBountyHunter::class,
         CEATeam::class,

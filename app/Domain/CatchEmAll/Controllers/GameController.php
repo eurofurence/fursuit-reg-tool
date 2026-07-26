@@ -129,7 +129,7 @@ class GameController extends Controller
                 }
             } else {
                 // Check if already caught
-                $alreadyCaught = UserCatch::where('event_user_id', $user->id)
+                $alreadyCaught = UserCatch::where('event_user_id', $eventUser->id)
                     ->where('fursuit_id', $fursuit->id)
                     ->exists();
 

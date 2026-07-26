@@ -21,7 +21,8 @@ readonly class AchievementUpdateContext
         public int $totalCatchableFursuits,
         public int $userUniqueFursuits,
         public int $userUniqueSpecies,
-        public int $locationsExplored
+        public int $locationsExplored,
+        public int $userTotalDaysCaught
     ) {}
 
     /**
@@ -65,6 +66,10 @@ readonly class AchievementUpdateContext
                 ->count();
             $locationsExplored++; // Lacy Updated because it reads the log
         }
+        $userTotalDaysCaught = UserCatch::where('event_user_id', $eventUser->id)
+            ->selectRaw('DISTINCT DATE(created_at) as date')
+            ->get()
+            ->count();
 
         return new self(
             eventUser: $eventUser,
@@ -74,7 +79,8 @@ readonly class AchievementUpdateContext
             totalCatchableFursuits: $totalCatchableFursuits,
             userUniqueFursuits: $userUniqueFursuits,
             userUniqueSpecies: $userUniqueSpecies,
-            locationsExplored: $locationsExplored
+            locationsExplored: $locationsExplored,
+            userTotalDaysCaught: $userTotalDaysCaught
         );
     }
 
