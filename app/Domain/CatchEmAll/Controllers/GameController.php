@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Controllers;
 
 use App\Domain\CatchEmAll\Achievements\Utils\AchievementFactory;
+use App\Domain\CatchEmAll\Achievements\Utils\AchievementRegister;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\Models\UserCatch;
@@ -20,7 +21,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
-use PhpParser\Error;
 
 class GameController extends Controller
 {
@@ -370,6 +370,9 @@ class GameController extends Controller
             "collection_{$eventUser->id}",
             "total_fursuiters_{$eventUser->event_id}", // TODO: Forget when new fursuit gets approved and not here
         ];
+
+        $achievementKeys = AchievementRegister::getAllUserCachedKeys($eventUser);
+        $keys = array_unique([...$keys, ...$achievementKeys]);
 
         foreach ($keys as $key) {
             Cache::forget($key);

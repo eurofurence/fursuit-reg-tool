@@ -17,8 +17,11 @@ use App\Domain\CatchEmAll\Achievements\TheCompletionist;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Interface\HasGlobalCache;
+use App\Domain\CatchEmAll\Interface\HasUserCache;
 use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
+use App\Models\EventUser;
 use Illuminate\Support\Facades\Log;
 
 class AchievementRegister
@@ -79,6 +82,22 @@ class AchievementRegister
      * @var array<Achievement>
      */
     protected static array $normalAchievements = [];
+
+    /**
+     * Array of achievments having HasUserCache interface implemented
+     * Built during initialization.
+     *
+     * @var array<HasUserCache>
+     */
+    protected static array $hasUserCacheAchievements = [];
+
+    /**
+     * Array of achievments having HasGlobalCache interface implemented
+     * Built during initialization.
+     *
+     * @var array<HasGlobalCache>
+     */
+    protected static array $hasGlobalCacheAchievements = [];
 
     /**
      * Count of required (non-optional) achievements for 100% completion.
@@ -144,6 +163,7 @@ class AchievementRegister
         self::buildIdIndex();
         self::buildSpecialCodeIndex();
         self::buildNormalAchievementsIndex();
+        self::buildHasCacheAchievements();
     }
 
     /**
@@ -190,6 +210,23 @@ class AchievementRegister
         foreach (self::$achievements as $achievement) {
             if (! ($achievement instanceof SpecialAchievement)) {
                 self::$normalAchievements[] = $achievement;
+            }
+        }
+    }
+
+    /**
+     * Build the list of achievements that implement HasCache interface.
+     */
+    protected static function buildHasCacheAchievements(): void
+    {
+        self::$hasUserCacheAchievements = [];
+
+        foreach (self::$achievements as $achievement) {
+            if ($achievement instanceof HasUserCache) {
+                self::$hasUserCacheAchievements[] = $achievement;
+            }
+            if ($achievement instanceof HasGlobalCache) {
+                self::$hasGlobalCacheAchievements[] = $achievement;
             }
         }
     }
@@ -446,5 +483,22 @@ class AchievementRegister
     public static function getAllRegisteredIds(): array
     {
         return array_keys(self::$idIndex);
+    }
+
+    public static function getHasCacheAchievements(): array
+    {
+        return self::$hasUserCacheAchievements;
+    }
+
+    public static function getAllUserCachedKeys(EventUser $eventUser): array
+    {
+        $cacheKeys = [];
+
+        foreach (self::$hasUserCacheAchievements as $achievement) {
+            $keys = $achievement->getCacheKeys($eventUser);
+            $cacheKeys = array_merge($cacheKeys, $keys);
+        }
+
+        return array_unique($cacheKeys);
     }
 }
