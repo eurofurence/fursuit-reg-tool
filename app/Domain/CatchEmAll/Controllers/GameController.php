@@ -183,7 +183,7 @@ class GameController extends Controller
     public function leaderboard(Request $request)
     {
         $selectedEventId = $request->get('event');
-        $rankCutoff = 3;
+        $rankCutoff = 10;
 
         $selectedEvent = $this->getCurrentEvent(); // TODO: Add fetch method for Selected Event based on filter
 
@@ -194,24 +194,10 @@ class GameController extends Controller
         $eventsWithEntries = $this->getEventsWithEntries();
 
         $user = Auth::user();
-        $eventUser = $this->getEventUser($user, $selectedEvent);
-        $userStat = $this->gameStatsService->getUserStats($eventUser);
-
-        $userLeaderboard = [];
-        if ($userStat['rank'] > $rankCutoff && $userStat['totalCatches'] > 0) {
-            $userLeaderboard = $this->gameStatsService->getUserLeaderboard(
-                $eventUser,
-                $userStat['rank'],
-                $userStat['totalCatches'],
-                $user->name,
-                $rankCutoff
-            );
-        }
 
         return Inertia::render('CatchEmAll/Leaderboard', [
             'user' => $user,
             'leaderboard' => $leaderboard,
-            'userLeaderboard' => $userLeaderboard,
             'eventsWithEntries' => $eventsWithEntries,
             'selectedEvent' => $selectedEvent?->id,
         ]);
