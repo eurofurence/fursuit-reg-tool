@@ -189,7 +189,7 @@ class AchievementRegister
         foreach (self::$achievements as $achievement) {
             if ($achievement instanceof SpecialAchievement) {
                 $specialCode = $achievement->getSpecialCode();
-                $codeValue = $specialCode->name;
+                $codeValue = $specialCode->value;
 
                 if (! isset(self::$specialCodeIndex[$codeValue])) {
                     self::$specialCodeIndex[$codeValue] = [];
@@ -286,7 +286,7 @@ class AchievementRegister
      */
     public static function getAchievementsBySpecialCode(SpecialCodeType $specialCode): array
     {
-        return self::$specialCodeIndex[$specialCode->name] ?? [];
+        return self::$specialCodeIndex[$specialCode->value] ?? [];
     }
 
     /**
@@ -316,7 +316,7 @@ class AchievementRegister
      */
     public static function getSpecialAchievementsByCode(SpecialCodeType $specialCode): array
     {
-        return self::$specialCodeIndex[$specialCode->name] ?? [];
+        return self::$specialCodeIndex[$specialCode->value] ?? [];
     }
 
     /**
