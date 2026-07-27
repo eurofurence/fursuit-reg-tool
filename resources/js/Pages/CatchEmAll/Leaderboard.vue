@@ -191,7 +191,7 @@ const getProperCatch = (catchCount: number) => {
                         <div
                             v-for="(player) in leaderboard"
                             :key="player.id"
-                            class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md"
+                            class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md relative overflow-hidden"
                             :class="[
                                 player.rank === 1 ? 'ring-2 ring-yellow-300 bg-gradient-to-r from-yellow-900/50 to-yellow-900/40 border-yellow-700'
                                     : player.rank === 2 ? 'bg-gradient-to-r from-gray-700/30 to-gray-900/30'
@@ -199,6 +199,7 @@ const getProperCatch = (catchCount: number) => {
                                     : ' bg-gray-700/50 border-gray-600',
                             ]"
                         >
+                            <div v-if="player.id === user.id" class="player-shine absolute inset-0 pointer-events-none"></div>
                             <div class="flex items-center space-x-4">
                                 <!-- Rank Badge -->
                                 <div
@@ -221,7 +222,8 @@ const getProperCatch = (catchCount: number) => {
                                 <div>
                                     <div class="flex items-center space-x-2">
                                         <div
-                                            class="font-semibold text-gray-100"
+                                            class="font-semibold"
+                                            :class="player.id === user.id ? 'text-purple-400' : 'text-gray-100'"
                                         >
                                             {{ player.name }}
                                         </div>
@@ -281,6 +283,29 @@ const getProperCatch = (catchCount: number) => {
     }
     50% {
         transform: scale(1.05);
+    }
+}
+
+.player-shine {
+    background: linear-gradient(
+        105deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.08) 35%,
+        rgba(255, 255, 255, 0.18) 50%,
+        rgba(255, 255, 255, 0.08) 65%,
+        transparent 100%
+    );
+    width: 150%;
+    left: -50%;
+    animation: shine 2.5s linear infinite;
+}
+
+@keyframes shine {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
     }
 }
 </style>
