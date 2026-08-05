@@ -45,6 +45,33 @@ const props = defineProps<{
     flash?: any;
 }>();
 
+
+interface Fursuit {
+    id: number,
+    name: string,
+    species: string,
+    image: string,
+    scoring: number,
+    event?: string,
+    archival_notice?: string,
+}
+
+const viewFursuit = ref<Fursuit | null>(null);
+const imageViewIsOpen = ref<boolean>(false);
+
+
+function toggleImageView() {
+    imageViewIsOpen.value = !imageViewIsOpen.value;
+    if (!imageViewIsOpen.value) {
+        viewFursuit.value = null;
+    }
+}
+
+function setImageView(fursuit: Fursuit) {
+    viewFursuit.value = fursuit;
+    imageViewIsOpen.value = true;
+}
+
 // Event selection
 const eventOptions = computed(() => [
     { label: "Global (All-Time)", value: "global" },
@@ -427,6 +454,7 @@ const getRarityBgColor = (textColor: string) => {
                     <div
                         v-for="fursuit in filteredCollection"
                         :key="fursuit.gallery.id"
+                        @click="setImageView(fursuit.gallery)"
                         class="cursor-pointer transform transition-transform hover:scale-105"
                     >
                         <GalleryItem :fursuit="fursuit.gallery" :rarity="fursuit.rarity" :hideCount="!showCounters" />
@@ -443,6 +471,7 @@ const getRarityBgColor = (textColor: string) => {
                         <img
                             :src="fursuit.gallery.image"
                             :alt="fursuit.gallery.name"
+                            @click="setImageView(fursuit.gallery)"
                             class="w-12 h-12 rounded-md object-cover mr-4"
                         />
                         <div class="flex-1">
@@ -467,6 +496,53 @@ const getRarityBgColor = (textColor: string) => {
                                     {{ fursuit.rarity.label }}
                                 </template>
                             </span>
+                        </div>
+                    </div>
+                </div>
+
+                                    <!-- Image View Modal -->
+                    <div
+                        v-if="imageViewIsOpen"
+                        @click="toggleImageView"
+                        class="  fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-all"
+                    >
+                        <div @click.stop class="relative max-w-5xl max-h-[90vh] mx-4">
+
+                            <img
+                                v-if="viewFursuit"
+                                :src="viewFursuit.image"
+                                :alt="viewFursuit.name"
+                                class="max-w-[90%] m-auto max-h-[90vh] object-contain rounded-lg cursor-pointer"
+                            />
+
+                            <div v-if="viewFursuit" class="bg-black bg-opacity-50 rounded-lg mt-4 p-4 text-white">
+                                <h3 class="text-2xl font-bold mb-2">{{ viewFursuit.name }}</h3>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                        </svg>
+                                        <span>{{ viewFursuit.species }}</span>
+                                    </div>
+                                    <div v-if="viewFursuit.scoring > 0" class="flex items-center gap-2">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                        </svg>
+                                        <span>{{ viewFursuit.scoring }} catches</span>
+                                    </div>
+                                    <div v-if="viewFursuit.event" class="flex items-center gap-2">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span>{{ viewFursuit.event }}</span>
+                                    </div>
+                                    <!-- <div v-if="selected_event?.archival_notice" class="flex items-center gap-2 text-amber-200">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="text-sm">📜 {{ selected_event.archival_notice }}</span>
+                                    </div> -->
+                                </div>
                         </div>
                     </div>
                 </div>
