@@ -81,7 +81,14 @@ const eventOptions = computed(() => [
     })),
 ]);
 
-const selectedEventValue = ref(props.selectedEvent || "global");
+const selectedEventValue = ref(currentPropValue());
+
+function currentPropValue() {
+  return props.selectedEvent != null ? String(props.selectedEvent) : "global";
+}
+
+const isGlobalView = computed(() => selectedEventValue.value === "global");
+
 // View mode toggle
 const viewMode = ref<"grid" | "list">("grid");
 // Counter visibility toggle
@@ -89,7 +96,7 @@ const showCounters = ref(false);
 const showTooltip = ref(false);
 
 const onEventChange = () => {
-    console.log("[Collection] Event changed to:", selectedEventValue.value);
+    // console.log("[Collection] Event changed to:", selectedEventValue.value);
     router.get(
         route("catch-em-all.collection"),
         {
@@ -110,7 +117,9 @@ onMounted(() => {
         viewMode.value = savedViewMode;
     }
 });
-
+watch(() => props.selectedEvent, () => {
+  selectedEventValue.value = currentPropValue();
+});
 watch(viewMode, (newMode) => {
     localStorage.setItem("catch-em-all-collection-view-mode", newMode);
 });
@@ -198,6 +207,7 @@ const collectionByRarity = computed(() => {
     return grouped;
 });
 
+
 // Get rarity icon
 const getRarityIcon = (rarity: string) => {
     switch (rarity) {
@@ -239,6 +249,7 @@ const rarityStats = computed(() => {
 const getRarityBgColor = (textColor: string) => {
     return colorMap[textColor] || "bg-gray-500";
 };
+
 </script>
 
 <template>
@@ -325,15 +336,16 @@ const getRarityBgColor = (textColor: string) => {
         <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
                 <div
-                    class="flex flex-col gap-4 items-start sm:items-center justify-between"
+                    class="flex flex-col flex-wrap gap-4 items-start sm:items-center justify-between"
                     :class="
                         eventOptions.length > 2 ? 'sm:flex-row' : 'xs:flex-row'
                     "
                 >
+                <div class="flex flex-row flex-wrap gap-5 w-full items-start sm:items-center justify-between align-middle">
                     <!-- Event Filter -->
-                    <!-- <div v-if="eventOptions.length > 2" class="flex-1 min-w-20">
+                    <div v-if="eventOptions.length > 2" class="flex-1 min-w-40">
                         <label
-                            class="block text-sm font-medium text-gray-700 mb-2"
+                            class="block text-sm font-medium text-gray-300 mb-2"
                             >Event:</label
                         >
                         <Dropdown
@@ -345,10 +357,10 @@ const getRarityBgColor = (textColor: string) => {
                             @change="onEventChange"
                             fluid
                         />
-                    </div> -->
+                    </div>
 
                     <!-- Rarity Filter -->
-                    <div class="flex-1 min-w-20">
+                    <div class="flex-1 min-w-40">
                         <label
                             class="block text-sm font-medium text-gray-300 mb-2"
                             >Rarity:</label
@@ -362,6 +374,8 @@ const getRarityBgColor = (textColor: string) => {
                             fluid
                         />
                     </div>
+                </div>
+                <div class="flex flex-row flex-wrap gap-4 w-full items-start sm:items-center align-middle">
                     <!-- View Mode Toggle -->
                     <div class="flex-shrink-0">
                         <label
@@ -395,9 +409,8 @@ const getRarityBgColor = (textColor: string) => {
                             </button>
                         </div>
                     </div>
-
                     <!-- Counter Toggle -->
-                    <div class="flex-shrink-0 relative tooltip-container">
+                    <div class="flex-shrink-0 relative tooltip-container ">
                         <label
                             class="block text-sm font-medium text-gray-300 mb-2"
                             >Counters:</label
@@ -439,6 +452,7 @@ const getRarityBgColor = (textColor: string) => {
                             <div class="absolute -top-1 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-gray-800"></div>
                         </div>
                     </div>
+                </div>
                 </div>
             </template>
         </Card>
@@ -543,9 +557,9 @@ const getRarityBgColor = (textColor: string) => {
                                         <span class="text-sm">📜 {{ selected_event.archival_notice }}</span>
                                     </div> -->
                                 </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
                 <!-- Empty State -->
                 <div

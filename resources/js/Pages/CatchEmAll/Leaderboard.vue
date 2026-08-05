@@ -3,9 +3,10 @@ import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import { router } from "@inertiajs/vue3";
 import { Award, Crown, Star, TrendingUp, Trophy } from "lucide-vue-next";
 import Card from "primevue/card";
+import Dropdown from "primevue/dropdown";
 import { computed, ref } from "vue";
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     user : {
         id : number;
         name : string;
@@ -17,23 +18,32 @@ const props = defineProps<{
         catches : number;
     }>;
     eventsWithEntries: Array<any>;
-    selectedEvent?: string | null;
+    selectedEvent?: Number | null;
     isGlobal: boolean;
     flash?: any;
-}>();
+  }>(),
+  {
+    selectedEvent: null,
+    isGlobal: false,
+  }
+);
 
 // Event selection
 const eventOptions = computed(() => [
-    { label: "Global (All-Time)", value: "global" },
     ...props.eventsWithEntries.map((event) => ({
         label: `${event.name} (${new Date(event.starts_at).getFullYear()})`,
         value: event.id.toString(),
     })),
 ]);
 
-const selectedEventValue = ref(props.selectedEvent || "global");
+const selectedEventValue = ref(props.selectedEvent != null ? String(props.selectedEvent) : props.eventsWithEntries[0].id.toString());
+console.log(selectedEventValue)
+
+const isGlobalView = computed(() => selectedEventValue.value === "global");
+
 
 const onEventChange = () => {
+
     router.get(
         route("catch-em-all.leaderboard"),
         {
@@ -83,7 +93,7 @@ const getProperCatch = (catchCount: number) => {
         icon="medal"
     >
         <!-- Event Filter -->
-        <!-- <Card v-if="eventOptions.length > 2" class="bg-gray-800 border border-gray-700 shadow-sm">
+        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
             <template #content>
                 <div class="space-y-3">
                     <label class="block text-sm font-medium text-gray-300"
@@ -100,7 +110,7 @@ const getProperCatch = (catchCount: number) => {
                     />
                 </div>
             </template>
-        </Card> -->
+        </Card>
 
         <!-- Leaderboard -->
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">
@@ -113,7 +123,7 @@ const getProperCatch = (catchCount: number) => {
                     </div>
                     <p class="text-sm text-gray-300">
                         {{
-                            props.isGlobal
+                            isGlobalView
                                 ? "All-time champions"
                                 : "Event champions"
                         }}
