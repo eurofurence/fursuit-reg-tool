@@ -3,8 +3,10 @@
 namespace App\Domain\CatchEmAll\Achievements\Utils;
 
 use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Interface\Expandable;
 use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
 use App\Domain\CatchEmAll\Interface\LockedBy;
+use App\Domain\CatchEmAll\Interface\ProgressInfo;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Models\EventUser;
 use App\Models\User;
@@ -120,6 +122,15 @@ class AchievementFactory
                 }
             }
 
+            $additionalInfo = null;
+            if ($achievement instanceof ProgressInfo && ! $isLocked && ! $isCompleted) {
+                $totalProgressInfo = $achievement->getTotalProgress();
+                $additionalInfo = [
+                    'totalProgress' => $totalProgressInfo,
+                    'currentProgress' => $achievement->getCurrentProgress($eventUser),
+                ];
+            }
+
             $result[] = [
                 'id' => $achievement->getId(),
                 'achievement' => $achievement->getId(), // Using ID as achievement identifier
@@ -136,6 +147,8 @@ class AchievementFactory
                 'isOptional' => $achievement->isOptional(),
                 'isLocked' => $isLocked,
                 'hiddenByLock' => $achievement instanceof HiddenIfLocked && $isLocked,
+                'expandable' => $achievement instanceof Expandable,
+                'progressDetail' => $additionalInfo,
             ];
         }
 

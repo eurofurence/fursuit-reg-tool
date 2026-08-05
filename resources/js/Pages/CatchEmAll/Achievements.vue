@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import {
     Award,
@@ -14,8 +15,43 @@ import {
 } from "lucide-vue-next";
 import Card from "primevue/card";
 
+type Achievement = {
+    id: number;
+    title: string;
+    description: string;
+    task: string;
+    achievement: string;
+    completed: boolean;
+    progress: number;
+    maxProgress: number;
+    progressPercentage: number;
+    earnedAt?: string | null;
+    isOptional: boolean;
+    isLocked: boolean;
+    hiddenByLock: boolean;
+    expandable: boolean;
+    progressDetail?: {
+        totalProgress: string[];
+        currentProgress: string[];
+    };
+};
+
+const extendedAchievements = ref<number[]>([]);
+
+const toggleAchievementExpansion = (achievementId: number) => {
+    const index = extendedAchievements.value.indexOf(achievementId);
+    if (index > -1) {
+        // Achievement is already expanded, collapse it
+        extendedAchievements.value.splice(index, 1);
+    } else {
+        // Achievement is not expanded, expand it
+        extendedAchievements.value.push(achievementId);
+    }
+    console.log("Extended Achievements:", extendedAchievements.value);
+};
+
 const props = defineProps<{
-    achievements: Array<any>;
+    achievements: Array<Achievement>;
     flash?: any;
 }>();
 
@@ -110,6 +146,10 @@ const formatDate = (dateString: string) => {
         year: "numeric",
     });
 };
+
+const hasProgressItem = (achievement: Achievement, item: string) => {
+    return achievement.progressDetail?.currentProgress.includes(item) ?? false;
+};
 </script>
 
 <template>
@@ -166,7 +206,15 @@ const formatDate = (dateString: string) => {
                 <Card
                     v-for="achievement in completedAchievements"
                     :key="achievement.id"
-                    class="bg-white shadow-sm border border-gray-700"
+                    :class="[
+                        'bg-white shadow-sm border border-gray-700',
+                        achievement.expandable ? 'cursor-pointer' : '',
+                    ]"
+                    @click="
+                        achievement.expandable
+                            ? toggleAchievementExpansion(achievement.id)
+                            : null
+                    "
                 >
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
@@ -191,8 +239,29 @@ const formatDate = (dateString: string) => {
                                     <Star
                                         class="w-5 h-5 text-yellow-500 fill-current"
                                     />
+                                    <span
+                                        v-if="achievement.expandable"
+                                        class="ml-auto text-gray-400 text-xs leading-none"
+                                        >{{
+                                            extendedAchievements.includes(
+                                                achievement.id,
+                                            )
+                                                ? "▲"
+                                                : "▼"
+                                        }}</span
+                                    >
                                 </div>
-                                <p class="text-sm text-gray-300 mb-2">
+                                <p
+                                    :class="[
+                                        'text-sm text-gray-300 mb-2',
+                                        achievement.expandable &&
+                                        !extendedAchievements.includes(
+                                            achievement.id,
+                                        )
+                                            ? 'line-clamp-2'
+                                            : '',
+                                    ]"
+                                >
                                     {{ achievement.description }}
                                 </p>
                                 <div class="flex items-center justify-between">
@@ -229,7 +298,12 @@ const formatDate = (dateString: string) => {
                 <Card
                     v-for="achievement in inProgressAchievements"
                     :key="achievement.id"
-                    class="bg-white shadow-sm border border-gray-700"
+                    class="bg-white shadow-sm border border-gray-700 cursor-pointer"
+                    @click="
+                        achievement.expandable
+                            ? toggleAchievementExpansion(achievement.id)
+                            : null
+                    "
                 >
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
@@ -248,10 +322,33 @@ const formatDate = (dateString: string) => {
 
                             <!-- Achievement Info -->
                             <div class="flex-1">
-                                <h4 class="font-semibold text-gray-200 mb-1">
-                                    {{ achievement.title }}
-                                </h4>
-                                <p class="text-sm text-gray-300 mb-3">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <h4 class="font-semibold text-gray-200">
+                                        {{ achievement.title }}
+                                    </h4>
+                                    <span
+                                        v-if="achievement.expandable"
+                                        class="ml-auto text-gray-400 text-xs leading-none"
+                                        >{{
+                                            extendedAchievements.includes(
+                                                achievement.id,
+                                            )
+                                                ? "▲"
+                                                : "▼"
+                                        }}</span
+                                    >
+                                </div>
+                                <p
+                                    :class="[
+                                        'text-sm text-gray-300 mb-2',
+                                        achievement.expandable &&
+                                        !extendedAchievements.includes(
+                                            achievement.id,
+                                        )
+                                            ? 'line-clamp-2'
+                                            : '',
+                                    ]"
+                                >
                                     {{ achievement.task }}
                                 </p>
 
@@ -277,6 +374,45 @@ const formatDate = (dateString: string) => {
                                             class="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
                                             :style="`width: ${achievement.progressPercentage}%`"
                                         ></div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-if="
+                                        achievement.expandable &&
+                                        extendedAchievements.includes(
+                                            achievement.id,
+                                        ) &&
+                                        achievement.progressDetail
+                                            ?.totalProgress.length
+                                    "
+                                    class="mt-4"
+                                >
+                                    <div
+                                        class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2"
+                                    >
+                                        Progress Overview
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <div
+                                            v-for="progressItem in [
+                                                ...achievement.progressDetail
+                                                    .totalProgress,
+                                            ].sort((a, b) =>
+                                                a.localeCompare(b),
+                                            )"
+                                            :key="progressItem"
+                                            :class="[
+                                                'rounded-md border px-2 py-1 text-xs font-medium transition-colors',
+                                                achievement.progressDetail.currentProgress.includes(
+                                                    progressItem,
+                                                )
+                                                    ? 'border-green-500 bg-green-100 text-green-700'
+                                                    : 'border-red-500 bg-red-100 text-red-700',
+                                            ]"
+                                        >
+                                            {{ progressItem }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
