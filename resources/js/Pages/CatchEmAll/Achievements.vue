@@ -156,6 +156,7 @@ const hasProgressItem = (achievement: Achievement, item: string) => {
     <CatchEmAllLayout
         title="Achievements"
         subtitle="Your progress and unlocks"
+        class="select-none"
         :flash="flash"
         icon="gem"
     >
