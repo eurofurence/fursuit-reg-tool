@@ -570,7 +570,7 @@ const hasProgressItem = (achievement: Achievement, item: string) => {
 }
 
 .progress-detail-wrapper.is-open {
-    max-height: 16em;
+    max-height: 160rem;
     opacity: 1;
     transform: translateY(0);
 }
