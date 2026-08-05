@@ -241,29 +241,42 @@ const hasProgressItem = (achievement: Achievement, item: string) => {
                                     />
                                     <span
                                         v-if="achievement.expandable"
-                                        class="ml-auto text-gray-400 text-xs leading-none"
-                                        >{{
+                                        :class="[
+                                            'ml-auto text-gray-400 text-xs leading-none transition-transform duration-300 ease-out',
                                             extendedAchievements.includes(
                                                 achievement.id,
                                             )
-                                                ? "▲"
-                                                : "▼"
-                                        }}</span
+                                                ? 'rotate-180'
+                                                : '',
+                                        ]"
+                                        >▼</span
                                     >
                                 </div>
-                                <p
+                                <div
                                     :class="[
-                                        'text-sm text-gray-300 mb-2',
+                                        'achievement-text-wrapper mb-2',
                                         achievement.expandable &&
-                                        !extendedAchievements.includes(
+                                        extendedAchievements.includes(
                                             achievement.id,
                                         )
-                                            ? 'line-clamp-2'
-                                            : '',
+                                            ? 'is-expanded'
+                                            : 'is-collapsed',
                                     ]"
                                 >
-                                    {{ achievement.description }}
-                                </p>
+                                    <p
+                                        :class="[
+                                            'text-sm text-gray-300 text-justify',
+                                            achievement.expandable &&
+                                            !extendedAchievements.includes(
+                                                achievement.id,
+                                            )
+                                                ? 'line-clamp-2'
+                                                : '',
+                                        ]"
+                                    >
+                                        {{ achievement.description }}
+                                    </p>
+                                </div>
                                 <div class="flex items-center justify-between">
                                     <div
                                         class="text-xs text-green-600 font-medium"
@@ -328,29 +341,42 @@ const hasProgressItem = (achievement: Achievement, item: string) => {
                                     </h4>
                                     <span
                                         v-if="achievement.expandable"
-                                        class="ml-auto text-gray-400 text-xs leading-none"
-                                        >{{
+                                        :class="[
+                                            'ml-auto text-gray-400 text-xs leading-none transition-transform duration-300 ease-out',
                                             extendedAchievements.includes(
                                                 achievement.id,
                                             )
-                                                ? "▲"
-                                                : "▼"
-                                        }}</span
+                                                ? 'rotate-180'
+                                                : '',
+                                        ]"
+                                        >▼</span
                                     >
                                 </div>
-                                <p
+                                <div
                                     :class="[
-                                        'text-sm text-gray-300 mb-2',
+                                        'achievement-text-wrapper mb-2',
                                         achievement.expandable &&
-                                        !extendedAchievements.includes(
+                                        extendedAchievements.includes(
                                             achievement.id,
                                         )
-                                            ? 'line-clamp-2'
-                                            : '',
+                                            ? 'is-expanded'
+                                            : 'is-collapsed',
                                     ]"
                                 >
-                                    {{ achievement.task }}
-                                </p>
+                                    <p
+                                        :class="[
+                                            'text-sm text-gray-300 text-justify',
+                                            achievement.expandable &&
+                                            !extendedAchievements.includes(
+                                                achievement.id,
+                                            )
+                                                ? 'line-clamp-2'
+                                                : '',
+                                        ]"
+                                    >
+                                        {{ achievement.task }}
+                                    </p>
+                                </div>
 
                                 <!-- Progress Bar -->
                                 <div class="space-y-2">
@@ -380,38 +406,45 @@ const hasProgressItem = (achievement: Achievement, item: string) => {
                                 <div
                                     v-if="
                                         achievement.expandable &&
-                                        extendedAchievements.includes(
-                                            achievement.id,
-                                        ) &&
                                         achievement.progressDetail
                                             ?.totalProgress.length
                                     "
-                                    class="mt-4"
+                                    :class="[
+                                        'progress-detail-wrapper',
+                                        extendedAchievements.includes(
+                                            achievement.id,
+                                        )
+                                            ? 'is-open'
+                                            : 'is-closed',
+                                    ]"
                                 >
-                                    <div
-                                        class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2"
-                                    >
-                                        Progress Overview
-                                    </div>
-                                    <div class="flex flex-wrap gap-2">
+                                    <div class="mt-4">
                                         <div
-                                            v-for="progressItem in [
-                                                ...achievement.progressDetail
-                                                    .totalProgress,
-                                            ].sort((a, b) =>
-                                                a.localeCompare(b),
-                                            )"
-                                            :key="progressItem"
-                                            :class="[
-                                                'rounded-md border px-2 py-1 text-xs font-medium transition-colors',
-                                                achievement.progressDetail.currentProgress.includes(
-                                                    progressItem,
-                                                )
-                                                    ? 'border-green-500 bg-green-100 text-green-700'
-                                                    : 'border-red-500 bg-red-100 text-red-700',
-                                            ]"
+                                            class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2"
                                         >
-                                            {{ progressItem }}
+                                            Progress Overview
+                                        </div>
+                                        <div class="flex flex-wrap gap-2">
+                                            <div
+                                                v-for="progressItem in [
+                                                    ...achievement
+                                                        .progressDetail
+                                                        .totalProgress,
+                                                ].sort((a, b) =>
+                                                    a.localeCompare(b),
+                                                )"
+                                                :key="progressItem"
+                                                :class="[
+                                                    'rounded-md border px-2 py-1 text-xs font-medium transition-colors',
+                                                    achievement.progressDetail.currentProgress.includes(
+                                                        progressItem,
+                                                    )
+                                                        ? 'border-green-500 bg-green-100 text-green-700'
+                                                        : 'border-red-500 bg-red-100 text-red-700',
+                                                ]"
+                                            >
+                                                {{ progressItem }}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -503,5 +536,48 @@ const hasProgressItem = (achievement: Achievement, item: string) => {
 /* Progress bar animation */
 .progress-bar {
     transition: width 0.8s ease-out;
+}
+
+.achievement-text-wrapper {
+    overflow: hidden;
+    transition:
+        max-height 260ms ease,
+        opacity 200ms ease;
+    will-change: max-height, opacity;
+}
+
+.achievement-text-wrapper.is-collapsed {
+    max-height: 3.2em;
+    opacity: 0.96;
+}
+
+.achievement-text-wrapper.is-expanded {
+    max-height: 20em;
+    opacity: 1;
+}
+
+.progress-detail-wrapper {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+        max-height 320ms ease,
+        opacity 220ms ease,
+        transform 260ms ease;
+    transition-delay: 120ms;
+    will-change: max-height, opacity, transform;
+}
+
+.progress-detail-wrapper.is-open {
+    max-height: 16em;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.progress-detail-wrapper.is-closed {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-4px);
 }
 </style>
