@@ -4,6 +4,7 @@ namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
+use App\Domain\CatchEmAll\Interface\HasUserCache;
 use App\Domain\CatchEmAll\Interface\ProgressInfo;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 use App\Domain\CatchEmAll\Models\UserCatch;
@@ -13,11 +14,19 @@ use Cache;
 
 use function count;
 
-class FuredexComplete extends SimpleAchievement implements HasGlobalCache, ProgressInfo
+class FuredexComplete extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo
 {
     private const CACHE_KEY = 'furedex_complete';
 
     private const INFO_CACHE_KEY = 'info_furedex_complete';
+
+    /**
+     * Get the info cache key for a specific event user.
+     */
+    private function getInfoCacheKey(\App\Models\EventUser $eventUser): string
+    {
+        return self::INFO_CACHE_KEY.'_'.$eventUser->id;
+    }
 
     /**
      * Get all species names that are part of the current event's catch-em-all challenge.
@@ -75,7 +84,7 @@ class FuredexComplete extends SimpleAchievement implements HasGlobalCache, Progr
         $currentProgress = min($context->userUniqueSpecies, $this->getMaxProgress());
 
         // Forget cached progress info for this achievement to ensure it reflects the latest state
-        Cache::forget(self::INFO_CACHE_KEY);
+        Cache::forget($this->getInfoCacheKey($context->eventUser));
 
         // Always override default behavior
         return $currentProgress;
@@ -87,7 +96,7 @@ class FuredexComplete extends SimpleAchievement implements HasGlobalCache, Progr
     public function getCurrentProgress(\App\Models\EventUser $eventUser): array
     {
         // Get all unique species names caught by the user in the current event
-        $caughtSpecies = Cache::remember(self::INFO_CACHE_KEY, now()->addYear(),
+        $caughtSpecies = Cache::remember($this->getInfoCacheKey($eventUser), now()->addYear(),
             UserCatch::where('event_user_id', $eventUser->id)
                 ->join('fursuits', 'user_catches.fursuit_id', '=', 'fursuits.id')
                 ->join('species', 'fursuits.species_id', '=', 'species.id')
@@ -106,5 +115,13 @@ class FuredexComplete extends SimpleAchievement implements HasGlobalCache, Progr
     public function getTotalProgress(): array
     {
         return $this->getSpecies();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getUserCacheKeys(\App\Models\EventUser $eventUser): array
+    {
+        return [$this->getInfoCacheKey($eventUser)];
     }
 }
