@@ -43,7 +43,6 @@ export function usePosKeyboard(options = {}) {
     // POS keeps a text field focused for the barcode scanner, and F-keys never
     // collide with typing.
     const FUNCTION_KEY_ROUTES = {
-        F2: '/pos/wallet',
         F3: '/pos/badges',
         F4: '/pos/print-queue',
         F6: '/pos/statistics',

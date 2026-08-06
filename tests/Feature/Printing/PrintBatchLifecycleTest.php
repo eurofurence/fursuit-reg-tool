@@ -9,6 +9,7 @@ use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\Pending;
 use App\Models\Machine;
 use Illuminate\Database\Eloquent\Collection;
+use Laravel\Sanctum\Sanctum;
 
 /**
  * Batches are immutable once built, and committing a badge to one takes it out
@@ -142,4 +143,26 @@ it('cannot cancel a batch twice', function () {
 
     expect($batch->cancel())->toBeTrue()
         ->and($batch->fresh()->cancel())->toBeFalse();
+});
+
+it('treats starting an already printing batch as a no-op', function () {
+    // The agent re-asserts the start whenever it is unsure: after an
+    // unattended hand-off to the next batch, and after a resume. Answering 409
+    // there stopped a queue that was printing perfectly well.
+    $printer = Printer::factory()->badge()->create();
+    $machine = $printer->machine ?? Machine::factory()->create();
+    $printer->forceFill(['machine_id' => $machine->id])->save();
+    Sanctum::actingAs($machine, ['*'], 'sanctum');
+
+    $batch = PrintBatch::build('Friday', Badge::factory()->withPrintFile()->count(1)->create(), $printer);
+    $batch->transitionTo(PrintBatchStatusEnum::Ready);
+
+    $start = fn () => test()->postJson("/api/print-agent/batches/{$batch->id}/start", [
+        'printer_name' => $printer->name,
+    ]);
+
+    $start()->assertOk();
+    $start()->assertOk();
+
+    expect($batch->fresh()->status)->toBe(PrintBatchStatusEnum::Printing);
 });

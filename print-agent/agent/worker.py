@@ -837,13 +837,11 @@ class PrintWorker(_BaseWorker):
         super().resume()
 
         if self.batch_id is not None:
+            # resume_batch already puts the batch back to printing, so there
+            # is nothing left to re-assert. Clearing the started marker here
+            # made the next claim start a batch the server had just resumed,
+            # which came back 409 and stopped the queue.
             self._call(getattr(self.api, "resume_batch", None), self.batch_id)
-
-            # The server puts a resumed batch back to printing, but our own
-            # marker says we already started it, so nothing would re-start it
-            # if the server disagreed. Clearing it makes the next claim
-            # re-assert the state rather than assume it.
-            self._started_batch = None
 
     def set_unattended(self, unattended: bool) -> None:
         """With this on, finishing a batch pulls the next one and the station can
@@ -964,8 +962,6 @@ class PrintWorker(_BaseWorker):
                 detail = "Could not start batch %s on the server" % self.batch_id
                 self._progress(STEP_CLAIM, FAILED, "could not start the batch")
                 return Outcome(BLOCKED, detail)
-
-            self._started_batch = self.batch_id
 
         self._progress(STEP_CLAIM, ACTIVE, "asking the server for the next card")
 
@@ -1541,11 +1537,20 @@ class PrintWorker(_BaseWorker):
             return []
 
     def _start_batch(self, batch_id: Any) -> bool:
+        """Tell the server this printer is working the batch.
+
+        Records success centrally so every route in -- the first claim, the
+        unattended hand-off to the next batch, a resume -- agrees about what
+        has already been started. Without that the paths disagreed and one
+        would re-assert a start the server had already accepted.
+        """
         try:
             self.api.start_batch(batch_id, self.printer_name)
         except (NetworkError, ApiError) as error:
             self._log("Could not start batch %s: %s" % (batch_id, error))
             return False
+
+        self._started_batch = int(batch_id) if batch_id is not None else None
 
         return True
 

@@ -10,7 +10,6 @@
       <div><b>Go Back:</b> <kbd>Backspace</kbd> (on attendee page)</div>
 
       <h4 class="pos-label mb-2 mt-4">Function keys</h4>
-      <div><b>Cash Register:</b> <kbd>F2</kbd></div>
       <div><b>Badge Management:</b> <kbd>F3</kbd></div>
       <div><b>Print Queue:</b> <kbd>F4</kbd></div>
       <div><b>Statistics:</b> <kbd>F6</kbd></div>

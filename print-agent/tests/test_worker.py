@@ -1072,5 +1072,50 @@ class DecisionAnswerTest(unittest.TestCase):
         self.assertFalse(subject.is_answered())
 
 
+class RestartAssertionTest(WorkerTestCase):
+    """Re-asserting a start must not stop a queue that is already running.
+
+    The field failure: after an unattended hand-off, and after every resume,
+    the worker asked the server to start a batch it had already started. The
+    server answered 409 and the worker read that as "cannot start", so printing
+    stopped -- "could not start batch" on a batch that was printing fine.
+    """
+
+    def test_the_unattended_hand_off_does_not_re_start_the_next_batch(self):
+        self.api.queue.append(job(70))
+        self.api.available_batches = [{"id": 78, "name": "next", "status": "ready"}]
+        printer = self.build(unattended=True)
+
+        printer.print_next()          # starts 77
+        printer.advance_batch()       # moves to 78 and starts it
+        printer.print_next()          # must not start 78 a second time
+
+        starts = [b for b, _ in self.api.started]
+
+        self.assertEqual(starts, [77, 78], "each batch started exactly once")
+
+    def test_a_resume_does_not_re_start_the_same_batch(self):
+        self.api.queue.append(job(71))
+        printer = self.build()
+
+        printer.print_next()
+        printer.pause("operator")
+        printer.resume()
+
+        self.api.queue.append(job(72))
+        printer.print_next()
+
+        starts = [b for b, _ in self.api.started]
+
+        self.assertEqual(starts, [77], "one start, however many pauses")
+
+    def test_a_refused_start_still_blocks(self):
+        # The guard must not swallow a genuine refusal.
+        self.api.queue.append(job(73))
+        self.api.start_batch_error = api.ApiError(409, "assigned to another printer")
+
+        self.assertEqual(self.build().print_next().kind, worker.BLOCKED)
+
+
 if __name__ == "__main__":
     unittest.main()

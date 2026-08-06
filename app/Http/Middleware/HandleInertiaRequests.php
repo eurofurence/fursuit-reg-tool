@@ -6,7 +6,10 @@ use App\Domain\Printing\Models\Printer;
 use App\Enum\PrinterConditionEnum;
 use App\Enum\PrinterStatusEnum;
 use App\Models\Event;
+use App\Support\Manage\EventScope;
+use App\Support\Manage\Navigation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -45,11 +48,52 @@ class HandleInertiaRequests extends Middleware
             'event' => Event::latest('starts_at')->first(),
             // Lazy load printer status - only needed for POS header display
             'printerStatus' => fn () => $this->getPrinterStatus($request),
+            ...$this->getManageContent($request),
+        ];
+    }
+
+    /**
+     * Props only the /manage panel needs.
+     *
+     * Spread in rather than shared unconditionally: the keys are absent everywhere
+     * else, so the public site, the POS and Catch-Em-All never pay for the nav counts
+     * or the event list. The values are closures, so even on /manage they only run
+     * when the response is actually rendered.
+     *
+     * Toasts are not here. App\Support\Manage\Toast writes into Inertia's own flash
+     * bag, which arrives as the top-level `flash` key on the page object rather than
+     * as a prop, and stays out of the browser's history state so a back navigation
+     * cannot replay a toast.
+     *
+     * @return array<string, mixed>
+     */
+    private function getManageContent(Request $request): array
+    {
+        if (! $request->routeIs('manage.*')) {
+            return [];
+        }
+
+        return [
+            'manageNav' => fn () => app(Navigation::class)->groups(),
+            'manageEvent' => fn () => app(EventScope::class)->toArray(),
         ];
     }
 
     private function getAuthContent(Request $request): array
     {
+        if ($request->routeIs('manage.*')) {
+            $user = $request->user();
+
+            // The ability flags let the sidebar hide what the user cannot reach,
+            // mirroring what Filament's policies do to the nav today. No badges or
+            // amountDue here: the admin never renders either.
+            return [
+                'user' => $user?->only(['id', 'name', 'email']),
+                'can_access_manage' => $user !== null && Gate::forUser($user)->allows('access-manage'),
+                'is_admin' => (bool) $user?->is_admin,
+            ];
+        }
+
         if ($request->routeIs('pos.*')) {
             return [
                 'user' => $request->user('machine-user')?->only(['id', 'name', 'is_admin']),

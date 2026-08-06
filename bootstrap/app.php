@@ -28,6 +28,20 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->middleware('web')
                 ->group(base_path('routes/web.php'));
 
+            // Manage panel: the Inertia admin, running in parallel with the
+            // Filament panel at /admin until cutover. See
+            // docs/admin/rebuild-plan.md.
+            \Illuminate\Support\Facades\Route::domain($mainDomain)
+                ->middleware([
+                    'web',
+                    'auth',
+                    'can:access-manage',
+                    \App\Http\Middleware\ManageEventScope::class,
+                ])
+                ->prefix('manage')
+                ->name('manage.')
+                ->group(base_path('routes/manage.php'));
+
             // POS system routes
             \Illuminate\Support\Facades\Route::domain($mainDomain)
                 ->middleware([

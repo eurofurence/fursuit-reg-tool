@@ -61,7 +61,28 @@ export default {
                 'pos-accent-ink': 'rgb(var(--pos-accent-ink) / <alpha-value>)',
                 'pos-good': 'rgb(var(--pos-good) / <alpha-value>)',
                 'pos-warn': 'rgb(var(--pos-warn) / <alpha-value>)',
-                'pos-bad': 'rgb(var(--pos-bad) / <alpha-value>)'
+                'pos-bad': 'rgb(var(--pos-bad) / <alpha-value>)',
+
+                /* /manage control room, values in resources/css/manage.css.
+                   Ported from ef-streaming; surface-0..3 there collide with the
+                   PrimeVue ramp above, so they are mg-surface-0..3 here. The
+                   ported components use opacity modifiers on these names
+                   (mg-surface-1/95, state-live/50, hairline/60, fg-3/25 …),
+                   hence the <alpha-value> form. See docs/admin/rebuild-plan.md 1.3 */
+                'mg-surface-0': 'rgb(var(--mg-surface-0) / <alpha-value>)',
+                'mg-surface-1': 'rgb(var(--mg-surface-1) / <alpha-value>)',
+                'mg-surface-2': 'rgb(var(--mg-surface-2) / <alpha-value>)',
+                'mg-surface-3': 'rgb(var(--mg-surface-3) / <alpha-value>)',
+                'fg-1': 'rgb(var(--fg-1) / <alpha-value>)',
+                'fg-2': 'rgb(var(--fg-2) / <alpha-value>)',
+                'fg-3': 'rgb(var(--fg-3) / <alpha-value>)',
+                'hairline': 'rgb(var(--hairline) / <alpha-value>)',
+                'state-live': 'rgb(var(--state-live) / <alpha-value>)',
+                'state-ok': 'rgb(var(--state-ok) / <alpha-value>)',
+                'state-warn': 'rgb(var(--state-warn) / <alpha-value>)',
+                'state-idle': 'rgb(var(--state-idle) / <alpha-value>)',
+                'state-danger': 'rgb(var(--state-danger) / <alpha-value>)',
+                'state-info': 'rgb(var(--state-info) / <alpha-value>)'
             },
             borderRadius: {
                 pos: 'var(--pos-radius)',
@@ -77,6 +98,16 @@ export default {
             },
             screens: {
                 'xs': '370px',
+            },
+
+            /* /manage density (rebuild-plan 1.4). Table rows 28px, header 24px.
+               In spacing rather than height so h-, min-h-, py- and gap- all get
+               them from one declaration. */
+            spacing: {
+                'mg-row': 'var(--mg-row)',
+                'mg-row-head': 'var(--mg-row-head)',
+                'mg-strip': 'var(--mg-strip)',
+                'mg-rail': 'var(--mg-rail)',
             },
         },
     },

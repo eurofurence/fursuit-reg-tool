@@ -25,7 +25,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['toggle', 'act', 'more']);
+const emit = defineEmits(['toggle', 'act', 'print', 'undo']);
 
 const action = computed(() => badgeAction(props.badge));
 const pill = computed(() => statusPill(props.badge));
@@ -113,9 +113,32 @@ const extras = computed(() => {
             </span>
         </button>
 
+        <!--
+            Fixed slots, not a list that reflows: print always sits left and the
+            state's own action always sits right. Staff aim at a position, so a
+            button that moves between rows is a button pressed by mistake.
+        -->
         <div class="pos-badge__act">
             <button
-                v-if="action"
+                v-if="!isRejected"
+                type="button"
+                class="pos-btn pos-badge__go"
+                @click="emit('print', badge)"
+            >
+                {{ badge.printed_at ? 'Reprint' : 'Print' }}
+            </button>
+            <span v-else class="pos-badge__go"></span>
+
+            <button
+                v-if="isDone"
+                type="button"
+                class="pos-btn pos-badge__go"
+                @click="emit('undo', badge)"
+            >
+                Undo hand out
+            </button>
+            <button
+                v-else-if="action && action !== 'print'"
                 type="button"
                 class="pos-btn pos-badge__go"
                 :class="actionClass"
@@ -123,15 +146,7 @@ const extras = computed(() => {
             >
                 {{ ACTION_LABELS[action] }}
             </button>
-
-            <button
-                type="button"
-                class="pos-btn pos-badge__more"
-                :aria-label="`More actions for ${badge.fursuit?.name || 'badge'}`"
-                @click="emit('more', badge)"
-            >
-                <i class="pi pi-ellipsis-v"></i>
-            </button>
+            <span v-else class="pos-badge__go"></span>
         </div>
     </div>
 </template>

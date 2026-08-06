@@ -59,6 +59,14 @@ class AgentBatchController extends AgentController
             ], 409);
         }
 
+        // Starting a batch this printer is already running is a no-op, not an
+        // error. The agent re-asserts the start whenever it is unsure -- after
+        // an unattended hand-off to the next batch, or after a resume -- and
+        // answering 409 there would stop a queue that is running perfectly.
+        if ($printBatch->status === PrintBatchStatusEnum::Printing) {
+            return response()->json(['batch' => $this->describe($printBatch)]);
+        }
+
         if ($printBatch->status === PrintBatchStatusEnum::Draft) {
             $printBatch->transitionTo(PrintBatchStatusEnum::Ready);
         }

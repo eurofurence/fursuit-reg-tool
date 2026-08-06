@@ -185,13 +185,6 @@ const statTiles = computed(() => [
 
 const actions = computed(() => [
     {
-        label: 'Cash Register',
-        subtitle: 'Top-up & payout',
-        route: route('pos.wallet.show'),
-        icon: 'pi pi-wallet',
-        key: 'F2',
-    },
-    {
         label: 'Badge Management',
         subtitle: 'View & print badges',
         route: route('pos.badges.index'),
