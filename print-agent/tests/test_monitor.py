@@ -73,7 +73,7 @@ class MonitorTest(unittest.TestCase):
         gate.poll()
 
         self.assertTrue(gate.may_print())
-        self.assertIn("20 cards", gate.ribbon_warning())
+        self.assertIn("5 cards", gate.ribbon_warning())
 
     def test_empty_ribbon_stops_printing(self):
         gate = self.build(reading(supply_level=0))

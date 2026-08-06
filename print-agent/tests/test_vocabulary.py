@@ -131,5 +131,24 @@ class ConditionJournalTest(unittest.TestCase):
             self.fail("journal raised: %s" % error)
 
 
+class WarmupVocabularyTest(unittest.TestCase):
+    """The warm-up words are known, so they stop filling the journal."""
+
+    def test_initializing_is_not_reported_as_unknown(self):
+        found = vocabulary.unknown_strings(zebra.Reading(printer_state="initializing"))
+
+        self.assertEqual([f["value"] for f in found], [])
+
+    def test_printing_heating_is_not_reported_as_unknown(self):
+        found = vocabulary.unknown_strings(zebra.Reading(printer_state="printing_heating"))
+
+        self.assertEqual([f["value"] for f in found], [])
+
+    def test_a_genuinely_new_word_is_still_reported(self):
+        found = vocabulary.unknown_strings(zebra.Reading(printer_state="flibberting"))
+
+        self.assertEqual([f["value"] for f in found], ["flibberting"])
+
+
 if __name__ == "__main__":
     unittest.main()

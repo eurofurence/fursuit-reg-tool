@@ -33,9 +33,24 @@ COVER_OPEN = "cover_open"
 REJECT_BIN_FULL = "reject_bin_full"
 SERVICE_REQUIRED = "service_required"
 OFFLINE = "offline"
+INITIALIZING = "initializing"
 UNKNOWN = "unknown"
 
 NON_STOP = {OK, PRINTING, RIBBON_LOW, FILM_LOW, CARDS_LOW}
+
+# Conditions that clear by themselves given a moment.
+#
+# A ZXP9 walks standby -> initializing -> printing_heating on its way into a
+# job, so `initializing` is the healthy sound of a printer waking up, not a
+# fault. It still must not be printed onto -- the card would be sent before the
+# machine is ready -- but the queue waits it out rather than pausing and
+# fetching somebody, which is what every other non-printable condition does.
+TRANSIENT = {INITIALIZING}
+
+
+def is_transient(condition: str) -> bool:
+    """Whether waiting is the right response, rather than calling an operator."""
+    return condition in TRANSIENT
 
 
 def is_stop(condition: str) -> bool:
@@ -207,6 +222,21 @@ def decode_error_bits(hex_string: str) -> List[str]:
     ]
 
 
+# A colour ribbon spends one panel per colour on every card, so the supply
+# counter the printer reports is in panels and not in cards. Reporting it raw
+# told staff there were four times as many cards left as there really were,
+# which is the wrong direction to be wrong in when the queue is long.
+PANELS_PER_CARD = 4
+
+
+def cards_from_supply(level: Optional[int]) -> Optional[int]:
+    """Cards left, from the panel count the printer reports."""
+    if level is None:
+        return None
+
+    return int(level) // PANELS_PER_CARD
+
+
 def classify(reading: Reading, ribbon_warn_threshold: int = 50) -> str:
     """Reduce a reading to one condition the server and POS understand.
 
@@ -237,15 +267,24 @@ def classify(reading: Reading, ribbon_warn_threshold: int = 50) -> str:
 
     # 3. Consumables. Exhausted is a stop, low is only a warning.
     if reading.supply_level is not None:
+        # Thresholds are quoted in cards, because that is what an operator
+        # counts and what the queue length is measured in.
+        cards_left = cards_from_supply(reading.supply_level)
+
         if reading.supply_level <= 0:
             return RIBBON_OUT
-        if reading.supply_level <= ribbon_warn_threshold:
+        if cards_left is not None and cards_left <= ribbon_warn_threshold:
             return RIBBON_LOW
 
     # 4. Otherwise fall back to the printer's own state word.
     state = (reading.printer_state or "").lower()
-    if state in ("printing", "busy"):
+    # The firmware qualifies the printing state as it works: printing_heating
+    # while the transfer roller comes up to temperature, and other
+    # printing_<phase> words besides. They all mean a card is in progress.
+    if state in ("printing", "busy") or state.startswith("printing"):
         return PRINTING
+    if state in ("initializing", "initialising", "warming_up", "warmup"):
+        return INITIALIZING
     # `standby` is what a ZXP Series 9 actually reports when it is powered,
     # healthy and waiting for work. Observed on the real unit, which until it
     # was added here classified a perfectly good printer as `unknown` and

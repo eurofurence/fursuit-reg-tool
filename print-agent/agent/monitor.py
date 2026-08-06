@@ -63,6 +63,10 @@ class PrinterMonitor:
     def is_stop(self) -> bool:
         return zebra.is_stop(self.condition)
 
+    def is_transient(self) -> bool:
+        """Whether the printer is busy becoming ready, rather than faulted."""
+        return zebra.is_transient(self.condition)
+
     def may_print(self) -> bool:
         """Whether it is safe to send another card.
 
@@ -90,7 +94,8 @@ class PrinterMonitor:
         return REASONS.get(self.condition, "Printer is not ready (%s)." % self.condition)
 
     def cards_remaining(self) -> Optional[int]:
-        return self.reading.supply_level if self.reading else None
+        """Cards, not ribbon panels. The printer counts in panels."""
+        return zebra.cards_from_supply(self.reading.supply_level) if self.reading else None
 
     def ribbon_warning(self) -> Optional[str]:
         """Warn early so staff can fetch a ribbon before the queue stops."""
@@ -112,6 +117,7 @@ REASONS = {
     zebra.SERVICE_REQUIRED: "Printer needs servicing. Check the front panel.",
     zebra.OFFLINE: "Printer is not answering. Check power and network.",
     zebra.PRINTING: "Printer is still working on the previous card.",
+    zebra.INITIALIZING: "Printer is warming up.",
 }
 
 

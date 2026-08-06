@@ -38,7 +38,18 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
         'auto_logout_timeout' => 'integer',
         'archived_at' => 'datetime',
         'agent_last_seen_at' => 'datetime',
+        'badge_range_min' => 'integer',
+        'badge_range_max' => 'integer',
     ];
+
+    /**
+     * Whether this desk only handles a slice of the attendee IDs. One end is
+     * enough: "everything from 3000 up" is a crate too.
+     */
+    public function hasBadgeRange(): bool
+    {
+        return $this->badge_range_min !== null || $this->badge_range_max !== null;
+    }
 
     // generic printers
     public function printers()

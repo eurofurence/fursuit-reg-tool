@@ -92,6 +92,8 @@ class FakeApi:
         self.verified = []
         self.heartbeats = []
         self.started = []
+        self.paused_batches = []
+        self.resumed_batches = []
         self.downloads = []
 
         # Set to an exception instance to make that call blow up.
@@ -153,6 +155,14 @@ class FakeApi:
 
     def batches(self):
         return list(self.available_batches)
+
+    def pause_batch(self, batch_id, reason=""):
+        self.paused_batches.append((batch_id, reason))
+        return {}
+
+    def resume_batch(self, batch_id):
+        self.resumed_batches.append(batch_id)
+        return {}
 
     def start_batch(self, batch_id, printer_name):
         self.started.append((batch_id, printer_name))
@@ -292,7 +302,10 @@ class WorkerTestCase(unittest.TestCase):
     # -- helpers ---------------------------------------------------------
 
     def auto_answer(self, printer, reprint):
-        """Stand in for the operator at the dialog, answering immediately."""
+        """Stand in for the operator at the dialog, answering immediately.
+
+        Accepts a bool for the old two-way question or one of worker.CHOICES.
+        """
         printer.on_decision = lambda decision: printer.answer_decision(reprint)
         return printer
 
@@ -938,6 +951,125 @@ class EmptyClaimTest(WorkerTestCase):
         printer.print_next()
 
         self.assertEqual(len(self.api.started), 2)
+
+
+class SpoolResultTest(unittest.TestCase):
+    """What the sender hands back, and what it means.
+
+    The field failure: print_pages() returns the spooler job id, and the ZXP9
+    driver returns 0 for a document that spooled fine. Read as a boolean that
+    is False, so a card that had already printed was reported as refused and
+    the job was failed underneath it.
+    """
+
+    def test_a_zero_job_id_is_still_an_accepted_job(self):
+        result = worker._as_spool_result(0)
+
+        self.assertTrue(result.ok)
+
+    def test_a_real_job_id_is_kept(self):
+        result = worker._as_spool_result(42)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.spool_job_id, "42")
+
+    def test_an_explicit_false_is_still_a_failure(self):
+        # Rejection is signalled by raising, or by a sender returning False.
+        # Neither is an integer, so widening ints does not weaken this.
+        self.assertFalse(worker._as_spool_result(False).ok)
+
+    def test_nothing_at_all_is_a_failure(self):
+        self.assertFalse(worker._as_spool_result(None).ok)
+
+    def test_a_spool_result_passes_through(self):
+        original = worker.SpoolResult(True, "already decided", "7")
+
+        self.assertIs(worker._as_spool_result(original), original)
+
+
+class OperatorChoiceTest(WorkerTestCase):
+    """A failed card gets an explicit answer, or the queue waits.
+
+    Three answers, and dismissing the question is not one of them. Leaving a
+    card neither printed nor reprinted nor recorded is the single outcome
+    nobody can act on afterwards.
+    """
+
+    def failing(self, choice, **kwargs):
+        # No camera in this base class, so the worker has to ask a human.
+        self.api.queue.append(job(90))
+        self.spool_ok = False
+
+        return self.auto_answer(self.build(max_attempts=1, **kwargs), choice)
+
+    def test_marking_it_printed_reports_the_operator_as_the_source(self):
+        printer = self.failing(worker.CHOICE_PRINTED)
+
+        outcome = printer.print_next()
+
+        self.assertEqual(outcome.kind, worker.PRINTED)
+        self.assertEqual(self.api.printed[-1]["completion_source"], api.COMPLETION_OPERATOR)
+
+    def test_skipping_records_the_card_as_not_printed(self):
+        printer = self.failing(worker.CHOICE_SKIP)
+
+        outcome = printer.print_next()
+
+        self.assertEqual(outcome.kind, worker.JOB_SKIPPED)
+        self.assertEqual(len(self.api.failed), 1)
+        self.assertEqual(self.api.printed, [])
+
+    def test_skipping_does_not_reprint(self):
+        printer = self.failing(worker.CHOICE_SKIP)
+        printer.print_next()
+
+        self.assertEqual(self.api.printed, [], "nothing was reported printed")
+
+    def test_an_unanswered_question_parks_rather_than_deciding(self):
+        self.api.queue.append(job(91))
+        self.spool_ok = False
+        # A deadline, or this waits on a human who is never coming.
+        printer = self.build(max_attempts=1, decision_timeout=0.05)
+        printer.on_decision = lambda decision: None
+
+        outcome = printer.print_next()
+
+        self.assertEqual(outcome.kind, worker.WAITING)
+        self.assertEqual(self.api.printed, [])
+        self.assertEqual(self.api.failed, [])
+
+
+class DecisionAnswerTest(unittest.TestCase):
+    def decision(self):
+        return worker.ReprintDecision(1, "1068-1", "Marm", "spooler said no", "ZXP9")
+
+    def test_a_choice_is_recorded(self):
+        subject = self.decision()
+        subject.answer(worker.CHOICE_SKIP)
+
+        self.assertEqual(subject.choice, worker.CHOICE_SKIP)
+        self.assertTrue(subject.is_answered())
+
+    def test_an_unknown_answer_is_refused(self):
+        # Better to raise than to guess on behalf of somebody standing at a
+        # printer with a card in their hand.
+        with self.assertRaises(ValueError):
+            self.decision().answer("maybe")
+
+    def test_booleans_still_mean_what_they_used_to(self):
+        yes, no = self.decision(), self.decision()
+        yes.answer(True)
+        no.answer(False)
+
+        self.assertEqual(yes.choice, worker.CHOICE_REPRINT)
+        self.assertEqual(no.choice, worker.CHOICE_PRINTED)
+
+    def test_an_unanswered_decision_has_no_choice(self):
+        subject = self.decision()
+
+        self.assertIsNone(subject.choice)
+        self.assertIsNone(subject.reprint)
+        self.assertFalse(subject.is_answered())
 
 
 if __name__ == "__main__":

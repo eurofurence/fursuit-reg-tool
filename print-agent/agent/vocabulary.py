@@ -33,6 +33,10 @@ EMPTY_VALUES = {"", "none", "unknown", "n/a", "-"}
 # States we already understand well enough not to write down.
 KNOWN_PRINTER_STATES = {
     "idle", "ready", "ok", "standby", "printing", "busy",
+    # Observed on the real ZXP9 on the way into a job:
+    # standby -> initializing -> printing_heating.
+    "initializing", "initialising", "warming_up", "warmup",
+    "printing_heating",
 }
 
 

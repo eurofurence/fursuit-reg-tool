@@ -12,6 +12,7 @@ Two things are load-bearing here and both are easy to get subtly wrong:
 import json
 import os
 import ssl
+import urllib.error
 import urllib.parse
 import sys
 import unittest
@@ -313,13 +314,30 @@ class PhotoSenderTest(unittest.TestCase):
         self.assertEqual(opener.requests, [])
 
     def test_a_queued_card_is_sent_when_the_thread_runs_it(self):
+        # The item is built by hand rather than through submit(), which encodes
+        # a camera frame and needs OpenCV. What is under test here is the
+        # posting, not the encoding.
+        subject, opener = self.sender({"ok": True, "result": {}})
+        item = ({"expected": {"custom_id": "1068-1"}}, b"\xff\xd8jpegbytes",
+                "", "ZXP9", "", False)
+
+        subject._send(item)
+
+        self.assertEqual(subject.sent, 1)
+        self.assertIn("sendPhoto", opener.last.full_url)
+
+    def test_a_card_with_no_picture_posts_nothing(self):
+        # The channel carries cards and faults only. A running commentary with
+        # no images in it is what makes people stop reading, and then they miss
+        # the fault message that mattered.
         subject, opener = self.sender({"ok": True, "result": {}})
         subject.submit({"expected": {"custom_id": "1068-1"}}, None)
 
         subject._send(subject._pending.pop(0))
 
-        self.assertEqual(subject.sent, 1)
-        self.assertIn("sendMessage", opener.last.full_url)
+        self.assertEqual(subject.sent, 0)
+        self.assertEqual(subject.skipped, 1)
+        self.assertEqual(opener.requests, [])
 
     def test_a_backlog_drops_the_oldest_rather_than_blocking(self):
         # An old photo nobody has looked at is worth less than the next card.
@@ -498,6 +516,76 @@ class TlsTest(unittest.TestCase):
 
         self.assertTrue(context.check_hostname)
         self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+
+
+class AlertRelayTest(unittest.TestCase):
+    """Faults have to reach the chat, or a quiet channel warns nobody."""
+
+    class Inner:
+        def __init__(self, result=True):
+            self.calls = []
+            self.result = result
+
+        def alert(self, key, title, message, *args, **kwargs):
+            self.calls.append((key, title, message))
+            return self.result
+
+    def relay(self, *responses, inner=None, chat_id="-100123"):
+        subject, opener = channel(*responses, chat_id=chat_id)
+        return telegram.AlertRelay(subject, inner), opener
+
+    def test_a_fault_is_posted_to_the_chat(self):
+        subject, opener = self.relay({"ok": True, "result": {}})
+
+        self.assertTrue(subject.alert("jam", "Card jam", "Clear the jammed card"))
+        self.assertIn("sendMessage", opener.last.full_url)
+
+        body = urllib.parse.unquote_plus(opener.last.data.decode("utf-8"))
+
+        self.assertIn("Card jam", body)
+        self.assertIn("Clear the jammed card", body)
+
+    def test_a_fault_carries_no_control_keyboard(self):
+        # The buttons belong on cards. Answering a jam should not mean working
+        # out which message's Pause was just pressed.
+        subject, opener = self.relay({"ok": True, "result": {}})
+        subject.alert("jam", "Card jam", "Clear it")
+
+        self.assertNotIn("reply_markup", opener.last.data.decode("utf-8"))
+
+    def test_pushover_still_gets_it(self):
+        inner = self.Inner()
+        subject, _opener = self.relay({"ok": True, "result": {}}, inner=inner)
+
+        subject.alert("jam", "Card jam", "Clear it")
+
+        self.assertEqual([c[1] for c in inner.calls], ["Card jam"])
+
+    def test_a_telegram_outage_does_not_swallow_the_pushover_alert(self):
+        inner = self.Inner()
+        subject, _opener = self.relay(urllib.error.URLError("down"), inner=inner)
+
+        self.assertTrue(subject.alert("jam", "Card jam", "Clear it"))
+        self.assertEqual(len(inner.calls), 1)
+
+    def test_a_broken_pushover_does_not_stop_the_chat_message(self):
+        class Exploding:
+            def alert(self, *args, **kwargs):
+                raise RuntimeError("pushover is down")
+
+        subject, opener = self.relay({"ok": True, "result": {}}, inner=Exploding())
+
+        self.assertTrue(subject.alert("jam", "Card jam", "Clear it"))
+        self.assertIn("sendMessage", opener.last.full_url)
+
+    def test_nothing_is_posted_when_the_channel_is_not_configured(self):
+        inner = self.Inner()
+        subject, opener = self.relay(inner=inner, chat_id="")
+
+        subject.alert("jam", "Card jam", "Clear it")
+
+        self.assertEqual(opener.requests, [])
+        self.assertEqual(len(inner.calls), 1)
 
 
 if __name__ == "__main__":

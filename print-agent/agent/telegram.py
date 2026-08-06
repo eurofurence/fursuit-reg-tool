@@ -512,6 +512,48 @@ def _sender_of(user: Any) -> str:
     return str(name) or "someone"
 
 
+class AlertRelay:
+    """Mirrors fault alerts into the chat, alongside whatever else gets them.
+
+    The channel is deliberately quiet -- cards and faults only -- which makes
+    it useless as a warning system unless the faults actually arrive. Alerts
+    reached Pushover and nothing else, so a jam or an empty ribbon showed up on
+    one person's phone and never in the room's chat.
+
+    Wraps rather than replaces the existing notifier: Pushover keeps its own
+    cooldown and delivery, and a Telegram outage must not swallow the alert
+    that was going to somebody's phone.
+    """
+
+    def __init__(self, channel: "TelegramChannel", inner: Optional[Any] = None):
+        self.channel = channel
+        self.inner = inner
+        self.sent = 0
+
+    def alert(self, key: str, title: str, message: str, *args, **kwargs) -> bool:
+        delivered = False
+
+        if self.inner is not None:
+            try:
+                delivered = bool(self.inner.alert(key, title, message, *args, **kwargs))
+            except Exception as error:  # noqa: BLE001 - see module docstring
+                log.warning("pushover alert failed: %s", error)
+
+        try:
+            if self.channel.is_configured():
+                # No control keyboard on a fault. The buttons belong on cards,
+                # and an operator answering a jam does not want to have to work
+                # out which message's Pause they just pressed.
+                if self.channel.send_message("%s\n\n%s" % (title, message),
+                                             buttons=False):
+                    self.sent += 1
+                    delivered = True
+        except Exception as error:  # noqa: BLE001
+            log.warning("telegram alert failed: %s", error)
+
+        return delivered
+
+
 class PhotoSender:
     """Posts cards on a thread of its own.
 
@@ -531,6 +573,9 @@ class PhotoSender:
 
         self.sent = 0
         self.dropped = 0
+
+        # Cards that produced no picture, so nothing was posted.
+        self.skipped = 0
 
         self._pending: List[tuple] = []
         self._lock = threading.Condition()
@@ -607,9 +652,14 @@ class PhotoSender:
 
         try:
             if photo is None:
-                ok = self.channel.send_message(caption, paused=paused)
-            else:
-                ok = self.channel.post_photo(photo, caption, paused)
+                # No picture, no post. The channel exists so somebody can see
+                # the cards; a running commentary with no images in it is the
+                # thing that makes people stop reading it, and then they miss
+                # the fault message that mattered.
+                self.skipped += 1
+                return
+
+            ok = self.channel.post_photo(photo, caption, paused)
         except Exception as error:  # noqa: BLE001 - see module docstring
             log.warning("telegram photo failed: %s", error)
             return

@@ -53,6 +53,36 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual(result, zebra.OK)
         self.assertFalse(zebra.is_stop(result))
 
+    def test_initializing_is_its_own_transient_condition(self):
+        # Observed sequence on the real ZXP9 going into a job:
+        # standby -> initializing -> printing_heating. Before this was mapped,
+        # `initializing` read as unknown and stopped the queue.
+        result = zebra.classify(reading(printer_state="initializing"))
+
+        self.assertEqual(result, zebra.INITIALIZING)
+        self.assertTrue(zebra.is_transient(result))
+
+    def test_a_warming_printer_is_still_not_printed_onto(self):
+        # Transient is not the same as ready. Sending a card mid-warmup is
+        # exactly the sort of thing that produces a blank.
+        self.assertTrue(zebra.is_stop(zebra.INITIALIZING))
+
+    def test_printing_heating_is_a_card_in_progress(self):
+        result = zebra.classify(reading(printer_state="printing_heating"))
+
+        self.assertEqual(result, zebra.PRINTING)
+        self.assertFalse(zebra.is_stop(result))
+
+    def test_other_printing_phases_are_also_printing(self):
+        # The firmware qualifies the word as it works; every printing_<phase>
+        # means a card is on the way through.
+        self.assertEqual(zebra.classify(reading(printer_state="printing_cleaning")),
+                         zebra.PRINTING)
+
+    def test_a_real_fault_is_not_transient(self):
+        self.assertFalse(zebra.is_transient(zebra.CARD_JAM))
+        self.assertFalse(zebra.is_transient(zebra.UNKNOWN))
+
     def test_unreachable_is_offline(self):
         self.assertEqual(zebra.classify(zebra.Reading(reachable=False)), zebra.OFFLINE)
 

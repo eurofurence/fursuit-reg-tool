@@ -30,6 +30,13 @@ enum PrinterConditionEnum: string
     case RejectBinFull = 'reject_bin_full';
     case ServiceRequired = 'service_required';
     case Offline = 'offline';
+
+    /**
+     * The printer waking up on its way into a job. A ZXP9 walks
+     * standby -> initializing -> printing_heating, so this is a healthy noise
+     * rather than a fault -- but no card may be sent until it passes.
+     */
+    case Initializing = 'initializing';
     case Unknown = 'unknown';
 
     /**
@@ -67,6 +74,7 @@ enum PrinterConditionEnum: string
             self::RejectBinFull => 'Reject bin full',
             self::ServiceRequired => 'Service required',
             self::Offline => 'Printer offline',
+            self::Initializing => 'Warming up',
             self::Unknown => 'Unknown state',
         };
     }
@@ -85,6 +93,8 @@ enum PrinterConditionEnum: string
             self::RejectBinFull => 'Empty the reject bin.',
             self::ServiceRequired => 'Printer needs servicing, check the front panel.',
             self::Offline => 'Check printer power and network cable.',
+            // Nothing for anyone to do; it clears on its own.
+            self::Initializing => null,
             self::Unknown => 'Check the printer front panel for a message.',
             default => null,
         };

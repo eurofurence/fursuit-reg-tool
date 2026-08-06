@@ -77,12 +77,19 @@ from .store import OUTBOX_FAILED, OUTBOX_PRINTED, OUTBOX_VERIFY
 
 STEP_CLAIM = "claim"
 STEP_FETCH = "fetch"
-STEP_SPOOL = "spool"
-STEP_FIRMWARE = "firmware"
+
+# Handing the job to the spooler and the printer working through it are one
+# thing as far as anybody watching is concerned: the card is printing. They
+# stay separate names in the code because they fail differently -- the spooler
+# refusing is not the printer failing -- but they report to the same row.
+STEP_PRINT = "print"
+STEP_SPOOL = STEP_PRINT
+STEP_FIRMWARE = STEP_PRINT
+
 STEP_CAMERA = "camera"
 STEP_REPORT = "report"
 
-STEPS = (STEP_CLAIM, STEP_FETCH, STEP_SPOOL, STEP_FIRMWARE, STEP_CAMERA, STEP_REPORT)
+STEPS = (STEP_CLAIM, STEP_FETCH, STEP_PRINT, STEP_CAMERA, STEP_REPORT)
 
 PENDING = "pending"
 ACTIVE = "active"
@@ -99,6 +106,7 @@ EMPTY = "empty"              # the batch has no more work
 BLOCKED = "blocked"          # the printer, or the server, says not now
 TRAY_FULL = "tray_full"      # output tray needs emptying before anything else
 JOB_FAILED = "failed"        # the card did not print and will not be retried
+JOB_SKIPPED = "job_skipped"  # operator chose to leave this card and carry on
 WAITING = "waiting"          # an operator has to answer a reprint question
 STOPPED = "stopped"          # the worker was told to stop
 
@@ -168,6 +176,17 @@ class Outcome(NamedTuple):
     job_id: Optional[int] = None
 
 
+# What an operator may answer when a card fails. There is no fourth option and
+# no default: dismissing the question used to leave the card in limbo, neither
+# printed nor reprinted nor recorded, which is the one outcome nobody can act
+# on afterwards.
+CHOICE_REPRINT = "reprint"    # print it again
+CHOICE_PRINTED = "printed"    # the card is in the stack; record it as printed
+CHOICE_SKIP = "skip"          # leave it unprinted and move on, deliberately
+
+CHOICES = (CHOICE_REPRINT, CHOICE_PRINTED, CHOICE_SKIP)
+
+
 class ReprintDecision:
     """A question only a human standing near the printer can answer.
 
@@ -177,7 +196,8 @@ class ReprintDecision:
     output tray.
     """
 
-    __slots__ = ("id", "job_id", "card_number", "fursuit_name", "reason", "printer", "reprint", "_answered")
+    __slots__ = ("id", "job_id", "card_number", "fursuit_name", "reason", "printer",
+                 "choice", "_answered")
 
     def __init__(self, job_id, card_number, fursuit_name, reason, printer):
         self.id = job_id
@@ -186,21 +206,41 @@ class ReprintDecision:
         self.fursuit_name = fursuit_name
         self.reason = reason
         self.printer = printer
-        self.reprint: Optional[bool] = None
+        self.choice: Optional[str] = None
 
         self._answered = threading.Event()
 
-    def answer(self, reprint: bool) -> None:
-        self.reprint = bool(reprint)
+    def answer(self, choice) -> None:
+        """Record the operator's choice.
+
+        Booleans are still accepted because that is what the question used to
+        be: True meant reprint, False meant the card is in the stack.
+        """
+        if isinstance(choice, bool):
+            choice = CHOICE_REPRINT if choice else CHOICE_PRINTED
+
+        if choice not in CHOICES:
+            raise ValueError("unknown decision: %r" % (choice,))
+
+        self.choice = choice
         self._answered.set()
+
+    @property
+    def reprint(self) -> Optional[bool]:
+        """Back-compatible view of the answer."""
+        if self.choice is None:
+            return None
+
+        return self.choice == CHOICE_REPRINT
 
     def is_answered(self) -> bool:
         return self._answered.is_set()
 
     def question(self) -> str:
         return (
-            "Card %s did not print cleanly (%s). Check the output stack: is the "
-            "card there? Answer no to reprint it." % (self.card_number, self.reason)
+            "Card %s did not print cleanly (%s). Check the output stack, then "
+            "choose: reprint it, mark it as printed if the card is there, or "
+            "skip it and leave it unprinted." % (self.card_number, self.reason)
         )
 
     def __repr__(self) -> str:
@@ -666,7 +706,13 @@ class _BaseWorker:
         Used for the lease heartbeat and the local store. A card in the machine
         is worth more than a tidy database row, and a heartbeat that fails is
         recovered by the lease reaper.
+
+        None is accepted so callers can pass ``getattr(client, "thing", None)``
+        for anything optional, rather than each one guarding separately.
         """
+        if function is None:
+            return None
+
         try:
             return function(*args)
         except Exception as error:  # noqa: BLE001
@@ -768,11 +814,36 @@ class PrintWorker(_BaseWorker):
             # was made, and the card stays failed rather than guessed at.
             decision._answered.set()
 
+    def pause(self, reason: str = "") -> None:
+        """Stop between cards, and tell the server the batch is paused.
+
+        Reporting matters as much as stopping. The server used to be told
+        nothing, so a station sat paused on a jam while the batch still read
+        `printing` everywhere else -- and the lease reaper, seeing a batch that
+        was supposedly running, handed the card out again.
+
+        Best-effort: a network problem must never stop the worker pausing.
+        """
+        super().pause(reason)
+
+        if self.batch_id is not None:
+            self._call(getattr(self.api, "pause_batch", None), self.batch_id,
+                       reason or "Paused at the print station")
+
     def resume(self) -> None:
         """Carry on. Clears the tray-full latch: the operator emptied the tray."""
         self.tray_full = False
 
         super().resume()
+
+        if self.batch_id is not None:
+            self._call(getattr(self.api, "resume_batch", None), self.batch_id)
+
+            # The server puts a resumed batch back to printing, but our own
+            # marker says we already started it, so nothing would re-start it
+            # if the server disagreed. Clearing it makes the next claim
+            # re-assert the state rather than assume it.
+            self._started_batch = None
 
     def set_unattended(self, unattended: bool) -> None:
         """With this on, finishing a batch pulls the next one and the station can
@@ -835,6 +906,11 @@ class PrintWorker(_BaseWorker):
                     self.pause("Batch finished. Choose the next one.")
                 continue
 
+            if outcome.kind == JOB_SKIPPED:
+                # The operator has already looked at this card and decided.
+                # Pausing to ask a second time would be pointless.
+                continue
+
             # Everything else stopped the queue and needs somebody to look at it.
             self.pause(outcome.detail)
 
@@ -856,6 +932,17 @@ class PrintWorker(_BaseWorker):
             return Outcome(TRAY_FULL, detail)
 
         blocked = self._gate()
+
+        if blocked is not None and self._is_transient():
+            # standby -> initializing -> printing_heating is the printer waking
+            # up, not a fault. Pausing here would stop the batch and ask for an
+            # operator every time the machine warms itself up.
+            self._progress(STEP_CLAIM, ACTIVE, "printer is warming up")
+
+            if not self._wait_until_healthy():
+                return Outcome(STOPPED, "Stopped while the printer was warming up")
+
+            blocked = self._gate()
         if blocked is not None:
             self._progress(STEP_CLAIM, FAILED, self._condition())
             self._alert(
@@ -1008,9 +1095,12 @@ class PrintWorker(_BaseWorker):
         if completion.source == COMPLETION_FIRMWARE:
             self._progress(STEP_FIRMWARE, DONE, completion.detail)
         else:
-            # Not a failure, but not proof either, and the operator should see
-            # the difference between "the printer said so" and "nobody objected".
-            self._progress(STEP_FIRMWARE, SKIPPED, completion.detail)
+            # Not a failure, but not proof either. Spooling and printing share
+            # one row now, and marking that row skipped would say the card did
+            # not print when it did -- so the row stays done and the weaker
+            # evidence is spelled out in the detail beside it.
+            self._progress(STEP_FIRMWARE, DONE,
+                           "%s (no firmware confirmation)" % completion.detail)
 
         verification = self._verify(job)
 
@@ -1084,11 +1174,11 @@ class PrintWorker(_BaseWorker):
             answer = self._ask_operator(job, reason)
 
             if answer is None:
-                detail = "Waiting for an operator to say whether card %s needs reprinting" % card
+                detail = "Waiting for an operator to say what to do with card %s" % card
                 self.status_detail = detail
                 return Outcome(WAITING, detail, job_id)
 
-            if not answer:
+            if answer == CHOICE_PRINTED:
                 # The operator has the card in their hand. That is the strongest
                 # evidence there is, and it is exactly what `operator` means.
                 self._report(
@@ -1098,6 +1188,17 @@ class PrintWorker(_BaseWorker):
                     verification_source=VERIFY_OPERATOR,
                 )
                 return Outcome(PRINTED, "operator confirmed the card is in the stack", job_id)
+
+            if answer == CHOICE_SKIP:
+                # Deliberately unprinted. Recorded as failed so the card is
+                # visible as outstanding rather than quietly forgotten, but the
+                # queue carries on: the operator has already looked at it and
+                # decided, so stopping to ask again would be pointless.
+                detail = "Operator skipped card %s (%s)" % (card, reason)
+                self._log(detail)
+                self._fail(job, detail)
+
+                return Outcome(JOB_SKIPPED, detail, job_id)
 
             reprint = True
 
@@ -1228,12 +1329,12 @@ class PrintWorker(_BaseWorker):
     # Operator decisions
     # ------------------------------------------------------------------
 
-    def _ask_operator(self, job: Dict[str, Any], reason: str) -> Optional[bool]:
-        """Put the reprint question to a human and wait for the answer.
+    def _ask_operator(self, job: Dict[str, Any], reason: str) -> Optional[str]:
+        """Put the question to a human and wait for the answer.
 
-        Returns True to reprint, False to leave it alone, None if nobody
-        answered. None deliberately does not mean "no": an unanswered question
-        parks the queue rather than deciding on the operator's behalf.
+        Returns one of CHOICES, or None if nobody answered. None deliberately
+        does not mean any of them: an unanswered question parks the queue
+        rather than deciding on the operator's behalf.
         """
         decision = ReprintDecision(
             job_id=int(job["id"]),
@@ -1258,7 +1359,7 @@ class PrintWorker(_BaseWorker):
 
         self.pending_decision = None
 
-        return decision.reprint
+        return decision.choice
 
     def _wait_for_answer(self, decision: ReprintDecision, job_id: int) -> None:
         """Wait on a human, renewing the lease while they make up their mind.
@@ -1344,6 +1445,12 @@ class PrintWorker(_BaseWorker):
         rows = list(getattr(reading, "jobs", None) or [])
 
         return set(_row_key(row) for row in rows)
+
+    def _is_transient(self) -> bool:
+        try:
+            return bool(self.monitor.is_transient())
+        except Exception:  # noqa: BLE001 - an old monitor simply has no opinion
+            return False
 
     def _is_stop(self) -> bool:
         try:
@@ -1654,10 +1761,12 @@ class ReceiptWorker(_BaseWorker):
 
         self._progress(STEP_SPOOL, DONE, spooled.detail or "accepted by the spooler")
 
-        # Announced as skipped, not done. Nothing checked the paper, and a UI
-        # showing a tick against a check that never ran is how the old system
-        # convinced everybody that cards had printed.
-        self._progress(STEP_FIRMWARE, SKIPPED, "a thermal printer has no job table to ask")
+        # The spooler took it and a thermal printer has no job table to ask, so
+        # this is as much as will ever be known. Said plainly in the detail
+        # rather than by marking the row skipped, which now shares its row with
+        # spooling and would read as "the receipt did not print".
+        self._progress(STEP_FIRMWARE, DONE,
+                       "sent; a thermal printer has no job table to confirm it")
         self._progress(STEP_CAMERA, SKIPPED, "receipts are not camera checked")
 
         # A receipt spools in about a second, but a printer that is off or out
@@ -1723,6 +1832,18 @@ def _as_spool_result(value: Any) -> SpoolResult:
 
     if isinstance(value, bool):
         return SpoolResult(value, "" if value else "the sender reported a failure")
+
+    if isinstance(value, int):
+        # print_pages() hands back the spooler job id. A refusal raises
+        # PrintError and never returns, so any id means the job was accepted --
+        # including 0, which is what the ZXP9 driver reports for a document
+        # that spooled perfectly well. Reading that 0 as falsy failed cards
+        # that had already printed.
+        return SpoolResult(
+            True,
+            "spool job %d" % value if value else "accepted by the spooler",
+            str(value) if value else None,
+        )
 
     ok = bool(getattr(value, "ok", value))
 

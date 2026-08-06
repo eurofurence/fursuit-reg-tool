@@ -21,9 +21,8 @@ from .calibration import photo_from_frame, point_radius_pixels
 STEPS: List[Tuple[str, str]] = [
     ("claim", "Load next print job"),
     ("fetch", "Download print file"),
-    ("spool", "Send to printer"),
-    ("firmware", "Print card"),
-    ("report", "Tell the server"),
+    ("print", "Printing"),
+    ("report", "Mark badge printed"),
 ]
 
 def card_number_key(custom_id: str) -> tuple:

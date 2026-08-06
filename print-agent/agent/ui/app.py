@@ -416,8 +416,36 @@ class AgentApp(tk.Tk):
             "'%s' will be cancelled and will not print.\n\nCancel the batch?"
             % self.active_batch.get("name", "?"))
 
-        if confirmed:
-            self._log("Cancel requested for %s" % self.active_batch.get("name", "?"))
+        if not confirmed:
+            return
+
+        batch_id = self.active_batch.get("id")
+        name = self.active_batch.get("name", "?")
+
+        # Pause the worker first. Cancelling underneath a running worker leaves
+        # it claiming from a batch the server has already closed, which comes
+        # back as a refusal it has no useful way to explain.
+        if self.worker is not None and self.worker.is_alive():
+            self.worker.pause("Batch cancelled")
+
+        try:
+            client, _store, _notifier = self._services()
+            client.cancel_batch(batch_id, "Cancelled at the print station")
+        except Exception as error:  # noqa: BLE001 - the operator gets the message
+            messagebox.showerror("Could not cancel",
+                                 "The server refused to cancel %s:\n\n%s" % (name, error))
+            return
+
+        # Let go of it locally too. Previously this method only wrote a log
+        # line: nothing reached the server and nothing was cleared here, so the
+        # batch sat selected and "ready" as though the cancel had not happened.
+        if self.worker is not None:
+            self.worker.select_batch(None)
+
+        self.active_batch = None
+        self._render_batch()
+        self._refresh_batches()
+        self._log("Cancelled %s" % name)
 
     def _build_setup_tab(self) -> None:
         tab = ttk.Frame(self.tabs, padding=14)
@@ -1147,6 +1175,12 @@ class AgentApp(tk.Tk):
                     # make the readout lie about what is in the bin.
                     if outcome == "printed":
                         self.session_cards.record(card_number)
+
+                    # Whatever happened, the batch has moved on. Without this
+                    # the header kept whatever totals the picker handed over,
+                    # so a finished card was never ticked off and the batch sat
+                    # at "ready" until the next claim announced it complete.
+                    self._sync_active_batch()
                 elif kind == "telegram":
                     self._on_telegram_command(payload)
                 elif kind == "decision":
@@ -1368,6 +1402,36 @@ class AgentApp(tk.Tk):
         self.machine_label.config(text="%s  -  %s" % (machine.get("name", "?"), url))
         self._log("Server OK: %s (machine #%s)" % (machine.get("name", "?"), machine.get("id", "?")))
 
+    def _sync_active_batch(self) -> None:
+        """Re-read the selected batch from the server and redraw the header.
+
+        A batch the server has finished drops out of the selectable list, so
+        its absence is how we learn it is done. That is also the moment to let
+        go of it: leaving it selected leaves an operator looking at a batch
+        that cannot yield another card.
+        """
+        if self.demo or not self.active_batch:
+            return
+
+        batch_id = self.active_batch.get("id")
+
+        try:
+            client, _store, _notifier = self._services()
+            batches = client.batches()
+        except Exception:  # noqa: BLE001 - a stale header beats a crashed UI
+            return
+
+        for batch in batches or []:
+            if batch.get("id") == batch_id:
+                self.active_batch = batch
+                self._render_batch()
+                return
+
+        # Gone from the list: finished, cancelled, or no longer ours.
+        self.active_batch = None
+        self._render_batch()
+        self._log("Batch %s is finished." % batch_id)
+
     def _refresh_batches(self) -> None:
         """Fill the chooser with what the server is offering.
 
@@ -1429,6 +1493,10 @@ class AgentApp(tk.Tk):
                 self.start_button.config(state="disabled")
             return
 
+        # Telegram first: the worker's notifier wraps the channel, so a channel
+        # brought up afterwards would leave faults going to Pushover only.
+        self._start_telegram()
+
         worker = self._build_worker()
 
         if worker is None:
@@ -1436,17 +1504,11 @@ class AgentApp(tk.Tk):
 
         self.worker = worker
         self.pipeline.reset()
-        self._start_telegram()
         worker.start()
 
         self._log("Printing %s" % self.active_batch.get("name", "?"))
         self.pause_button.config(state="normal")
         self.start_button.config(state="disabled")
-
-        if self.telegram_sender is not None:
-            self.telegram_channel.send_message(
-                "Started printing %s." % self.active_batch.get("name", "?"),
-                paused=False)
 
     def _build_worker(self):
         """Assemble a worker for the selected printer and batch.
@@ -1481,7 +1543,7 @@ class AgentApp(tk.Tk):
             store=store,
             monitor=self.monitor,
             sender=self._send_to_printer,
-            notifier=notifier,
+            notifier=self._build_notifier(notifier),
             verifier=self._build_verifier(binding),
             batch_id=self.active_batch.get("id") if self.active_batch else None,
             unattended=self.auto_next.get(),
@@ -1498,6 +1560,20 @@ class AgentApp(tk.Tk):
         worker.on_card = self._on_card_finished
 
         return worker
+
+    def _build_notifier(self, notifier):
+        """Fault alerts, to Pushover and to the chat.
+
+        The Telegram channel only carries cards and faults, which makes it no
+        use as a warning system unless the faults reach it. They used to go to
+        Pushover alone.
+        """
+        from .. import telegram as telegram_module
+
+        if self.telegram_channel is None or not self.telegram_channel.is_configured():
+            return notifier
+
+        return telegram_module.AlertRelay(self.telegram_channel, notifier)
 
     def _build_verifier(self, binding):
         """The camera check for this printer, reading the console's frames.
@@ -1655,11 +1731,10 @@ class AgentApp(tk.Tk):
         if callback_id and self.telegram_channel is not None:
             self.telegram_channel.answer_callback(callback_id, reply[:200])
 
-        if action in (telegram_module.COMMAND_PAUSE, telegram_module.COMMAND_RESUME) \
-                and self.telegram_channel is not None and self.telegram_channel.is_configured():
-            # Repost the controls so the keyboard shows the action that makes
-            # sense now, rather than the one that was just taken.
-            self.telegram_channel.send_message(reply, paused=self._is_paused())
+        # Deliberately no chat message confirming a pause or resume. The
+        # callback answer above already tells whoever pressed the button, and
+        # the next card photo carries a fresh keyboard. The channel is for
+        # cards and faults; anything else buries them.
 
     def _is_paused(self) -> bool:
         return bool(self.worker is not None and self.worker.is_alive()
@@ -1685,15 +1760,59 @@ class AgentApp(tk.Tk):
         The worker deliberately refuses to guess here. Reprinting a card that
         actually came out wastes a blank and a ribbon panel; not reprinting one
         that did not means an attendee turns up to no badge.
+
+        Three answers, and no way to leave without giving one. The window has
+        no close button, Escape does nothing and there is no default: closing
+        the question used to leave the card neither printed nor reprinted nor
+        recorded, which is the one state nobody can act on later.
         """
-        answer = messagebox.askyesno("Did this card print?", decision.question())
+        from .. import worker as worker_module
 
-        # askyesno returns True for "yes, the card is there", which means no
-        # reprint is needed.
-        decision.answer(not answer)
+        window = tk.Toplevel(self)
+        window.title("Card %s did not print" % decision.card_number)
+        window.transient(self)
+        window.resizable(False, False)
 
-        self._log("Card %s: operator said %s" % (
-            decision.card_number, "reprint" if not answer else "it printed"))
+        # No dismissing it. Every route out of this window is a decision.
+        window.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        frame = ttk.Frame(window, padding=18)
+        frame.pack(fill="both", expand=True)
+
+        ttk.Label(frame, text="Card %s - %s" % (decision.card_number,
+                                                decision.fursuit_name or "unknown"),
+                  style="Head.TLabel").pack(anchor="w")
+        ttk.Label(frame, text=decision.question(), wraplength=430,
+                  justify="left").pack(anchor="w", pady=(8, 16))
+
+        chosen = {}
+
+        def choose(choice):
+            chosen["choice"] = choice
+            window.destroy()
+
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill="x")
+
+        for label, choice, hint in (
+            ("Reprint it", worker_module.CHOICE_REPRINT, "print this card again"),
+            ("It printed", worker_module.CHOICE_PRINTED, "the card is in the stack"),
+            ("Skip it", worker_module.CHOICE_SKIP, "leave it unprinted and carry on"),
+        ):
+            ttk.Button(buttons, text=label, width=14,
+                       command=lambda c=choice: choose(c)).pack(side="left", padx=(0, 8))
+
+        window.grab_set()
+        self.wait_window(window)
+
+        # wait_window returns when the window goes, and the only way it goes is
+        # through one of the buttons. Reprint is the safe reading of anything
+        # unexpected: a duplicate card costs a blank, a missing one costs an
+        # attendee their badge.
+        choice = chosen.get("choice", worker_module.CHOICE_REPRINT)
+
+        decision.answer(choice)
+        self._log("Card %s: operator chose %s" % (decision.card_number, choice))
 
     def _toggle_camera(self) -> None:
         state = "enabled" if self.camera_enabled.get() else "disabled"

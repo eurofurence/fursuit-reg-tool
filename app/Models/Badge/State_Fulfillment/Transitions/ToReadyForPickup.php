@@ -17,6 +17,12 @@ class ToReadyForPickup extends Transition
         return DB::transaction(function () {
             $this->badge->status_fulfillment = new ReadyForPickup($this->badge); // we will skip the printed state and go directly to ready for pickup
             $this->badge->paid_at = now();
+
+            // Also the undo path for a mis-scanned handout: the badge is back in
+            // the queue, so it counts towards nobody's tally.
+            $this->badge->picked_up_at = null;
+            $this->badge->picked_up_by_staff_id = null;
+
             $this->badge->save();
 
             activity()

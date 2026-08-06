@@ -235,7 +235,7 @@ class ReceiptWorkerTestCase(unittest.TestCase):
             sender=self.sender,
             notifier=self.notifier,
             cache_dir=self.cache,
-            on_progress=lambda step, state, detail: self.progress.append((step, state)),
+            on_progress=lambda step, state, detail: self.progress.append((step, state, detail)),
             heartbeat_seconds=45.0,
             idle_seconds=1.0,
             clock=self.clock,
@@ -246,7 +246,7 @@ class ReceiptWorkerTestCase(unittest.TestCase):
         return worker.ReceiptWorker(**options)
 
     def steps(self, step):
-        return [state for name, state in self.progress if name == step]
+        return [state for name, state, _detail in self.progress if name == step]
 
 
 class ClaimTest(ReceiptWorkerTestCase):
@@ -314,13 +314,25 @@ class HappyPathTest(ReceiptWorkerTestCase):
 
         self.build().print_next()
 
-        for step in (worker.STEP_CLAIM, worker.STEP_FETCH, worker.STEP_SPOOL, worker.STEP_REPORT):
+        for step in (worker.STEP_CLAIM, worker.STEP_FETCH, worker.STEP_PRINT, worker.STEP_REPORT):
             self.assertIn(worker.DONE, self.steps(step), "%s never completed" % step)
 
-        for step in (worker.STEP_FIRMWARE, worker.STEP_CAMERA):
-            self.assertIn(worker.SKIPPED, self.steps(step))
-            self.assertNotIn(worker.DONE, self.steps(step),
-                             "%s never ran and must not show as done" % step)
+        # The camera is the one check that genuinely did not run.
+        self.assertIn(worker.SKIPPED, self.steps(worker.STEP_CAMERA))
+        self.assertNotIn(worker.DONE, self.steps(worker.STEP_CAMERA),
+                         "the camera never ran and must not show as done")
+
+    def test_the_missing_firmware_confirmation_is_said_out_loud(self):
+        # Spooling and printing share one row, so the row cannot be marked
+        # skipped without claiming the receipt did not print. The weaker
+        # evidence has to survive somewhere, and that is the detail text.
+        self.api.queue.append(receipt(114))
+
+        self.build().print_next()
+
+        details = [d for step, _state, d in self.progress if step == worker.STEP_PRINT]
+
+        self.assertTrue(any("no job table" in d for d in details), details)
 
     def test_the_receipt_is_cached_locally_before_it_is_sent(self):
         cached = {}
