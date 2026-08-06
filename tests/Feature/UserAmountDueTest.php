@@ -115,15 +115,7 @@ test('spare copies count towards the amount due', function () {
     expect($user->amountDue())->toBe(500);
 });
 
-// The replacement is only trustworthy if it reproduces the wallet where the wallet is correct.
-// Holds for 5,143 of 5,283 prod user wallets; the 140 that drift are the reason for the removal
-// (see docs/wallet-removal-plan.md).
-test('matches the negated wallet balance while both systems run', function () {
-    $user = User::factory()->create();
-    $unpaid = badgeFor($user, $this->event, 'Mirrored');
-    $user->forcePay($unpaid);
-
-    expect($user->fresh()->balanceInt)->toBe(-300)
-        ->and($user->amountDue())->toBe(300)
-        ->and($user->amountDue())->toBe(-$user->fresh()->balanceInt);
-});
+// Parity with the wallet was verified against 5,283 prod user wallets before the writes were
+// removed: 5,143 agreed exactly, and the 140 that drifted were the reason for the removal.
+// Nothing writes to the wallet any more, so there is no live mirror left to assert against.
+// See docs/wallet-removal-plan.md.

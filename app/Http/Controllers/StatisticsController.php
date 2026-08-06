@@ -521,10 +521,10 @@ class StatisticsController extends Controller
             ->where('status_payment', 'paid')
             ->sum('total') / 100;
 
-        // For cash/card breakdown, we'd need to check the transactions table or wallet transfers
-        // This is a simplified version - you might need to adjust based on your payment tracking
-        $cashProcessedToday = 0; // Would need to query transactions/transfers with payment_method
-        $cardProcessedToday = 0; // Would need to query transactions/transfers with payment_method
+        // Not broken down yet. The source would be checkouts.payment_method ('cash' / 'card'),
+        // which is also what the DSFinV-K export sums.
+        $cashProcessedToday = 0;
+        $cardProcessedToday = 0;
 
         // Badges picked up today
         $badgesPickedUpToday = $currentEvent->badges()

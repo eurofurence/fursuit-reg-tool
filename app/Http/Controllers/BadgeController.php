@@ -9,6 +9,7 @@ use App\Models\Badge\State_Payment\Paid;
 use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Event;
 use App\Models\EventUser;
+use App\Models\Fursuit\States\Pending;
 use App\Models\Species;
 use App\Models\User;
 use App\Notifications\BadgeCreatedNotification;
@@ -112,8 +113,6 @@ class BadgeController extends Controller
     {
         Gate::authorize('create', Badge::class);
         $badge = DB::transaction(function () use ($request) {
-            // Lock Wallet Balance
-            $request->user()->balanceInt;
             // Lock user for update
             User::where('id', $request->user()->id)->lockForUpdate()->first();
             Badge::whereHas('fursuit', function ($query) use ($request) {
@@ -127,7 +126,7 @@ class BadgeController extends Controller
             $validated = $request->validated();
             // Create Fursuit
             $fursuit = $request->user()->fursuits()->create([
-                'status' => \App\Models\Fursuit\States\Pending::$name,
+                'status' => Pending::$name,
                 'event_id' => $event->id,
                 'species_id' => Species::firstOrCreate([
                     'name' => $validated['species'],
@@ -159,7 +158,7 @@ class BadgeController extends Controller
 
             $badge = $fursuit->badges()->create([
                 'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
-                'status_payment' => $total === 0 ? Paid::$name : Unpaid::class,
+                'status_payment' => $total === 0 ? Paid::$name : Unpaid::$name,
                 'subtotal' => round($subtotal),
                 'tax_rate' => 0.19,
                 'tax' => round($tax),
@@ -169,8 +168,6 @@ class BadgeController extends Controller
                 'apply_late_fee' => false, // No late fees in new system
                 'paid_at' => $total === 0 ? now() : null,
             ]);
-            // Pay for Badge (force pay as we allow negative balance)
-            $request->user()->forcePay($badge);
 
             // Handle spare copy if requested
             if ($validated['upgrades']['spareCopy']) {
@@ -182,10 +179,9 @@ class BadgeController extends Controller
                 $clone->subtotal = round($total / 1.19);
                 $clone->tax = round($clone->total - $clone->subtotal);
                 $clone->extra_copy_of = $badge->id;
-                $clone->status_payment = Unpaid::class;
+                $clone->status_payment = Unpaid::$name;
                 $clone->paid_at = null; // Spare copies are not paid immediately
                 $clone->save();
-                $request->user()->forcePay($clone->fresh());
             }
 
             return $badge;
@@ -215,8 +211,6 @@ class BadgeController extends Controller
         Gate::authorize('update', $badge);
         $badge = DB::transaction(function () use ($request, $badge) {
             $request->user()->can('update', $badge);
-            // Lock Wallet Balance
-            $request->user()->balanceInt;
             // Lock Badge
             $badge->where('id', $badge->id)->orWhere('extra_copy_of', $badge->id)->lockForUpdate()->get();
             // Update Badge
@@ -245,32 +239,14 @@ class BadgeController extends Controller
             /**
              * Badge
              */
-            $previousTotal = $badge->total;
             $total = BadgeCalculationService::calculate(
                 isFreeBadge: $badge->is_free_badge,
                 isLate: $badge->apply_late_fee,
             );
-            if ($previousTotal !== $total) {
-                try {
-                    $badge->fursuit->user->refund($badge);
-                } catch (\Bavix\Wallet\Internal\Exceptions\ModelNotFoundException $e) {
-                    // No transfer found to refund - this is fine for test scenarios
-                    // or when the badge was created without a payment
-                }
-            }
             $badge->total = round($total);
             $badge->subtotal = round($total / 1.19);
             $badge->tax = round($badge->total - $badge->subtotal);
             $badge->saveQuietly();
-            // Difference needs to be paid
-            if ($previousTotal !== $total) {
-                try {
-                    $request->user()->forcePay($badge);
-                } catch (\Exception $e) {
-                    // Payment failed - this is fine for test scenarios
-                    // or when there are wallet/payment issues
-                }
-            }
 
             return $badge;
         });
@@ -281,26 +257,13 @@ class BadgeController extends Controller
     public function destroy(Request $request, Badge $badge)
     {
         Gate::authorize('delete', $badge);
-        DB::transaction(function () use ($request, $badge) {
-            // Lock Wallet Balance
-            $request->user()->balanceInt;
+        DB::transaction(function () use ($badge) {
             // Lock Badge
             Badge::where('id', $badge->id)->orWhere('extra_copy_of', $badge->id)->lockForUpdate()->get();
-            // Delete Badge and Refund
+            // Deleting a badge removes it from what the user owes: amountDue() only
+            // counts badges that are unpaid and not soft deleted.
             if ($badge->extra_copy_of === null) {
-                $copies = Badge::where('extra_copy_of', $badge->id)->get();
-                // Delete all copies and refund each one
-                foreach ($copies as $copy) {
-                    $request->user()->refund($copy);
-                    $copy->delete();
-                }
-            }
-            // Refund Badge
-            try {
-                $request->user()->refund($badge);
-            } catch (\Bavix\Wallet\Internal\Exceptions\ModelNotFoundException $e) {
-                // No transfer found to refund - this is fine for test scenarios
-                // or when the badge was created without a payment
+                Badge::where('extra_copy_of', $badge->id)->get()->each->delete();
             }
             $badge->delete();
             // Delete Fursuit if no badges left

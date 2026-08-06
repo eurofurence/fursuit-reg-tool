@@ -59,14 +59,6 @@ class BadgeObserver
             $badge->subtotal = round($badge->total / 1.19);
             $badge->tax = round($badge->total - $badge->subtotal);
 
-            $user = $badge->fursuit->user;
-            $originalTotal = $badge->getOriginal();
-            $newTotal = $badge->total;
-            $badge->total = $originalTotal;
-            $user->refund($badge);
-            $badge->total = $newTotal;
-            $user->forcePay($badge);
-
             $badge->saveQuietly();
         }
     }

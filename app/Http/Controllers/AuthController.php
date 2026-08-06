@@ -6,7 +6,9 @@ use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
 use App\Services\TokenRefreshService;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
@@ -72,7 +74,7 @@ class AuthController extends Controller
             }
         }
 
-        $attendeeListResponse = \Illuminate\Support\Facades\Http::attsrv()
+        $attendeeListResponse = Http::attsrv()
             ->withToken($socialLiteUser->token)
             ->get('/attendees')
             ->json();
@@ -103,12 +105,10 @@ class AuthController extends Controller
             'avatar' => $socialLiteUser->getAvatar(),
         ]);
 
-        $user->wallet->balance;
-
         $activeEvent = Event::getActiveEvent();
         $eventUser = null;
         if ($activeEvent) {
-            $statusResponse = \Illuminate\Support\Facades\Http::attsrv()
+            $statusResponse = Http::attsrv()
                 ->withToken($socialLiteUser->token)
                 ->get('/attendees/'.$regId.'/status');
 
@@ -128,7 +128,7 @@ class AuthController extends Controller
                 refreshToken: $socialLiteUser->refreshToken,
                 expiresIn: 3500
             );
-        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+        } catch (DecryptException $e) {
             // Handle MAC invalid error - clear corrupted token data and retry
             $user->update([
                 'token' => null,
@@ -146,13 +146,13 @@ class AuthController extends Controller
         }
 
         if ($activeEvent && $eventUser) {
-            $fursuit = \Illuminate\Support\Facades\Http::attsrv()
+            $fursuit = Http::attsrv()
                 ->withToken($socialLiteUser->token)
                 ->get('/attendees/'.$regId.'/packages/fursuit')
                 ->json();
             if ($fursuit['present'] && $fursuit['count'] > 0) {
 
-                $fursuitAdditional = \Illuminate\Support\Facades\Http::attsrv()
+                $fursuitAdditional = Http::attsrv()
                     ->withToken($socialLiteUser->token)
                     ->get('/attendees/'.$regId.'/packages/fursuitadd')
                     ->json();
@@ -164,7 +164,7 @@ class AuthController extends Controller
                     'prepaid_badges' => $totalPrepaidBadges,
                 ]);
 
-                \Illuminate\Support\Facades\Http::attsrv()
+                Http::attsrv()
                     ->withToken($socialLiteUser->token)
                     ->post('/attendees/'.$regId.'/additional-info/fursuitbadge', [
                         'created' => false,

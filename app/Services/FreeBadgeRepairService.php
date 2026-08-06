@@ -7,6 +7,7 @@ use App\Models\Badge\State_Payment\Paid;
 use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -14,9 +15,9 @@ use Illuminate\Support\Facades\Storage;
  * Detects and repairs badges that were wrongly charged the badge fee even though the owner had
  * unused prepaid-badge entitlement (event_users.prepaid_badges) that should have made them free.
  *
- * The wrong charge is reversed by marking the badge free and crediting the originally charged
- * amount back to the user's wallet. Both the wallet movement (transactions table) and an
- * activity_log entry are recorded. See docs/bugfix-03-fix.md.
+ * The wrong charge is reversed by marking the badge free and zeroing its total, which drops it
+ * out of User::amountDue(). The originally charged amount is recorded in activity_log and
+ * reported as total_refunded_cents. See docs/bugfix-03-fix.md.
  */
 class FreeBadgeRepairService
 {
@@ -119,7 +120,6 @@ class FreeBadgeRepairService
                         continue;
                     }
 
-                    $user = $eventUser->user;
                     $userFixed = 0;
 
                     foreach ($badgesToFix as $badge) {
@@ -135,18 +135,10 @@ class FreeBadgeRepairService
                         $badge->paid_at = now();
                         $badge->saveQuietly();
 
-                        // Credit the wrongly charged amount back to the user's wallet
-                        // (reverses the original forcePay debit). Recorded in transactions.
-                        if ($oldTotal > 0 && $user) {
-                            $user->deposit($oldTotal, [
-                                'title' => 'Prepaid badge fee correction',
-                                'description' => "Refund of wrongly charged fee for badge #{$badge->id}",
-                                'event_id' => $event->id,
-                                'badge_id' => $badge->id,
-                                'reason' => 'free_badge_fix',
-                            ]);
-                            $refunded += $oldTotal;
-                        }
+                        // Zeroing the total is the correction: the badge no longer counts
+                        // towards User::amountDue(). The amount that had been wrongly
+                        // charged is reported below and in the activity log.
+                        $refunded += $oldTotal;
 
                         // Audit trail in activity_log.
                         activity()
@@ -202,7 +194,7 @@ class FreeBadgeRepairService
      *     badges_total: int,
      *     should_be_free: int,
      *     should_be_paid: int,
-     *     badges_to_fix: \Illuminate\Support\Collection<int, Badge>
+     *     badges_to_fix: Collection<int, Badge>
      * }
      */
     protected function analyseUser(EventUser $eventUser, Event $event): array

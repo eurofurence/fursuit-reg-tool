@@ -45,7 +45,7 @@ beforeEach(function () {
     $this->admin = User::factory()->create(['is_admin' => true]);
 });
 
-test('converts a wrongly charged prepaid badge to free, credits the wallet and logs it', function () {
+test('converts a wrongly charged prepaid badge to free, clears the amount due and logs it', function () {
     $user = User::factory()->create();
     EventUser::create([
         'user_id' => $user->id,
@@ -56,8 +56,7 @@ test('converts a wrongly charged prepaid badge to free, credits the wallet and l
     ]);
 
     $badge = chargedBadge($user, $this->event, 'Charged');
-    $user->forcePay($badge);
-    expect($user->fresh()->balanceInt)->toBe(-500);
+    expect($user->amountDue())->toBe(500);
 
     $result = app(FreeBadgeRepairService::class)->repair($this->event, $this->admin);
 
@@ -73,14 +72,9 @@ test('converts a wrongly charged prepaid badge to free, credits the wallet and l
     expect((int) $badge->tax)->toBe(0);
     expect($badge->status_payment->equals(Paid::class))->toBeTrue();
 
-    // Wallet credited back to zero
-    expect($user->fresh()->balanceInt)->toBe(0);
+    // The zeroed badge no longer counts towards what the user owes
+    expect($user->amountDue())->toBe(0);
 
-    // transactions + activity_log records exist
-    $this->assertDatabaseHas('transactions', [
-        'payable_id' => $user->id,
-        'type' => 'deposit',
-    ]);
     $this->assertDatabaseHas('activity_log', [
         'subject_id' => $badge->id,
         'causer_id' => $this->admin->id,
@@ -171,7 +165,6 @@ test('is safe to run twice (no double refund)', function () {
     ]);
 
     $badge = chargedBadge($user, $this->event, 'Charged');
-    $user->forcePay($badge);
 
     $service = app(FreeBadgeRepairService::class);
     $service->repair($this->event, $this->admin);
@@ -179,7 +172,7 @@ test('is safe to run twice (no double refund)', function () {
 
     expect($secondRun['fixed_badge_count'])->toBe(0);
     expect($secondRun['total_refunded_cents'])->toBe(0);
-    expect($user->fresh()->balanceInt)->toBe(0);
+    expect($user->amountDue())->toBe(0);
 });
 
 test('repair with no active event returns a failure result', function () {

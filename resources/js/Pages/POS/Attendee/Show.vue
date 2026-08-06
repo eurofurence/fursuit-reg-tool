@@ -6,7 +6,6 @@ import { useForm } from 'laravel-precognition-vue-inertia';
 import POSLayout from '@/Layouts/POSLayout.vue';
 import ConfirmModal from '@/Components/POS/ConfirmModal.vue';
 import BadgeCard from '@/Components/POS/Attendee/BadgeCard.vue';
-import BadgeActionSheet from '@/Components/POS/Attendee/BadgeActionSheet.vue';
 import AttendeeDetailsSheet from '@/Components/POS/Attendee/AttendeeDetailsSheet.vue';
 import { badgeAction, isHandoutable, isPayable } from '@/Components/POS/Attendee/badgeAction.js';
 import { usePosKeyboard } from '@/composables/usePosKeyboard';
@@ -19,9 +18,9 @@ defineOptions({
 const props = defineProps({
     badges: Array,
     fursuits: Array,
-    transactions: Array,
     checkouts: Array,
     attendee: Object,
+    amountDue: Number,
     pastEventBadges: Array,
     currentEvent: Object,
     eventUser: Object,
@@ -59,13 +58,10 @@ function scope(predicate) {
 const payTargets = computed(() => scope(isPayable));
 const handoutTargets = computed(() => scope(isHandoutable));
 
-// A credit balance is not a debt: never show "-0,00 €" or a negative amount due.
-const amountDue = computed(() => Math.max(0, (props.attendee.wallet?.balance ?? 0) * -1));
-
 // With a selection the bar prices exactly what is selected; without one it
-// shows the wallet's open balance, which is the number the attendee was told.
+// shows the total of every unpaid badge, which is the number the attendee was told.
 const payTotal = computed(() =>
-    hasSelection.value ? payTargets.value.reduce((sum, badge) => sum + (badge.total ?? 0), 0) : amountDue.value
+    hasSelection.value ? payTargets.value.reduce((sum, badge) => sum + (badge.total ?? 0), 0) : props.amountDue
 );
 
 const openCount = computed(() => props.badges.filter((badge) => badgeAction(badge) !== null).length);
@@ -79,9 +75,10 @@ const olderBadges = computed(() =>
 );
 
 /* --- Confirmations --------------------------------------------------------
- * One dialog for every step that costs something, so Enter always has exactly
- * one meaning and a single guard covers the keyboard, the row buttons and the
- * ⋮ sheet alike.
+ * Printing is the only step that asks: it burns a card and ties up the printer.
+ * Handing out, undoing a handout and taking payment are all either reversible
+ * from the same row or lead to a screen that can be cancelled, and the desk
+ * works a queue — every extra tap is queue time.
  */
 const confirm = ref(null);
 
@@ -95,38 +92,28 @@ function askPrint(badge) {
     };
 }
 
-// No confirmation: a single handout is the move the desk makes hundreds of
-// times an hour, and it is undoable from the same row. Bulk handout still asks,
-// because that one is not a single mis-tap to walk back.
+// Instant: handing out is the move the desk makes hundreds of times an hour,
+// and the same row can undo it.
 function handoutNow(badge) {
     useForm('POST', route('pos.badges.handout', { badge: badge.id }), {})
         .submit({ preserveScroll: true });
 }
 
-function askUndo(badge) {
-    confirm.value = {
-        kind: 'undo',
-        badge,
-        title: 'Undo handout',
-        message: `Put ${badge.fursuit?.name || 'this badge'} back to ready for pickup?`,
-        acceptLabel: 'Undo',
-        acceptSeverity: 'danger',
-    };
+function undoNow(badge) {
+    useForm('POST', route('pos.badges.handout.undo', { badge: badge.id }), {})
+        .submit({ preserveScroll: true });
 }
 
-function askBulkHandout() {
+function handoutAll() {
     if (handoutTargets.value.length === 0) {
         return;
     }
 
-    confirm.value = {
-        kind: 'handout-bulk',
-        title: `Hand out ${handoutTargets.value.length} badge(s)`,
-        message: hasSelection.value
-            ? 'Mark the selected badges as picked up?'
-            : 'Mark every badge that is ready as picked up?',
-        acceptLabel: 'Hand out',
-    };
+    useForm('POST', route('pos.badges.handout.bulk'), {
+        badge_ids: handoutTargets.value.map((badge) => badge.id),
+    }).submit({ preserveScroll: true });
+
+    selectedIds.value = [];
 }
 
 function runConfirm() {
@@ -136,25 +123,11 @@ function runConfirm() {
     }
 
     // Cleared first: a second confirm arriving before the dialog closes would
-    // otherwise fire the same transition twice.
+    // otherwise fire the same print twice.
     confirm.value = null;
 
-    switch (pending.kind) {
-        case 'print':
-            useForm('POST', route('pos.badges.print', { badge: pending.badge.id }), {})
-                .submit({ preserveScroll: true });
-            break;
-        case 'undo':
-            useForm('POST', route('pos.badges.handout.undo', { badge: pending.badge.id }), {})
-                .submit({ preserveScroll: true });
-            break;
-        case 'handout-bulk':
-            useForm('POST', route('pos.badges.handout.bulk'), {
-                badge_ids: handoutTargets.value.map((badge) => badge.id),
-            }).submit({ preserveScroll: true });
-            selectedIds.value = [];
-            break;
-    }
+    useForm('POST', route('pos.badges.print', { badge: pending.badge.id }), {})
+        .submit({ preserveScroll: true });
 }
 
 /* --- Money ---------------------------------------------------------------- */
@@ -170,25 +143,7 @@ function startPayment(badgeIds = null) {
 
 /* --- Sheets --------------------------------------------------------------- */
 
-const sheetBadge = ref(null);
 const showDetails = ref(false);
-
-function openSheet(badge) {
-    sheetBadge.value = badge;
-}
-
-function closeSheet() {
-    sheetBadge.value = null;
-}
-
-// The sheet is a menu, not an actor: it closes and hands the badge to the same
-// handler the row buttons use, so both paths behave identically.
-function fromSheet(handler) {
-    return (badge) => {
-        closeSheet();
-        handler(badge);
-    };
-}
 
 function runBadgeAction({ badge, action }) {
     if (action === 'pay') {
@@ -208,7 +163,7 @@ function onPaymentShortcut() {
 }
 
 function onHandoutShortcut() {
-    askBulkHandout();
+    handoutAll();
 }
 
 function onConfirmShortcut(event) {
@@ -237,7 +192,7 @@ onUnmounted(() => {
 usePosKeyboard({
     onBackspace: () => router.visit(route('pos.dashboard')),
     onNumpadDivide: () => startPayment(),
-    onNumpadMultiply: () => askBulkHandout(),
+    onNumpadMultiply: () => handoutAll(),
 });
 </script>
 
@@ -258,21 +213,10 @@ usePosKeyboard({
             @cancel="confirm = null"
         />
 
-        <BadgeActionSheet
-            :show="sheetBadge !== null"
-            :badge="sheetBadge"
-            @close="closeSheet()"
-            @print="fromSheet(askPrint)"
-            @handout="fromSheet(handoutNow)"
-            @undo="fromSheet(askUndo)"
-            @pay="fromSheet((badge) => startPayment([badge.id]))"
-        />
-
         <AttendeeDetailsSheet
             :show="showDetails"
             :attendee="attendee"
             :fursuits="fursuits"
-            :transactions="transactions"
             :checkouts="checkouts"
             @close="showDetails = false"
         />
@@ -322,7 +266,8 @@ usePosKeyboard({
                 :selected="isSelected(badge)"
                 @toggle="toggleSelect"
                 @act="runBadgeAction"
-                @more="openSheet"
+                @print="askPrint"
+                @undo="undoNow"
             />
 
             <!--
@@ -337,7 +282,8 @@ usePosKeyboard({
                 :event-label="entry.eventName"
                 :selectable="false"
                 @act="runBadgeAction"
-                @more="openSheet"
+                @print="askPrint"
+                @undo="undoNow"
             />
         </div>
         <div v-else class="pos-card text-center text-pos-muted py-8">
@@ -361,7 +307,7 @@ usePosKeyboard({
                 class="pos-btn pos-btn--commit"
                 :class="handoutTargets.length ? 'pos-btn--primary' : ''"
                 :disabled="handoutTargets.length === 0"
-                @click="askBulkHandout()"
+                @click="handoutAll()"
             >
                 Hand out {{ hasSelection ? 'selected' : 'all' }} ({{ handoutTargets.length }})
                 <span class="pos-kcap">*</span>

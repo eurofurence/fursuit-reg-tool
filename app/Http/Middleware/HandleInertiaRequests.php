@@ -60,7 +60,7 @@ class HandleInertiaRequests extends Middleware
 
         return [
             'user' => $request->user()?->load('badges'),
-            'balance' => $request->user()?->balanceInt,
+            'amountDue' => $request->user()?->amountDue(),
         ];
     }
 

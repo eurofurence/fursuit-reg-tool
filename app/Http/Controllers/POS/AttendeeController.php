@@ -54,8 +54,7 @@ class AttendeeController extends Controller
         // Get all badges for the user (including rejected ones)
         $allBadges = $user->badges()
             ->with(['fursuit.species', 'fursuit.event'])
-            ->get()
-            ->load('wallet');
+            ->get();
 
         // Group badges by event
         $badgesByEvent = $allBadges->groupBy('fursuit.event.id');
@@ -85,12 +84,12 @@ class AttendeeController extends Controller
         }
 
         return Inertia::render('POS/Attendee/Show', [
-            'attendee' => $user->load('wallet'),
+            'attendee' => $user,
+            'amountDue' => $user->amountDue(),
             'eventUser' => $eventUser, // Include event-specific data
             'badges' => $currentEventBadges, // Current event badges only
             'pastEventBadges' => $pastEventBadges, // Past events with unclaimed badges
             'currentEvent' => $activeEvent,
-            'transactions' => $user->wallet->transactions()->where('amount', '<', 0)->orWhere('amount', '>', 0)->limit(50)->get(),
             'fursuits' => $user->fursuits()->with('species')->get(),
             'checkouts' => Checkout::whereBelongsTo($user)->with('items')->get()->all(),
         ]);
