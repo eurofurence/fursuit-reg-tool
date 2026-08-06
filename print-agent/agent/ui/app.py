@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import queue
 import threading
+import time
 import tkinter as tk
 from datetime import datetime
 from tkinter import messagebox, ttk
@@ -21,9 +22,15 @@ from . import calibration, console
 from .. import config as config_module
 from .. import monitor as monitor_module
 from .. import printing, vocabulary, zebra
+from ..autostart import AUTOSTART_SECONDS, should_autostart
 from ..config import AgentConfig, config_dir
 
 POLL_SECONDS = 3.0
+
+# How often an idle unattended station asks the server for something to print.
+# Often enough that nobody waits on it, rarely enough that an agent left on
+# overnight is not hammering the API.
+
 
 # Condition colours. Green only when it is genuinely safe to print.
 COLOURS = {
@@ -295,6 +302,9 @@ class AgentApp(tk.Tk):
         # and the station can be left alone; with it off an operator chooses
         # every batch by hand.
         self.auto_next = tk.BooleanVar(value=False)
+
+        # Throttles the unattended batch hunt; see _autostart_if_idle.
+        self._last_autostart = 0.0
         ttk.Checkbutton(controls, text="Pick the next batch automatically",
                         variable=self.auto_next,
                         command=self._toggle_auto).grid(row=1, column=0, columnspan=4,
@@ -415,6 +425,11 @@ class AgentApp(tk.Tk):
                 self.worker, "waiting_for_work", False):
             self.worker.resume()
             self._log("Picking up where the last batch finished.")
+            return
+
+        # Nothing running at all: look for work now rather than on the next
+        # scheduled sweep, so ticking the box feels like it did something.
+        self._last_autostart = 0.0
 
     def _on_worker_batch_change(self, batch_id) -> None:
         """The worker moved on by itself, which only happens unattended."""
@@ -1217,6 +1232,44 @@ class AgentApp(tk.Tk):
 
             self.stop_flag.wait(POLL_SECONDS)
 
+    def _autostart_if_idle(self) -> None:
+        """Start a run on our own when unattended and nothing is printing.
+
+        Unattended used to be able to *continue* a run but never *begin* one:
+        the worker is built by the Start button, so on a freshly opened agent
+        ticking the box changed a flag that nothing was left to read. A station
+        restarted overnight sat idle with the box ticked and batches waiting.
+
+        Deliberately silent about failure. Nothing here may raise a dialog: the
+        whole point is that nobody is standing in front of the screen.
+        """
+        if not should_autostart(
+            unattended=bool(self.auto_next.get()),
+            demo=bool(self.demo),
+            worker_running=self.worker is not None and self.worker.is_alive(),
+            configured=self.config_data.is_configured(),
+            has_printer=self._selected_card_binding() is not None,
+            printer_ready=self.monitor is None or self.monitor.may_print(),
+            since_last=time.monotonic() - self._last_autostart,
+        ):
+            return
+
+        self._last_autostart = time.monotonic()
+
+        try:
+            client, _store, _notifier = self._services()
+            batches = client.batches() or []
+        except Exception:  # noqa: BLE001 - try again on the next tick
+            return
+
+        if not batches:
+            return
+
+        self.active_batch = batches[0]
+        self._render_batch()
+        self._log("Unattended: starting %s" % batches[0].get("name", "?"))
+        self._start_printing()
+
     def _sync_controls(self) -> None:
         """Start follows the worker's real state, not the last button pressed.
 
@@ -1279,6 +1332,7 @@ class AgentApp(tk.Tk):
             pass
 
         self._sync_controls()
+        self._autostart_if_idle()
         self.clock_label.config(text=datetime.now().strftime("%H:%M:%S"))
         self.after(400, self._drain_events)
 
