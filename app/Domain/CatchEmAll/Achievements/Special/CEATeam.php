@@ -74,7 +74,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
         Cache::forget($this->getInfoCacheKey($context->eventUser));
 
         // Return completion progress - achievement granting is handled by AchievementService
-        return 0; // Return 1 (completed)
+        return self::getMaxProgress(); // Return 1 (completed)
     }
 
     public function getSpecialCode(): SpecialCodeType
@@ -89,10 +89,15 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
     {
         $currentProgress = Cache::remember($this->getInfoCacheKey($eventUser), now()->addYear(), function () use ($eventUser) {
             $caughtCodes = UserSpecialCatch::query()
+                ->with('specialCode')
                 ->where('event_user_id', $eventUser->id)
                 ->where('user_special_catches.type', SpecialCodeType::CATCH_EM_ALL_TEAM)
-                ->join('special_codes', 'user_special_catches.special_code_id', '=', 'special_codes.id')
-                ->pluck('special_codes.constructor_data->name')
+                ->get()
+                ->map(function (UserSpecialCatch $catch): string {
+                    return $catch->specialCode?->constructor_data['name'] ?? 'Unknown';
+                })
+                ->unique()
+                ->values()
                 ->toArray();
 
             return $caughtCodes;
