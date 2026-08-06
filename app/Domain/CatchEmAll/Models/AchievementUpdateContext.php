@@ -36,14 +36,12 @@ readonly class AchievementUpdateContext
         $currentEvent = Event::latest('starts_at')->first();
 
         // Calculate user statistics
-        $userTotalCatches = UserCatch::where('user_id', $eventUser->id)
-            ->where('event_id', operator: $currentEvent->id)
+        $userTotalCatches = UserCatch::where('event_user_id', $eventUser->id)
             ->count();
         $totalCatchableFursuits = \App\Models\Fursuit\Fursuit::where('event_id', operator: $currentEvent->id)
             ->where('catch_em_all', true)
             ->count();
-        $userUniqueFursuits = UserCatch::where('user_id', $eventUser->user()->id)
-            ->where('event_id', operator: $currentEvent->id)
+        $userUniqueFursuits = UserCatch::where('event_user_id', $eventUser->id)
             ->distinct('fursuit_id')
             ->count();
 

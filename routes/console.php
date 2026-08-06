@@ -13,3 +13,10 @@
     ->everyThreeMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Return print jobs abandoned by a dead agent to the queue. Runs often because
+// a job sitting on an expired lease is a card nobody is printing.
+\Illuminate\Support\Facades\Schedule::command('printing:reap-leases')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();

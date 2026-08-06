@@ -18,13 +18,13 @@ class ReceiptController extends Controller
         // Wait for receipt to be generated (max 10 seconds)
         $maxWaitTime = 10;
         $waitedTime = 0;
-        while (!Storage::exists('checkouts/'.$checkout->id.'.pdf') && $waitedTime < $maxWaitTime) {
+        while (! Storage::exists('checkouts/'.$checkout->id.'.pdf') && $waitedTime < $maxWaitTime) {
             sleep(1);
             $waitedTime++;
         }
 
         // If still not generated, return error
-        if (!Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
+        if (! Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
             return redirect()->back()->with('error', 'Receipt is still being generated. Please try again in a moment.');
         }
 
@@ -79,7 +79,7 @@ class ReceiptController extends Controller
     {
         // Ensure receipt exists (generate if needed, but async)
         $this->generateReceipt($checkout);
-        
+
         // Queue the email notification (will be sent async thanks to ShouldQueue)
         $checkout->user->notify(new SendReceiptNotification($checkout));
 
@@ -108,13 +108,13 @@ class ReceiptController extends Controller
 
         // Dispatch the job synchronously to ensure it completes before returning
         CreateReceiptFromCheckoutJob::dispatchSync($checkout);
-        
+
         // Double-check that the file was created
-        if (!Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
+        if (! Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
             // If still doesn't exist, try once more with a small delay
             sleep(1);
-            if (!Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
-                throw new \Exception('Failed to generate receipt PDF for checkout ' . $checkout->id);
+            if (! Storage::exists('checkouts/'.$checkout->id.'.pdf')) {
+                throw new \Exception('Failed to generate receipt PDF for checkout '.$checkout->id);
             }
         }
     }

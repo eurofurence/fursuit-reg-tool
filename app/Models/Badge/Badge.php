@@ -33,7 +33,22 @@ class Badge extends Model implements ProductInterface
         'ready_for_pickup_at' => 'datetime',
         'picked_up_at' => 'datetime',
         'is_free_badge' => 'boolean',
+        'print_file_generated_at' => 'datetime',
+        'verified_print_at' => 'datetime',
+        'printing_locked_at' => 'datetime',
     ];
+
+    /**
+     * Whether this badge has been committed to a print batch.
+     *
+     * Batches are immutable and their artwork is rendered up front, so once a
+     * badge is in one the attendee can no longer change it. Otherwise the card
+     * in the stack would stop matching the order.
+     */
+    public function isPrintingLocked(): bool
+    {
+        return $this->printing_locked_at !== null;
+    }
 
     public function fursuit(): BelongsTo
     {

@@ -8,7 +8,6 @@ use App\Filament\Resources\BadgeResource\Pages;
 use App\Filament\Traits\HasEventFilter;
 use App\Jobs\Printing\PrintBadgeJob;
 use App\Models\Badge\Badge;
-use App\Models\Event;
 use App\Models\Badge\State_Fulfillment\BadgeFulfillmentStatusState;
 use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Payment\BadgePaymentStatusState;
@@ -293,20 +292,34 @@ class BadgeResource extends Resource
                         $failed = $jobs->where('status', 'failed')->count();
                         $printed = $jobs->where('status', 'printed')->count();
 
-                        if ($total === 0) return '0';
-                        if ($failed > 0) return "{$total} ({$failed} failed)";
-                        if ($pending > 0) return "{$total} ({$pending} pending)";
+                        if ($total === 0) {
+                            return '0';
+                        }
+                        if ($failed > 0) {
+                            return "{$total} ({$failed} failed)";
+                        }
+                        if ($pending > 0) {
+                            return "{$total} ({$pending} pending)";
+                        }
+
                         return "{$total}";
                     })
                     ->color(function (Badge $record): string {
                         $jobs = $record->printJobs()->get();
-                        if ($jobs->count() === 0) return 'gray';
+                        if ($jobs->count() === 0) {
+                            return 'gray';
+                        }
 
                         $hasFailed = $jobs->where('status', 'failed')->count() > 0;
                         $hasPending = $jobs->whereIn('status', ['pending', 'queued', 'printing', 'retrying'])->count() > 0;
 
-                        if ($hasFailed) return 'warning';
-                        if ($hasPending) return 'info';
+                        if ($hasFailed) {
+                            return 'warning';
+                        }
+                        if ($hasPending) {
+                            return 'info';
+                        }
+
                         return 'success';
                     })
                     ->alignCenter(),
@@ -476,7 +489,7 @@ class BadgeResource extends Resource
                         // Create a Laravel batch with proper chaining
                         Bus::batch([
                             // wrap in array to chain!
-                            $printJobs
+                            $printJobs,
                         ])
                             ->name("Badge Bulk Print - {$records->count()} badges")
                             ->onQueue('batch-print')
@@ -526,12 +539,13 @@ class BadgeResource extends Resource
         }
 
         // Generate PDF content synchronously (like PrintBadgeJob does)
-        $badgeClass = $badge->fursuit->event->badge_class ?? 'EF28_Badge';
+        $badgeClass = $badge->fursuit->event->badge_class ?? 'EF30_Badge';
 
         $printer = match ($badgeClass) {
+            'EF30_Badge' => new \App\Badges\EF30_Badge,
             'EF29_Badge' => new \App\Badges\EF29_Badge,
             'EF28_Badge' => new \App\Badges\EF28_Badge,
-            default => new \App\Badges\EF28_Badge,
+            default => new \App\Badges\EF30_Badge,
         };
 
         // Generate PDF content

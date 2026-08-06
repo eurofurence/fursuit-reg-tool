@@ -83,8 +83,8 @@ class Event extends Model
     public function isInOrderWindow(): bool
     {
         $now = now();
-        $orderStarted = !$this->order_starts_at || $this->order_starts_at <= $now;
-        $orderNotEnded = !$this->order_ends_at || $this->order_ends_at > $now;
+        $orderStarted = ! $this->order_starts_at || $this->order_starts_at <= $now;
+        $orderNotEnded = ! $this->order_ends_at || $this->order_ends_at > $now;
 
         return $orderStarted && $orderNotEnded;
     }
@@ -149,7 +149,7 @@ class Event extends Model
 
     public function getProfitMarginAttribute(): ?float
     {
-        if (!$this->cost) {
+        if (! $this->cost) {
             return null;
         }
 
@@ -160,7 +160,7 @@ class Event extends Model
 
     public function isProfitableAttribute(): ?bool
     {
-        if (!$this->cost) {
+        if (! $this->cost) {
             return null;
         }
 

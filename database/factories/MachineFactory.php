@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enum\QzConnectionStatusEnum;
 use App\Models\Machine;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -16,8 +15,6 @@ class MachineFactory extends Factory
             'name' => $this->faker->unique()->company.' POS Terminal',
             'should_discover_printers' => $this->faker->boolean(70),
             'is_print_server' => $this->faker->boolean(50),
-            'qz_connection_status' => $this->faker->randomElement(QzConnectionStatusEnum::cases()),
-            'qz_last_seen_at' => $this->faker->optional(0.8)->dateTimeBetween('-1 hour', 'now'),
             'pending_print_jobs_count' => $this->faker->numberBetween(0, 10),
         ];
     }
@@ -30,19 +27,25 @@ class MachineFactory extends Factory
         ]);
     }
 
-    public function qzConnected(): self
+    /**
+     * A machine whose print agent has checked in just now.
+     */
+    public function agentConnected(): self
     {
         return $this->state(fn (array $attributes) => [
-            'qz_connection_status' => QzConnectionStatusEnum::Connected,
-            'qz_last_seen_at' => now(),
+            'agent_last_seen_at' => now(),
+            'agent_version' => '1.0.0',
         ]);
     }
 
-    public function qzDisconnected(): self
+    /**
+     * A machine we have not heard from, either because the agent is not running
+     * or because the station lost the network.
+     */
+    public function agentSilent(): self
     {
         return $this->state(fn (array $attributes) => [
-            'qz_connection_status' => QzConnectionStatusEnum::Disconnected,
-            'qz_last_seen_at' => null,
+            'agent_last_seen_at' => null,
         ]);
     }
 }

@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Badge\Badge;
-use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Fulfillment\PickedUp;
+use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use App\Models\Event;
 use App\Models\EventUser;
@@ -296,26 +296,26 @@ class ReadyForPickupNotificationTest extends TestCase
         Notification::assertSentTo(
             [$user],
             BadgePrintedNotification::class,
-            function (BadgePrintedNotification $notification, $channels) use ($badge, $fursuit, $user) {
+            function (BadgePrintedNotification $notification, $channels) use ($badge, $user) {
                 // Test that the notification has the correct badge
                 $this->assertEquals($badge->id, $notification->badge->id);
-                
+
                 // Test the mail content
                 $mailMessage = $notification->toMail($user);
-                
+
                 // Check subject
                 $this->assertStringContainsString('Fluffy Wolf', $mailMessage->subject);
                 $this->assertStringContainsString('ready for pickup', $mailMessage->subject);
-                
+
                 // Check greeting
-                $this->assertEquals("Hello John Doe,", $mailMessage->greeting);
-                
+                $this->assertEquals('Hello John Doe,', $mailMessage->greeting);
+
                 // Check that body mentions the fursuit name and badge ID
                 $bodyText = implode(' ', $mailMessage->introLines);
                 $this->assertStringContainsString('Fluffy Wolf', $bodyText);
                 $this->assertStringContainsString('EF29-100-1', $bodyText);
                 $this->assertStringContainsString('Fursuit Lounge', $bodyText);
-                
+
                 return true;
             }
         );

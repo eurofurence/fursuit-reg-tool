@@ -7,7 +7,6 @@ use App\Badges\Components\TextAlignment;
 use App\Badges\Components\TextField;
 use App\Interfaces\BadgeInterface;
 use App\Models\Badge\Badge;
-use Illuminate\Support\Facades\Storage;
 use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
 use Imagine\Image\Palette\Color\ColorInterface;
@@ -99,11 +98,16 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         // Adjust to badge size
         $overlayImage->resize($size);
 
-        // cLoad the image to be used as a replacement for green
-        $replacementImage = $this->imagine->open(Storage::temporaryUrl($this->badge->fursuit->image, now()->addMinutes(1)));
-        $replacementImage->resize(new Box(380, 507));
+        // Load the image to be used as a replacement for green.
+        //
+        // ImagePreparer downloads once and scales on the way in, rather than
+        // pulling a multi-megabyte upload over HTTP and decoding it at full
+        // resolution to draw into a 380x507 box.
+        $prepared = (new ImagePreparer($this->imagine))
+            ->prepare($this->badge->fursuit->image, 380, 507);
 
-        $replacementSize = $replacementImage->getSize();
+        $replacementImage = $prepared->image;
+        $replacementSize = $prepared->size();
 
         // Define the offsets for the shift
         $xOffset = 35; // For example, move it 30 pixels to the right

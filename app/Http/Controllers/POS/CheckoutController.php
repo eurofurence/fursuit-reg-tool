@@ -261,12 +261,12 @@ class CheckoutController extends Controller
             try {
                 // Refresh from DB to get latest state
                 $activeCheckout->refresh();
-                
+
                 // Skip if already cancelled
                 if ($activeCheckout->status instanceof Cancelled) {
                     continue;
                 }
-                
+
                 // Transition to cancelled state (this will handle Fiskaly cancellation via ToCancelled transition)
                 if ($activeCheckout->status->canTransitionTo(Cancelled::class)) {
                     $activeCheckout->status->transitionTo(Cancelled::class);
@@ -277,7 +277,7 @@ class CheckoutController extends Controller
                     'checkout_id' => $activeCheckout->id,
                     'error' => $e->getMessage(),
                 ]);
-                
+
                 // Force transition to cancelled even if Fiskaly fails
                 try {
                     $activeCheckout->update(['status' => Cancelled::$name]);

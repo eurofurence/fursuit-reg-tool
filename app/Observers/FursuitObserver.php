@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Fursuit\Fursuit;
 use App\Services\FursuitCatchCode;
 
@@ -43,6 +44,12 @@ class FursuitObserver
         }
     }
 
+    /**
+     * Fursuit fields that end up drawn on the badge. Changing any of them makes
+     * every rendered PDF for that fursuit stale.
+     */
+    private const PRINT_FILE_INPUTS = ['name', 'species_id', 'image', 'catch_code', 'catch_em_all'];
+
     public function updated(Fursuit $fursuit): void
     {
         if ($fursuit->catch_em_all === true && $fursuit->catch_code === null) {
@@ -50,7 +57,14 @@ class FursuitObserver
             $fursuit->save();
         }
 
-        // Note: Fursuit layers are no longer cached, so no cache clearing needed
+        // A new photo or a renamed character means the cards on file no longer
+        // show what the order says. Throw them away and re-render; badges already
+        // committed to a batch are frozen and skip themselves.
+        if ($fursuit->wasChanged(self::PRINT_FILE_INPUTS)) {
+            $fursuit->badges()->get()->each(
+                fn ($badge) => GenerateBadgePrintFileJob::invalidateFor($badge)
+            );
+        }
     }
 
     private function generateCatchCode(): string

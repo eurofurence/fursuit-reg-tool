@@ -3,7 +3,6 @@
 namespace App\Models\Badge\State_Payment\Transitions;
 
 use App\Models\Badge\Badge;
-use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use App\Models\Badge\State_Payment\Paid;
 use Illuminate\Support\Facades\DB;

@@ -7,35 +7,17 @@ import Badge from "primevue/badge";
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { usePosKeyboard } from '@/composables/usePosKeyboard';
 
-// QZ Status management
-const qzStatus = ref({
-    qz_status: 'disconnected',
-    is_connected: false,
-    pending_jobs: 0,
-    last_seen: null
-});
-
-// Printer states management
+// Printer state, as last reported by the native print agent. The browser no
+// longer drives any printer: the agent owns the hardware and the POS only
+// displays what it says. See docs/printing.md.
 const printerStates = ref({});
 
-// Handle QZ status updates from QZPrintService
-const handleQzStatusChange = (status) => {
-    qzStatus.value = { ...qzStatus.value, ...status };
-};
-
-const handlePendingJobsUpdate = (count) => {
-    qzStatus.value.pending_jobs = count;
-};
-
 const handlePrinterStatesUpdate = (states) => {
-    console.log('🎯 POSLayout received printer states update:', states);
     printerStates.value = states;
-    console.log('📊 POSLayout printer states updated to:', printerStates.value);
 };
-import QZPrintService from "@/Components/POS/QZPrintService.vue";
+
 import ToastService from "@/Components/POS/ToastService.vue";
 import ShortcutsDialog from "@/Components/POS/ShortcutsDialog.vue";
-import QzStatusIndicator from "@/Components/POS/QzStatusIndicator.vue";
 import PrinterStatusIndicator from "@/Components/POS/PrinterStatusIndicator.vue";
 import InactivityTimer from "@/Components/POS/InactivityTimer.vue";
 import AutoLogoutModal from "@/Components/POS/AutoLogoutModal.vue";
@@ -205,13 +187,6 @@ const backRoute = computed(() => {
 <template>
     <ToastService/>
     <InactivityTimer/>
-    <!-- Only load QZPrintService for devices that should discover printers -->
-    <QZPrintService
-        v-if="machine?.should_discover_printers"
-        @qz-status-changed="handleQzStatusChange"
-        @pending-jobs-updated="handlePendingJobsUpdate"
-        @printer-states-updated="handlePrinterStatesUpdate"
-    />
     <div class="min-h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
         <!-- Compact System Bar -->
         <header class="bg-white border-b border-slate-200 h-8" v-if="page.props.auth.user">
@@ -226,12 +201,9 @@ const backRoute = computed(() => {
                     </span>
                 </div>
 
-                <!-- Center: Clock | QZ Status | Printers -->
+                <!-- Center: Clock | Printers -->
                 <div class="flex items-center space-x-1 text-slate-600">
                     <DigitalClock class="font-medium"/>
-                    <span class="text-slate-400">|</span>
-                    <QzStatusIndicator v-if="qzStatus" :qz-status="qzStatus" :show-pending-jobs="false" />
-                    <span v-else class="text-xs font-medium">POS Endpoint</span>
                     <span v-if="machine?.should_discover_printers" class="text-slate-400">|</span>
                     <Link v-if="machine?.should_discover_printers" :href="route('pos.printers.index')" class="flex items-center hover:text-slate-800">
                         <i class="pi pi-print mr-1" :class="hasPausedPrinters ? 'text-red-500' : ''"></i>

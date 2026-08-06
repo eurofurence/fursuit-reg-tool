@@ -50,7 +50,7 @@ class Archivist implements Achievement
     public function updateAchievementProgress(AchievementUpdateContext $context): int
     {
         // Only trigger on actual catches, not special codes
-        if (!$context->hasCatch()) {
+        if (! $context->hasCatch()) {
             return -1; // Ignore this update
         }
 

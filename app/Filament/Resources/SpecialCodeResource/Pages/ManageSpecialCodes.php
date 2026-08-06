@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\SpecialCodeResource\Pages;
 
-
 use App\Filament\Resources\SpecialCodeResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ManageRecords;

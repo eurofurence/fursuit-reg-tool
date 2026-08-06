@@ -7,7 +7,6 @@ use App\Badges\Components\TextAlignment;
 use App\Badges\Components\TextField;
 use App\Interfaces\BadgeInterface;
 use App\Models\Badge\Badge;
-use Illuminate\Support\Facades\Storage;
 use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
 use Imagine\Image\Palette\Color\ColorInterface;
@@ -98,23 +97,21 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
         // Adjust to badge size
         $overlayImage->resize($size);
 
-        // Load the image to be used as a replacement for green
-        $replacementImageUrl = Storage::temporaryUrl($this->badge->fursuit->image, now()->addMinutes(1));
-        $replacementImage = $this->imagine->open($replacementImageUrl);
-        $replacementImage->resize(new Box(350, 455));
+        // Load the image to be used as a replacement for green.
+        //
+        // ImagePreparer downloads once and scales before decoding cost is
+        // incurred. This used to fetch the full-size upload over HTTP twice, and
+        // decode a multi-megapixel photo just to draw it into a 350x455 box.
+        $prepared = (new ImagePreparer($this->imagine))
+            ->prepare($this->badge->fursuit->image, 350, 455);
 
-        $replacementSize = $replacementImage->getSize();
+        $replacementImage = $prepared->image;
+        $replacementSize = $prepared->size();
+        $isPng = $prepared->isPng;
 
         // Define the offsets for the shift
         $xOffset = 30; // For example, move it 30 pixels to the right
         $yOffset = 35; // For example, move it down by 35 pixels
-
-        // Check whether the file is a PNG
-        $isPng = false;
-        if (! empty($replacementImage)) {
-            $imageInfo = getimagesize($replacementImageUrl);
-            $isPng = ($imageInfo[2] === IMAGETYPE_PNG);
-        }
 
         // Replace green areas in the overlay image with the replacement image
         for ($x = 35; $x < $size->getWidth() - 600; $x++) {

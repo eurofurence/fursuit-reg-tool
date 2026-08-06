@@ -2,10 +2,9 @@
 
 namespace App\Models\Badge\State_Fulfillment;
 
-use App\Models\Badge\State_Fulfillment\Transitions\ToPrinted;
+use App\Models\Badge\State_Fulfillment\Transitions\ToPickedUp;
 use App\Models\Badge\State_Fulfillment\Transitions\ToProcessing;
 use App\Models\Badge\State_Fulfillment\Transitions\ToReadyForPickup;
-use App\Models\Badge\State_Fulfillment\Transitions\ToPickedUp;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasIcon;
 use Spatie\ModelStates\State;

@@ -62,15 +62,16 @@ class PrintJobResource extends Resource
                 Forms\Components\Textarea::make('error_message')
                     ->columnSpanFull()
                     ->rows(3),
-                Forms\Components\TextInput::make('qz_job_name')
-                    ->maxLength(255)
+                // Reported by the printer firmware over SNMP, which is what the
+                // agent matches a finished card against.
+                Forms\Components\TextInput::make('firmware_job_id')
+                    ->label('Printer job id')
+                    ->maxLength(64)
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('last_qz_status')
-                    ->maxLength(255)
+                Forms\Components\TextInput::make('firmware_job_uuid')
+                    ->label('Printer job UUID')
+                    ->maxLength(64)
                     ->columnSpanFull(),
-                Forms\Components\Textarea::make('last_qz_message')
-                    ->columnSpanFull()
-                    ->rows(2),
             ]);
     }
 
@@ -179,7 +180,8 @@ class PrintJobResource extends Resource
                         if (! $data['value']) {
                             return null;
                         }
-                        return 'Printable ID: ' . $data['value'];
+
+                        return 'Printable ID: '.$data['value'];
                     }),
                 \Filament\Tables\Filters\Filter::make('printable_type')
                     ->form([
@@ -196,7 +198,8 @@ class PrintJobResource extends Resource
                         if (! $data['value']) {
                             return null;
                         }
-                        return 'Type: ' . class_basename($data['value']);
+
+                        return 'Type: '.class_basename($data['value']);
                     }),
             ])
             ->actions([

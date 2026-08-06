@@ -73,24 +73,18 @@ class AchievementRegister
     /**
      * Count of required (non-optional) achievements for 100% completion.
      * Built during initialization.
-     *
-     * @var int
      */
     protected static int $requiredAchievementCount = 0;
 
     /**
      * Count of optional achievements.
      * Built during initialization.
-     *
-     * @var int
      */
     protected static int $optionalAchievementCount = 0;
 
     /**
      * Initialize the achievement register.
      * This method is called once during application startup.
-     *
-     * @return void
      */
     public static function init(): void
     {
@@ -107,7 +101,7 @@ class AchievementRegister
         self::calculateAchievementCounts();
 
         // Log initialization
-        Log::info('AchievementRegister initialized with ' . count(self::$achievements) . ' achievements', [
+        Log::info('AchievementRegister initialized with '.count(self::$achievements).' achievements', [
             'total_achievements' => count(self::$achievements),
             'special_achievements' => count(self::$specialCodeIndex),
             'normal_achievements' => count(self::$normalAchievements),
@@ -118,23 +112,19 @@ class AchievementRegister
 
     /**
      * Build achievement instances from registered classes.
-     *
-     * @return void
      */
     protected static function buildAchievementInstances(): void
     {
         self::$achievements = [];
 
         foreach (self::$achievementClasses as $className) {
-            self::$achievements[$className] = new $className();
+            self::$achievements[$className] = new $className;
         }
     }
 
     /**
      * Build all indexes for fast lookups.
      * Called during initialization.
-     *
-     * @return void
      */
     protected static function buildIndexes(): void
     {
@@ -145,8 +135,6 @@ class AchievementRegister
 
     /**
      * Build the ID => Achievement index.
-     *
-     * @return void
      */
     protected static function buildIdIndex(): void
     {
@@ -160,8 +148,6 @@ class AchievementRegister
 
     /**
      * Build the SpecialCodeType => SpecialAchievement index.
-     *
-     * @return void
      */
     protected static function buildSpecialCodeIndex(): void
     {
@@ -172,7 +158,7 @@ class AchievementRegister
                 $specialCode = $achievement->getSpecialCode();
                 $codeValue = $specialCode->name;
 
-                if (!isset(self::$specialCodeIndex[$codeValue])) {
+                if (! isset(self::$specialCodeIndex[$codeValue])) {
                     self::$specialCodeIndex[$codeValue] = [];
                 }
 
@@ -183,15 +169,13 @@ class AchievementRegister
 
     /**
      * Build the normal achievements index (non-special achievements).
-     *
-     * @return void
      */
     protected static function buildNormalAchievementsIndex(): void
     {
         self::$normalAchievements = [];
 
         foreach (self::$achievements as $achievement) {
-            if (!($achievement instanceof SpecialAchievement)) {
+            if (! ($achievement instanceof SpecialAchievement)) {
                 self::$normalAchievements[] = $achievement;
             }
         }
@@ -200,8 +184,6 @@ class AchievementRegister
     /**
      * Calculate achievement counts for required and optional achievements.
      * Called during initialization.
-     *
-     * @return void
      */
     protected static function calculateAchievementCounts(): void
     {
@@ -219,9 +201,6 @@ class AchievementRegister
 
     /**
      * Get an achievement by its ID using the index for fast lookup.
-     *
-     * @param string $achievementId
-     * @return Achievement|null
      */
     public static function getAchievementById(string $achievementId): ?Achievement
     {
@@ -231,7 +210,6 @@ class AchievementRegister
     /**
      * Get all special achievements that can be triggered by a specific SpecialCodeType.
      *
-     * @param SpecialCodeType $specialCode
      * @return array<SpecialAchievement>
      */
     public static function getAchievementsBySpecialCode(SpecialCodeType $specialCode): array
@@ -262,7 +240,6 @@ class AchievementRegister
     /**
      * Get special achievements by their special code.
      *
-     * @param SpecialCodeType $specialCode
      * @return array<SpecialAchievement>
      */
     public static function getSpecialAchievementsByCode(SpecialCodeType $specialCode): array
@@ -293,8 +270,7 @@ class AchievementRegister
     /**
      * Get a specific achievement instance by its class name.
      *
-     * @param class-string<Achievement> $className
-     * @return Achievement|null
+     * @param  class-string<Achievement>  $className
      */
     public static function getAchievement(string $className): ?Achievement
     {
@@ -303,8 +279,6 @@ class AchievementRegister
 
     /**
      * Get the number of required (non-optional) achievements for 100% completion.
-     *
-     * @return int
      */
     public static function getRequiredAchievementCount(): int
     {
@@ -313,8 +287,6 @@ class AchievementRegister
 
     /**
      * Get the number of optional achievements.
-     *
-     * @return int
      */
     public static function getOptionalAchievementCount(): int
     {
@@ -323,9 +295,6 @@ class AchievementRegister
 
     /**
      * Check if an achievement is registered by ID.
-     *
-     * @param string $achievementId
-     * @return bool
      */
     public static function hasAchievementId(string $achievementId): bool
     {
@@ -351,20 +320,19 @@ class AchievementRegister
     /**
      * Validate all registered achievements for consistency.
      *
-     * @return void
      * @throws \InvalidArgumentException
      */
     private static function validateAchievements(): void
     {
         foreach (self::$achievements as $className => $instance) {
             // Check if the class actually implements Achievement interface
-            if (!($instance instanceof Achievement)) {
+            if (! ($instance instanceof Achievement)) {
                 throw new \InvalidArgumentException("Class {$className} must implement Achievement interface");
             }
 
             // Check for duplicate IDs
             $id = $instance->getId();
-            $duplicates = array_filter(self::$achievements, fn($other) => $other->getId() === $id);
+            $duplicates = array_filter(self::$achievements, fn ($other) => $other->getId() === $id);
 
             if (count($duplicates) > 1) {
                 throw new \InvalidArgumentException("Duplicate achievement ID found: {$id}");
@@ -378,7 +346,6 @@ class AchievementRegister
     /**
      * Validate that no SpecialCodeType is used by multiple SpecialAchievements.
      *
-     * @return void
      * @throws \InvalidArgumentException
      */
     private static function validateSpecialCodeTypes(): void
@@ -395,33 +362,31 @@ class AchievementRegister
                     $firstId = $specialCodeUsage[$codeValue]['achievementId'];
 
                     throw new \InvalidArgumentException(
-                        "Duplicate SpecialCodeType '{$codeValue}' found: " .
-                        "Used by both '{$firstClass}' (ID: {$firstId}) and '{$className}' (ID: {$instance->getId()}). " .
-                        "Each SpecialCodeType must be unique across all SpecialAchievements."
+                        "Duplicate SpecialCodeType '{$codeValue}' found: ".
+                        "Used by both '{$firstClass}' (ID: {$firstId}) and '{$className}' (ID: {$instance->getId()}). ".
+                        'Each SpecialCodeType must be unique across all SpecialAchievements.'
                     );
                 }
 
                 $specialCodeUsage[$codeValue] = [
                     'className' => $className,
                     'achievementId' => $instance->getId(),
-                    'instance' => $instance
+                    'instance' => $instance,
                 ];
             }
         }
 
         // Log successful validation
-        if (!empty($specialCodeUsage)) {
+        if (! empty($specialCodeUsage)) {
             Log::debug('SpecialCodeType validation passed', [
                 'special_code_types_found' => count($specialCodeUsage),
-                'codes' => array_keys($specialCodeUsage)
+                'codes' => array_keys($specialCodeUsage),
             ]);
         }
     }
 
     /**
      * Get total count of registered achievements.
-     *
-     * @return int
      */
     public static function getCount(): int
     {

@@ -35,44 +35,48 @@ class ItemsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('name')
                     ->label('Item')
                     ->searchable(),
-                
+
                 Tables\Columns\TextColumn::make('description')
                     ->label('Features')
                     ->formatStateUsing(function ($state) {
-                        if (is_array($state) && !empty($state)) {
+                        if (is_array($state) && ! empty($state)) {
                             return implode(', ', $state);
                         }
+
                         return '-';
                     })
                     ->wrap(),
-                
+
                 Tables\Columns\TextColumn::make('payable')
                     ->label('Badge')
                     ->formatStateUsing(function ($record) {
                         if ($record->payable_type === Badge::class && $record->payable) {
                             $badge = $record->payable;
+
                             return "{$badge->fursuit->name} (#{$badge->custom_id})";
                         }
+
                         return '-';
                     })
                     ->url(function ($record) {
                         if ($record->payable_type === Badge::class && $record->payable) {
                             return BadgeResource::getUrl('edit', ['record' => $record->payable]);
                         }
+
                         return null;
                     })
                     ->openUrlInNewTab(),
-                
+
                 Tables\Columns\TextColumn::make('subtotal')
                     ->label('Subtotal')
                     ->money('EUR', divideBy: 100)
                     ->alignEnd(),
-                
+
                 Tables\Columns\TextColumn::make('tax')
                     ->label('Tax')
                     ->money('EUR', divideBy: 100)
                     ->alignEnd(),
-                
+
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
                     ->money('EUR', divideBy: 100)
@@ -93,22 +97,22 @@ class ItemsRelationManager extends RelationManager
             ])
             ->paginated(false);
     }
-    
+
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return true;
     }
-    
+
     protected function canCreate(): bool
     {
         return false;
     }
-    
+
     protected function canEdit(Model $record): bool
     {
         return false;
     }
-    
+
     protected function canDelete(Model $record): bool
     {
         return false;

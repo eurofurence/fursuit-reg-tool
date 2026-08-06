@@ -10,7 +10,7 @@ use Filament\Resources\Pages\ViewRecord;
 class ViewCheckout extends ViewRecord
 {
     protected static string $resource = CheckoutResource::class;
-    
+
     protected function getHeaderActions(): array
     {
         return [
@@ -20,7 +20,7 @@ class ViewCheckout extends ViewRecord
                 ->color('gray')
                 ->url(fn (Checkout $record): string => route('pos.checkout.receipt', $record))
                 ->openUrlInNewTab(),
-            
+
             Actions\Action::make('print')
                 ->label('Print Receipt')
                 ->icon('heroicon-o-printer')
@@ -28,18 +28,19 @@ class ViewCheckout extends ViewRecord
                 ->action(function (Checkout $record) {
                     // Generate receipt PDF
                     \App\Jobs\CreateReceiptFromCheckoutJob::dispatchSync($record);
-                    
+
                     // Find active receipt printer
                     $receiptPrinter = \App\Domain\Printing\Models\Printer::where('is_active', true)
                         ->where('type', 'receipt')
                         ->first();
 
-                    if (!$receiptPrinter) {
+                    if (! $receiptPrinter) {
                         \Filament\Notifications\Notification::make()
                             ->title('No receipt printer found')
                             ->body('Please configure an active receipt printer first.')
                             ->danger()
                             ->send();
+
                         return;
                     }
 
@@ -50,7 +51,7 @@ class ViewCheckout extends ViewRecord
                         'file' => 'checkouts/'.$record->id.'.pdf',
                         'status' => \App\Enum\PrintJobStatusEnum::Pending,
                     ]);
-                    
+
                     \Filament\Notifications\Notification::make()
                         ->title('Receipt added to print queue')
                         ->body("Receipt for checkout #{$record->id} has been queued for printing.")

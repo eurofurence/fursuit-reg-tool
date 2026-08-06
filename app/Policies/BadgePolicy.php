@@ -80,6 +80,13 @@ class BadgePolicy
             return false;
         }
 
+        // Committed to a print batch. The artwork was rendered when the batch
+        // was built, so an edit now would produce a card that no longer matches
+        // the order, and nobody would spot it until pickup.
+        if ($badge->isPrintingLocked()) {
+            return false;
+        }
+
         // Cannot edit when there is no active event, or once the event itself has ended.
         //
         // NOTE: this deliberately checks the *event end* (ends_at), NOT the order window
@@ -118,6 +125,12 @@ class BadgePolicy
 
         // Cannot delete a badge that has already been printed
         if (! $badge->status_fulfillment->equals(Pending::class)) {
+            return false;
+        }
+
+        // Deleting a badge that is queued in a batch would leave the print run
+        // pointing at something that no longer exists.
+        if (! $user->is_admin && $badge->isPrintingLocked()) {
             return false;
         }
 

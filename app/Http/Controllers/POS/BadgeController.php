@@ -17,24 +17,24 @@ class BadgeController extends Controller
     {
         $badgeIds = $request->input('badge_ids');
         $printerId = $request->input('printer_id');
-        
+
         // If no specific badge IDs provided, get the first 50 unprinted badges with lowest attendee_id
         if (empty($badgeIds)) {
             $currentEvent = \App\Models\Event::latest('starts_at')->first();
-            
-            if (!$currentEvent) {
+
+            if (! $currentEvent) {
                 return back()->with('error', 'No current event found');
             }
-            
+
             // Get up to 50 unprinted badges with the lowest attendee IDs
             $badges = Badge::whereHas('fursuit', function ($query) use ($currentEvent) {
-                    $query->where('event_id', $currentEvent->id);
-                })
+                $query->where('event_id', $currentEvent->id);
+            })
                 ->where('status_fulfillment', 'pending')
                 ->join('fursuits', 'badges.fursuit_id', '=', 'fursuits.id')
                 ->leftJoin('event_users', function ($join) use ($currentEvent) {
                     $join->on('fursuits.user_id', '=', 'event_users.user_id')
-                         ->where('event_users.event_id', '=', $currentEvent->id);
+                        ->where('event_users.event_id', '=', $currentEvent->id);
                 })
                 ->select('badges.*')
                 ->orderByRaw('CAST(event_users.attendee_id AS UNSIGNED) ASC')
@@ -49,7 +49,7 @@ class BadgeController extends Controller
         }
 
         // Sort badges by attendee ID for consistent printing order (if not already sorted)
-        if (!empty($badgeIds)) {
+        if (! empty($badgeIds)) {
             $sortedBadges = $badges->sortBy(function ($badge) {
                 return $badge->fursuit?->user?->eventUsers?->where('event_id', $badge->fursuit->event_id)->first()?->attendee_id ?? 999999;
             });
@@ -77,7 +77,7 @@ class BadgeController extends Controller
 
         // Create a Laravel batch with proper chaining
         Bus::batch([
-            $printJobs
+            $printJobs,
         ])
             ->name("POS Badge Bulk Print - {$printedCount} badges")
             ->onQueue('batch-print')

@@ -6,19 +6,22 @@ use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Models\PrinterStatus;
 use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
-use App\Enum\QzConnectionStatusEnum;
 use Bavix\Wallet\Traits\HasWalletFloat;
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\Access\Authorizable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Machine describes a pos system
  */
 class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatable
 {
-    use Authenticatable, Authorizable, HasFactory, HasWalletFloat;
+    // HasApiTokens is for the native print agent. The POS browser authenticates
+    // with a session, but the agent is a desktop app on a different network and
+    // needs a bearer token it can hold onto.
+    use Authenticatable, Authorizable, HasApiTokens, HasFactory, HasWalletFloat;
 
     public $timestamps = false;
 
@@ -31,11 +34,10 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
     protected $casts = [
         'should_discover_printers' => 'boolean',
         'is_print_server' => 'boolean',
-        'qz_connection_status' => QzConnectionStatusEnum::class,
-        'qz_last_seen_at' => 'datetime',
         'pending_print_jobs_count' => 'integer',
         'auto_logout_timeout' => 'integer',
         'archived_at' => 'datetime',
+        'agent_last_seen_at' => 'datetime',
     ];
 
     // generic printers
@@ -79,9 +81,15 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
         return $query->where('is_print_server', true);
     }
 
-    public function scopeWithQzConnected($query)
+    /**
+     * Machines whose print agent has called in recently.
+     *
+     * The agent lives on a private network and reaches out to us, so "when did
+     * we last hear from it" is the only liveness signal there is.
+     */
+    public function scopeWithAgentConnected($query)
     {
-        return $query->where('qz_connection_status', QzConnectionStatusEnum::Connected);
+        return $query->where('agent_last_seen_at', '>', now()->subMinutes(2));
     }
 
     public function scopeNotArchived($query)
@@ -105,18 +113,13 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
     }
 
     // Helper methods
-    public function isQzConnected(): bool
-    {
-        return $this->qz_connection_status === QzConnectionStatusEnum::Connected &&
-               $this->qz_last_seen_at?->gt(now()->subMinutes(2));
-    }
 
-    public function updateQzStatus(QzConnectionStatusEnum $status): void
+    /**
+     * Whether the print agent on this machine is still talking to us.
+     */
+    public function isAgentConnected(): bool
     {
-        $this->update([
-            'qz_connection_status' => $status,
-            'qz_last_seen_at' => now(),
-        ]);
+        return $this->agent_last_seen_at?->gt(now()->subMinutes(2)) ?? false;
     }
 
     public function getPendingPrintJobsCount(): int

@@ -26,7 +26,7 @@ class ToReadyForPickup extends Transition
             // Send notification that badge is ready for pickup
             $user = $this->badge->fursuit->user;
             $event = $this->badge->fursuit->event;
-            
+
             // Send notification only during the event
             // This matches the behavior in ToPrinted transition for consistency
             if ($event && $event->isDuringEvent()) {

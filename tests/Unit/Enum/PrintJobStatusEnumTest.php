@@ -25,7 +25,10 @@ class PrintJobStatusEnumTest extends TestCase
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Failed));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Printed));
-        $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Pending));
+
+        // A claimed job returns to the queue when its lease expires, so the work
+        // survives an agent or host that dies mid-run.
+        $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Pending));
     }
 
     public function test_can_transition_from_printing()
@@ -34,8 +37,19 @@ class PrintJobStatusEnumTest extends TestCase
 
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Printed));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Failed));
+        $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Pending));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Queued));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
+    }
+
+    public function test_lease_holding_states()
+    {
+        $this->assertTrue(PrintJobStatusEnum::Queued->holdsLease());
+        $this->assertTrue(PrintJobStatusEnum::Printing->holdsLease());
+
+        $this->assertFalse(PrintJobStatusEnum::Pending->holdsLease());
+        $this->assertFalse(PrintJobStatusEnum::Printed->holdsLease());
+        $this->assertFalse(PrintJobStatusEnum::Failed->holdsLease());
     }
 
     public function test_can_transition_from_failed()

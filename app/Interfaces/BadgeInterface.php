@@ -19,5 +19,8 @@ interface BadgeInterface
 
     public function getFileFormat(): string;
 
+    /**
+     * @return mixed
+     */
     public function addLetterSpacing(string $text, int $spacing = 1, string $spacer = ' ');
 }

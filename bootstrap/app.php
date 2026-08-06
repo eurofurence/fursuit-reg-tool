@@ -46,6 +46,18 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->middleware('web')
                 ->group(base_path('routes/pos-auth.php'));
 
+            // Print agent API. Stateless bearer-token auth: the agent is a
+            // native Windows app on the convention LAN, not a browser, so it
+            // gets the api middleware group rather than web/session.
+            // Deliberately not domain-scoped. The agent is a desktop app that
+            // connects to whatever URL it was configured with, which need not be
+            // the hostname the POS is served on: a tunnel, an internal address,
+            // or a different domain entirely. Scoping this to APP_URL's host made
+            // the API silently fall through to the web routes and answer a
+            // redirect to the login page instead of JSON.
+            \Illuminate\Support\Facades\Route::middleware('api')
+                ->group(base_path('routes/print-agent.php'));
+
             // Gallery routes
             \Illuminate\Support\Facades\Route::domain($mainDomain)
                 ->prefix('gallery')

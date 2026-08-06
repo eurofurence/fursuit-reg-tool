@@ -1,39 +1,23 @@
 <script setup lang="ts">
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import { useForm } from "@inertiajs/vue3";
-import {
-    Award,
-    BookOpen,
-    Crown,
-    Star,
-    Target,
-    TrendingUp,
-    Trophy,
-    User,
-    Zap,
-} from "lucide-vue-next";
+import { Star, Target, User, Zap } from "lucide-vue-next";
 import Button from "primevue/button";
 import Card from "primevue/card";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import { computed, nextTick, onMounted, ref } from "vue";
 
-const form = useForm({ catch_code: "" });
-
 const props = defineProps<{
-    gameStats: {
-        rank: number;
-        totalCatches: number;
-        uniqueSpecies: number;
-        totalAvailable: number;
-        completionPercentage: number;
-        rarityStats: Record<string, any>;
-    };
-    achievements: Array<any>;
     recentCatch?: any | null;
     flash?: any;
     isGameRunning: boolean;
+    code: string | "";
+    autoCatch: boolean;
 }>();
+
+const form = useForm({ catch_code: "" });
+form.catch_code = props.code.toUpperCase();
 
 const closedID = ref(null);
 const showRecentCatch = computed({
@@ -48,6 +32,13 @@ const showRecentCatch = computed({
             closedID.value = props.recentCatch?.id;
         }
     },
+});
+
+// When page loaded, if autoCatch is true and code is provided, submit the form automatically
+onMounted(() => {
+    if (props.autoCatch && props.code) {
+        submit();
+    }
 });
 
 const submit = () => {
@@ -94,14 +85,6 @@ onMounted(() => {
         form.reset();
     });
 });
-
-const getRankIcon = (rank: number) => {
-    if (rank === 1) return Crown;
-    if (rank === 2) return Trophy;
-    if (rank === 3) return Award;
-    if (rank <= 10) return Star;
-    return TrendingUp;
-};
 </script>
 
 <template>
@@ -139,7 +122,7 @@ const getRankIcon = (rank: number) => {
                     class="relative mx-auto w-24 h-24 rounded-full overflow-hidden border-4"
                     :class="`border-${recentCatch.rarity.color.replace(
                         'text-',
-                        ''
+                        '',
                     )}-500`"
                 >
                     <img
@@ -191,87 +174,6 @@ const getRankIcon = (rank: number) => {
                 </Button>
             </div>
         </Dialog>
-
-        <!-- Stats Overview Card -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
-            <template #content>
-                <div class="space-y-4">
-                    <!-- User Stats Row -->
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div
-                                class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"
-                            >
-                                <component
-                                    :is="getRankIcon(gameStats.rank)"
-                                    class="w-6 h-6 text-white"
-                                />
-                            </div>
-                            <div>
-                                <div class="text-lg font-bold text-gray-100">
-                                    Rank #{{ gameStats.rank }}
-                                </div>
-                                <div class="text-sm text-gray-300">
-                                    {{
-                                        gameStats.totalCatches.toLocaleString()
-                                    }}
-                                    catches
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Progress Bar -->
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-300">Progress</span>
-                            <span class="font-medium"
-                                >{{ gameStats.completionPercentage }}%</span
-                            >
-                        </div>
-                        <div
-                            class="h-2 bg-gray-200 rounded-full overflow-hidden"
-                        >
-                            <div
-                                class="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500"
-                                :style="`width: ${gameStats.completionPercentage}%`"
-                            ></div>
-                        </div>
-                        <div class="text-xs text-gray-400 text-center">
-                            {{ gameStats.totalCatches }} /
-                            {{ gameStats.totalAvailable }} fursuiters
-                        </div>
-                    </div>
-
-                    <!-- Quick Stats Grid -->
-                    <div class="grid grid-cols-2 gap-2 pt-2">
-                        <div class="text-center p-3 bg-blue-900/20 rounded-lg">
-                            <BookOpen
-                                class="w-5 h-5 mx-auto mb-1 text-blue-400"
-                            />
-                            <div class="text-lg font-bold text-blue-400">
-                                {{ gameStats.uniqueSpecies }}
-                            </div>
-                            <div class="text-xs text-blue-300">Species</div>
-                        </div>
-                        <div class="text-center p-3 bg-green-900/20 rounded-lg">
-                            <Award
-                                class="w-5 h-5 mx-auto mb-1 text-green-400"
-                            />
-                            <div class="text-lg font-bold text-green-400">
-                                {{
-                                    achievements.filter((a) => a.completed)
-                                        .length
-                                }}
-                            </div>
-                            <div class="text-xs text-green-300">
-                                Achievements
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </template>
-        </Card>
 
         <!-- Code Input Card -->
         <Card class="bg-gray-800 border border-gray-700 shadow-sm">

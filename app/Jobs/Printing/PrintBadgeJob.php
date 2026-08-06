@@ -2,14 +2,10 @@
 
 namespace App\Jobs\Printing;
 
-use App\Badges\EF28_Badge;
-use App\Badges\EF29_Badge;
 use App\Domain\Printing\Models\Printer;
-use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Models\Badge\Badge;
-use App\Models\Badge\State_Fulfillment\Processing;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,7 +13,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class PrintBadgeJob implements ShouldQueue
 {
@@ -52,21 +47,21 @@ class PrintBadgeJob implements ShouldQueue
         // Badge should already be in Processing state from when the job was created
         // The transition to ReadyForPickup happens when the print job is marked as completed
 
-        // Determine badge class based on event badge_class column
-        $badgeClass = $this->badge->fursuit->event->badge_class ?? 'EF28_Badge';
+        // Rendering is a separate concern (see GenerateBadgePrintFileJob), normally
+        // done for a whole event up front. Renderer selection lives there too, so
+        // there is one place that knows which badge class an event uses. Fall back
+        // to rendering inline so a one-off reprint still works without a prior
+        // generation pass.
+        if (! $this->badge->print_file_path) {
+            (new GenerateBadgePrintFileJob($this->badge))->handle();
+            $this->badge->refresh();
+        }
 
-        $printer = match ($badgeClass) {
-            'EF29_Badge' => new EF29_Badge,
-            'EF28_Badge' => new EF28_Badge,
-            default => new EF28_Badge, // Fallback to EF28 for safety
-        };
+        $filePath = $this->badge->print_file_path;
 
-        // Generate PDF content
-        $pdfContent = $printer->getPdf($this->badge);
-
-        // Store PDF Content in PrintJobs Storage
-        $filePath = 'badges/'.$this->badge->id.'.pdf';
-        Storage::put($filePath, $pdfContent);
+        if (! $filePath) {
+            throw new \RuntimeException("Badge {$this->badge->id} has no print file to send.");
+        }
 
         // Use specified printer if provided, otherwise find available printer
         if ($this->printerId) {

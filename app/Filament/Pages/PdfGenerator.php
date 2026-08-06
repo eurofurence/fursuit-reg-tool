@@ -6,19 +6,19 @@ use App\Models\Badge\Badge;
 use App\Models\Badge\State_Payment\Paid;
 use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Event;
-use Mpdf\Mpdf;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Form;
-use Filament\Pages\Page;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Illuminate\Support\Collection;
+use Mpdf\Mpdf;
 
 class PdfGenerator extends Page implements HasForms
 {
@@ -148,19 +148,20 @@ class PdfGenerator extends Page implements HasForms
     {
         $selectedEvent = $this->getSelectedEvent();
 
-        if (!$selectedEvent) {
+        if (! $selectedEvent) {
             Notification::make()
                 ->title('Error')
                 ->body('No event selected in the header.')
                 ->danger()
                 ->send();
+
             return;
         }
 
         // Build the query based on payment status filter
         $query = Badge::whereHas('fursuit', function ($query) use ($selectedEvent) {
-                $query->where('event_id', $selectedEvent->id);
-            })
+            $query->where('event_id', $selectedEvent->id);
+        })
             ->with(['fursuit.user.eventUsers' => function ($query) use ($selectedEvent) {
                 $query->where('event_id', $selectedEvent->id);
             }]);
@@ -180,30 +181,32 @@ class PdfGenerator extends Page implements HasForms
                 if (empty($badge->custom_id)) {
                     return [999999, 999999]; // Put badges without custom_id at the end
                 }
+
                 return $this->parseCustomId($badge->custom_id);
             })
             ->values();
 
         if ($badges->isEmpty()) {
-            $filterText = match($paymentStatus) {
+            $filterText = match ($paymentStatus) {
                 'paid' => 'paid badges',
                 'unpaid' => 'unpaid badges',
                 default => 'badges'
             };
-            
+
             Notification::make()
                 ->title('No Data')
                 ->body("No {$filterText} found for the current event.")
                 ->warning()
                 ->send();
+
             return;
         }
 
         // Parse custom ranges if provided
         $customRanges = [];
-        if (!empty($this->data['badge_ranges'])) {
+        if (! empty($this->data['badge_ranges'])) {
             $customRanges = $this->parseRanges($this->data['badge_ranges']);
-            
+
             // Validate that we have at least one valid range
             if (empty($customRanges)) {
                 Notification::make()
@@ -211,13 +214,14 @@ class PdfGenerator extends Page implements HasForms
                     ->body('Please enter valid badge ranges in the format: 1-1699,1700-2400')
                     ->danger()
                     ->send();
+
                 return;
             }
         }
 
         // Group badges by ranges and attendees
         $groupedBadges = $this->groupBadgesByRangeAndAttendee($badges, $customRanges);
-        
+
         // Check if we have any badges in the defined ranges
         if (empty($groupedBadges)) {
             Notification::make()
@@ -225,6 +229,7 @@ class PdfGenerator extends Page implements HasForms
                 ->body('No badges found within the specified ranges. Please check your range settings.')
                 ->warning()
                 ->send();
+
             return;
         }
 
@@ -253,7 +258,7 @@ class PdfGenerator extends Page implements HasForms
 
         // Sort ranges by their numeric start value
         $sortedRanges = [];
-        if (!empty($customRanges)) {
+        if (! empty($customRanges)) {
             // If using custom ranges, maintain the order from the input
             foreach ($customRanges as $range) {
                 $rangeKey = $range['key'];
@@ -275,7 +280,7 @@ class PdfGenerator extends Page implements HasForms
         // Write each range section on its own page
         $isFirst = true;
         foreach ($sortedRanges as $data) {
-            if (!$isFirst) {
+            if (! $isFirst) {
                 $mpdf->AddPage();
             }
             $isFirst = false;
@@ -292,15 +297,15 @@ class PdfGenerator extends Page implements HasForms
             $mpdf->WriteHTML($rangeHtml, \Mpdf\HTMLParserMode::HTML_BODY);
         }
 
-        $paymentStatusSuffix = match($paymentStatus) {
+        $paymentStatusSuffix = match ($paymentStatus) {
             'paid' => '-paid',
             'unpaid' => '-unpaid',
             default => ''
         };
-        
+
         return response()->streamDownload(function () use ($mpdf) {
             echo $mpdf->Output('', 'S');
-        }, "badge-list-{$selectedEvent->name}{$paymentStatusSuffix}-" . now()->format('Y-m-d') . '.pdf');
+        }, "badge-list-{$selectedEvent->name}{$paymentStatusSuffix}-".now()->format('Y-m-d').'.pdf');
     }
 
     public function generateBoxLabelsPdf()
@@ -314,6 +319,7 @@ class PdfGenerator extends Page implements HasForms
                 ->body('Title is required for box labels.')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -330,7 +336,7 @@ class PdfGenerator extends Page implements HasForms
         ])->render();
 
         // Ensure HTML is properly UTF-8 encoded
-        if (!mb_check_encoding($html, 'UTF-8')) {
+        if (! mb_check_encoding($html, 'UTF-8')) {
             $html = mb_convert_encoding($html, 'UTF-8', 'auto');
         }
 
@@ -350,16 +356,17 @@ class PdfGenerator extends Page implements HasForms
 
         return response()->streamDownload(function () use ($mpdf) {
             echo $mpdf->Output('', 'S');
-        }, "box-label-" . \Str::slug($title) . "-" . now()->format('Y-m-d') . '.pdf');
+        }, 'box-label-'.\Str::slug($title).'-'.now()->format('Y-m-d').'.pdf');
     }
 
     private function getSelectedEvent(): ?Event
     {
         // Get the selected event from Filament's event filter
         $eventId = session('filament.admin.selected_event_id');
-        if (!$eventId) {
+        if (! $eventId) {
             return Event::latest('starts_at')->first();
         }
+
         return Event::find($eventId);
     }
 
@@ -380,6 +387,7 @@ class PdfGenerator extends Page implements HasForms
         while (count($result) < 2) {
             $result[] = 0;
         }
+
         return $result;
     }
 
@@ -387,34 +395,34 @@ class PdfGenerator extends Page implements HasForms
     {
         $ranges = [];
         $rangeParts = explode(',', $rangesString);
-        
+
         foreach ($rangeParts as $range) {
             $range = trim($range);
             if (empty($range)) {
                 continue;
             }
-            
+
             // Parse range like "1-1699" into [1, 1699]
             $parts = explode('-', $range);
             if (count($parts) === 2) {
                 $start = (int) trim($parts[0]);
                 $end = (int) trim($parts[1]);
-                
+
                 if ($start <= $end) {
                     $ranges[] = [
                         'start' => $start,
                         'end' => $end,
-                        'key' => "{$start}-{$end}"
+                        'key' => "{$start}-{$end}",
                     ];
                 }
             }
         }
-        
+
         // Sort ranges by start value
         usort($ranges, function ($a, $b) {
             return $a['start'] <=> $b['start'];
         });
-        
+
         return $ranges;
     }
 
@@ -423,11 +431,11 @@ class PdfGenerator extends Page implements HasForms
         $grouped = [];
 
         // Use custom ranges if provided, otherwise fall back to default 1000-badge ranges
-        $useCustomRanges = !empty($customRanges);
+        $useCustomRanges = ! empty($customRanges);
 
         foreach ($badges as $badge) {
             // Only include badges with custom_ids
-            if (!empty($badge->custom_id)) {
+            if (! empty($badge->custom_id)) {
                 // Parse the custom_id to get the main badge number (e.g., "104-1" -> 104)
                 $parsedId = $this->parseCustomId($badge->custom_id);
                 $mainBadgeNumber = $parsedId[0]; // Get the first part of the custom_id
@@ -451,7 +459,7 @@ class PdfGenerator extends Page implements HasForms
 
                 // Only add badge if it falls within a range
                 if ($rangeKey !== null) {
-                    if (!isset($grouped[$rangeKey])) {
+                    if (! isset($grouped[$rangeKey])) {
                         $grouped[$rangeKey] = [];
                     }
 

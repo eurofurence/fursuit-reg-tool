@@ -25,7 +25,6 @@ Route::get('/badges', [\App\Http\Controllers\POS\BadgeManagementController::clas
 // Print Badge
 Route::post('/badges/{badge}/print', \App\Http\Controllers\POS\Printing\PrintBadgeController::class)->name('badges.print');
 Route::post('/badges/print/bulk', [\App\Http\Controllers\POS\BadgeController::class, 'printBulk'])->name('badges.print.bulk');
-// Print QZ Cert
 Route::post('/badges/{badge}/handout', [\App\Http\Controllers\POS\BadgeController::class, 'handout'])->name('badges.handout');
 Route::post('/badges/{badge}/handout/undo', [\App\Http\Controllers\POS\BadgeController::class, 'handoutUndo'])->name('badges.handout.undo');
 Route::post('/badges/handout/bulk', [\App\Http\Controllers\POS\BadgeController::class, 'handoutBulk'])->name('badges.handout.bulk');

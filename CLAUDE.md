@@ -9,7 +9,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The project supports two development environments:
 
 **Nix / devenv (primary)** — `.envrc` uses `direnv` + `use flake`. With direnv allowed, the
-toolchain (PHP 8.3, Node) is provided automatically and a `sail` alias is exported.
+toolchain (PHP, Node) is provided automatically and a `sail` alias is exported.
+
+**Yerd (local `.test` domain)** — the app is also served at `https://fursuit-reg-tool.test`
+via the `yerd` CLI, with `catch.fursuit-reg-tool.test` for the Catch-Em-All routes. The site
+runs **PHP 8.5** against a local MariaDB (`yerd service start mariadb`, database `fursuit`,
+user `root`, no password). Yerd's own default PHP applies to new sites, so a fresh link needs
+`yerd use <site> 8.5`.
 
 **Laravel Sail (Docker)** — the classic path:
 

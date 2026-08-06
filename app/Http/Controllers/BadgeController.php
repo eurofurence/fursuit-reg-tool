@@ -26,16 +26,16 @@ class BadgeController extends Controller
     public function show(Request $request, Badge $badge)
     {
         $user = $request->user();
-        
+
         // Check if user can view this badge
         Gate::authorize('view', $badge);
-        
+
         // Load relationships
         $badge->load(['fursuit.species', 'fursuit.event', 'fursuit.user']);
-        
+
         // Add edit permission
         $badge->canEdit = Gate::allows('update', $badge);
-        
+
         return Inertia::render('Badges/BadgeShow', [
             'badge' => $badge,
             'canEdit' => $badge->canEdit,

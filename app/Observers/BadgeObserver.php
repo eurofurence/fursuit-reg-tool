@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Badge\Badge;
 use App\Models\Fursuit\Fursuit;
 
@@ -41,8 +42,18 @@ class BadgeObserver
         }
     }
 
+    /**
+     * Badge fields that end up drawn on the card. Changing any of them makes the
+     * rendered PDF stale.
+     */
+    private const PRINT_FILE_INPUTS = ['custom_id', 'dual_side_print'];
+
     public function updated(Badge $badge): void
     {
+        if ($badge->wasChanged(self::PRINT_FILE_INPUTS)) {
+            GenerateBadgePrintFileJob::invalidateFor($badge);
+        }
+
         // Based on tax_rate, calculate tax and update subtotal
         if ($badge->isDirty('total')) {
             $badge->subtotal = round($badge->total / 1.19);

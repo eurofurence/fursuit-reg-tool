@@ -87,7 +87,7 @@ class MachineResource extends Resource
                     ->modalDescription('Are you sure you want to archive this machine? It will be hidden from normal view.')
                     ->modalSubmitActionLabel('Yes, archive it')
                     ->action(fn (Machine $record) => $record->archive())
-                    ->visible(fn (Machine $record) => !$record->isArchived()),
+                    ->visible(fn (Machine $record) => ! $record->isArchived()),
                 Tables\Actions\Action::make('unarchive')
                     ->label('Restore')
                     ->icon('heroicon-o-arrow-uturn-left')
