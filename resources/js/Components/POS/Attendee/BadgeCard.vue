@@ -86,7 +86,7 @@ const extras = computed(() => {
             <span class="pos-badge__body">
                 <span class="pos-badge__name">
                     <span v-if="eventLabel" class="pos-badge__prev">{{ eventLabel }} · previous event</span>
-                    {{ badge.fursuit?.name || 'Unnamed fursuit' }}
+                    <span class="pos-badge__nametext">{{ badge.fursuit?.name || 'Unnamed fursuit' }}</span>
                 </span>
                 <span class="pos-badge__meta">
                     <span class="pos-num" :class="eventLabel ? 'font-bold text-pos-warn' : ''">

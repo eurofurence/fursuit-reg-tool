@@ -222,11 +222,15 @@ def decode_error_bits(hex_string: str) -> List[str]:
     ]
 
 
-# A colour ribbon spends one panel per colour on every card, so the supply
-# counter the printer reports is in panels and not in cards. Reporting it raw
-# told staff there were four times as many cards left as there really were,
-# which is the wrong direction to be wrong in when the queue is long.
-PANELS_PER_CARD = 4
+# The supply counter the printer reports is not in cards. Measured on the real
+# ZXP9 printing the dual-sided badges this station prints, it falls by two per
+# card (121 -> 119 -> 117 across two cards in the condition journal).
+#
+# Taken from the hardware rather than from how a YMCK ribbon is specified,
+# because the number that matters is how many more cards this machine will
+# actually produce before somebody has to change the ribbon. Re-measure if the
+# badge ever stops being dual-sided.
+SUPPLY_UNITS_PER_CARD = 2
 
 
 def cards_from_supply(level: Optional[int]) -> Optional[int]:
@@ -234,7 +238,7 @@ def cards_from_supply(level: Optional[int]) -> Optional[int]:
     if level is None:
         return None
 
-    return int(level) // PANELS_PER_CARD
+    return int(level) // SUPPLY_UNITS_PER_CARD
 
 
 def classify(reading: Reading, ribbon_warn_threshold: int = 50) -> str:

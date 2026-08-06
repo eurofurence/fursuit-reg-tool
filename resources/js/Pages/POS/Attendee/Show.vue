@@ -95,14 +95,12 @@ function askPrint(badge) {
     };
 }
 
-function askHandout(badge) {
-    confirm.value = {
-        kind: 'handout',
-        badge,
-        title: 'Hand out badge',
-        message: `Mark ${badge.fursuit?.name || 'this badge'} (${badge.custom_id || badge.id}) as picked up?`,
-        acceptLabel: 'Hand out',
-    };
+// No confirmation: a single handout is the move the desk makes hundreds of
+// times an hour, and it is undoable from the same row. Bulk handout still asks,
+// because that one is not a single mis-tap to walk back.
+function handoutNow(badge) {
+    useForm('POST', route('pos.badges.handout', { badge: badge.id }), {})
+        .submit({ preserveScroll: true });
 }
 
 function askUndo(badge) {
@@ -146,10 +144,6 @@ function runConfirm() {
             useForm('POST', route('pos.badges.print', { badge: pending.badge.id }), {})
                 .submit({ preserveScroll: true });
             break;
-        case 'handout':
-            useForm('POST', route('pos.badges.handout', { badge: pending.badge.id }), {})
-                .submit({ preserveScroll: true });
-            break;
         case 'undo':
             useForm('POST', route('pos.badges.handout.undo', { badge: pending.badge.id }), {})
                 .submit({ preserveScroll: true });
@@ -188,7 +182,7 @@ function closeSheet() {
 }
 
 // The sheet is a menu, not an actor: it closes and hands the badge to the same
-// handler the row buttons use, so every path ends in the same confirmation.
+// handler the row buttons use, so both paths behave identically.
 function fromSheet(handler) {
     return (badge) => {
         closeSheet();
@@ -202,7 +196,7 @@ function runBadgeAction({ badge, action }) {
     } else if (action === 'print') {
         askPrint(badge);
     } else if (action === 'handout') {
-        askHandout(badge);
+        handoutNow(badge);
     }
 }
 
@@ -241,14 +235,19 @@ onUnmounted(() => {
 });
 
 usePosKeyboard({
-    onBackspace: () => router.visit(route('pos.attendee.lookup')),
+    onBackspace: () => router.visit(route('pos.dashboard')),
     onNumpadDivide: () => startPayment(),
     onNumpadMultiply: () => askBulkHandout(),
 });
 </script>
 
 <template>
-    <div class="w-full flex-1 flex flex-col gap-2">
+    <!--
+        Capped and centred: on a 1920px desk screen a full-bleed row put the
+        Hand out button a metre away from the name it belongs to, which is a
+        long way to drag your eye between reading a badge and acting on it.
+    -->
+    <div class="w-full flex-1 flex flex-col gap-2 max-w-[1100px] mx-auto">
         <ConfirmModal
             :show="confirm !== null"
             :title="confirm?.title || ''"
@@ -264,7 +263,7 @@ usePosKeyboard({
             :badge="sheetBadge"
             @close="closeSheet()"
             @print="fromSheet(askPrint)"
-            @handout="fromSheet(askHandout)"
+            @handout="fromSheet(handoutNow)"
             @undo="fromSheet(askUndo)"
             @pay="fromSheet((badge) => startPayment([badge.id]))"
         />
@@ -370,7 +369,7 @@ usePosKeyboard({
             <button type="button" class="pos-btn pos-btn--commit" @click="showDetails = true">
                 <i class="pi pi-list"></i> Details
             </button>
-            <Link :href="route('pos.attendee.lookup')" class="pos-btn pos-btn--commit">
+            <Link :href="route('pos.dashboard')" class="pos-btn pos-btn--commit">
                 Next attendee <span class="pos-kcap">⌫</span>
             </Link>
         </div>

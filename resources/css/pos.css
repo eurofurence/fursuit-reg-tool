@@ -373,13 +373,39 @@ button.pos-row:active,
 .pos-badge__body { flex: 1; min-width: 0; }
 
 .pos-badge__name {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
     font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: -0.01em;
+}
+
+.pos-badge__nametext {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/*
+ * A badge from an earlier convention. It shares the list with this year's, so
+ * the marker is a filled amber block rather than another outline pill — at desk
+ * distance it has to be the first thing read on the row.
+ */
+.pos-badge__prev {
+    display: inline-block;
+    margin-right: 8px;
+    padding: 3px 8px;
+    border-radius: var(--pos-radius);
+    background: rgb(var(--pos-warn));
+    color: #fff;
+    font-family: var(--pos-num);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    vertical-align: middle;
 }
 
 .pos-badge__meta {

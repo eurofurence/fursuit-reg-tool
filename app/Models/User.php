@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Fursuit\Fursuit;
 use Bavix\Wallet\Interfaces\Customer;
 use Bavix\Wallet\Interfaces\WalletFloat;
@@ -57,6 +58,20 @@ class User extends Authenticatable implements Customer, FilamentUser, WalletFloa
     public function fursuits()
     {
         return $this->hasMany(Fursuit::class);
+    }
+
+    /**
+     * Total the user still owes, in cents, positive for debt.
+     *
+     * Derived from badge state rather than the wallet: `status_payment` is what POS checkout
+     * selects on (CheckoutController@store), and it is the record that stayed correct where the
+     * wallet drifted. Note the sign flip from `balanceInt`, which was negative-for-debt.
+     */
+    public function amountDue(): int
+    {
+        return (int) $this->badges()
+            ->where('badges.status_payment', Unpaid::$name)
+            ->sum('badges.total');
     }
 
     public function eventUsers()

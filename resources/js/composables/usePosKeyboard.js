@@ -30,8 +30,8 @@ export function usePosKeyboard(options = {}) {
         return getCurrentRoute().includes('/pos/attendees/show/');
     }
 
-    function isOnAttendeeLookupPage() {
-        return getCurrentRoute().includes('/pos/attendees/lookup');
+    function isOnDashboard() {
+        return getCurrentRoute() === '/pos';
     }
 
     function isOnPinLoginPage() {
@@ -70,10 +70,10 @@ export function usePosKeyboard(options = {}) {
                 onNumpadDivide(event);
                 return; // Exit early when override is handled
             } else if (!disableGlobalShortcuts) {
-                // Default behavior: Navigate to attendee search 
+                // Default behavior: jump to the dashboard, which is the search screen
                 // (unless on checkout page, lookup page, or PIN login page)
-                if (!isOnCheckoutPage() && !isOnAttendeeLookupPage() && !isOnPinLoginPage()) {
-                    router.visit('/pos/attendees/lookup');
+                if (!isOnCheckoutPage() && !isOnDashboard() && !isOnPinLoginPage()) {
+                    router.visit('/pos');
                 }
             }
         }
@@ -104,7 +104,7 @@ export function usePosKeyboard(options = {}) {
             // Ctrl+K: Search Attendee
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
                 event.preventDefault();
-                router.visit('/pos/attendees/lookup');
+                router.visit('/pos');
             }
             
             // Ctrl+P: Start Payment
@@ -149,7 +149,7 @@ export function usePosKeyboard(options = {}) {
     return {
         isOnCheckoutPage,
         isOnAttendeeShowPage,
-        isOnAttendeeLookupPage,
+        isOnDashboard,
         getCurrentRoute
     };
 }

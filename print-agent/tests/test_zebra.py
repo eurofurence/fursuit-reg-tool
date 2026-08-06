@@ -222,5 +222,29 @@ class BuildReadingTest(unittest.TestCase):
         self.assertEqual(zebra.clean_value('"printing   "'), "printing")
 
 
+class SupplyCounterTest(unittest.TestCase):
+    """The printer counts ribbon, not cards.
+
+    Measured on the real ZXP9 printing dual-sided badges: the counter falls by
+    two per card. Reporting it raw told staff there were twice as many cards
+    left as there really were.
+    """
+
+    def test_the_counter_is_converted_to_cards(self):
+        self.assertEqual(zebra.cards_from_supply(240), 120)
+
+    def test_a_partial_card_is_not_counted(self):
+        # Round down. Promising a card the ribbon cannot finish is worse than
+        # being one pessimistic.
+        self.assertEqual(zebra.cards_from_supply(1), 0)
+
+    def test_no_reading_is_not_zero_cards(self):
+        # None means the printer did not say, which must not read as empty.
+        self.assertIsNone(zebra.cards_from_supply(None))
+
+    def test_an_empty_ribbon_is_zero(self):
+        self.assertEqual(zebra.cards_from_supply(0), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -99,6 +99,9 @@ class AgentApp(tk.Tk):
         self._client = None
         self._store = None
         self._notifier = None
+
+        # Filled from the server so the header can say which station this is.
+        self.machine_name = ""
         self.events: "queue.Queue" = queue.Queue()
         self.stop_flag = threading.Event()
         self.monitor: Optional[monitor_module.PrinterMonitor] = None
@@ -125,8 +128,10 @@ class AgentApp(tk.Tk):
         self._build_tabs()
         self._build_statusbar()
         self._sync_session_panel()
+        self._render_identity()
 
         if not headless:
+            self._load_identity()
             self._start_monitor()
             self._sync_camera_preview()
             self.after(200, self._drain_events)
@@ -1223,6 +1228,9 @@ class AgentApp(tk.Tk):
                     self._ask_reprint(payload)
                 elif kind == "batch_change":
                     self._on_worker_batch_change(payload)
+                elif kind == "identity":
+                    self.machine_name = payload
+                    self._render_identity()
                 elif kind == "log":
                     self._log(payload)
         except queue.Empty:
@@ -1324,6 +1332,9 @@ class AgentApp(tk.Tk):
         self._sync_camera_preview()
 
         messagebox.showinfo("Saved", "Settings saved.\n\nRestart the agent to reconnect.")
+
+        # The header shows the server URL, which may have just changed.
+        self._render_identity()
 
     def _test_snmp(self) -> None:
         host = self.binding_snmp.get().strip()
@@ -1438,8 +1449,51 @@ class AgentApp(tk.Tk):
             % (machine.get("name", "?"), machine.get("id", "?"), len(printers),
                result.get("server_time", "?")))
 
-        self.machine_label.config(text="%s  -  %s" % (machine.get("name", "?"), url))
+        self.machine_name = machine.get("name") or ""
+        self._render_identity()
         self._log("Server OK: %s (machine #%s)" % (machine.get("name", "?"), machine.get("id", "?")))
+
+    def _render_identity(self) -> None:
+        """The line under the title: who this station is, and where it points.
+
+        Previously only written by the Test connection button, so a perfectly
+        well configured agent said "Not configured" on every restart until
+        somebody happened to press it -- next to a header that also carries the
+        PRINTING indicator, which made the whole header hard to trust.
+        """
+        if not self.config_data.is_configured():
+            self.machine_label.config(text="Not configured")
+            return
+
+        url = (self.config_data.server_url or "").rstrip("/")
+
+        if self.machine_name:
+            self.machine_label.config(text="%s  -  %s" % (self.machine_name, url))
+        else:
+            self.machine_label.config(text=url)
+
+    def _load_identity(self) -> None:
+        """Ask the server who we are, so the header is right before any printing.
+
+        Best-effort and off the Tk thread: the header is worth a background
+        request, not a startup that blocks on an unreachable server.
+        """
+        if self.demo or not self.config_data.is_configured():
+            return
+
+        def fetch():
+            try:
+                client, _store, _notifier = self._services()
+                machine = (client.config() or {}).get("machine") or {}
+            except Exception:  # noqa: BLE001 - the URL alone is still useful
+                return
+
+            name = machine.get("name") or ""
+
+            if name:
+                self.events.put(("identity", name))
+
+        threading.Thread(target=fetch, name="identity", daemon=True).start()
 
     def _sync_active_batch(self) -> None:
         """Re-read the selected batch from the server and redraw the header.

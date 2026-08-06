@@ -4,6 +4,7 @@ namespace App\Http\Controllers\POS;
 
 use App\Domain\Checkout\Models\Checkout\Checkout;
 use App\Http\Controllers\Controller;
+use App\Models\Badge\State_Fulfillment\PickedUp;
 use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
@@ -14,13 +15,6 @@ use Inertia\Response;
 
 class AttendeeController extends Controller
 {
-    public function lookupForm(): Response
-    {
-        return Inertia::render('POS/Attendee/Lookup', [
-            'backToRoute' => 'pos.dashboard',
-        ]);
-    }
-
     public function lookupSubmit(Request $request): RedirectResponse
     {
         $activeEvent = Event::getActiveEvent();
@@ -73,8 +67,11 @@ class AttendeeController extends Controller
         $pastEventBadges = [];
         foreach ($badgesByEvent as $eventId => $badges) {
             if ($eventId != $activeEvent->id) {
+                // status_fulfillment casts to a state object, so comparing it
+                // against the string always held and every past badge came
+                // through — including ones collected years ago.
                 $unclaimedBadges = $badges->filter(function ($badge) {
-                    return $badge->status_fulfillment !== 'picked_up';
+                    return ! $badge->status_fulfillment->equals(PickedUp::class);
                 });
 
                 if ($unclaimedBadges->isNotEmpty()) {
