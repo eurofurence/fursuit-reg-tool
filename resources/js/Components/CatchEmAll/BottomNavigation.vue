@@ -16,10 +16,11 @@ const page = usePage()
 
 // Get current route name to determine active tab
 const currentRoute = computed(() => {
-    const routeName = route().current()
+    const routeName = route().current() ?? ''
     if (routeName.includes('leaderboard')) return 'leaderboard'
     if (routeName.includes('achievements')) return 'achievements'
     if (routeName.includes('collection')) return 'collection'
+    if (routeName.includes('profile')) return 'profile'
     if (routeName.includes('catch')) return 'catch'
     return 'catch' // default
 })
@@ -59,7 +60,7 @@ const navItems = [
         label: 'Profile',
         icon: User,
         route: 'catch-em-all.profile',
-        color: 'text-gray-500'
+        color: 'text-white'
     }
 ]
 </script>

@@ -5,15 +5,19 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Badge\Badge;
 use App\Models\Fursuit\Fursuit;
+use App\Models\UserProfile\UserProfile;
+use App\Models\UserProfile\UserProfileLink;
 use Bavix\Wallet\Interfaces\Customer;
 use Bavix\Wallet\Interfaces\WalletFloat;
 use Bavix\Wallet\Traits\CanPayFloat;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable implements Customer, FilamentUser, WalletFloat
 {
@@ -49,6 +53,28 @@ class User extends Authenticatable implements Customer, FilamentUser, WalletFloa
         'token_expires_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'avatar_url',
+    ];
+
+    public function avatarUrl(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                if (! $this->avatar_path) {
+                    return null;
+                }
+
+                try {
+                    return Storage::temporaryUrl($this->avatar_path, now()->addMinutes(5));
+                } catch (\Exception $e) {
+                    // Fallback
+                    return Storage::url($this->avatar_path);
+                }
+            },
+        );
+    }
+
     public function badges()
     {
         return $this->hasManyThrough(Badge::class, Fursuit::class);
@@ -62,6 +88,16 @@ class User extends Authenticatable implements Customer, FilamentUser, WalletFloa
     public function eventUsers()
     {
         return $this->hasMany(EventUser::class);
+    }
+
+    public function userProfile()
+    {
+        return $this->hasOne(UserProfile::class);
+    }
+
+    public function userProfileLinks()
+    {
+        return $this->hasManyThrough(UserProfileLink::class, UserProfile::class);
     }
 
     public function eventUser($eventId = null)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import { router } from "@inertiajs/vue3";
+import { Link, router } from "@inertiajs/vue3";
 import { Award, Crown, Star, TrendingUp, Trophy } from "lucide-vue-next";
 import Card from "primevue/card";
 import Dropdown from "primevue/dropdown";
@@ -12,10 +12,12 @@ const props = withDefaults(defineProps<{
         name : string;
     };
     leaderboard: Array<{
-        id : number;
+        event_user_id : number;
+        user_id : number;
         name : string;
         rank : number;
         catches : number;
+        profile_uuid?: string | null;
     }>;
     eventsWithEntries: Array<any>;
     selectedEvent?: Number | null;
@@ -198,9 +200,11 @@ const getProperCatch = (catchCount: number) => {
 
                     <!-- Partial Leaderboard List -->
                     <div class="space-y-2">
-                        <div
+                        <component
+                            :is="player.profile_uuid ? Link : 'div'"
                             v-for="(player) in leaderboard"
-                            :key="player.id"
+                            :key="player.event_user_id"
+                            :href="player.profile_uuid ? route('catch-em-all.profiles.show', player.profile_uuid) : undefined"
                             class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md relative overflow-hidden"
                             :class="[
                                 player.rank === 1 ? 'ring-2 ring-yellow-300 bg-gradient-to-r from-yellow-900/50 to-yellow-900/40 border-yellow-700'
@@ -209,7 +213,7 @@ const getProperCatch = (catchCount: number) => {
                                     : ' bg-gray-700/50 border-gray-600',
                             ]"
                         >
-                            <div v-if="player.id === user.id" class="player-shine absolute inset-0 pointer-events-none"></div>
+                            <div v-if="player.user_id === user.id" class="player-shine absolute inset-0 pointer-events-none"></div>
                             <div class="flex items-center space-x-4">
                                 <!-- Rank Badge -->
                                 <div
@@ -233,7 +237,7 @@ const getProperCatch = (catchCount: number) => {
                                     <div class="flex items-center space-x-2">
                                         <div
                                             class="font-semibold"
-                                            :class="player.id === user.id ? 'text-purple-400' : 'text-gray-100'"
+                                            :class="player.user_id === user.id ? 'text-purple-400' : 'text-gray-100'"
                                         >
                                             {{ player.name }}
                                         </div>
@@ -262,7 +266,7 @@ const getProperCatch = (catchCount: number) => {
                                 </div>
                                 <div class="text-xs text-gray-300">{{ getProperCatch(player.catches) }}</div>
                             </div>
-                        </div>
+                        </component>
                         <!-- Empty State -->
                         <div
                             v-if="leaderboard.length === 0"

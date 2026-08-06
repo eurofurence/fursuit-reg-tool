@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
-import { router } from "@inertiajs/vue3";
+import { Link, router } from "@inertiajs/vue3";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import Card from "primevue/card";
 import Dropdown from "primevue/dropdown";
@@ -28,12 +28,15 @@ const props = defineProps<{
                 icon: string;
             };
             count: number;
+            profileUuid?: string | null;
             gallery: {
                 id: number;
                 name: string;
                 species: string;
                 image: string;
                 scoring: number;
+                owner?: string | null;
+                profileUuid?: string | null;
             };
         }>;
         species: Record<string, number>;
@@ -54,6 +57,8 @@ interface Fursuit {
     scoring: number,
     event?: string,
     archival_notice?: string,
+    owner?: string | null,
+    profileUuid?: string | null,
 }
 
 const viewFursuit = ref<Fursuit | null>(null);
@@ -471,7 +476,16 @@ const getRarityBgColor = (textColor: string) => {
                         @click="setImageView(fursuit.gallery)"
                         class="cursor-pointer transform transition-transform hover:scale-105"
                     >
-                        <GalleryItem :fursuit="fursuit.gallery" :rarity="fursuit.rarity" :hideCount="!showCounters" />
+                        <GalleryItem
+                            :fursuit="fursuit.gallery"
+                            :rarity="fursuit.rarity"
+                            :hideCount="!showCounters"
+                            :profileUrl="
+                                fursuit.profileUuid
+                                    ? route('catch-em-all.profiles.show', fursuit.profileUuid)
+                                    : undefined
+                            "
+                        />
                     </div>
                 </div>
 
@@ -486,11 +500,16 @@ const getRarityBgColor = (textColor: string) => {
                             :src="fursuit.gallery.image"
                             :alt="fursuit.gallery.name"
                             @click="setImageView(fursuit.gallery)"
-                            class="w-12 h-12 rounded-md object-cover mr-4"
+                            class="w-12 h-12 rounded-md object-cover mr-4 cursor-pointer"
                         />
                         <div class="flex-1">
                             <h4 class="font-bold text-base text-gray-200">
-                                {{ fursuit.gallery.name }}
+                                <Link
+                                    v-if="fursuit.profileUuid"
+                                    :href="route('catch-em-all.profiles.show', fursuit.profileUuid)"
+                                    class="hover:underline hover:text-blue-400"
+                                >{{ fursuit.gallery.name }}</Link>
+                                <template v-else>{{ fursuit.gallery.name }}</template>
                             </h4>
                             <p class="text-sm text-gray-400">
                                 {{ fursuit.species }}
@@ -530,7 +549,21 @@ const getRarityBgColor = (textColor: string) => {
                             />
 
                             <div v-if="viewFursuit" class="bg-black bg-opacity-50 rounded-lg mt-4 p-4 text-white">
-                                <h3 class="text-2xl font-bold mb-2">{{ viewFursuit.name }}</h3>
+                                <component
+                                    :is="viewFursuit.profileUuid ? Link : 'div'"
+                                    :href="
+                                        viewFursuit.profileUuid
+                                            ? route('catch-em-all.profiles.show', viewFursuit.profileUuid)
+                                            : undefined
+                                    "
+                                    class="block mb-2"
+                                    :class="viewFursuit.profileUuid && 'hover:underline'"
+                                >
+                                    <h3 class="text-2xl font-bold">{{ viewFursuit.name }}</h3>
+                                    <p v-if="viewFursuit.owner" class="text-sm opacity-90">
+                                        by {{ viewFursuit.owner }}
+                                    </p>
+                                </component>
                                 <div class="flex flex-wrap gap-4 text-sm">
                                     <div class="flex items-center gap-2">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
