@@ -51,6 +51,26 @@ COMMAND_PAUSE = "pause"
 COMMAND_RESUME = "resume"
 COMMAND_STATUS = "status"
 
+# Asks the bot to say which chat this is. The answer is the one piece of
+# configuration nobody can look up for themselves: Telegram never shows a chat
+# id in the client.
+COMMAND_CHATID = "chatid"
+
+COMMANDS = (COMMAND_PAUSE, COMMAND_RESUME, COMMAND_STATUS, COMMAND_CHATID)
+
+# What the bot says when it is added somewhere, and in answer to /chatid.
+# Deliberately carries the id in a code span so it can be copied on a phone.
+JOIN_MESSAGE = (
+    "Thanks for adding me.\n\n"
+    "To finish setup, put this chat ID into the print agent:\n\n"
+    "%s\n\n"
+    "Setup tab -> Telegram channel -> Chat ID, then Save. "
+    "I will post a photo of every card here once printing starts."
+)
+
+# Statuses that mean the bot is now in the chat and able to post.
+JOINED_STATUSES = ("member", "administrator", "creator")
+
 log = logging.getLogger(__name__)
 
 
@@ -183,7 +203,19 @@ class TelegramChannel:
     # -- posting ---------------------------------------------------------
 
     def is_configured(self) -> bool:
+        """Ready to post cards to a known chat."""
         return bool(self.config and self.config.is_configured())
+
+    def has_token(self) -> bool:
+        """Enough to talk to Telegram at all, without knowing where to post yet.
+
+        The distinction exists for onboarding. Telegram never shows a chat id
+        in the client, so somebody setting this up has no way to find one. With
+        only a token the bot can still poll, notice that it has been added
+        somewhere, and reply in that chat with the id to paste into the agent.
+        Requiring the id before talking at all would make that impossible.
+        """
+        return bool(self.config and self.config.enabled and self.config.bot_token)
 
     def send_card(self, job: Dict[str, Any], frame: Any, verdict: str = "",
                   printer: str = "", position: str = "", paused: bool = False) -> bool:
@@ -200,13 +232,28 @@ class TelegramChannel:
         return self.post_photo(photo, caption, paused)
 
     def send_message(self, text: str, paused: bool = False,
-                     buttons: bool = True) -> bool:
-        fields = {"chat_id": str(self.config.chat_id), "text": text}
+                     buttons: bool = True, chat_id: Optional[str] = None) -> bool:
+        """Post text. Defaults to the configured chat.
+
+        `chat_id` overrides it, which is how the bot answers in a chat it has
+        just been added to but is not configured for yet.
+        """
+        target = chat_id if chat_id is not None else self.config.chat_id
+
+        if not target:
+            return False
+
+        fields = {"chat_id": str(target), "text": text}
 
         if buttons:
             fields["reply_markup"] = json.dumps(control_keyboard(paused))
 
         return self._call("sendMessage", fields) is not None
+
+    def announce_chat_id(self, chat_id) -> bool:
+        """Tell a chat what its own id is, so somebody can configure the agent."""
+        return self.send_message(JOIN_MESSAGE % chat_id, chat_id=str(chat_id),
+                                 buttons=False)
 
     def answer_callback(self, callback_id: str, text: str = "") -> bool:
         """Stop the button spinning on the sender's phone."""
@@ -232,7 +279,11 @@ class TelegramChannel:
 
         fields = {
             "timeout": str(int(self.config.long_poll_seconds)),
-            "allowed_updates": json.dumps(["callback_query", "message"]),
+            # my_chat_member is what fires when the bot is added to a group or
+            # channel, and is the only hook that makes self-service onboarding
+            # possible.
+            "allowed_updates": json.dumps(
+                ["callback_query", "message", "my_chat_member"]),
         }
 
         if offset:
@@ -243,7 +294,23 @@ class TelegramChannel:
         if not payload:
             return []
 
-        return self._commands_from(payload.get("result") or [])
+        updates = payload.get("result") or []
+
+        self._announce_joins(updates)
+
+        return self._commands_from(updates)
+
+    def _announce_joins(self, updates: List[Any]) -> None:
+        """Reply with the chat id wherever the bot has just been added."""
+        for update in updates:
+            if not isinstance(update, dict):
+                continue
+
+            chat_id = _joined_chat_of(update)
+
+            if chat_id is not None:
+                log.info("telegram: added to chat %s", chat_id)
+                self.announce_chat_id(chat_id)
 
     def _commands_from(self, updates: List[Any]) -> List[Dict[str, Any]]:
         commands = []
@@ -282,7 +349,7 @@ class TelegramChannel:
     def _call(self, method: str, fields: Dict[str, str],
               photo: Optional[bytes] = None) -> Optional[Dict[str, Any]]:
         """One Telegram API call. None on any failure, never raises."""
-        if not self.is_configured():
+        if not self.has_token():
             return None
 
         url = "%s/bot%s/%s" % (API_ROOT, self.config.bot_token, method)
@@ -331,11 +398,12 @@ def _command_of(update: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if isinstance(query, dict):
         command = str(query.get("data") or "").strip().lower()
 
-        if command in (COMMAND_PAUSE, COMMAND_RESUME, COMMAND_STATUS):
+        if command in COMMANDS:
             return {
                 "command": command,
                 "callback_id": query.get("id") or "",
                 "from": _sender_of(query.get("from")),
+                "chat_id": _chat_of(query.get("message")),
             }
 
         return None
@@ -348,14 +416,49 @@ def _command_of(update: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         # Group messages arrive as "/pause@thebotname".
         text = text.split("@")[0].lstrip("/")
 
-        if text in (COMMAND_PAUSE, COMMAND_RESUME, COMMAND_STATUS):
+        if text in COMMANDS:
             return {
                 "command": text,
                 "callback_id": "",
                 "from": _sender_of(message.get("from")),
+                "chat_id": _chat_of(message),
             }
 
     return None
+
+
+def _chat_of(message: Any) -> Optional[Any]:
+    """Which chat a message arrived in, so a reply can go back to it."""
+    if not isinstance(message, dict):
+        return None
+
+    chat = message.get("chat")
+
+    return chat.get("id") if isinstance(chat, dict) else None
+
+
+def _joined_chat_of(update: Dict[str, Any]) -> Optional[Any]:
+    """The chat id this update says the bot was just added to, or None.
+
+    Only a transition *into* the chat counts. Telegram sends my_chat_member for
+    every membership change including being promoted, demoted or kicked, and
+    announcing the chat id on the way out would be a peculiar way to say
+    goodbye.
+    """
+    change = update.get("my_chat_member")
+
+    if not isinstance(change, dict):
+        return None
+
+    old_status = str((change.get("old_chat_member") or {}).get("status") or "")
+    new_status = str((change.get("new_chat_member") or {}).get("status") or "")
+
+    if new_status not in JOINED_STATUSES or old_status in JOINED_STATUSES:
+        return None
+
+    chat = change.get("chat")
+
+    return chat.get("id") if isinstance(chat, dict) else None
 
 
 def _sender_of(user: Any) -> str:
@@ -499,7 +602,10 @@ class CommandPoller:
         self._thread: Optional[threading.Thread] = None
 
     def start(self) -> bool:
-        if not self.channel.is_configured():
+        # Only a token, deliberately. Polling is what lets the bot notice it has
+        # been added somewhere and reply with the chat id, which is how the
+        # chat id gets into the config in the first place.
+        if not self.channel.has_token():
             return False
 
         if self._thread is not None and self._thread.is_alive():

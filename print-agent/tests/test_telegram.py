@@ -11,6 +11,7 @@ Two things are load-bearing here and both are easy to get subtly wrong:
 
 import json
 import os
+import urllib.parse
 import sys
 import unittest
 
@@ -352,6 +353,124 @@ class PhotoSenderTest(unittest.TestCase):
         subject._send(subject._pending.pop(0))
 
         self.assertEqual(subject.sent, 0)
+
+
+def join_update(update_id, chat_id, old_status="left", new_status="member"):
+    return {
+        "update_id": update_id,
+        "my_chat_member": {
+            "chat": {"id": chat_id, "title": "Badge printing"},
+            "old_chat_member": {"status": old_status},
+            "new_chat_member": {"status": new_status},
+        },
+    }
+
+
+class OnboardingTest(unittest.TestCase):
+    """Announcing the chat id when the bot is added somewhere.
+
+    Telegram never shows a chat id in the client, so without this there is no
+    way for somebody setting the agent up to discover the one value the config
+    needs. That means it has to work with a token alone, before any chat id
+    exists.
+    """
+
+    def test_a_token_alone_is_enough_to_talk(self):
+        subject = telegram.TelegramChannel(config(chat_id=""))
+
+        self.assertTrue(subject.has_token())
+        self.assertFalse(subject.is_configured())
+
+    def test_being_added_to_a_group_answers_with_the_chat_id(self):
+        subject, opener = channel(
+            {"ok": True, "result": [join_update(1, -1001234567890)]},
+            {"ok": True, "result": {}},
+        )
+
+        subject.poll()
+
+        body = opener.last.data.decode("utf-8")
+
+        self.assertIn("sendMessage", opener.last.full_url)
+        self.assertIn("-1001234567890", urllib.parse.unquote_plus(body))
+
+    def test_it_answers_even_with_no_chat_id_configured(self):
+        # The case that matters: this is how the id is discovered in the first
+        # place, so requiring one already would make the feature impossible.
+        subject, opener = channel(
+            {"ok": True, "result": [join_update(1, -100999)]},
+            {"ok": True, "result": {}},
+            chat_id="",
+        )
+
+        subject.poll()
+
+        self.assertIn("sendMessage", opener.last.full_url)
+
+    def test_being_promoted_is_not_a_join(self):
+        # my_chat_member fires for every membership change. Announcing on a
+        # promotion would repeat the message for no reason.
+        subject, opener = channel({"ok": True, "result": [
+            join_update(1, -100999, old_status="member", new_status="administrator")]})
+
+        subject.poll()
+
+        self.assertEqual(len(opener.requests), 1, "only the getUpdates call")
+
+    def test_being_removed_is_not_a_join(self):
+        subject, opener = channel({"ok": True, "result": [
+            join_update(1, -100999, old_status="administrator", new_status="left")]})
+
+        subject.poll()
+
+        self.assertEqual(len(opener.requests), 1)
+
+    def test_a_join_still_advances_the_offset(self):
+        # Otherwise the bot re-announces on every single poll, forever.
+        subject, opener = channel(
+            {"ok": True, "result": [join_update(77, -100999)]},
+            {"ok": True, "result": {}},
+            {"ok": True, "result": []},
+        )
+
+        subject.poll()
+        subject.poll()
+
+        self.assertIn("offset=78", opener.last.data.decode("utf-8"))
+
+    def test_chatid_is_a_recognised_command(self):
+        subject, _opener = channel({"ok": True, "result": [{
+            "update_id": 5,
+            "message": {"text": "/chatid@something_has_printed_bot",
+                        "chat": {"id": -100777},
+                        "from": {"username": "tin"}},
+        }]})
+
+        commands = subject.poll()
+
+        self.assertEqual(commands[0]["command"], telegram.COMMAND_CHATID)
+        self.assertEqual(commands[0]["chat_id"], -100777)
+
+    def test_a_command_carries_the_chat_it_came_from(self):
+        subject, _opener = channel(
+            {"ok": True, "result": [callback_update(9, telegram.COMMAND_PAUSE)]})
+
+        # No message block on this callback, so there is nothing to reply to
+        # and the handler must cope with that rather than assume.
+        self.assertIsNone(subject.poll()[0]["chat_id"])
+
+    def test_the_poller_starts_on_a_token_alone(self):
+        subject = telegram.TelegramChannel(config(chat_id=""))
+        poller = telegram.CommandPoller(subject, on_command=lambda _c: None)
+
+        self.assertTrue(poller.start())
+        poller.stop()
+
+    def test_sending_with_no_destination_fails_rather_than_guessing(self):
+        subject, opener = channel(chat_id="")
+
+        self.assertFalse(subject.send_message("hello"))
+        self.assertEqual(opener.requests, [])
 
 
 if __name__ == "__main__":

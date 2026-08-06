@@ -1559,7 +1559,10 @@ class AgentApp(tk.Tk):
         """Bring the channel up alongside a run, if one is configured."""
         from .. import telegram as telegram_module
 
-        if not self.config_data.telegram.is_configured():
+        # Deliberately not is_configured(): with only a token the poller can
+        # still notice the bot being added to a chat and reply with the id,
+        # which is how the id gets into the config at all.
+        if not (self.config_data.telegram.enabled and self.config_data.telegram.bot_token):
             return
 
         if self.telegram_channel is None:
@@ -1592,7 +1595,16 @@ class AgentApp(tk.Tk):
         action = command.get("command")
         who = command.get("from") or "someone"
 
-        if action == telegram_module.COMMAND_PAUSE:
+        if action == telegram_module.COMMAND_CHATID:
+            # Answered in whichever chat asked, not the configured one: the
+            # whole point is that the configured one may not exist yet.
+            chat_id = command.get("chat_id")
+
+            if chat_id is not None and self.telegram_channel is not None:
+                self.telegram_channel.announce_chat_id(chat_id)
+
+            reply = "Told %s the chat ID is %s" % (who, chat_id)
+        elif action == telegram_module.COMMAND_PAUSE:
             self._pause_printing()
             reply = "Paused by %s from Telegram" % who
         elif action == telegram_module.COMMAND_RESUME:
@@ -1617,7 +1629,7 @@ class AgentApp(tk.Tk):
             self.telegram_channel.answer_callback(callback_id, reply[:200])
 
         if action in (telegram_module.COMMAND_PAUSE, telegram_module.COMMAND_RESUME) \
-                and self.telegram_channel is not None:
+                and self.telegram_channel is not None and self.telegram_channel.is_configured():
             # Repost the controls so the keyboard shows the action that makes
             # sense now, rather than the one that was just taken.
             self.telegram_channel.send_message(reply, paused=self._is_paused())
