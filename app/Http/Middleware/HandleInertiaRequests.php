@@ -2,6 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Printing\Models\Printer;
+use App\Enum\PrinterConditionEnum;
+use App\Enum\PrinterStatusEnum;
+use App\Models\Event;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -38,7 +42,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
             // Get event that did not end yet and is the next one
-            'event' => \App\Models\Event::latest('starts_at')->first(),
+            'event' => Event::latest('starts_at')->first(),
             // Lazy load printer status - only needed for POS header display
             'printerStatus' => fn () => $this->getPrinterStatus($request),
         ];
@@ -68,12 +72,12 @@ class HandleInertiaRequests extends Middleware
         }
 
         // Get overall printer status - only count active printers
-        $pausedCount = \App\Domain\Printing\Models\Printer::whereIn('status', [\App\Enum\PrinterStatusEnum::PAUSED->value, \App\Enum\PrinterStatusEnum::OFFLINE->value])
+        $pausedCount = Printer::whereIn('status', [PrinterStatusEnum::PAUSED->value, PrinterStatusEnum::OFFLINE->value])
             ->where('is_active', true)
             ->count();
-        $totalCount = \App\Domain\Printing\Models\Printer::where('is_active', true)
+        $totalCount = Printer::where('is_active', true)
             ->count();
-        $lastUpdated = \App\Domain\Printing\Models\Printer::where('is_active', true)
+        $lastUpdated = Printer::where('is_active', true)
             ->max('updated_at');
 
         return [
@@ -81,6 +85,55 @@ class HandleInertiaRequests extends Middleware
             'paused_count' => $pausedCount,
             'total_count' => $totalCount,
             'last_updated' => $lastUpdated,
+            // Seeds the live indicator. Without it every screen starts green
+            // and stays green until the next broadcast, so a printer that
+            // jammed before the page was opened looks perfectly healthy.
+            'conditions' => $this->printerConditions(),
         ];
+    }
+
+    /**
+     * Worst current condition per printer type, for the POS header icons.
+     *
+     * Worst rather than newest: one icon stands for every printer of that
+     * kind, and a station with a jammed printer and a healthy one has a
+     * problem that the healthy one must not hide.
+     */
+    private function printerConditions(): array
+    {
+        $rank = ['danger' => 3, 'info' => 2, 'warning' => 1, 'success' => 0];
+        $out = [];
+
+        $printers = Printer::where('is_active', true)
+            ->whereNotNull('condition')
+            ->get();
+
+        foreach ($printers as $printer) {
+            $condition = $printer->condition;
+
+            if (! $condition instanceof PrinterConditionEnum) {
+                $condition = PrinterConditionEnum::tryFrom((string) $condition);
+            }
+
+            if ($condition === null) {
+                continue;
+            }
+
+            $type = $printer->type?->value === 'receipt' ? 'receipt' : 'badge';
+            $severity = $condition->severity();
+
+            if (isset($out[$type]) && ($rank[$out[$type]['severity']] ?? 0) >= ($rank[$severity] ?? 0)) {
+                continue;
+            }
+
+            $out[$type] = [
+                'status' => $condition->value,
+                'label' => $condition->label(),
+                'severity' => $severity,
+                'error_message' => $printer->condition_message,
+            ];
+        }
+
+        return $out;
     }
 }

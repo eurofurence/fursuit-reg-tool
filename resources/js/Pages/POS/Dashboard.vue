@@ -1,11 +1,10 @@
 <script setup>
-import { Head } from "@inertiajs/vue3";
-import { computed } from "vue";
+import { Head, Link, router, useForm, usePage } from "@inertiajs/vue3";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import POSLayout from "@/Layouts/POSLayout.vue";
-import DashboardButton from "@/Components/POS/DashboardButton.vue";
-import Card from 'primevue/card';
-import { usePage } from '@inertiajs/vue3';
-import { formatEuroFromCents } from '@/helpers.js';
+import { usePosKeyboard } from "@/composables/usePosKeyboard";
+import Dialog from "primevue/dialog";
+import { posDialogPt } from "@/Components/POS/posDialog.js";
 
 defineOptions({
     layout: POSLayout,
@@ -13,72 +12,210 @@ defineOptions({
 
 const props = defineProps({
     stats: Object,
+    event: Object,
+    badgeRange: Object,
 });
 
 const page = usePage();
-const staff = computed(() => page.props.auth.user);
+const machine = computed(() => page.props.auth.machine);
 
-// Primary actions - most commonly used
-const primaryActions = [
+/* --- Attendee lookup (inline, no extra navigation) ------------------------ */
+
+const maxAttendeeIdLength = 5;
+const attendeeIdInput = ref(null);
+
+const form = useForm({
+    attendeeId: '',
+});
+
+const lookupError = computed(() => form.errors.attendeeId || page.props.errors?.attendeeId);
+
+function focusInput() {
+    nextTick(() => attendeeIdInput.value?.focus());
+}
+
+function submit() {
+    if (! form.attendeeId || form.processing) {
+        return;
+    }
+    form.post(route('pos.attendee.lookup.submit'), {
+        preserveScroll: true,
+        onError: () => {
+            form.attendeeId = '';
+            focusInput();
+        },
+    });
+}
+
+function keyPress(key) {
+    if (key === 'delete') {
+        form.attendeeId = form.attendeeId.slice(0, -1);
+    } else if (key === 'enter') {
+        submit();
+    } else if (form.attendeeId.length < maxAttendeeIdLength) {
+        form.attendeeId += key;
+    }
+    focusInput();
+}
+
+// Numpad "/" is the global "search attendee" shortcut. On the dashboard the
+// search box is already here, so clear it and focus instead of navigating away.
+usePosKeyboard({
+    onNumpadDivide: () => {
+        form.attendeeId = '';
+        focusInput();
+    },
+});
+
+// Scanners and the numpad both emit stray non-digits ("/", "*", Enter chars).
+watch(() => form.attendeeId, (value) => {
+    const digits = (value || '').replace(/\D/g, '').slice(0, maxAttendeeIdLength);
+    if (digits !== value) {
+        form.attendeeId = digits;
+    }
+});
+
+// Keep the counters honest without the staff reloading the page.
+let statsTimer = null;
+
+onMounted(() => {
+    focusInput();
+    statsTimer = setInterval(() => {
+        router.reload({ only: ['stats'], preserveState: true, preserveScroll: true });
+    }, 30000);
+});
+
+onUnmounted(() => clearInterval(statsTimer));
+
+/* --- Stats & navigation --------------------------------------------------- */
+
+const printQueueTotal = computed(
+    () => (props.stats?.pending_print ?? 0) + (props.stats?.active_print ?? 0)
+);
+
+/* --- Badge range (which crate this desk holds) ---------------------------- */
+
+const showRangeDialog = ref(false);
+
+const rangeForm = useForm({
+    badge_range_min: props.badgeRange?.min ?? null,
+    badge_range_max: props.badgeRange?.max ?? null,
+});
+
+const hasBadgeRange = computed(
+    () => props.badgeRange?.min !== null && props.badgeRange?.min !== undefined
+        || props.badgeRange?.max !== null && props.badgeRange?.max !== undefined
+);
+
+const badgeRangeLabel = computed(() => {
+    const min = props.badgeRange?.min;
+    const max = props.badgeRange?.max;
+
+    if (min !== null && min !== undefined && max !== null && max !== undefined) {
+        return `attendee ${min}–${max}`;
+    }
+    if (min !== null && min !== undefined) {
+        return `attendee ${min} and up`;
+    }
+    if (max !== null && max !== undefined) {
+        return `attendee up to ${max}`;
+    }
+
+    return 'all badges · tap to limit';
+});
+
+function openRangeDialog() {
+    rangeForm.clearErrors();
+    rangeForm.badge_range_min = props.badgeRange?.min ?? null;
+    rangeForm.badge_range_max = props.badgeRange?.max ?? null;
+    showRangeDialog.value = true;
+}
+
+// Empty stays null, not 0: null on both ends is what makes the desk count
+// every badge again, and "0" is a legitimate lower bound.
+function normalizeRange(value) {
+    if (value === '' || value === null || value === undefined) {
+        return null;
+    }
+
+    return parseInt(value, 10);
+}
+
+function saveRange() {
+    rangeForm
+        .transform((data) => ({
+            badge_range_min: normalizeRange(data.badge_range_min),
+            badge_range_max: normalizeRange(data.badge_range_max),
+        }))
+        .put(route('pos.machine.badge-range', { machine: machine.value?.id }), {
+            preserveScroll: true,
+            onSuccess: () => {
+                showRangeDialog.value = false;
+                router.reload({ only: ['stats', 'badgeRange'], preserveState: true, preserveScroll: true });
+            },
+        });
+}
+
+function clearRange() {
+    rangeForm.badge_range_min = null;
+    rangeForm.badge_range_max = null;
+    saveRange();
+}
+
+const statTiles = computed(() => [
     {
-        label: "Lookup Attendee",
-        subtitle: "Find attendee by ID",
-        route: route('pos.attendee.lookup'),
-        icon: 'pi pi-search',
-        color: 'primary'
+        label: 'Left to pick up',
+        value: props.stats?.ready_for_pickup ?? 0,
+        sub: badgeRangeLabel.value,
+        primary: true,
+        action: openRangeDialog,
     },
     {
-        label: "Cash Register",
-        subtitle: "Wallet transactions",
+        label: 'Handed out by you',
+        value: props.stats?.my_picked_up_total ?? 0,
+        sub: `${props.stats?.my_picked_up_today ?? 0} of them today`,
+    },
+    {
+        label: 'Handed out in total',
+        value: props.stats?.picked_up_total ?? 0,
+        sub: `you did ${props.stats?.my_share_percent ?? 0}% · ${props.stats?.picked_up_today ?? 0} today`,
+        progress: props.stats?.my_share_percent ?? 0,
+    },
+]);
+
+const actions = computed(() => [
+    {
+        label: 'Cash Register',
+        subtitle: 'Top-up & payout',
         route: route('pos.wallet.show'),
         icon: 'pi pi-wallet',
-        color: 'success'
+        key: 'F2',
     },
-];
-
-// Secondary actions
-const secondaryActions = [
     {
-        label: "Badge Management",
-        subtitle: "View & print badges",
+        label: 'Badge Management',
+        subtitle: 'View & print badges',
         route: route('pos.badges.index'),
         icon: 'pi pi-id-card',
-        color: 'primary'
+        key: 'F3',
     },
     {
-        label: "Print Queue",
-        subtitle: "Manage print jobs",
+        label: 'Print Queue',
+        subtitle: printQueueTotal.value
+            ? `${props.stats?.pending_print ?? 0} pending · ${props.stats?.active_print ?? 0} active`
+            : 'Nothing queued',
         route: route('pos.print-queue.index'),
         icon: 'pi pi-print',
-        color: 'info'
+        key: 'F4',
+        count: printQueueTotal.value || null,
     },
     {
-        label: "Printer Management",
-        subtitle: "Monitor & control printers",
-        route: route('pos.printers.index'),
-        icon: 'pi pi-cog',
-        color: 'warning'
-    },
-    {
-        label: "Statistics",
-        subtitle: "View reports",
+        label: 'Statistics',
+        subtitle: 'Reports & totals',
         route: route('pos.statistics'),
         icon: 'pi pi-chart-bar',
-        color: 'secondary'
+        key: 'F6',
     },
-];
-
-// System actions
-const systemActions = [
-    {
-        label: "Switch User",
-        subtitle: "Change staff login",
-        route: route('pos.auth.user.logout'),
-        icon: 'pi pi-user-edit',
-        method: 'POST',
-        color: 'warning'
-    },
-];
+]);
 </script>
 
 <template>
@@ -86,65 +223,157 @@ const systemActions = [
         <title>POS - Dashboard</title>
     </Head>
 
-    <div class="w-full flex-1 flex flex-col">
-
-        <!-- Main Actions Grid -->
-        <div class="flex-1 grid gap-6">
-            <!-- Primary Actions - Large Buttons -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DashboardButton
-                    v-for="action in primaryActions"
-                    :key="action.label"
-                    :label="action.label"
-                    :subtitle="action.subtitle"
-                    :icon="action.icon"
-                    :route="action.route"
-                    :method="action.method"
-                    class="shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200"
-                />
-            </div>
-
-            <!-- Secondary Actions - Medium Buttons -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <DashboardButton
-                    v-for="action in secondaryActions"
-                    :key="action.label"
-                    :label="action.label"
-                    :subtitle="action.subtitle"
-                    :icon="action.icon"
-                    :route="action.route"
-                    :method="action.method"
-                    class="shadow-md hover:shadow-lg"
-                />
-            </div>
-
-            <!-- System Actions - Smaller Buttons -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <DashboardButton
-                    v-for="action in systemActions"
-                    :key="action.label"
-                    :label="action.label"
-                    :subtitle="action.subtitle"
-                    :icon="action.icon"
-                    :route="action.route"
-                    :method="action.method"
-                    class="shadow-md hover:shadow-lg bg-orange-50 hover:bg-orange-100"
-                />
-            </div>
+    <div class="w-full flex-1 flex flex-col gap-2">
+        <!-- Stat strip: one ruled block, cells share their borders -->
+        <div class="pos-block pos-block--cols">
+            <component
+                v-for="tile in statTiles"
+                :is="tile.action ? 'button' : 'div'"
+                :key="tile.label"
+                :type="tile.action ? 'button' : null"
+                class="pos-stat"
+                :class="[tile.primary ? 'pos-stat--primary' : '', tile.action ? 'pos-stat--action text-left' : '']"
+                @click="tile.action ? tile.action() : null"
+            >
+                <span class="pos-stat__k flex items-center gap-2">
+                    {{ tile.label }}
+                    <i v-if="tile.action" class="pi pi-sliders-h text-[0.7rem]"></i>
+                </span>
+                <span class="pos-stat__v">{{ tile.value }}</span>
+                <span class="pos-stat__sub" :class="tile.action && hasBadgeRange ? 'font-semibold' : ''">{{ tile.sub }}</span>
+                <span v-if="tile.progress !== undefined" class="pos-meter" :aria-label="`${tile.progress}% handed out`">
+                    <span class="pos-meter__fill" :style="{ width: `${Math.min(100, tile.progress)}%` }"></span>
+                </span>
+            </component>
         </div>
 
-        <!-- Quick Access Footer -->
-        <div class="mt-6 pt-4 border-t border-gray-200">
-            <div class="flex items-center justify-between text-sm text-gray-500">
-                <div>
-                    <i class="pi pi-info-circle mr-2"></i>
-                    Use the lookup function to find attendees quickly by scanning their badge or entering their ID
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span>System Status: <span class="text-green-600 font-semibold">Online</span></span>
-                    <span>Version: 2.1.0</span>
-                </div>
+        <!-- Which crate of badges this desk holds -->
+        <Dialog
+            v-model:visible="showRangeDialog"
+            modal
+            header="Badges at this desk"
+            :style="{ width: '30rem' }"
+            :pt="posDialogPt"
+        >
+            <p class="text-sm text-pos-muted mb-3">
+                Count only badges whose attendee ID falls in this range. Leave both
+                fields empty to count every badge of the event.
+            </p>
+
+            <div class="grid grid-cols-2 gap-2">
+                <label class="flex flex-col gap-1">
+                    <span class="pos-label">First ID</span>
+                    <input
+                        v-model="rangeForm.badge_range_min"
+                        class="pos-field"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        placeholder="0"
+                    />
+                </label>
+                <label class="flex flex-col gap-1">
+                    <span class="pos-label">Last ID</span>
+                    <input
+                        v-model="rangeForm.badge_range_max"
+                        class="pos-field"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        placeholder="∞"
+                    />
+                </label>
             </div>
+
+            <p v-if="rangeForm.errors.badge_range_min || rangeForm.errors.badge_range_max"
+               class="mt-2 px-3 py-2 rounded-pos border border-pos-bad text-pos-bad text-sm font-semibold">
+                {{ rangeForm.errors.badge_range_min || rangeForm.errors.badge_range_max }}
+            </p>
+
+            <template #footer>
+                <button type="button" class="pos-btn" @click="showRangeDialog = false">Cancel</button>
+                <button type="button" class="pos-btn" @click="clearRange()">Count all badges</button>
+                <button
+                    type="button"
+                    class="pos-btn pos-btn--primary"
+                    :disabled="rangeForm.processing"
+                    @click="saveRange()"
+                >
+                    Save
+                </button>
+            </template>
+        </Dialog>
+
+        <!-- Work surface: lookup left, navigation right -->
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-2">
+            <section class="lg:col-span-2 pos-card flex flex-col">
+                <div class="pos-card__head">
+                    <h1>Attendee Lookup</h1>
+                    <div class="flex items-center gap-3 text-xs text-pos-muted">
+                        <span><span class="pos-kcap mr-1">0-9</span>attendee</span>
+                        <span><span class="pos-kcap mr-1">Enter</span>search</span>
+                        <span><span class="pos-kcap mr-1">*</span>hand out</span>
+                        <span><span class="pos-kcap mr-1">F1</span>all keys</span>
+                    </div>
+                </div>
+
+                <p v-if="lookupError" class="mb-2 px-3 py-2 rounded-pos border border-pos-bad text-pos-bad text-sm font-semibold">
+                    {{ lookupError }}
+                </p>
+
+                <form class="flex gap-2" @submit.prevent="submit">
+                    <input
+                        ref="attendeeIdInput"
+                        v-model="form.attendeeId"
+                        class="pos-field"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        placeholder="Attendee ID"
+                        :maxlength="maxAttendeeIdLength"
+                    />
+                    <button
+                        type="submit"
+                        class="pos-btn pos-btn--primary pos-btn--commit px-8"
+                        :disabled="!form.attendeeId || form.processing"
+                    >
+                        Search <span class="pos-kcap">Enter</span>
+                    </button>
+                </form>
+
+                <div class="flex-1 flex items-center justify-center mt-2">
+                    <div class="pos-keypad w-full max-w-md h-full max-h-[24rem]">
+                        <button v-for="n in ['7','8','9','4','5','6','1','2','3','0']" :key="n"
+                                type="button" class="pos-key" @click="keyPress(n)">{{ n }}</button>
+                        <button type="button" class="pos-key pos-key--wide" @click="keyPress('delete')">Delete</button>
+                        <button type="button" class="pos-key pos-key--go" @click="keyPress('enter')">Search</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Navigation: one ruled block, rows share their borders -->
+            <nav class="pos-block pos-block--rows self-start w-full">
+                <Link
+                    v-for="action in actions"
+                    :key="action.label"
+                    :href="action.route"
+                    class="pos-row"
+                    :class="action.alert ? 'pos-row--bad' : ''"
+                >
+                    <span class="pos-row__glyph"><i :class="action.icon"></i></span>
+                    <span class="pos-row__body">
+                        <span class="pos-row__title">{{ action.label }}</span>
+                        <span class="pos-row__sub" :class="action.alert ? 'text-pos-bad font-semibold' : ''">
+                            {{ action.subtitle }}
+                        </span>
+                    </span>
+                    <span v-if="action.count" class="pos-count" :class="action.alert ? 'pos-count--bad' : ''">
+                        {{ action.count }}
+                    </span>
+                    <span class="pos-kcap">{{ action.key }}</span>
+                </Link>
+            </nav>
         </div>
+
     </div>
 </template>

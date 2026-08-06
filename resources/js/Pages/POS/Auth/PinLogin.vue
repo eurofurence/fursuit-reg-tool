@@ -33,22 +33,24 @@ const isListening = ref(true);
 const pinInputRef = ref(null);
 
 // Keyboard configuration for PIN entry - NUMBERS ONLY
+// Numpad order (7-8-9 on top), same as the dashboard lookup and the physical
+// pad on the desk, so muscle memory carries between the two.
 const keyboardOptions = {
     layout: {
         default: [
-            "1 2 3",
-            "4 5 6", 
             "7 8 9",
-            "{backspace} 0 {enter}"
+            "4 5 6",
+            "1 2 3",
+            "0 {backspace} {enter}"
         ]
     },
     display: {
-        "{backspace}": "⌫",
-        "{enter}": "↵",
+        "{backspace}": "Delete",
+        "{enter}": "Login",
         "{space}": " "
     },
     autoUseTouchEvents: false,
-    theme: "hg-theme-default"
+    theme: "hg-theme-default hg-layout-numeric numeric-theme"
 };
 
 // RFID Scanner Detection
@@ -187,18 +189,18 @@ onUnmounted(() => {
     <div class="w-full min-h-full flex items-center justify-center">
         <div class="max-w-md w-full">
             <!-- Single Centered Card -->
-            <Card class="shadow-xl border-0">
+            <Card class="border-0">
                 <template #content>
                     <div class="p-8">
                         <!-- RFID Scanner Mode (Default) -->
                         <div v-if="authMode === 'rfid'" class="text-center">
                             <!-- Animated Icon -->
                             <div class="mb-6">
-                                <i class="pi pi-qrcode text-6xl text-blue-500 animate-pulse"></i>
+                                <i class="pi pi-qrcode text-6xl text-pos-accent animate-pulse"></i>
                             </div>
                             
                             <!-- Title -->
-                            <h1 class="text-3xl font-bold text-slate-800 mb-6">Scan Your Access Tag</h1>
+                            <h1 class="text-3xl font-bold text-pos-text mb-6">Scan Your Access Tag</h1>
                             
                             <!-- Error Message -->
                             <div v-if="form.invalid('code')" class="mb-4">
@@ -206,17 +208,17 @@ onUnmounted(() => {
                             </div>
                             
                             <!-- RFID Detection -->
-                            <div v-if="rfidCode" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                <div class="flex items-center justify-center text-green-800">
+                            <div v-if="rfidCode" class="mb-4 p-3 bg-pos-good/10 border border-pos-good/30 rounded-pos">
+                                <div class="flex items-center justify-center text-pos-good">
                                     <i class="pi pi-check-circle mr-2"></i>
                                     <span class="font-medium">Badge Detected</span>
                                 </div>
                             </div>
                             
                             <!-- Status -->
-                            <p class="text-slate-600 mb-6">
+                            <p class="text-pos-muted mb-6">
                                 <span class="inline-flex items-center">
-                                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                                    <span class="w-2 h-2 bg-pos-good rounded-full mr-2 animate-pulse"></span>
                                     Listening for badge scan...
                                 </span>
                             </p>
@@ -233,13 +235,13 @@ onUnmounted(() => {
                         <!-- PIN Entry Mode -->
                         <div v-else-if="authMode === 'pin'">
                             <!-- Back Button -->
-                            <button @click="switchToRfid" class="mb-4 text-slate-600 hover:text-slate-800">
+                            <button @click="switchToRfid" class="mb-4 text-pos-muted hover:text-pos-text">
                                 <i class="pi pi-arrow-left mr-2"></i>Back
                             </button>
                             
                             <div class="text-center">
                                 <!-- Title -->
-                                <h1 class="text-2xl font-bold text-slate-800 mb-6">Enter PIN Code</h1>
+                                <h1 class="text-2xl font-bold text-pos-text mb-6">Enter PIN Code</h1>
                                 
                                 <!-- Error Message -->
                                 <div v-if="form.invalid('code')" class="mb-4">
@@ -262,8 +264,12 @@ onUnmounted(() => {
                                 </div>
                                 
                                 <!-- Virtual Keyboard -->
-                                <div class="bg-slate-50 rounded-lg p-3">
-                                    <SimpleKeyboard @onKeyPress="handleVirtualKeyPress" :options='keyboardOptions'></SimpleKeyboard>
+                                <SimpleKeyboard @onKeyPress="handleVirtualKeyPress" :options='keyboardOptions'></SimpleKeyboard>
+
+                                <div class="flex justify-between text-xs text-pos-muted mt-3">
+                                    <span><span class="pos-kcap mr-1">0-9</span>PIN</span>
+                                    <span><span class="pos-kcap mr-1">Enter</span>login</span>
+                                    <span><span class="pos-kcap mr-1">⌫</span>delete</span>
                                 </div>
                             </div>
                         </div>
@@ -275,72 +281,36 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* PIN Input Styling */
+/*
+ * PIN entry uses the same tokens as the dashboard lookup: mono tabular digits,
+ * 3px shape, line borders, accent focus ring. The keypad itself is left to
+ * resources/css/pos.css so both keypads stay identical by construction.
+ */
 :deep(.pin-input .p-inputotp-input) {
-    width: 3rem;
-    height: 3rem;
-    font-size: 1.5rem;
+    width: 3.25rem;
+    height: 3.5rem;
+    font-family: var(--pos-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.6rem;
     font-weight: 600;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
+    color: rgb(var(--pos-text));
+    background: rgb(var(--pos-panel-2));
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
     margin: 0 0.25rem;
     text-align: center;
-    transition: all 0.2s ease;
 }
 
 :deep(.pin-input .p-inputotp-input:focus) {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    outline: none;
+    border-color: rgb(var(--pos-accent));
+    outline: 3px solid rgb(var(--pos-accent));
+    outline-offset: 2px;
+    box-shadow: none;
 }
 
 :deep(.pin-input .p-inputotp-input.p-invalid) {
-    border-color: #ef4444;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-}
-
-/* Keyboard Styling */
-:deep(.simple-keyboard) {
-    background: transparent;
-    border-radius: 12px;
-}
-
-:deep(.simple-keyboard .hg-button) {
-    background: white;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    color: #374151;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0.25rem;
-    min-height: 3.5rem;
-    min-width: 3.5rem;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-:deep(.simple-keyboard .hg-button:hover) {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-:deep(.simple-keyboard .hg-button:active) {
-    transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* Special key styling */
-:deep(.simple-keyboard .hg-button.hg-functionBtn) {
-    background: #3b82f6;
-    color: white;
-    border-color: #2563eb;
-}
-
-:deep(.simple-keyboard .hg-button.hg-functionBtn:hover) {
-    background: #2563eb;
-    border-color: #1d4ed8;
+    border-color: rgb(var(--pos-bad));
+    outline-color: rgb(var(--pos-bad));
 }
 
 /* Pulse animation for scanner */
@@ -357,36 +327,22 @@ onUnmounted(() => {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Mobile optimization */
+/* Phones: keep the six boxes on one line. */
 @media (max-width: 768px) {
     :deep(.pin-input .p-inputotp-input) {
         width: 2.5rem;
-        height: 2.5rem;
-        font-size: 1.25rem;
+        height: 3rem;
+        font-size: 1.3rem;
         margin: 0 0.125rem;
-    }
-    
-    :deep(.simple-keyboard .hg-button) {
-        min-height: 3rem;
-        min-width: 3rem;
-        font-size: 1.1rem;
-        margin: 0.125rem;
     }
 }
 
-/* Tablet optimization */
+/* Tablets are the main POS device: bigger targets, same shape. */
 @media (min-width: 768px) and (max-width: 1024px) {
     :deep(.pin-input .p-inputotp-input) {
-        width: 3.5rem;
-        height: 3.5rem;
-        font-size: 1.75rem;
-    }
-    
-    :deep(.simple-keyboard .hg-button) {
-        min-height: 4rem;
-        min-width: 4rem;
-        font-size: 1.5rem;
-        margin: 0.375rem;
+        width: 3.75rem;
+        height: 4rem;
+        font-size: 1.9rem;
     }
 }
 </style>

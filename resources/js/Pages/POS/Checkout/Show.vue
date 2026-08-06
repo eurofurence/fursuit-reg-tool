@@ -196,7 +196,7 @@ function receiptForm(via) {
                             <div class="h-full overflow-y-auto flex-1">
                                 <div class="flex justify-between items-center mb-2">
                                     <span class="text-sm font-medium">Amount Given:</span>
-                                    <div class="text-xl font-bold" :class="given >= (checkout.total / 100) ? 'text-green-600' : 'text-red-600'">
+                                    <div class="text-xl font-bold" :class="given >= (checkout.total / 100) ? 'text-pos-good' : 'text-pos-bad'">
                                         {{ given.toFixed(2) }}€
                                     </div>
                                 </div>
@@ -226,13 +226,13 @@ function receiptForm(via) {
 
                                 <!-- Status Message -->
                                 <div class="text-xs">
-                                    <div v-if="given < (checkout.total / 100)" class="text-red-600 font-medium">
+                                    <div v-if="given < (checkout.total / 100)" class="text-pos-bad font-medium">
                                         Need {{ ((checkout.total / 100) - given).toFixed(2) }}€ more
                                     </div>
-                                    <div v-else-if="currentChange.length === 0" class="text-green-600 font-medium">
+                                    <div v-else-if="currentChange.length === 0" class="text-pos-good font-medium">
                                         Exact change - Ready to complete!
                                     </div>
-                                    <div v-else class="text-yellow-600 font-medium">
+                                    <div v-else class="text-pos-warn font-medium">
                                         Change: {{ (given - (checkout.total / 100)).toFixed(2) }}€
                                     </div>
                                 </div>
@@ -247,7 +247,7 @@ function receiptForm(via) {
                                         <button v-for="denomination in cashDenominations.banknotes"
                                                 :key="denomination"
                                                 @click="addCash(denomination)"
-                                                class="aspect-[3/2] hover:bg-blue-50 transition-colors rounded">
+                                                class="aspect-[3/2] hover:bg-pos-accent/10 transition-colors rounded">
                                             <CashSVG :denomination="denomination" size="large" />
                                         </button>
                                     </div>
@@ -257,7 +257,7 @@ function receiptForm(via) {
                                         <button v-for="denomination in cashDenominations.coins"
                                                 :key="denomination"
                                                 @click="addCash(denomination)"
-                                                class="flex-1 hover:bg-blue-50 transition-colors rounded">
+                                                class="flex-1 hover:bg-pos-accent/10 transition-colors rounded">
                                             <CashSVG :denomination="denomination" size="normal" />
                                         </button>
                                     </div>
@@ -273,7 +273,7 @@ function receiptForm(via) {
                 <Card class="h-full flex items-center justify-center">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-green-600 mb-4">
+                            <div class="text-pos-good mb-4">
                                 <i class="pi pi-check-circle text-4xl"></i>
                                 <div class="text-xl font-bold mt-2">Transaction Complete</div>
                             </div>
@@ -317,12 +317,12 @@ function receiptForm(via) {
                         <!-- Items List -->
                         <div class="flex-1 ">
                             <div class="mb-4 max-h-80 overflow-y-auto">
-                                <div v-for="pos in positions" :key="pos.id" class="mb-3 p-2 border-b border-gray-200">
+                                <div v-for="pos in positions" :key="pos.id" class="mb-3 p-2 border-b border-pos-line">
                                     <div class="flex justify-between items-start">
                                         <div class="flex-1">
                                             <div class="font-medium text-sm">{{ pos.name }}</div>
-                                            <div class="text-xs text-gray-600">Fursuit Badge #{{ pos.payable_id }}</div>
-                                            <div v-if="pos.description && pos.description.length" class="text-xs text-gray-500 mt-1">
+                                            <div class="text-xs text-pos-muted">Fursuit Badge #{{ pos.payable_id }}</div>
+                                            <div v-if="pos.description && pos.description.length" class="text-xs text-pos-muted mt-1">
                                                 {{ pos.description.join(', ') }}
                                             </div>
                                         </div>
@@ -344,7 +344,7 @@ function receiptForm(via) {
                             </div>
                             <div class="flex justify-between font-bold text-lg border-t pt-2">
                                 <span>TOTAL:</span>
-                                <span class="text-green-600">{{ formatEuroFromCents(checkout.total) }}</span>
+                                <span class="text-pos-good">{{ formatEuroFromCents(checkout.total) }}</span>
                             </div>
                         </div>
 
@@ -370,7 +370,7 @@ function receiptForm(via) {
                 :disabled="given < (checkout.total / 100) || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))"
                 severity="success"
                 size="small"
-                class="flex-1 h-12 text-xs font-bold"
+                class="pos-commit-accent flex-1 h-12 text-xs font-bold"
                 icon="pi pi-money-bill"
                 label="Complete Cash" />
 
@@ -381,7 +381,7 @@ function receiptForm(via) {
                 :loading="startCardPaymentForm.processing"
                 severity="primary"
                 size="small"
-                class="flex-1 h-12 text-xs font-bold relative"
+                class="pos-commit-accent flex-1 h-12 text-xs font-bold relative"
                 icon="pi pi-credit-card">
                 <template #default>
                     <span>Pay Card</span>

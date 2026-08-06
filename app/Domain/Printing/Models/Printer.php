@@ -69,7 +69,7 @@ class Printer extends Model
         $printerType = self::determinePrinterType($printerName);
 
         // Broadcast status update to all POS clients
-        broadcast(new PrinterStatusUpdated(
+        broadcast(PrinterStatusUpdated::fromStatus(
             $printerName,
             $printerType,
             $statusEnum,
@@ -128,7 +128,7 @@ class Printer extends Model
 
             // Broadcast status update
             $printerType = self::determinePrinterType($printerName);
-            broadcast(new PrinterStatusUpdated(
+            broadcast(PrinterStatusUpdated::fromStatus(
                 $printerName,
                 $printerType,
                 PrinterStatusEnum::IDLE,

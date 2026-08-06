@@ -8,9 +8,10 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
 import ConfirmModal from "@/Components/POS/ConfirmModal.vue";
+import { posDialogPt } from "@/Components/POS/posDialog.js";
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
-import {ref, computed, watchEffect, onMounted, onUnmounted} from "vue";
+import {ref, computed, onMounted, onUnmounted} from "vue";
 import {useForm} from "laravel-precognition-vue-inertia";
 import {router} from "@inertiajs/vue3";
 import {formatEuroFromCents} from "@/helpers.js";
@@ -114,31 +115,28 @@ function triggerPrint(badgeId) {
     showPrintConfirmModal.value = true;
 }
 
-// Handle keyboard shortcuts
-function handlePosShortcuts() {
-    window.addEventListener('pos-shortcut-confirm', () => {
-        if (showPrintConfirmModal.value) {
-            printBadge();
-        }
-        if (showPrintAllConfirmModal.value) {
-            printAllBadgesAction();
-        }
-    });
+// preventDefault() marks the Enter as consumed, so it cannot also activate the
+// Print button that regains focus once the dialog closes.
+function onConfirmShortcut(event) {
+    if (showPrintConfirmModal.value) {
+        event.preventDefault();
+        printBadge();
+
+        return;
+    }
+
+    if (showPrintAllConfirmModal.value) {
+        event.preventDefault();
+        printAllBadgesAction();
+    }
 }
 
 onMounted(() => {
-    handlePosShortcuts();
+    window.addEventListener('pos-shortcut-confirm', onConfirmShortcut);
 });
 
 onUnmounted(() => {
-    window.removeEventListener('pos-shortcut-confirm', () => {
-    });
-});
-
-watchEffect(() => {
-    if (badgeIdToPrint.value) {
-        showPrintConfirmModal.value = true;
-    }
+    window.removeEventListener('pos-shortcut-confirm', onConfirmShortcut);
 });
 </script>
 
@@ -159,24 +157,25 @@ watchEffect(() => {
                 modal
                 header="Print Unprinted Badges"
                 :style="{ width: '30rem' }"
+                :pt="posDialogPt"
             >
                 <div class="space-y-4">
-                    <p class="text-sm text-gray-600">
-                        This will print up to 50 unprinted badges, starting with the lowest attendee IDs. 
+                    <p class="text-sm text-pos-muted">
+                        This will print up to 50 unprinted badges, starting with the lowest attendee IDs.
                         Optionally select a specific printer:
                     </p>
-                    <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                    <div class="bg-pos-accent/10 border border-pos-accent/30 rounded-pos p-3">
                         <div class="flex items-start">
-                            <i class="pi pi-info-circle text-blue-500 mt-0.5 mr-2"></i>
-                            <div class="text-sm text-blue-700">
-                                <strong>Note:</strong> Maximum of 50 badges will be printed per batch. 
+                            <i class="pi pi-info-circle text-pos-accent mt-0.5 mr-2"></i>
+                            <div class="text-sm text-pos-accent">
+                                <strong>Note:</strong> Maximum of <span class="pos-num font-bold">50</span> badges will be printed per batch.
                                 Badges are selected by lowest attendee ID first.
                             </div>
                         </div>
                     </div>
 
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Printer</label>
+                        <label class="pos-label block">Printer</label>
                         <Dropdown
                             v-model="selectedPrinter"
                             :options="props.printers"
@@ -184,35 +183,39 @@ watchEffect(() => {
                             optionValue="id"
                             placeholder="Use default assignment"
                             class="w-full"
+                            panelClass="pos-surface"
                             :clearable="true"
                         />
-                        <p class="text-xs text-gray-500">Leave empty for automatic printer assignment</p>
+                        <p class="text-xs text-pos-muted">Leave empty for automatic printer assignment</p>
                     </div>
                 </div>
 
                 <template #footer>
-                    <div class="flex justify-end space-x-2">
-                        <Button
-                            label="Cancel"
-                            severity="secondary"
-                            @click="showPrintAllConfirmModal = false; selectedPrinter = null"
-                        />
-                        <Button
-                            label="Print All"
-                            icon="pi pi-print"
-                            @click="printAllBadgesAction()"
-                        />
-                    </div>
+                    <button
+                        type="button"
+                        class="pos-btn"
+                        @click="showPrintAllConfirmModal = false; selectedPrinter = null"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        class="pos-btn pos-btn--primary"
+                        @click="printAllBadgesAction()"
+                    >
+                        <i class="pi pi-print"></i>
+                        Print All <span class="pos-kcap">Enter</span>
+                    </button>
                 </template>
             </Dialog>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 p-4">
-            <div class="bg-white p-4 mb-4 rounded-lg shadow">
+        <div class="flex flex-col gap-2">
+            <div class="pos-card mb-2">
                 <div class="flex items-center justify-between">
                     <div>
                         <h1 class="text-2xl font-bold">Badge Management</h1>
-                        <div class="text-sm text-gray-500 mt-1">
+                        <div class="text-sm text-pos-muted mt-1">
                             Current Event: {{ currentEvent.name }}
                         </div>
                     </div>
@@ -234,25 +237,25 @@ watchEffect(() => {
                 </div>
             </div>
 
-            <div class="py-3 rounded-lg bg-white">
+            <div class="pos-card py-3">
                 <TabView @tab-change="onTabChange" :activeIndex="getTabIndex()">
                     <TabPanel :header="`Unprinted (${tabCounts?.unprinted || 0})`">
-                        <div class="mb-4 text-sm text-gray-600">
+                        <div class="mb-4 text-sm text-pos-muted">
                             {{ totalRecords }} unprinted badge(s) displayed
                         </div>
                     </TabPanel>
                     <TabPanel :header="`Processing (${tabCounts?.processing || 0})`">
-                        <div class="mb-4 text-sm text-gray-600">
+                        <div class="mb-4 text-sm text-pos-muted">
                             {{ totalRecords }} processing badge(s) displayed
                         </div>
                     </TabPanel>
                     <TabPanel :header="`Printed (${tabCounts?.printed || 0})`">
-                        <div class="mb-4 text-sm text-gray-600">
+                        <div class="mb-4 text-sm text-pos-muted">
                             {{ totalRecords }} printed badge(s) displayed
                         </div>
                     </TabPanel>
                     <TabPanel :header="`All (${tabCounts?.all || 0})`">
-                        <div class="mb-4 text-sm text-gray-600">
+                        <div class="mb-4 text-sm text-pos-muted">
                             {{ totalRecords }} total badge(s) displayed
                         </div>
                     </TabPanel>
@@ -261,7 +264,7 @@ watchEffect(() => {
                 <!-- Badges Table -->
                 <DataTable
                     :value="badges"
-                    class="-m-5"
+                    class="mt-2"
                     tableStyle="min-width: 50rem"
                     dataKey="id"
                 >
@@ -269,7 +272,7 @@ watchEffect(() => {
                     <Column field="fursuit_name" header="Fursuit" sortable>
                         <template #body="slotProps">
                             <div class="font-medium">{{ slotProps.data.fursuit_name }}</div>
-                            <div class="text-sm text-gray-500">{{ slotProps.data.species_name }}</div>
+                            <div class="text-sm text-pos-muted">{{ slotProps.data.species_name }}</div>
                         </template>
                     </Column>
                     <Column field="owner_name" header="Owner" sortable></Column>
@@ -289,7 +292,7 @@ watchEffect(() => {
                                 />
                                 <div class="flex items-center gap-2 text-sm">
                                     <div
-                                        :class="slotProps.data.status_payment === 'unpaid' ? 'w-2 h-2 bg-red-500 rounded-full' : 'w-2 h-2 bg-green-500 rounded-full'"
+                                        :class="slotProps.data.status_payment === 'unpaid' ? 'w-2 h-2 bg-pos-bad rounded-full' : 'w-2 h-2 bg-pos-good rounded-full'"
                                     />
                                     {{ formatEuroFromCents(slotProps.data.total) }}
                                 </div>

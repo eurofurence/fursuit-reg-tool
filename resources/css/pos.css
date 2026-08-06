@@ -1,0 +1,869 @@
+/*
+ * POS terminal — "Cool Ledger" skin.
+ *
+ * Everything here is scoped to .pos (set on the POSLayout root), so the public
+ * site and Filament keep their own look. Colours are tokens: a different skin
+ * is a different value block, not a component rewrite.
+ *
+ * Structure rule of this skin: related cards give up their gaps and share
+ * borders, so a stat strip, a nav list or a badge list reads as ONE ruled
+ * block. Status is a row tint, never a shadow.
+ */
+
+/*
+ * Tokens live on :root, not on .pos, because PrimeVue teleports overlays
+ * (Menu, Dialog, Toast) to <body>, outside the .pos subtree. .pos itself only
+ * claims the canvas.
+ */
+:root {
+    --pos-canvas: 233 237 244;
+    --pos-panel: 255 255 255;
+    --pos-panel-2: 244 246 250;
+    --pos-line: 198 207 223;
+    --pos-line-strong: 165 178 200;
+    --pos-text: 16 32 60;
+    --pos-muted: 91 106 134;
+    --pos-accent: 31 60 134;
+    --pos-accent-ink: 255 255 255;
+    --pos-good: 22 112 78;
+    --pos-warn: 154 98 0;
+    --pos-bad: 164 35 28;
+
+    --pos-radius: 3px;
+    --pos-gap: 8px;
+    --pos-pad: 12px;
+
+    /* Touch scale. Nothing in the POS may be smaller than --pos-touch. */
+    --pos-touch: 48px;
+    --pos-row: 56px;
+    --pos-commit: 64px;
+
+    --pos-num: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.pos {
+    background: rgb(var(--pos-canvas));
+    color: rgb(var(--pos-text));
+}
+
+/*
+ * PrimeVue runs unstyled with the local Lara preset, so its widgets carry
+ * Tailwind utilities (bg-surface-100, border-surface-200, …) rather than
+ * p-* hooks. Re-pointing the surface ramp inside .pos re-skins every
+ * widget at once: the zinc greys become the ledger's cool blue-greys.
+ * The public site and Filament keep the ramp defined in app.css.
+ *
+ * .pos-surface carries the same ramp for the overlays PrimeVue teleports to
+ * <body> — dialog masks, dropdown panels — which render outside .pos.
+ */
+.pos,
+.pos-surface {
+    --surface-0: 255 255 255;
+    --surface-50: 248 250 253;
+    --surface-100: 244 246 250;
+    --surface-200: 226 232 242;
+    --surface-300: 198 207 223;
+    --surface-400: 165 178 200;
+    --surface-500: 123 138 165;
+    --surface-600: 91 106 134;
+    --surface-700: 62 76 100;
+    --surface-800: 38 50 70;
+    --surface-900: 22 34 54;
+    --surface-950: 16 32 60;
+}
+
+/* ------------------------------------------------------------------
+   Blocks: the ledger primitive. A .pos-block draws the outer rule; its
+   children share the inner rules, so N rows cost N+1 lines, not N boxes.
+   ------------------------------------------------------------------ */
+.pos-block {
+    background: rgb(var(--pos-panel));
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
+    overflow: hidden;
+}
+
+.pos-block--rows > * + * {
+    border-top: 1px solid rgb(var(--pos-line));
+}
+
+.pos-block--cols {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+}
+
+.pos-block--cols > * + * {
+    border-left: 1px solid rgb(var(--pos-line));
+}
+
+/* A panel that stands on its own (form, keypad, detail box). */
+.pos-card {
+    background: rgb(var(--pos-panel));
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
+    padding: var(--pos-pad);
+}
+
+.pos-card__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.pos-card__head h1,
+.pos-card__head h2,
+.pos-card__head h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+
+.pos-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: rgb(var(--pos-muted));
+}
+
+.pos-muted { color: rgb(var(--pos-muted)); }
+
+/* Digits never jitter between refreshes. */
+.pos-num {
+    font-family: var(--pos-num);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------
+   Stats
+   ------------------------------------------------------------------ */
+.pos-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 14px;
+    min-width: 0;
+}
+
+.pos-stat__k {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: rgb(var(--pos-muted));
+}
+
+.pos-stat__v {
+    font-family: var(--pos-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.8rem;
+    line-height: 1.05;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.pos-stat__sub {
+    font-size: 0.74rem;
+    color: rgb(var(--pos-muted));
+}
+
+/*
+ * Progress meter. The percentage is already printed next to it; the bar is
+ * there so the desk can read "how far along are we" without reading a number.
+ */
+.pos-meter {
+    display: block;
+    height: 4px;
+    margin-top: 6px;
+    background: rgb(var(--pos-line));
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.pos-meter__fill {
+    display: block;
+    height: 100%;
+    background: rgb(var(--pos-accent));
+}
+
+/*
+ * A tile that IS a control. It keeps the tile's look — a stat that suddenly
+ * wore a button's chrome would read as a commit action — and announces itself
+ * through the press feedback and the glyph next to its label.
+ */
+/* :not() keeps the primary tile's tint, which is a plain class rule. */
+button.pos-stat:not(.pos-stat--primary) {
+    background: transparent;
+}
+
+button.pos-stat {
+    color: inherit;
+    text-align: left;
+}
+
+.pos-stat--action {
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background-color 0.12s ease;
+}
+
+@media (hover: hover) {
+    .pos-stat--action:hover { background: rgb(var(--pos-panel-2)); }
+    .pos-stat--primary.pos-stat--action:hover {
+        background: color-mix(in srgb, rgb(var(--pos-accent)) 14%, #fff);
+    }
+}
+
+.pos-stat--action:active {
+    background: color-mix(in srgb, rgb(var(--pos-accent)) 18%, #fff);
+}
+
+/* The queue tile tints rather than inverting: it is a state, not a button. */
+.pos-stat--primary {
+    background: color-mix(in srgb, rgb(var(--pos-accent)) 8%, #fff);
+}
+
+.pos-stat--primary .pos-stat__v {
+    color: rgb(var(--pos-accent));
+    font-weight: 700;
+}
+
+/* ------------------------------------------------------------------
+   Rows (nav entries, badge rows, queue rows)
+   ------------------------------------------------------------------ */
+.pos-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px var(--pos-pad);
+    min-height: var(--pos-row);
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    color: inherit;
+    transition: background-color 0.12s ease;
+    touch-action: manipulation;
+}
+
+a.pos-row,
+button.pos-row,
+.pos-row--action {
+    cursor: pointer;
+}
+
+@media (hover: hover) {
+    a.pos-row:hover,
+    button.pos-row:hover,
+    .pos-row--action:hover {
+        background: rgb(var(--pos-panel-2));
+    }
+}
+
+a.pos-row:active,
+button.pos-row:active,
+.pos-row--action:active {
+    background: color-mix(in srgb, rgb(var(--pos-accent)) 10%, #fff);
+}
+
+.pos-row--good { background: color-mix(in srgb, rgb(var(--pos-good)) 6%, #fff); }
+.pos-row--bad { background: color-mix(in srgb, rgb(var(--pos-bad)) 6%, #fff); }
+.pos-row--warn { background: color-mix(in srgb, rgb(var(--pos-warn)) 7%, #fff); }
+.pos-row--done { opacity: 0.68; }
+
+.pos-row__glyph {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
+    background: rgb(var(--pos-panel-2));
+    color: rgb(var(--pos-muted));
+}
+
+.pos-row--bad .pos-row__glyph {
+    border-color: color-mix(in srgb, rgb(var(--pos-bad)) 40%, #fff);
+    color: rgb(var(--pos-bad));
+    background: color-mix(in srgb, rgb(var(--pos-bad)) 10%, #fff);
+}
+
+.pos-row__body { flex: 1; min-width: 0; }
+.pos-row__title { display: block; font-weight: 600; font-size: 0.95rem; }
+.pos-row__sub { display: block; font-size: 0.76rem; color: rgb(var(--pos-muted)); }
+
+.pos-count {
+    font-family: var(--pos-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: rgb(var(--pos-text));
+    color: rgb(var(--pos-panel));
+    flex: none;
+}
+
+.pos-count--bad { background: rgb(var(--pos-bad)); color: #fff; }
+
+/* ------------------------------------------------------------------
+   Badge rows on the attendee screen.
+
+   Handing out a badge is a two-hand job: one hand holds the card, the
+   other taps. So a badge is one tall row with one button — the single
+   next action for that badge — and the rest of the row is the select
+   target. Everything secondary (reprint, undo) lives in the ⋮ sheet,
+   out of accidental reach.
+   ------------------------------------------------------------------ */
+.pos-badge {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-height: 112px;
+    background: transparent;
+}
+
+.pos-badge__pick {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+    padding: 10px var(--pos-pad);
+    text-align: left;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background-color 0.12s ease;
+}
+
+.pos-badge__pick[disabled] { cursor: default; }
+
+@media (hover: hover) {
+    .pos-badge__pick:not([disabled]):hover { background: rgb(var(--pos-panel-2)); }
+}
+
+.pos-badge__pick:not([disabled]):active {
+    background: color-mix(in srgb, rgb(var(--pos-accent)) 10%, #fff);
+}
+
+/* The picture is the match: staff compare it against the card in hand. */
+.pos-badge__img {
+    width: 84px;
+    height: 84px;
+    flex: none;
+    object-fit: contain;
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
+    background: rgb(var(--pos-panel-2));
+}
+
+.pos-badge__img--empty {
+    display: grid;
+    place-items: center;
+    color: rgb(var(--pos-muted));
+}
+
+.pos-badge__body { flex: 1; min-width: 0; }
+
+.pos-badge__name {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pos-badge__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 0.82rem;
+    color: rgb(var(--pos-muted));
+}
+
+.pos-badge__price {
+    font-family: var(--pos-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+/*
+ * Selection is a filled box, not a hairline outline: at arm's length on a
+ * glossy screen the outline disappears. The bar on the left repeats it, so
+ * a whole column of picked rows is countable at a glance.
+ */
+.pos-badge__check {
+    width: 32px;
+    height: 32px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 2px solid rgb(var(--pos-line-strong));
+    border-radius: var(--pos-radius);
+    color: transparent;
+}
+
+.pos-badge--picked { background: color-mix(in srgb, rgb(var(--pos-accent)) 8%, #fff); }
+.pos-badge--picked .pos-badge__check {
+    background: rgb(var(--pos-accent));
+    border-color: rgb(var(--pos-accent));
+    color: rgb(var(--pos-accent-ink));
+}
+
+.pos-badge--done { background: rgb(var(--pos-panel-2)); }
+.pos-badge--done .pos-badge__name { font-weight: 600; color: rgb(var(--pos-muted)); }
+.pos-badge--bad { background: color-mix(in srgb, rgb(var(--pos-bad)) 6%, #fff); }
+
+/* The action column: one button, full height, own tap zone. */
+.pos-badge__act {
+    display: flex;
+    align-items: center;
+    gap: var(--pos-gap);
+    flex: none;
+    padding: 10px var(--pos-pad) 10px 0;
+}
+
+.pos-badge__go {
+    min-width: 160px;
+    min-height: 88px;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.pos-badge__more {
+    width: 56px;
+    min-height: 88px;
+    padding: 0;
+    font-size: 1.2rem;
+}
+
+@media (max-width: 700px) {
+    .pos-badge { flex-direction: column; }
+    .pos-badge__act { padding: 0 var(--pos-pad) 12px; }
+    .pos-badge__go { flex: 1; }
+}
+
+/*
+ * Commit bar. Sits under the thumbs, above everything, and never scrolls
+ * away: the two money actions must be reachable without hunting.
+ */
+.pos-commitbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: grid;
+    gap: var(--pos-gap);
+    padding: var(--pos-gap) 0 0;
+    background: rgb(var(--pos-canvas));
+}
+
+/* ------------------------------------------------------------------
+   Status pills — colour + shape, so state reads without being read.
+   ------------------------------------------------------------------ */
+.pos-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+    background: color-mix(in srgb, rgb(var(--pos-muted)) 14%, #fff);
+    color: rgb(var(--pos-muted));
+}
+
+.pos-pill--good { background: color-mix(in srgb, rgb(var(--pos-good)) 14%, #fff); color: rgb(var(--pos-good)); }
+.pos-pill--warn { background: color-mix(in srgb, rgb(var(--pos-warn)) 14%, #fff); color: rgb(var(--pos-warn)); }
+.pos-pill--bad { background: color-mix(in srgb, rgb(var(--pos-bad)) 14%, #fff); color: rgb(var(--pos-bad)); }
+.pos-pill--accent { background: color-mix(in srgb, rgb(var(--pos-accent)) 12%, #fff); color: rgb(var(--pos-accent)); }
+
+/* ------------------------------------------------------------------
+   Buttons — one touch scale, press feedback, hover is a bonus.
+   ------------------------------------------------------------------ */
+.pos-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: var(--pos-touch);
+    padding: 0 18px;
+    font-weight: 600;
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
+    background: rgb(var(--pos-panel-2));
+    color: rgb(var(--pos-text));
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background-color 0.12s ease, transform 0.06s ease;
+}
+
+.pos-btn:active { transform: translateY(1px); }
+.pos-btn[disabled],
+.pos-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@media (hover: hover) {
+    .pos-btn:hover:not(:disabled) { background: rgb(var(--pos-line) / 0.35); }
+}
+
+.pos-btn--primary {
+    background: rgb(var(--pos-accent));
+    border-color: rgb(var(--pos-accent));
+    color: rgb(var(--pos-accent-ink));
+}
+
+@media (hover: hover) {
+    .pos-btn--primary:hover:not(:disabled) {
+        background: color-mix(in srgb, rgb(var(--pos-accent)) 86%, #000);
+    }
+}
+
+.pos-btn--danger {
+    background: rgb(var(--pos-bad));
+    border-color: rgb(var(--pos-bad));
+    color: #fff;
+}
+
+.pos-btn--quiet {
+    background: transparent;
+    border-color: transparent;
+    color: rgb(var(--pos-muted));
+}
+
+.pos-btn--sm { min-height: 44px; padding: 0 12px; font-size: 0.85rem; }
+.pos-btn--commit { min-height: var(--pos-commit); font-size: 1rem; }
+
+/* ------------------------------------------------------------------
+   Numeric entry — mirrors the physical numpad exactly, so muscle
+   memory transfers between the touch screen and the pad.
+   ------------------------------------------------------------------ */
+.pos-field {
+    width: 100%;
+    background: rgb(var(--pos-panel-2));
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
+    padding: 12px 18px;
+    font-family: var(--pos-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 2.1rem;
+    letter-spacing: 0.18em;
+    text-align: center;
+    color: rgb(var(--pos-text));
+    min-height: var(--pos-commit);
+}
+
+.pos-field::placeholder {
+    color: rgb(var(--pos-muted) / 0.6);
+    letter-spacing: 0.05em;
+    font-size: 1.2rem;
+}
+
+.pos-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 1fr;
+    gap: var(--pos-gap);
+}
+
+.pos-key {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    font-family: var(--pos-num);
+    font-size: 1.5rem;
+    font-weight: 600;
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
+    background: rgb(var(--pos-panel-2));
+    color: rgb(var(--pos-text));
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.pos-key:active {
+    background: rgb(var(--pos-accent));
+    border-color: rgb(var(--pos-accent));
+    color: rgb(var(--pos-accent-ink));
+}
+
+.pos-key--wide { font-family: inherit; font-size: 0.9rem; letter-spacing: 0.04em; }
+
+.pos-key--go {
+    font-family: inherit;
+    font-size: 0.9rem;
+    background: rgb(var(--pos-accent));
+    border-color: rgb(var(--pos-accent));
+    color: rgb(var(--pos-accent-ink));
+}
+
+/* ------------------------------------------------------------------
+   Key caps — every action wears the key that fires it, so the numpad
+   is learnable from the screen instead of only from the F1 dialog.
+   ------------------------------------------------------------------ */
+.pos-kcap {
+    font-family: var(--pos-num);
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 3px 5px;
+    border-radius: var(--pos-radius);
+    border: 1px solid rgb(var(--pos-line-strong));
+    background: rgb(var(--pos-panel-2));
+    color: rgb(var(--pos-muted));
+    flex: none;
+}
+
+.pos-btn .pos-kcap {
+    background: transparent;
+    border-color: color-mix(in srgb, currentColor 40%, transparent);
+    color: inherit;
+    opacity: 0.85;
+}
+
+/* ------------------------------------------------------------------
+   Dialogs.
+
+   Every rule here is UNSCOPED on purpose: PrimeVue teleports overlays to
+   <body>, so a modal never sits inside .pos. The preset is unstyled (no p-*
+   hooks), so these classes reach the widget through its `pt` — see
+   resources/js/Components/POS/posDialog.js. A dialog is the same object as a
+   .pos-card: one rule around it, ruled head and foot, no elevation.
+   ------------------------------------------------------------------ */
+.pos-menu {
+    min-width: 14rem;
+    padding: 0;
+    background: rgb(var(--pos-panel));
+    color: rgb(var(--pos-text));
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
+    overflow: hidden;
+}
+
+.pos-menu li + li {
+    border-top: 1px solid rgb(var(--pos-line));
+}
+
+.pos-dialog__mask {
+    padding: 20px;
+    background: rgb(var(--pos-text) / 0.45);
+}
+
+.pos-dialog {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    margin: 0;
+    background: rgb(var(--pos-panel));
+    color: rgb(var(--pos-text));
+    border: 1px solid rgb(var(--pos-line-strong));
+    border-radius: var(--pos-radius);
+}
+
+.pos-dialog__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex: none;
+    padding: 8px var(--pos-pad);
+    background: rgb(var(--pos-panel-2));
+    border-bottom: 1px solid rgb(var(--pos-line));
+}
+
+.pos-dialog__title {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.pos-dialog__body {
+    padding: var(--pos-pad);
+    overflow-y: auto;
+}
+
+.pos-dialog__foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--pos-gap);
+    flex: none;
+    padding: var(--pos-pad);
+    background: rgb(var(--pos-panel-2));
+    border-top: 1px solid rgb(var(--pos-line));
+}
+
+.pos-dialog__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    background: rgb(var(--pos-panel));
+    border: 1px solid rgb(var(--pos-line));
+    border-radius: var(--pos-radius);
+    color: rgb(var(--pos-muted));
+    cursor: pointer;
+}
+
+@media (hover: hover) {
+    .pos-dialog__close:hover { background: rgb(var(--pos-line) / 0.35); }
+}
+
+/* ------------------------------------------------------------------
+   Focus: a ring the whole desk can see. The default 1px outline on a
+   white card is invisible at arm's length.
+   ------------------------------------------------------------------ */
+.pos :focus-visible,
+.pos-dialog :focus-visible,
+.pos [data-pos-focus="true"] {
+    outline: 3px solid rgb(var(--pos-accent));
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pos .pos-btn,
+    .pos .pos-key,
+    .pos .pos-row { transition: none; }
+}
+
+/* ------------------------------------------------------------------
+   PrimeVue severity colours.
+
+   The preset paints status with saturated Tailwind fills (bg-green-500 +
+   text-white). Inside .pos those become the same muted status palette the
+   rest of the terminal uses, so a green Tag and a green row agree. Selectors
+   are (0,2,0), which beats the preset's single-class utilities without
+   !important, and nothing outside .pos is touched.
+   ------------------------------------------------------------------ */
+.pos .bg-green-500:not(.pos-commit-good) { background-color: color-mix(in srgb, rgb(var(--pos-good)) 14%, #fff); }
+.pos .bg-orange-500 { background-color: color-mix(in srgb, rgb(var(--pos-warn)) 14%, #fff); }
+.pos .bg-red-500 { background-color: color-mix(in srgb, rgb(var(--pos-bad)) 14%, #fff); }
+.pos .bg-blue-500:not(.pos-commit-accent) { background-color: color-mix(in srgb, rgb(var(--pos-accent)) 12%, #fff); }
+
+.pos .bg-green-500.text-white:not(.pos-commit-good),
+.pos .bg-green-500.text-primary-inverse:not(.pos-commit-good) { color: rgb(var(--pos-good)); }
+.pos .bg-orange-500.text-white,
+.pos .bg-orange-500.text-primary-inverse { color: rgb(var(--pos-warn)); }
+.pos .bg-red-500.text-white,
+.pos .bg-red-500.text-primary-inverse { color: rgb(var(--pos-bad)); }
+.pos .bg-blue-500.text-white:not(.pos-commit-accent),
+.pos .bg-blue-500.text-primary-inverse:not(.pos-commit-accent) { color: rgb(var(--pos-accent)); }
+
+.pos .border-green-500 { border-color: rgb(var(--pos-good)); }
+.pos .border-orange-500 { border-color: rgb(var(--pos-warn)); }
+.pos .border-red-500 { border-color: rgb(var(--pos-bad)); }
+.pos .text-green-500 { color: rgb(var(--pos-good)); }
+.pos .text-orange-500 { color: rgb(var(--pos-warn)); }
+.pos .text-red-500 { color: rgb(var(--pos-bad)); }
+
+.pos .hover\:bg-green-600:hover { background-color: color-mix(in srgb, rgb(var(--pos-good)) 22%, #fff); }
+.pos .hover\:bg-orange-600:hover { background-color: color-mix(in srgb, rgb(var(--pos-warn)) 22%, #fff); }
+.pos .hover\:bg-red-600:hover { background-color: color-mix(in srgb, rgb(var(--pos-bad)) 22%, #fff); }
+.pos .hover\:bg-blue-600:hover { background-color: color-mix(in srgb, rgb(var(--pos-accent)) 20%, #fff); }
+.pos .hover\:border-green-600:hover { border-color: rgb(var(--pos-good)); }
+.pos .hover\:border-orange-600:hover { border-color: rgb(var(--pos-warn)); }
+.pos .hover\:border-red-600:hover { border-color: rgb(var(--pos-bad)); }
+
+/*
+ * Secondary buttons ("Reprint", "Show past events") read as available, not as
+ * a second dark primary competing with the real commit action.
+ */
+.pos button.bg-surface-500,
+.pos a.bg-surface-500 {
+    background-color: rgb(var(--pos-panel-2));
+    border-color: rgb(var(--pos-line));
+    color: rgb(var(--pos-text));
+}
+
+.pos button.bg-surface-500:hover,
+.pos a.bg-surface-500:hover {
+    background-color: rgb(var(--pos-line) / 0.35);
+    border-color: rgb(var(--pos-line-strong));
+}
+
+/*
+ * Commit actions opt back out of the tinting above. Taking money is the one
+ * moment the terminal should shout, so those buttons keep a solid fill while
+ * destructive actions (Cancel) stay tinted and harder to hit by accident.
+ */
+.pos .pos-commit-good {
+    background-color: rgb(var(--pos-good));
+    border-color: rgb(var(--pos-good));
+    color: #fff;
+}
+
+.pos .pos-commit-accent {
+    background-color: rgb(var(--pos-accent));
+    border-color: rgb(var(--pos-accent));
+    color: rgb(var(--pos-accent-ink));
+}
+
+@media (hover: hover) {
+    .pos .pos-commit-good:hover:not(:disabled) { background-color: color-mix(in srgb, rgb(var(--pos-good)) 86%, #000); }
+    .pos .pos-commit-accent:hover:not(:disabled) { background-color: color-mix(in srgb, rgb(var(--pos-accent)) 86%, #000); }
+}
+
+/* Preset widgets inherit the touch scale and the 3px shape. */
+.pos button.p-component,
+.pos a.p-component { min-height: var(--pos-touch); }
+
+.pos .rounded-md,
+.pos .rounded-lg,
+.pos-surface .rounded-md,
+.pos-surface .rounded-lg { border-radius: var(--pos-radius); }
+
+/* simple-keyboard, used by the attendee lookup, follows the key tokens */
+.pos .simple-keyboard.hg-theme-default {
+    background: transparent;
+    padding: 0;
+}
+
+.pos .simple-keyboard .hg-button {
+    background: rgb(var(--pos-panel-2));
+    border: 1px solid rgb(var(--pos-line));
+    border-bottom-width: 1px;
+    border-radius: var(--pos-radius);
+    color: rgb(var(--pos-text));
+    font-family: var(--pos-num);
+    font-size: 1.5rem;
+    font-weight: 600;
+    height: 56px;
+    box-shadow: none;
+}
+
+.pos .simple-keyboard .hg-button:active,
+.pos .simple-keyboard .hg-button.hg-activeButton {
+    background: rgb(var(--pos-accent));
+    border-color: rgb(var(--pos-accent));
+    color: rgb(var(--pos-accent-ink));
+}
+
+.pos .simple-keyboard .hg-button[data-skbtn="{enter}"] {
+    background: rgb(var(--pos-accent));
+    border-color: rgb(var(--pos-accent));
+    color: rgb(var(--pos-accent-ink));
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.pos .simple-keyboard .hg-button[data-skbtn="{backspace}"] {
+    font-family: inherit;
+    font-size: 0.95rem;
+}

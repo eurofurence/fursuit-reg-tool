@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Domain\Checkout\Models\Checkout\Checkout;
+use App\Domain\Checkout\Models\TseClient;
 use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Models\PrinterStatus;
 use App\Domain\Printing\Models\PrintJob;
@@ -60,13 +62,13 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
     // checkouts
     public function checkouts()
     {
-        return $this->hasMany(\App\Domain\Checkout\Models\Checkout\Checkout::class);
+        return $this->hasMany(Checkout::class);
     }
 
     // tse client
     public function tseClient()
     {
-        return $this->belongsTo(\App\Domain\Checkout\Models\TseClient::class);
+        return $this->belongsTo(TseClient::class);
     }
 
     // sumupReader

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\PrintAgent;
 use App\Domain\Printing\Models\Printer;
 use App\Enum\PrinterConditionEnum;
 use App\Enum\PrintJobTypeEnum;
+use App\Events\PrinterStatusUpdated;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -110,6 +111,16 @@ class AgentSessionController extends AgentController
             'cards_capacity' => $data['cards_capacity'] ?? $printer->cards_capacity,
             'condition_raw' => $data['raw'] ?? null,
         ])->save();
+
+        // Push it to the POS. Writing the columns alone left every screen
+        // showing whatever the printer was doing when the page was loaded, so
+        // a jam mid-session looked exactly like a healthy printer.
+        broadcast(PrinterStatusUpdated::fromCondition(
+            $printer->name,
+            $printer->type?->value === 'receipt' ? 'receipt' : 'badge',
+            $condition,
+            $data['message'] ?? null,
+        ));
 
         return response()->json([
             'condition' => $condition->value,

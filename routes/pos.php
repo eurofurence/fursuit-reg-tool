@@ -43,12 +43,6 @@ Route::prefix('/print-queue')->name('print-queue.')->group(function () {
 });
 // Statistics
 Route::get('/statistics', [\App\Http\Controllers\POS\StatisticsController::class, 'index'])->name('statistics');
-// Printer State Management (User-facing UI + management actions)
-Route::prefix('/printers')->name('printers.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'index'])->name('index');
-    Route::post('/{printerName}/retry', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'retryJob'])->name('retry');
-    Route::post('/{printerName}/skip', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'skipJob'])->name('skip');
-    Route::post('/{printerName}/clear', [\App\Http\Controllers\POS\Printing\PrinterStateController::class, 'clearError'])->name('clear');
-});
 // Machine Settings
 Route::put('/machine/{machine}/timeout', [\App\Http\Controllers\POS\MachineController::class, 'updateTimeout'])->name('machine.timeout');
+Route::put('/machine/{machine}/badge-range', [\App\Http\Controllers\POS\MachineController::class, 'updateBadgeRange'])->name('machine.badge-range');

@@ -1118,11 +1118,47 @@ class AgentApp(tk.Tk):
         )
         self.monitor.on_change.append(
             lambda condition, _: self.events.put(("condition", condition)))
+
+        # The server cannot see the printer, so this is the only way the POS
+        # ever learns a machine is jammed or out of ribbon. The client method
+        # existed and was never called: conditions were shown on this screen
+        # and nowhere else.
+        self.monitor.on_change.append(self._report_condition)
         self.monitor.on_unknown.append(
             lambda _: self.events.put(("unknown", None)))
 
         thread = threading.Thread(target=self._monitor_loop, daemon=True)
         thread.start()
+
+    def _report_condition(self, condition, reading) -> None:
+        """Push a condition change to the server, for the POS printer icons.
+
+        Runs on the monitor thread and must never raise: a station that cannot
+        reach the server still has a printer to watch, and losing the watcher
+        because a status post failed would be a poor trade.
+        """
+        if self.demo:
+            return
+
+        binding = self._selected_card_binding()
+
+        if binding is None or not self.config_data.is_configured():
+            return
+
+        try:
+            client, _store, _notifier = self._services()
+            client.report_condition(
+                printer_name=binding.name,
+                condition=condition,
+                message=self.monitor.blocking_reason(),
+                cards_remaining=self.monitor.cards_remaining(),
+                # Both sides in cards. The printer counts ribbon panels, and a
+                # capacity in panels next to a level in cards is worse than
+                # either alone.
+                cards_capacity=zebra.cards_from_supply(getattr(reading, "supply_max", None)),
+            )
+        except Exception as error:  # noqa: BLE001 - see docstring
+            self.events.put(("log", "Could not report printer condition: %s" % error))
 
     def _monitor_loop(self) -> None:
         while not self.stop_flag.is_set():
@@ -1222,8 +1258,11 @@ class AgentApp(tk.Tk):
         if reading.supply_level is not None and reading.supply_max:
             percent = 100.0 * reading.supply_level / reading.supply_max
             self.ribbon_bar.config(value=percent)
+            # Cards, not the ribbon panels the printer counts.
             self.ribbon_label.config(
-                text="Ribbon: %d of %d cards" % (reading.supply_level, reading.supply_max))
+                text="Ribbon: %d of %d cards" % (
+                    zebra.cards_from_supply(reading.supply_level) or 0,
+                    zebra.cards_from_supply(reading.supply_max) or 0))
         else:
             self.ribbon_bar.config(value=0)
             self.ribbon_label.config(text="Ribbon: unknown")

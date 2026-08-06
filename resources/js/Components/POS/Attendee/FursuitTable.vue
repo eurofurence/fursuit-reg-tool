@@ -19,7 +19,7 @@ defineProps({
                 <img 
                     :src="slotProps.data.image_url" 
                     :alt="`${slotProps.data.name} fursuit image`"
-                    class="w-16 h-16 object-contain rounded-lg"
+                    class="w-16 h-16 object-contain rounded-pos"
                     loading="lazy"
                 />
             </template>

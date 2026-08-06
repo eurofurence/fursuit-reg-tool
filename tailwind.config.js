@@ -47,7 +47,29 @@ export default {
                 'surface-700': 'rgb(var(--surface-700))',
                 'surface-800': 'rgb(var(--surface-800))',
                 'surface-900': 'rgb(var(--surface-900))',
-                'surface-950': 'rgb(var(--surface-950))'
+                'surface-950': 'rgb(var(--surface-950))',
+
+                /* POS terminal skin, scoped to .pos (see resources/css/pos.css) */
+                'pos-canvas': 'rgb(var(--pos-canvas) / <alpha-value>)',
+                'pos-panel': 'rgb(var(--pos-panel) / <alpha-value>)',
+                'pos-panel-2': 'rgb(var(--pos-panel-2) / <alpha-value>)',
+                'pos-line': 'rgb(var(--pos-line) / <alpha-value>)',
+                'pos-line-strong': 'rgb(var(--pos-line-strong) / <alpha-value>)',
+                'pos-text': 'rgb(var(--pos-text) / <alpha-value>)',
+                'pos-muted': 'rgb(var(--pos-muted) / <alpha-value>)',
+                'pos-accent': 'rgb(var(--pos-accent) / <alpha-value>)',
+                'pos-accent-ink': 'rgb(var(--pos-accent-ink) / <alpha-value>)',
+                'pos-good': 'rgb(var(--pos-good) / <alpha-value>)',
+                'pos-warn': 'rgb(var(--pos-warn) / <alpha-value>)',
+                'pos-bad': 'rgb(var(--pos-bad) / <alpha-value>)'
+            },
+            borderRadius: {
+                pos: 'var(--pos-radius)',
+            },
+            minHeight: {
+                'pos-touch': 'var(--pos-touch)',
+                'pos-row': 'var(--pos-row)',
+                'pos-commit': 'var(--pos-commit)',
             },
             fontFamily: {
                 main: ['Century Gothic', ...defaultTheme.fontFamily.sans],

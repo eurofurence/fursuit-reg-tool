@@ -46,3 +46,25 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/badge-pdf/{customId}/download', [\App\Http\Controllers\Admin\BadgePdfController::class, 'download'])
         ->name('admin.badge-pdf.download');
 });
+
+// TEMPORARY local-only sign-in, for driving the admin panel in a browser
+// without going through OIDC. Guarded by the environment and by a signed URL,
+// and removed as soon as it has been used.
+if (app()->environment('local')) {
+    Route::get('/dev-login/{user}', function (\App\Models\User $user) {
+        auth()->login($user);
+
+        return redirect('/admin');
+    })->middleware('signed')->name('dev.login');
+
+    // POS needs three guards, not one: the web user plus a machine and the
+    // staff member operating it.
+    Route::get('/dev-login-pos/{user}/{machine}/{staff}', function (\App\Models\User $user, \App\Models\Machine $machine, \App\Models\Staff $staff) {
+        auth()->login($user);
+        auth()->guard('machine')->login($machine);
+        // The machine-user guard is backed by Staff, not User.
+        auth()->guard('machine-user')->login($staff);
+
+        return redirect('/pos');
+    })->middleware('signed')->name('dev.login.pos');
+}

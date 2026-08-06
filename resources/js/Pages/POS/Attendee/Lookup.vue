@@ -1,11 +1,9 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
 import POSLayout from "@/Layouts/POSLayout.vue";
-import InputText from "primevue/inputtext";
 import SimpleKeyboard from "@/Components/SimpleKeyboard.vue";
 import {ref, onMounted} from "vue";
 import {useForm} from "laravel-precognition-vue-inertia";
-import Message from "primevue/message";
 
 defineOptions({
     layout: POSLayout,
@@ -60,17 +58,43 @@ const handleKeydown = (event) => {
 };
 
 onMounted(() => {
-    if (attendeeIdInput.value) {
-        attendeeIdInput.value.$el.focus();
-    }
+    attendeeIdInput.value?.focus();
 });
 
 </script>
 
 <template>
-    <div class="flex-grow w-full max-w-xl mx-auto p-10 flex flex-col gap-4 justify-center">
-        <Message v-if="form.invalid('attendeeId')" severity="error">{{ form.errors.attendeeId }}</Message>
-        <InputText ref="attendeeIdInput" v-model="attendeeId" class="w-full text-2xl" type="text" size="large" placeholder="Attendee ID" :maxlength="maxAttendeeIdLength" @keydown="handleKeydown" />
-        <SimpleKeyboard @onKeyPress="keyPress" :options='keyboardOptions'></SimpleKeyboard>
+    <div class="flex-grow w-full max-w-xl mx-auto py-6 flex flex-col justify-center">
+        <div class="pos-card flex flex-col gap-3">
+            <div class="pos-card__head">
+                <h1>Attendee Lookup</h1>
+                <span class="pos-muted text-xs">Numpad types here · scanner types here</span>
+            </div>
+
+            <p v-if="form.invalid('attendeeId')"
+               class="px-3 py-2 rounded-pos border border-pos-bad text-pos-bad text-sm font-semibold">
+                {{ form.errors.attendeeId }}
+            </p>
+
+            <input
+                ref="attendeeIdInput"
+                v-model="attendeeId"
+                class="pos-field"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="Attendee ID"
+                :maxlength="maxAttendeeIdLength"
+                @keydown="handleKeydown"
+            />
+
+            <SimpleKeyboard @onKeyPress="keyPress" :options='keyboardOptions'></SimpleKeyboard>
+
+            <div class="flex justify-between text-xs text-pos-muted">
+                <span><span class="pos-kcap mr-1">0-9</span>attendee id</span>
+                <span><span class="pos-kcap mr-1">Enter</span>search</span>
+                <span><span class="pos-kcap mr-1">⌫</span>delete</span>
+            </div>
+        </div>
     </div>
 </template>

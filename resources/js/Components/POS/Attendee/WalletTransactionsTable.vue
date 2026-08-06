@@ -19,10 +19,10 @@ defineProps({
         <Column field="meta.description" header="Description" />
         <Column field="amount" header="Amount">
             <template #body="slotProps">
-                <span v-if="parseInt(slotProps.data.amount) > 0" class="text-green-600">
+                <span v-if="parseInt(slotProps.data.amount) > 0" class="text-pos-good">
                     {{ (parseInt(slotProps.data.amount) / 100.0).toFixed(2) }} €
                 </span>
-                <span v-else-if="parseInt(slotProps.data.amount) < 0" class="text-red-600">
+                <span v-else-if="parseInt(slotProps.data.amount) < 0" class="text-pos-bad">
                     {{ (parseInt(slotProps.data.amount) / 100.0).toFixed(2) }} €
                 </span>
                 <span v-else>

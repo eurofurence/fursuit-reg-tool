@@ -1,7 +1,6 @@
 <script setup>
-import { Head } from "@inertiajs/vue3";
+import { Head, Link } from "@inertiajs/vue3";
 import POSLayout from "@/Layouts/POSLayout.vue";
-import DashboardButton from "@/Components/POS/DashboardButton.vue";
 
 
 const props = defineProps({
@@ -16,15 +15,21 @@ defineOptions({
 
 <template>
     <Head title="Machine Wallet"/>
-    <div class="w-full grow flex flex-col h-full items-center">
-        <h1 class="text-xl text-gray-600">{{ wallet.holder.name }}</h1>
-        <div class="text-gray-800 text-6xl mt-4 mb-40">
-            {{ (parseInt(wallet.balance) / 100.0).toFixed(wallet.decimal_places) }} €
+    <div class="w-full grow flex flex-col items-center justify-center gap-4">
+        <div class="pos-card w-full max-w-xl text-center">
+            <span class="pos-label">{{ wallet.holder.name }} · drawer balance</span>
+            <div class="pos-num text-6xl font-bold mt-2">
+                {{ (parseInt(wallet.balance) / 100.0).toFixed(wallet.decimal_places) }} €
+            </div>
         </div>
 
-        <div class="flex flex-row gap-4">
-            <DashboardButton label="Add Money" icon="pi pi-plus-circle" :route="route('pos.wallet.money.add')" class="w-48" />
-            <DashboardButton label="Remove Money" icon="pi pi-minus-circle" :route="route('pos.wallet.money.remove')" class="w-48" />
+        <div class="grid grid-cols-2 gap-2 w-full max-w-xl">
+            <Link :href="route('pos.wallet.money.add')" class="pos-btn pos-btn--commit">
+                <i class="pi pi-plus-circle"></i> Add money
+            </Link>
+            <Link :href="route('pos.wallet.money.remove')" class="pos-btn pos-btn--commit">
+                <i class="pi pi-minus-circle"></i> Remove money
+            </Link>
         </div>
     </div>
 </template>

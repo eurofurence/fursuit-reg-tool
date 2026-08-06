@@ -39,7 +39,23 @@ export function usePosKeyboard(options = {}) {
         return getCurrentRoute().includes('/pos/auth/login');
     }
 
+    // F-key navigation. Handled before the input-field guard on purpose: the
+    // POS keeps a text field focused for the barcode scanner, and F-keys never
+    // collide with typing.
+    const FUNCTION_KEY_ROUTES = {
+        F2: '/pos/wallet',
+        F3: '/pos/badges',
+        F4: '/pos/print-queue',
+        F6: '/pos/statistics',
+    };
+
     function handleKeydown(event) {
+        if (! disableGlobalShortcuts && FUNCTION_KEY_ROUTES[event.key]) {
+            event.preventDefault();
+            router.visit(FUNCTION_KEY_ROUTES[event.key]);
+            return;
+        }
+
         // Don't handle shortcuts if user is typing in an input field
         if (isInputElement(event.target)) {
             return;
@@ -103,9 +119,18 @@ export function usePosKeyboard(options = {}) {
                 window.dispatchEvent(new CustomEvent('pos-shortcut-handout'));
             }
             
-            // Enter: Confirm Dialogs
+            // Enter: Confirm Dialogs.
+            //
+            // The event is cancelable; a page that confirms something calls
+            // preventDefault() on it. We then swallow the keypress so it cannot
+            // also activate whatever button regains focus behind the dialog.
             if (event.key === 'Enter') {
-                window.dispatchEvent(new CustomEvent('pos-shortcut-confirm'));
+                const confirmEvent = new CustomEvent('pos-shortcut-confirm', { cancelable: true });
+                const handled = ! window.dispatchEvent(confirmEvent);
+
+                if (handled) {
+                    event.preventDefault();
+                }
             }
         }
     }

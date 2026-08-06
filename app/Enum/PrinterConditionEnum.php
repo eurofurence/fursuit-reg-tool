@@ -58,6 +58,26 @@ enum PrinterConditionEnum: string
         return in_array($this, [self::RibbonLow, self::FilmLow, self::CardsLow], true);
     }
 
+    /**
+     * Colour band for the live POS indicator: blue busy, red stopped, green ready.
+     *
+     * Deliberately not routed through PrinterStatusEnum, whose jam, media-empty
+     * and cover-open cases are all 'warning' -- which the POS renders green. A
+     * jammed printer showing the same colour as a ready one is the exact
+     * failure this indicator exists to prevent.
+     */
+    public function severity(): string
+    {
+        // Busy is checked first: a warming printer is a stop for printing
+        // purposes but it is working, not broken, and red would send somebody
+        // to a machine that needs nothing doing to it.
+        if ($this === self::Printing || $this === self::Initializing) {
+            return 'info';
+        }
+
+        return $this->isStop() ? 'danger' : 'success';
+    }
+
     public function label(): string
     {
         return match ($this) {
