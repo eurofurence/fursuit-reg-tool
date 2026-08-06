@@ -292,6 +292,9 @@ class WorkerTestCase(unittest.TestCase):
             on_log=self.logs.append,
             heartbeat_seconds=0.0,
             firmware_timeout=30.0,
+            # Every failure now asks a human. Without a deadline a test that
+            # does not answer hangs the whole suite rather than failing.
+            decision_timeout=0.05,
             poll_seconds=1.0,
             idle_seconds=1.0,
             clock=self.clock,
@@ -519,7 +522,10 @@ class CameraTest(WorkerTestCase):
 
             return worker.SpoolResult(True)
 
-        outcome = self.build(sender=sender).print_next()
+        # Every failure is now put to a human, camera or not: the camera says
+        # whether a card came out, not what should happen about it.
+        outcome = self.auto_answer(
+            self.build(sender=sender), worker.CHOICE_REPRINT).print_next()
 
         self.assertEqual(outcome.kind, worker.PRINTED)
         self.assertEqual(attempts, [34, 34])
@@ -530,7 +536,8 @@ class CameraTest(WorkerTestCase):
         self.camera.sees_card = False
         self.spool_ok = False
 
-        outcome = self.build(max_attempts=2).print_next()
+        outcome = self.auto_answer(
+            self.build(max_attempts=2), worker.CHOICE_REPRINT).print_next()
 
         self.assertEqual(outcome.kind, worker.JOB_FAILED)
         self.assertEqual(len(self.sent), 2)
@@ -553,7 +560,7 @@ class CameraTest(WorkerTestCase):
             self.printer.finish(job_id="9036", uuid="uuid-9036")
             return worker.SpoolResult(True)
 
-        printer = self.build(sender=sender)
+        printer = self.auto_answer(self.build(sender=sender), worker.CHOICE_REPRINT)
 
         # The jam clears itself two idle polls later, as an operator would.
         original = self.monitor.poll

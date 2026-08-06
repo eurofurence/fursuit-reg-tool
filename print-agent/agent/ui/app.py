@@ -684,6 +684,16 @@ class AgentApp(tk.Tk):
                                or config_module.FLIP_SHORT_EDGE)
         binding.rotate_back = bool(self.binding_rotate_back.get())
 
+        # Straight to disk. "Apply to printer" reads as a commitment, and
+        # applying without saving meant a setting survived until the next
+        # restart and then quietly reverted -- which is how the back of a card
+        # kept printing upside down after the box had been ticked.
+        try:
+            self.config_data.save()
+        except Exception as error:  # noqa: BLE001 - the operator gets told
+            messagebox.showerror("Could not save",
+                                 "The printer settings could not be written:\n\n%s" % error)
+
         self._reload_printer_list(select=index)
         self._log("Updated %s" % binding.display_name())
 

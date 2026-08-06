@@ -1189,8 +1189,10 @@ class PrintWorker(_BaseWorker):
             verification = self._verify(job)
 
             if verification.confirmed:
-                # The camera watched this card leave the chute. It exists, and
-                # printing a second one would put a duplicate in the stack.
+                # The camera watched this card leave the chute. It exists, so
+                # there is nothing to decide: printing a second one would put a
+                # duplicate in the stack. This is the one path that resolves
+                # itself, and it resolves a success rather than a failure.
                 self._log("Card %s came out despite the fault; not reprinting." % card)
                 self._report(
                     job,
@@ -1199,38 +1201,40 @@ class PrintWorker(_BaseWorker):
                 )
                 return Outcome(PRINTED, "camera confirmed the card despite the fault", job_id)
 
-            reprint = True
-        else:
-            answer = self._ask_operator(job, reason)
+        # Every real failure is put to a human, camera or not. The camera says
+        # whether a card came out; it cannot say whether this one should be
+        # printed again, marked as already in the stack, or left alone. Deciding
+        # that silently is how a card goes missing with nobody the wiser.
+        answer = self._ask_operator(job, reason)
 
-            if answer is None:
-                detail = "Waiting for an operator to say what to do with card %s" % card
-                self.status_detail = detail
-                return Outcome(WAITING, detail, job_id)
+        if answer is None:
+            detail = "Waiting for an operator to say what to do with card %s" % card
+            self.status_detail = detail
+            return Outcome(WAITING, detail, job_id)
 
-            if answer == CHOICE_PRINTED:
-                # The operator has the card in their hand. That is the strongest
-                # evidence there is, and it is exactly what `operator` means.
-                self._report(
-                    job,
-                    Completion(COMPLETION_OPERATOR, "operator found the card in the stack"),
-                    Verification(True, True, "operator"),
-                    verification_source=VERIFY_OPERATOR,
-                )
-                return Outcome(PRINTED, "operator confirmed the card is in the stack", job_id)
+        if answer == CHOICE_PRINTED:
+            # The operator has the card in their hand. That is the strongest
+            # evidence there is, and it is exactly what `operator` means.
+            self._report(
+                job,
+                Completion(COMPLETION_OPERATOR, "operator found the card in the stack"),
+                Verification(True, True, "operator"),
+                verification_source=VERIFY_OPERATOR,
+            )
+            return Outcome(PRINTED, "operator confirmed the card is in the stack", job_id)
 
-            if answer == CHOICE_SKIP:
-                # Deliberately unprinted. Recorded as failed so the card is
-                # visible as outstanding rather than quietly forgotten, but the
-                # queue carries on: the operator has already looked at it and
-                # decided, so stopping to ask again would be pointless.
-                detail = "Operator skipped card %s (%s)" % (card, reason)
-                self._log(detail)
-                self._fail(job, detail)
+        if answer == CHOICE_SKIP:
+            # Deliberately unprinted. Recorded as failed so the card is visible
+            # as outstanding rather than quietly forgotten, but the queue
+            # carries on: the operator has already looked at it and decided, so
+            # stopping to ask again would be pointless.
+            detail = "Operator skipped card %s (%s)" % (card, reason)
+            self._log(detail)
+            self._fail(job, detail)
 
-                return Outcome(JOB_SKIPPED, detail, job_id)
+            return Outcome(JOB_SKIPPED, detail, job_id)
 
-            reprint = True
+        reprint = True
 
         if not reprint or attempt >= self.max_attempts:
             self._fail(job, reason)
