@@ -193,10 +193,12 @@ class GameController extends Controller
 
     public function leaderboard(Request $request)
     {
+        $eventParam = $request->get('event', $this->getCurrentEvent()->id);
         $selectedEventId = $request->get('event');
         $rankCutoff = 10;
 
-        $selectedEvent = $this->getCurrentEvent(); // TODO: Add fetch method for Selected Event based on filter
+        //$selectedEvent = $this->getCurrentEvent(); // TODO: Add fetch method for Selected Event based on filter
+        $selectedEvent = $eventParam === 'global' ? null : Event::find($eventParam);
 
         // Get leaderboard data
         $leaderboard = $this->gameStatsService->getLeaderboard($selectedEvent, 50, $rankCutoff); // Show more players
@@ -207,28 +209,31 @@ class GameController extends Controller
         $user = Auth::user();
 
         return Inertia::render('CatchEmAll/Leaderboard', [
-            'user' => $user,
+            'user' => $request->user(),
             'leaderboard' => $leaderboard,
             'eventsWithEntries' => $eventsWithEntries,
             'selectedEvent' => $selectedEvent?->id,
+            'isGlobal' => $selectedEvent === null,
         ]);
     }
 
     public function collection(Request $request)
     {
+        
         $user = Auth::user();
-        $selectedEventId = $request->get('event');
+        $defaultEvent = $this->getCurrentEvent();
+        $selectedEventId = $request->get('event', $defaultEvent?->id ?? 'global');
 
-        $selectedEvent = $this->getCurrentEvent();
-        $eventUser = $this->getEventUser($user, $selectedEvent);
+        $selectedEvent = $selectedEventId === 'global' ? null : Event::find($selectedEventId);
 
-        $collection = $this->gameStatsService->getUserCollection($eventUser);
+        $collection = $this->gameStatsService->getUserCollection($user, $selectedEvent);
         $eventsWithEntries = $this->getEventsWithEntries();
 
-        return Inertia::render('CatchEmAll/Collection', [
+        return Inertia::render('CatchEmAll/Collection', [                
             'collection' => $collection,
             'eventsWithEntries' => $eventsWithEntries,
-            'selectedEvent' => $selectedEvent->id,
+            'selectedEvent' => $selectedEvent?->id,
+            'isGlobal' => $selectedEvent === null,
         ]);
     }
 
@@ -352,6 +357,7 @@ class GameController extends Controller
         $keys = [
             "game_stats_{$eventUser->id}",
             "leaderboard_{$eventUser->event_id}",
+            "leaderboard_global",
             "user_leaderboard_{$eventUser->id}",
             "collection_{$eventUser->id}",
             "total_fursuiters_{$eventUser->event_id}", // TODO: Forget when new fursuit gets approved and not here
