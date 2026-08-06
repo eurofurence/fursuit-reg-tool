@@ -85,7 +85,7 @@ class UploadController extends Controller
     }
 
     /**
-     * Same signing mechanism FreeBadgeRepairService::imageUrl() already uses.
+     * Temporary signed URL for a stored file, falling back to a plain URL.
      */
     private function previewUrl(string $disk, string $visibility, string $path): ?string
     {
