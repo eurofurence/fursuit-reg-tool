@@ -29,4 +29,9 @@ class CatchEmAllTeamAction extends AbstractSpecialCodeAction
     {
         return 'Catch \'Em All Team';
     }
+
+    public static function getConfigData(): ?array
+    {
+        return ['name' => 'Hunter'];
+    }
 }
