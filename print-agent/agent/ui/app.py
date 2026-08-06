@@ -392,13 +392,29 @@ class AgentApp(tk.Tk):
         self.cancel_button.config(state="normal")
 
     def _toggle_auto(self) -> None:
+        running = self.worker is not None and self.worker.is_alive()
+
         if self.worker is not None:
             self.worker.set_unattended(self.auto_next.get())
 
-        if self.auto_next.get():
-            self._log("Unattended mode on: the next batch will be picked automatically")
-        else:
+        if not self.auto_next.get():
             self._log("Unattended mode off: batches must be chosen by hand")
+            return
+
+        self._log("Unattended mode on: the next batch will be picked automatically")
+
+        # Pick a parked worker back up. Ticking the box after a batch had
+        # already finished used to do nothing at all: the flag changed, but the
+        # worker was sitting in its paused branch and nothing ever looked at
+        # the flag again.
+        #
+        # Only when it is waiting for work. A worker paused on a jam stays
+        # paused: unattended means nobody is watching, which is the worst
+        # possible time to shrug off a fault.
+        if running and self.worker.is_paused() and getattr(
+                self.worker, "waiting_for_work", False):
+            self.worker.resume()
+            self._log("Picking up where the last batch finished.")
 
     def _on_worker_batch_change(self, batch_id) -> None:
         """The worker moved on by itself, which only happens unattended."""

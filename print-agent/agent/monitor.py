@@ -24,10 +24,18 @@ class PrinterMonitor:
         poller: zebra.ZebraPoller,
         journal: Optional[vocabulary.ConditionJournal] = None,
         ribbon_warn_threshold: int = 50,
+        offline_confirmations: int = 3,
     ):
         self.poller = poller
         self.journal = journal or vocabulary.ConditionJournal()
         self.ribbon_warn_threshold = ribbon_warn_threshold
+
+        # How many unreachable reads in a row before believing the printer is
+        # offline. SNMP is UDP with a single retry, so one lost packet -- most
+        # likely while the printer is busy printing -- used to raise "printer
+        # offline" and stop the queue on a printer that was working fine.
+        self.offline_confirmations = max(1, int(offline_confirmations))
+        self._offline_streak = 0
 
         self.condition: str = zebra.UNKNOWN
         self.reading: Optional[zebra.Reading] = None
@@ -59,6 +67,17 @@ class PrinterMonitor:
 
         reading = self.poller.read()
         self._read_at = time.monotonic()
+
+        if getattr(reading, "reachable", True):
+            self._offline_streak = 0
+        else:
+            self._offline_streak += 1
+
+            if self._offline_streak < self.offline_confirmations:
+                # Not believed yet. Keep the last known condition rather than
+                # reporting a stop, and say nothing: a blip that resolves on
+                # the next read should leave no trace at all.
+                return self.condition
         condition = zebra.classify(reading, self.ribbon_warn_threshold)
 
         logged = self.journal.record(reading, condition)

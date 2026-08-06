@@ -232,6 +232,19 @@ def decode_error_bits(hex_string: str) -> List[str]:
 # badge ever stops being dual-sided.
 SUPPLY_UNITS_PER_CARD = 2
 
+# Words the ZXP9 uses while it is working through a card. Observed on the real
+# unit: standby -> initializing -> printing_heating -> feeding -> transfer_wait.
+#
+# They classify as PRINTING, which is deliberately not a stop: it means "do not
+# send another card yet", not "something is wrong". Reading them as unknown
+# halted the queue on a printer that was doing exactly what it should.
+BUSY_STATES = (
+    "printing", "busy",
+    "feeding", "feed",
+    "transfer_wait", "transfer", "transferring",
+    "encoding", "flipping", "ejecting", "cleaning",
+)
+
 
 def cards_from_supply(level: Optional[int]) -> Optional[int]:
     """Cards left, from the panel count the printer reports."""
@@ -285,7 +298,7 @@ def classify(reading: Reading, ribbon_warn_threshold: int = 50) -> str:
     # The firmware qualifies the printing state as it works: printing_heating
     # while the transfer roller comes up to temperature, and other
     # printing_<phase> words besides. They all mean a card is in progress.
-    if state in ("printing", "busy") or state.startswith("printing"):
+    if state in BUSY_STATES or state.startswith("printing"):
         return PRINTING
     if state in ("initializing", "initialising", "warming_up", "warmup"):
         return INITIALIZING

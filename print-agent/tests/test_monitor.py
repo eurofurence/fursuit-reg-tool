@@ -173,5 +173,66 @@ class ReadingCacheTest(unittest.TestCase):
         self.assertEqual(self.poller.reads, 1)
 
 
+class OfflineDebounceTest(unittest.TestCase):
+    """One lost SNMP packet is not an offline printer.
+
+    SNMP is UDP with a single retry, and a read is most likely to be dropped
+    exactly when the printer is busy printing. Believing the first failure
+    raised "printer offline" and stopped the queue on a healthy machine.
+    """
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def monitor_for(self, *readings, confirmations=3):
+        return monitor.PrinterMonitor(
+            FakePoller(*readings),
+            vocabulary.ConditionJournal(Path(self.dir.name) / "j.jsonl"),
+            offline_confirmations=confirmations,
+        )
+
+    def test_a_single_missed_read_is_ignored(self):
+        subject = self.monitor_for(reading(), zebra.Reading(reachable=False), reading())
+
+        self.assertEqual(subject.poll(), zebra.OK)
+        self.assertEqual(subject.poll(), zebra.OK, "one blip must not read as offline")
+        self.assertEqual(subject.poll(), zebra.OK)
+
+    def test_a_printer_that_stays_silent_is_offline(self):
+        # The debounce delays the verdict, it does not suppress it.
+        down = zebra.Reading(reachable=False)
+        subject = self.monitor_for(reading(), down, down, down)
+
+        subject.poll()
+        subject.poll()
+        subject.poll()
+
+        self.assertEqual(subject.poll(), zebra.OFFLINE)
+
+    def test_the_streak_resets_when_the_printer_answers(self):
+        down = zebra.Reading(reachable=False)
+        subject = self.monitor_for(reading(), down, down, reading(), down, down)
+
+        for _ in range(6):
+            subject.poll()
+
+        self.assertEqual(subject.condition, zebra.OK)
+
+    def test_a_blip_raises_no_change_callback(self):
+        # A blip that resolves should leave no trace: no alert, no POS update.
+        changes = []
+        subject = self.monitor_for(reading(), zebra.Reading(reachable=False), reading())
+        subject.on_change.append(lambda condition, _r: changes.append(condition))
+
+        subject.poll()
+        subject.poll()
+        subject.poll()
+
+        self.assertEqual(changes, [zebra.OK])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -37,6 +37,9 @@ KNOWN_PRINTER_STATES = {
     # standby -> initializing -> printing_heating.
     "initializing", "initialising", "warming_up", "warmup",
     "printing_heating",
+    # Mid-card, observed on the real unit.
+    "feeding", "feed", "transfer_wait", "transfer", "transferring",
+    "encoding", "flipping", "ejecting", "cleaning",
 }
 
 

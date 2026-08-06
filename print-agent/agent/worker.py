@@ -322,6 +322,10 @@ class _BaseWorker:
 
         self._stop = threading.Event()
         self._paused = threading.Event()
+
+        # True only when paused because there is nothing to print, as opposed
+        # to paused because something needs a human. See pause().
+        self.waiting_for_work = False
         self._thread: Optional[threading.Thread] = None
 
         self.state = IDLE
@@ -368,10 +372,19 @@ class _BaseWorker:
     def _unblock(self) -> None:
         """Release anything the loop might be sitting on when stop() arrives."""
 
-    def pause(self, reason: str = "") -> None:
+    def pause(self, reason: str = "", waiting_for_work: bool = False) -> None:
+        """Stop between cards.
+
+        ``waiting_for_work`` distinguishes "there is nothing to print" from
+        "something is wrong". Only the first may be cleared automatically:
+        switching on unattended mode should pick a parked worker back up, but
+        it must never shrug off a jam nobody has looked at.
+        """
         self._paused.set()
         self.state = PAUSED
         self.status_detail = reason
+        self.waiting_for_work = bool(waiting_for_work)
+
         if reason:
             self._log(reason)
 
@@ -379,6 +392,7 @@ class _BaseWorker:
         self._paused.clear()
         self.state = RUNNING if self.is_alive() else IDLE
         self.status_detail = ""
+        self.waiting_for_work = False
 
     def is_alive(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
@@ -814,7 +828,7 @@ class PrintWorker(_BaseWorker):
             # was made, and the card stays failed rather than guessed at.
             decision._answered.set()
 
-    def pause(self, reason: str = "") -> None:
+    def pause(self, reason: str = "", waiting_for_work: bool = False) -> None:
         """Stop between cards, and tell the server the batch is paused.
 
         Reporting matters as much as stopping. The server used to be told
@@ -824,7 +838,7 @@ class PrintWorker(_BaseWorker):
 
         Best-effort: a network problem must never stop the worker pausing.
         """
-        super().pause(reason)
+        super().pause(reason, waiting_for_work=waiting_for_work)
 
         if self.batch_id is not None:
             self._call(getattr(self.api, "pause_batch", None), self.batch_id,
@@ -909,7 +923,8 @@ class PrintWorker(_BaseWorker):
                         # and pressed Start.
                         self._sleep(self.idle_seconds)
                     else:
-                        self.pause("Batch finished. Choose the next one.")
+                        self.pause("Batch finished. Choose the next one.",
+                                   waiting_for_work=True)
                 continue
 
             if outcome.kind == JOB_SKIPPED:

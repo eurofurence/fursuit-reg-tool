@@ -1172,5 +1172,44 @@ class UnattendedWaitTest(WorkerTestCase):
         self.assertEqual(len(said), 1, said)
 
 
+class WaitingForWorkTest(WorkerTestCase):
+    """Paused because there is nothing to do, or paused because something broke.
+
+    Ticking unattended after a batch had already finished used to do nothing:
+    the flag changed but the worker sat in its paused branch and never looked
+    at it again. Clearing that needs to know why it stopped, because a jam must
+    stay stopped -- unattended means nobody is watching, which is the worst
+    time to shrug off a fault.
+    """
+
+    def test_running_dry_is_marked_as_waiting(self):
+        printer = self.build()
+        printer.pause("Batch finished. Choose the next one.", waiting_for_work=True)
+
+        self.assertTrue(printer.waiting_for_work)
+
+    def test_a_fault_is_not_waiting_for_work(self):
+        printer = self.build()
+        printer.pause("Card jam. Clear the jammed card.")
+
+        self.assertTrue(printer.is_paused())
+        self.assertFalse(printer.waiting_for_work)
+
+    def test_resuming_clears_the_flag(self):
+        printer = self.build()
+        printer.pause("Batch finished.", waiting_for_work=True)
+        printer.resume()
+
+        self.assertFalse(printer.waiting_for_work)
+
+    def test_a_fault_pause_is_the_default(self):
+        # Every other pause site says nothing, and the safe reading of silence
+        # is "somebody needs to look at this".
+        printer = self.build()
+        printer.pause("something went wrong")
+
+        self.assertFalse(printer.waiting_for_work)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -79,6 +79,22 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual(zebra.classify(reading(printer_state="printing_cleaning")),
                          zebra.PRINTING)
 
+    def test_the_words_a_working_printer_uses_are_not_faults(self):
+        # Observed sequence on the real unit going through a card:
+        # standby -> initializing -> printing_heating -> feeding ->
+        # transfer_wait. Reading any of them as unknown stopped the queue on a
+        # printer that was working perfectly.
+        for state in ("feeding", "transfer_wait", "transferring", "ejecting"):
+            result = zebra.classify(reading(printer_state=state))
+
+            self.assertEqual(result, zebra.PRINTING, state)
+            self.assertFalse(zebra.is_stop(result), state)
+
+    def test_a_busy_printer_is_still_not_sent_another_card(self):
+        # PRINTING is not a stop, but it is not "ready" either: the agent
+        # prints one card at a time and waits for it to land.
+        self.assertNotIn(zebra.PRINTING, (zebra.OK,))
+
     def test_a_real_fault_is_not_transient(self):
         self.assertFalse(zebra.is_transient(zebra.CARD_JAM))
         self.assertFalse(zebra.is_transient(zebra.UNKNOWN))

@@ -18,6 +18,7 @@ use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
 use App\Models\Fursuit\States\Pending;
 use App\Models\User;
+use App\Support\Manage\Navigation;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -27,7 +28,7 @@ use function Pest\Laravel\get;
 
 beforeEach(function () {
     // The counts are cached for a few seconds because the strip polls; a stale entry
-    // from a previous case would make these assertions meaningless.
+    // from an earlier case would make these assertions meaningless.
     Cache::flush();
 
     $this->admin = User::factory()->create(['is_admin' => true]);
@@ -44,25 +45,22 @@ beforeEach(function () {
         'ends_at' => now()->addDays(35),
     ]);
 
+    $this->pendingFursuits = function (Event $event, int $pending, int $approved = 0) {
+        Fursuit::factory()->count($pending)->create([
+            'event_id' => $event->id,
+            'status' => Pending::$name,
+        ]);
+
+        if ($approved > 0) {
+            Fursuit::factory()->count($approved)->create([
+                'event_id' => $event->id,
+                'status' => Approved::$name,
+            ]);
+        }
+    };
+
     actingAs($this->admin);
 });
-
-/**
- * @param  int  $pending  fursuits awaiting review
- * @param  int  $approved  fursuits that must not be counted
- */
-function seedFursuits(Event $event, int $pending, int $approved = 0): void
-{
-    Fursuit::factory()->count($pending)->create([
-        'event_id' => $event->id,
-        'status' => Pending::$name,
-    ]);
-
-    Fursuit::factory()->count($approved)->create([
-        'event_id' => $event->id,
-        'status' => Approved::$name,
-    ]);
-}
 
 test('the strip is shared as its own prop so the poll has something to reload', function () {
     get(route('manage.dashboard'))
@@ -71,10 +69,10 @@ test('the strip is shared as its own prop so the poll has something to reload', 
 });
 
 test('the strip counts pending approvals for the selected event only', function () {
-    seedFursuits($this->newer, pending: 3, approved: 4);
-    seedFursuits($this->older, pending: 7);
+    ($this->pendingFursuits)($this->newer, 3, 4);
+    ($this->pendingFursuits)($this->older, 7);
 
-    // Newest event is the seeded default.
+    // The newest event is the seeded default.
     get(route('manage.dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('manageStrip.segments.0.key', 'pending_fursuits')
@@ -104,20 +102,16 @@ test('a segment at zero still renders, in the idle tone', function () {
 });
 
 test('the rail chip and the strip segment agree on the pending count', function () {
-    seedFursuits($this->newer, pending: 2);
+    ($this->pendingFursuits)($this->newer, 2);
 
     // The rail item itself only appears once phase 3 registers its route, so this
-    // asserts against the service rather than the prop.
-    $navigation = new App\Support\Manage\Navigation($this->newer->id);
-
-    expect($navigation->strip()['segments'][0]['value'])->toBe(2);
+    // asserts against the service rather than against the prop.
+    expect((new Navigation($this->newer->id))->strip()['segments'][0]['value'])->toBe(2);
 });
 
 test('a reviewer sees the segments their policies allow and no others', function () {
-    // PrintJobPolicy::viewAny is admin-only; FursuitPolicy::viewAny admits reviewers.
-    $reviewer = User::factory()->create(['is_admin' => false, 'is_reviewer' => true]);
-
-    actingAs($reviewer);
+    // PrintJobPolicy::viewAny is admin only; FursuitPolicy::viewAny admits reviewers.
+    actingAs(User::factory()->create(['is_admin' => false, 'is_reviewer' => true]));
 
     get(route('manage.dashboard'))
         ->assertInertia(fn (Assert $page) => $page
