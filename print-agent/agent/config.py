@@ -304,6 +304,15 @@ class PrinterBinding:
     # this if the back of a badge comes out upside down; see FLIP_SHORT_EDGE.
     duplex_flip: str = FLIP_SHORT_EDGE
 
+    # Turn the back of a card upside down before sending it.
+    #
+    # The artwork already arrives rotated 180 from the server, which assumes
+    # the printer flips the card one way. When it flips the other, the back
+    # comes out inverted and no DEVMODE setting reliably changes it -- a card
+    # printer may ignore the standard duplex field entirely. Rotating our own
+    # raster is the one lever that always works.
+    rotate_back: bool = False
+
     def is_card(self) -> bool:
         return self.role == ROLE_CARD
 

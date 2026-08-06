@@ -23,6 +23,7 @@ exists.
 from __future__ import annotations
 
 import ctypes
+import logging
 import sys
 import time
 from typing import Callable, List, Sequence
@@ -30,6 +31,8 @@ from typing import Callable, List, Sequence
 from .render import BITS_PER_PIXEL
 
 IS_WINDOWS = sys.platform.startswith("win")
+
+log = logging.getLogger(__name__)
 
 
 # DEVMODE duplex values from wingdi.h, and the DM_DUPLEX field bit.
@@ -430,8 +433,17 @@ def _printer_dc(printer_name: str, duplex: bool, flip: str):
 
             if handle:
                 return win32ui.CreateDCFromHandle(handle)
-        except Exception:  # noqa: BLE001 - fall through to the default DC
-            pass
+
+            log.warning("duplex: CreateDC returned no handle for %r; "
+                        "printing on the driver's own settings", printer_name)
+        except Exception as error:  # noqa: BLE001 - fall through to the default DC
+            # Logged rather than swallowed. Silence here meant no way to tell a
+            # driver that ignored our duplex request from one that never saw it.
+            log.warning("duplex: could not apply DEVMODE to %r (%s); "
+                        "printing on the driver's own settings", printer_name, error)
+    else:
+        log.warning("duplex: no DEVMODE available for %r; "
+                    "printing on the driver's own settings", printer_name)
 
     try:
         dc = win32ui.CreateDC()

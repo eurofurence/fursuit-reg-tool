@@ -22,7 +22,7 @@ is clamped rather than honoured.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import List, Optional, Tuple
 
 MM_PER_INCH = 25.4
@@ -196,6 +196,34 @@ def _render_one(page, scale: float):
         return page.render(scale=scale, fill_color=_WHITE, prefer_bgrx=True)
     except TypeError:
         return page.render(scale=scale, fill_color=_WHITE)
+
+
+def rotate_180(page: "Page") -> "Page":
+    """The same page turned upside down.
+
+    Done on our own raster rather than asked of the driver. The DEVMODE duplex
+    flip is what *should* control which way up the back of a card lands, but a
+    card printer is free to ignore the standard field -- and when it does there
+    is nothing to argue with. The bitmap is ours and rotating it is exact.
+
+    Rows are reversed and each row's pixels reversed within it, which is a 180
+    rotation. Any stride padding is dropped: the output is tightly packed, and
+    `stride` is updated to match so the caller cannot use a stale one.
+    """
+    bytes_per_pixel = max(1, BITS_PER_PIXEL[page.mode.upper()] // 8)
+    row_bytes = page.width * bytes_per_pixel
+    stride = page.stride or row_bytes
+
+    out = bytearray()
+
+    for y in range(page.height - 1, -1, -1):
+        start = y * stride
+        row = page.data[start:start + row_bytes]
+
+        for x in range(row_bytes - bytes_per_pixel, -1, -bytes_per_pixel):
+            out += row[x:x + bytes_per_pixel]
+
+    return replace(page, data=bytes(out), stride=row_bytes)
 
 
 def page_count(path: str) -> int:

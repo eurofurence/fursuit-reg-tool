@@ -555,5 +555,59 @@ class DuplexDevModeTest(unittest.TestCase):
             self.assertIsNone(printing.duplex_devmode("ZXP9", duplex=True))
 
 
+class RotateBackTest(unittest.TestCase):
+    """Turning the back of a card over, on our own raster.
+
+    The DEVMODE duplex flip is what should decide which way up the back lands,
+    but a card printer may ignore the standard field, and when it does there is
+    nothing to argue with. This is the lever that always works.
+    """
+
+    def page(self, width=2, height=2, mode="BGR", data=None, stride=None):
+        bpp = render.BITS_PER_PIXEL[mode] // 8
+
+        return render.Page(
+            width=width, height=height,
+            stride=stride if stride is not None else width * bpp,
+            mode=mode,
+            data=data if data is not None else bytes(range(width * height * bpp)),
+            dpi=300, index=0,
+        )
+
+    def test_a_180_rotation_reverses_rows_and_pixels(self):
+        # Four one-byte pixels: 1 2 / 3 4 becomes 4 3 / 2 1.
+        page = self.page(width=2, height=2, mode="L", data=bytes([1, 2, 3, 4]))
+
+        self.assertEqual(render.rotate_180(page).data, bytes([4, 3, 2, 1]))
+
+    def test_pixels_are_kept_whole(self):
+        # Three-byte pixels must move as units, or the colours come out wrong.
+        page = self.page(width=2, height=1, mode="BGR",
+                         data=bytes([1, 2, 3, 4, 5, 6]))
+
+        self.assertEqual(render.rotate_180(page).data, bytes([4, 5, 6, 1, 2, 3]))
+
+    def test_rotating_twice_gives_the_original_back(self):
+        page = self.page(width=3, height=4, mode="BGRX")
+
+        self.assertEqual(render.rotate_180(render.rotate_180(page)).data, page.data)
+
+    def test_row_padding_is_dropped_and_the_stride_says_so(self):
+        # A stale stride against a tightly packed buffer would shear the image.
+        page = self.page(width=2, height=2, mode="L",
+                         data=bytes([1, 2, 0, 0, 3, 4, 0, 0]), stride=4)
+        turned = render.rotate_180(page)
+
+        self.assertEqual(turned.data, bytes([4, 3, 2, 1]))
+        self.assertEqual(turned.stride, 2)
+
+    def test_the_page_keeps_its_shape(self):
+        page = self.page(width=3, height=4, mode="BGRX")
+        turned = render.rotate_180(page)
+
+        self.assertEqual((turned.width, turned.height), (3, 4))
+        self.assertEqual(turned.mode, page.mode)
+
+
 if __name__ == "__main__":
     unittest.main()

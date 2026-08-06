@@ -562,8 +562,15 @@ class AgentApp(tk.Tk):
                   text="Change this if the back of a badge prints upside down.",
                   style="Sub.TLabel").grid(row=7, column=1, sticky="w")
 
+        self.binding_rotate_back = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            detail,
+            text="Turn the back of the card upside down before printing",
+            variable=self.binding_rotate_back,
+        ).grid(row=8, column=1, sticky="w", pady=(4, 0))
+
         actions = ttk.Frame(detail)
-        actions.grid(row=8, column=1, sticky="w", pady=(10, 0))
+        actions.grid(row=9, column=1, sticky="w", pady=(10, 0))
         ttk.Button(actions, text="Apply to printer",
                    command=self._apply_binding).pack(side="left")
         ttk.Button(actions, text="Test SNMP",
@@ -615,6 +622,7 @@ class AgentApp(tk.Tk):
         self.binding_community.delete(0, "end")
         self.binding_community.insert(0, binding.snmp_community)
         self.binding_flip.set(getattr(binding, "duplex_flip", config_module.FLIP_SHORT_EDGE))
+        self.binding_rotate_back.set(bool(getattr(binding, "rotate_back", False)))
 
         self._on_role_changed()
         self._load_camera_fields(binding)
@@ -659,6 +667,7 @@ class AgentApp(tk.Tk):
         binding.snmp_community = self.binding_community.get().strip() or "public"
         binding.duplex_flip = (self.binding_flip.get().strip()
                                or config_module.FLIP_SHORT_EDGE)
+        binding.rotate_back = bool(self.binding_rotate_back.get())
 
         self._reload_printer_list(select=index)
         self._log("Updated %s" % binding.display_name())
@@ -1767,6 +1776,12 @@ class AgentApp(tk.Tk):
         from .. import render as render_module
 
         pages = render_module.render_pdf(path)
+
+        # Turn the back over if this printer needs it. Done here, on our own
+        # raster, because the driver's duplex flip setting does not reliably
+        # move it on a card printer.
+        if getattr(binding, "rotate_back", False) and len(pages) > 1:
+            pages = [pages[0]] + [render_module.rotate_180(p) for p in pages[1:]]
 
         # Two-sided printing comes from the job, not from whatever the driver
         # was last left set to. The server knows whether this badge is
