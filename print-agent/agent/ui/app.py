@@ -22,7 +22,7 @@ from . import calibration, console
 from .. import config as config_module
 from .. import monitor as monitor_module
 from .. import printing, vocabulary, zebra
-from ..autostart import AUTOSTART_SECONDS, should_autostart
+from ..autostart import AUTOSTART_SECONDS, first_auto_startable, should_autostart
 from ..config import AgentConfig, config_dir
 
 POLL_SECONDS = 3.0
@@ -1262,12 +1262,14 @@ class AgentApp(tk.Tk):
         except Exception:  # noqa: BLE001 - try again on the next tick
             return
 
-        if not batches:
+        batch = first_auto_startable(batches)
+
+        if batch is None:
             return
 
-        self.active_batch = batches[0]
+        self.active_batch = batch
         self._render_batch()
-        self._log("Unattended: starting %s" % batches[0].get("name", "?"))
+        self._log("Unattended: starting %s" % batch.get("name", "?"))
         self._start_printing()
 
     def _sync_controls(self) -> None:

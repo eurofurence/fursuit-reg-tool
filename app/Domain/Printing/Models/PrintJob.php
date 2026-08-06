@@ -10,6 +10,7 @@ use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use App\Models\Machine;
 use App\Models\User;
+use Database\Factories\PrintJobFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,7 +34,7 @@ class PrintJob extends Model
 
     protected static function newFactory()
     {
-        return \Database\Factories\PrintJobFactory::new();
+        return PrintJobFactory::new();
     }
 
     protected $casts = [
@@ -350,6 +351,37 @@ class PrintJob extends Model
      * Halting is the point. A jam that only kills one job lets the rest of the
      * run drain onto a broken printer, which is how badges went missing.
      */
+    /**
+     * Put a failed job back in the queue.
+     *
+     * A failed card is not a lost card. Whatever stopped it -- a jam, an empty
+     * ribbon, a printer that stopped answering -- is fixed by a person, and the
+     * badge still needs printing. Leaving the job failed blocked the batch from
+     * ever completing and left the card silently unprinted.
+     *
+     * The attempt count resets because a human has been round the loop: the
+     * three-strikes rule exists to stop an agent retrying into a broken
+     * printer, not to punish a badge.
+     */
+    public function requeue(): bool
+    {
+        if ($this->status !== PrintJobStatusEnum::Failed) {
+            return false;
+        }
+
+        $this->transitionTo(PrintJobStatusEnum::Retrying);
+        $this->transitionTo(PrintJobStatusEnum::Queued);
+        $this->transitionTo(PrintJobStatusEnum::Pending);
+
+        return $this->update([
+            'error_message' => null,
+            'failed_at' => null,
+            'lease_expires_at' => null,
+            'processing_machine_id' => null,
+            'attempt_count' => 0,
+        ]);
+    }
+
     public function markFailed(string $reason): bool
     {
         if (! $this->status->canTransitionTo(PrintJobStatusEnum::Failed)) {

@@ -166,3 +166,53 @@ it('treats starting an already printing batch as a no-op', function () {
 
     expect($batch->fresh()->status)->toBe(PrintBatchStatusEnum::Printing);
 });
+
+it('puts failed cards back in the queue when the batch resumes', function () {
+    // A failed card is not a lost card. Whoever resumed has just fixed
+    // whatever stopped it, and the badge still needs printing. Leaving the job
+    // failed blocked the batch from ever completing and lost the card.
+    $printer = Printer::factory()->badge()->create();
+    $batch = PrintBatch::build('Friday', Badge::factory()->withPrintFile()->count(2)->create(), $printer);
+    $batch->transitionTo(PrintBatchStatusEnum::Ready);
+    $batch->transitionTo(PrintBatchStatusEnum::Printing);
+
+    $job = $batch->printJobs()->orderBy('sequence')->first();
+    $job->claim(Machine::factory()->create(), 180);
+    $job->fresh()->transitionTo(PrintJobStatusEnum::Printing);
+    $job->fresh()->markFailed('Printer is not answering.');
+
+    expect($batch->fresh()->status)->toBe(PrintBatchStatusEnum::Paused)
+        ->and($job->fresh()->status)->toBe(PrintJobStatusEnum::Failed);
+
+    $batch->fresh()->resume();
+
+    expect($job->fresh()->status)->toBe(PrintJobStatusEnum::Pending)
+        ->and($job->fresh()->attempt_count)->toBe(0)
+        ->and($job->fresh()->error_message)->toBeNull()
+        ->and($batch->fresh()->status)->toBe(PrintBatchStatusEnum::Printing);
+});
+
+it('lets a batch finish once its failed card has been reprinted', function () {
+    // The blocked-completion rule is right, but only if there is a way out of
+    // it. Before resume requeued, a batch with one failed card could never
+    // complete and sat selectable for the agent to pick up forever.
+    $printer = Printer::factory()->badge()->create();
+    $batch = PrintBatch::build('Friday', Badge::factory()->withPrintFile()->count(1)->create(), $printer);
+    $batch->transitionTo(PrintBatchStatusEnum::Ready);
+    $batch->transitionTo(PrintBatchStatusEnum::Printing);
+
+    $job = $batch->printJobs()->first();
+    $job->claim(Machine::factory()->create(), 180);
+    $job->fresh()->transitionTo(PrintJobStatusEnum::Printing);
+    $job->fresh()->markFailed('jam');
+
+    expect($batch->fresh()->completeIfFinished())->toBeFalse();
+
+    $batch->fresh()->resume();
+    $fresh = $job->fresh();
+    $fresh->transitionTo(PrintJobStatusEnum::Queued);
+    $fresh->transitionTo(PrintJobStatusEnum::Printing);
+    $fresh->transitionTo(PrintJobStatusEnum::Printed);
+
+    expect($batch->fresh()->completeIfFinished())->toBeTrue();
+});

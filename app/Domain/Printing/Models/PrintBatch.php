@@ -323,7 +323,33 @@ class PrintBatch extends Model
 
     public function resume(): bool
     {
+        // Whoever resumed has just dealt with whatever stopped the batch, so
+        // the cards that failed go back in the queue. Without this they stayed
+        // failed: they blocked the batch from ever completing, and the badge
+        // was quietly never printed.
+        $this->requeueFailedJobs();
+
         return $this->transitionTo(PrintBatchStatusEnum::Printing);
+    }
+
+    /**
+     * Return every failed job in this batch to the queue. Count requeued.
+     */
+    public function requeueFailedJobs(): int
+    {
+        $requeued = 0;
+
+        foreach ($this->printJobs()->where('status', PrintJobStatusEnum::Failed)->get() as $job) {
+            if ($job->requeue()) {
+                $requeued++;
+            }
+        }
+
+        if ($requeued > 0) {
+            $this->recalculateCounters();
+        }
+
+        return $requeued;
     }
 
     /**

@@ -67,6 +67,7 @@ from .api import (
     ApiError,
     NetworkError,
 )
+from . import autostart
 from .config import ROLE_CARD, ROLE_RECEIPT
 from .store import OUTBOX_FAILED, OUTBOX_PRINTED, OUTBOX_VERIFY
 
@@ -1040,7 +1041,10 @@ class PrintWorker(_BaseWorker):
 
             if batch_id is None or batch_id == finished:
                 continue
-            if batch.get("status") in ("completed", "cancelled"):
+
+            # Same rule as the cold start: never resurrect a batch that was
+            # paused by a failure, and never take one with nothing left in it.
+            if not autostart.is_auto_startable(batch):
                 continue
 
             if not self._start_batch(batch_id):
