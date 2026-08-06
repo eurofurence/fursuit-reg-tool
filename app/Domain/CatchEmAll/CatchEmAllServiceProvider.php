@@ -5,6 +5,7 @@ namespace App\Domain\CatchEmAll;
 use App\Domain\CatchEmAll\Achievements\Utils\AchievementRegister;
 use App\Domain\CatchEmAll\Services\AchievementService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
+use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use Illuminate\Support\ServiceProvider;
 
 class CatchEmAllServiceProvider extends ServiceProvider
@@ -20,5 +21,7 @@ class CatchEmAllServiceProvider extends ServiceProvider
     {
         // Initialize the achievement register once during application startup
         AchievementRegister::init();
+
+        SpecialActionsRegister::init();
     }
 }

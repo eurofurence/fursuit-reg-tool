@@ -4,17 +4,18 @@ namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
+use Carbon\Carbon;
 
-class FirstCatch extends SimpleAchievement
+class NightOwl extends SimpleAchievement
 {
     public function __construct()
     {
         parent::__construct(
-            id: 'first_catch',
-            title: 'First Catch',
-            description: 'You have successfully made your first catch.',
-            task: 'Catch your first Fursuit.',
-            icon: '🎣',
+            id: 'night_owl',
+            title: 'Night Owl',
+            description: 'The hunt never sleeps, and neither do you.',
+            task: 'Catch a Fursuit between 1 AM and 5 AM CEST.',
+            icon: '🦉',
             isSecret: false,
             isOptional: false,
             isHidden: false
@@ -33,9 +34,15 @@ class FirstCatch extends SimpleAchievement
             return -1; // Ignore this update
         }
 
-        // Return current progress based on user's total catches
-        $currentProgress = min($context->userTotalCatches, $this->getMaxProgress());
+        // Get the catch time in CEST timezone
+        $catchTime = Carbon::parse($context->userCatch->created_at)->setTimezone('Europe/Berlin');
+        $hour = $catchTime->hour;
 
-        return $currentProgress;
+        // Check if catch was between 1 AM and 5 AM (1:00 - 4:59)
+        if ($hour >= 1 && $hour < 5) {
+            return 1; // Achievement completed
+        }
+
+        return -1; // Not completed yet
     }
 }

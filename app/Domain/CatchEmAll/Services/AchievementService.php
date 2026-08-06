@@ -9,7 +9,6 @@ use App\Domain\CatchEmAll\Interface\Achievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\EventUser;
-use App\Models\User;
 
 class AchievementService
 {

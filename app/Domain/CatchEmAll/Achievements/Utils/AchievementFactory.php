@@ -3,6 +3,10 @@
 namespace App\Domain\CatchEmAll\Achievements\Utils;
 
 use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Interface\Expandable;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
+use App\Domain\CatchEmAll\Interface\ProgressInfo;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Models\EventUser;
 use App\Models\User;
@@ -105,11 +109,34 @@ class AchievementFactory
             // Get earned timestamp
             $earnedAt = $isCompleted && $userAchievement ? $userAchievement->earned_at : null;
 
+            // Check if the achievement is locked by other achievements
+            $isLocked = false;
+            if ($achievement instanceof LockedBy) {
+                $lockedByAchievements = $achievement->lockedBy();
+                foreach ($lockedByAchievements as $lockedById) {
+                    $lockedByUserAchievement = $userAchievements->firstWhere('achievement', $lockedById);
+                    if (! $lockedByUserAchievement || ! $lockedByUserAchievement->isCompleted()) {
+                        $isLocked = true;
+                        break;
+                    }
+                }
+            }
+
+            $additionalInfo = null;
+            if ($achievement instanceof ProgressInfo && ! $isLocked && ! $isCompleted) {
+                $totalProgressInfo = $achievement->getTotalProgress();
+                $additionalInfo = [
+                    'totalProgress' => $totalProgressInfo,
+                    'currentProgress' => $achievement->getCurrentProgress($eventUser),
+                ];
+            }
+
             $result[] = [
                 'id' => $achievement->getId(),
                 'achievement' => $achievement->getId(), // Using ID as achievement identifier
-                'title' => $achievement->getTile(),
+                'title' => $achievement->getTitle(),
                 'description' => $achievement->getDescription(),
+                'task' => $achievement->getTask(),
                 'icon' => $achievement->getIcon(),
                 'completed' => $isCompleted,
                 'progress' => $currentProgress,
@@ -118,6 +145,10 @@ class AchievementFactory
                 'earnedAt' => $earnedAt,
                 'isSecret' => $achievement->isSecret(),
                 'isOptional' => $achievement->isOptional(),
+                'isLocked' => $isLocked,
+                'hiddenByLock' => $achievement instanceof HiddenIfLocked && $isLocked,
+                'expandable' => $achievement instanceof Expandable,
+                'progressDetail' => $additionalInfo,
             ];
         }
 

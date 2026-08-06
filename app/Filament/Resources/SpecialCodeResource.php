@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources;
 
+use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Models\SpecialCode;
+use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Filament\Resources\SpecialCodeResource\Pages;
 use App\Models\Fursuit\Fursuit;
 use Filament\Forms;
@@ -29,32 +31,25 @@ class SpecialCodeResource extends Resource
                     ->label('Event')
                     ->helperText('Event in which the code can be used')
                     ->options(
-                        \App\Models\Event::all()->pluck('name', 'id')
+                        \App\Models\Event::all()->sortByDesc('name')->pluck('name', 'id')
                     )
+                    ->default(\App\Models\Event::latest('starts_at')->first()?->id)
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\Select::make('class_name')
-                    ->label('Class')
+                Forms\Components\Select::make('type')
+                    ->label('Type')
                     ->helperText('PHP class used for code handling')
-                    ->options([
-                        'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
-                    ])
+                    ->options(
+                        SpecialActionsRegister::getFillamentOptions())
                     ->columnSpanFull(),
                 Forms\Components\Textarea::make('constructor_data')
                     ->label('Constructor Data')
                     ->helperText('Data to be passed to the constructor of the action class')
                     ->rows(3)
                     ->columnSpanFull()
-                    ->disabled(fn ($get) => match ($get('class_name')) {
-                        'EXAMPLE' => false,
-                        default => true
-                    })
-                    ->placeholder(fn ($get) => match ($get('class_name')) {
-                        'EXAMPLE' => '{"amount": 100, "reason": "An Example"}',
-                        default => '',
-                    })
+                    ->disabled(fn ($get) => $get('type') && SpecialActionsRegister::getConfigDataForSpecialCodeType(SpecialCodeType::tryFrom($get('type'))) === null)
+                    ->placeholder(fn ($get) => $get('type') ? (SpecialActionsRegister::getConfigDataForSpecialCodeType(SpecialCodeType::tryFrom($get('type'))) ? json_encode(SpecialActionsRegister::getConfigDataForSpecialCodeType(SpecialCodeType::tryFrom($get('type'))), JSON_PRETTY_PRINT) : 'No data required for this type.') : 'Nothing selected')
                     ->rules(['nullable', 'json']),
-
                 Forms\Components\TextInput::make('code')
                     ->label('Code')
                     ->helperText('E.g. ABC45')
@@ -85,12 +80,9 @@ class SpecialCodeResource extends Resource
                 Tables\Columns\TextColumn::make('code')
                     ->label('Code')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('class_name')
-                    ->label('Class')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
-                        default => $state
-                    })
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Type')
+                    ->formatStateUsing(fn (SpecialCodeType $state): string => SpecialActionsRegister::getDisplayNameForSpecialCodeType($state) ?? $state->name)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('constructor_data')
                     ->label('Data')

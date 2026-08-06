@@ -3,20 +3,19 @@
 namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
-use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
-use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
+use App\Models\Event;
 
-class GottaCatchEmAll extends SimpleAchievement implements LockedBy, HiddenIfLocked
+class TheCompletionist extends SimpleAchievement
 {
     public function __construct()
     {
         parent::__construct(
-            id: 'gotta_catch_em_all',
-            title: 'Gotta Catch \'Em All',
-            description: 'There is still something more to do.',
-            task: 'Catch 50 Fursuits.',
-            icon: '💯',
+            id: 'the_completionist',
+            title: 'The Completionist',
+            description: 'You’re dedicated to the cause.',
+            task: 'Catch at least one fursuiter on every official day of the convention.',
+            icon: '⚡',
             isSecret: false,
             isOptional: false,
             isHidden: false
@@ -25,7 +24,9 @@ class GottaCatchEmAll extends SimpleAchievement implements LockedBy, HiddenIfLoc
 
     public function getMaxProgress(): int
     {
-        return 50;
+        $currentEvent = Event::latest('starts_at')->first();
+
+        return $currentEvent->dayCount;
     }
 
     public function updateAchievementProgress(AchievementUpdateContext $context): int
@@ -35,16 +36,9 @@ class GottaCatchEmAll extends SimpleAchievement implements LockedBy, HiddenIfLoc
             return -1; // Ignore this update
         }
 
-        // Return current progress based on user's total catches
-        $currentProgress = min($context->userTotalCatches, $this->getMaxProgress());
+        // Return current progress based on user's unique fursuits caught
+        $currentProgress = min($context->userTotalDaysCaught, $this->getMaxProgress());
 
         return $currentProgress;
-    }
-
-    public function lockedBy(): array
-    {
-        return [
-            'curator',
-        ];
     }
 }

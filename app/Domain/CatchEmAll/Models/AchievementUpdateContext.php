@@ -5,7 +5,7 @@ namespace App\Domain\CatchEmAll\Models;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Models\Event;
 use App\Models\EventUser;
-use App\Models\User;
+use App\Models\Fursuit\Fursuit;
 
 /**
  * Readonly context object that contains the essential data for achievement updates.
@@ -20,6 +20,9 @@ readonly class AchievementUpdateContext
         public int $userTotalCatches,
         public int $totalCatchableFursuits,
         public int $userUniqueFursuits,
+        public int $userUniqueSpecies,
+        public int $locationsExplored,
+        public int $userTotalDaysCaught
     ) {}
 
     /**
@@ -38,11 +41,34 @@ readonly class AchievementUpdateContext
         // Calculate user statistics
         $userTotalCatches = UserCatch::where('event_user_id', $eventUser->id)
             ->count();
-        $totalCatchableFursuits = \App\Models\Fursuit\Fursuit::where('event_id', operator: $currentEvent->id)
+        $totalCatchableFursuits = Fursuit::where('event_id', $currentEvent->id)
             ->where('catch_em_all', true)
             ->count();
         $userUniqueFursuits = UserCatch::where('event_user_id', $eventUser->id)
             ->distinct('fursuit_id')
+            ->count();
+        $userUniqueSpecies = UserCatch::where('event_user_id', $eventUser->id)
+            ->join('fursuits', 'user_catches.fursuit_id', '=', 'fursuits.id')
+            ->join('species', 'fursuits.species_id', '=', 'species.id')
+            ->where('species.checked', true)
+            ->distinct('fursuits.species_id')
+            ->count('fursuits.species_id');
+        if ($specialCodeType !== SpecialCodeType::EXPLORER) {
+            $locationsExplored = 0;
+        } else {
+            // TODO: OPTIMIZATION: Count this in a separate table
+            $locationsExplored = SpecialCode::where('type', SpecialCodeType::EXPLORER)
+                ->where('special_codes.event_id', $currentEvent->id)
+                ->join('user_catch_logs', 'special_codes.code', '=', 'user_catch_logs.catch_code')
+                ->where('user_catch_logs.user_id', $eventUser->user_id)
+                ->where('user_catch_logs.is_successful', true)
+                ->distinct('code')
+                ->count();
+            $locationsExplored++; // Lacy Updated because it reads the log
+        }
+        $userTotalDaysCaught = UserCatch::where('event_user_id', $eventUser->id)
+            ->selectRaw('DISTINCT DATE(created_at) as date')
+            ->get()
             ->count();
 
         return new self(
@@ -52,6 +78,9 @@ readonly class AchievementUpdateContext
             userTotalCatches: $userTotalCatches,
             totalCatchableFursuits: $totalCatchableFursuits,
             userUniqueFursuits: $userUniqueFursuits,
+            userUniqueSpecies: $userUniqueSpecies,
+            locationsExplored: $locationsExplored,
+            userTotalDaysCaught: $userTotalDaysCaught
         );
     }
 
