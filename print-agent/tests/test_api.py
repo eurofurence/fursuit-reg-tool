@@ -311,7 +311,7 @@ class JobEndpointTest(unittest.TestCase):
     def test_claim_asks_for_one_card_from_one_batch(self):
         client, opener = build(FakeResponse(b'{"job": {"id": 42}}'))
 
-        self.assertEqual(client.claim(7, "ZXP Series 9"), {"id": 42})
+        self.assertEqual(client.claim(7, "ZXP Series 9"), ({"id": 42}, ""))
         self.assertEqual(
             opener.last.full_url, "https://reg.example.test/api/print-agent/jobs/claim"
         )
@@ -324,7 +324,7 @@ class JobEndpointTest(unittest.TestCase):
         # empty, so a worker must read that as "nothing left", not "broken".
         client, _ = build(FakeResponse(b'{"job": null, "batch_status": "completed"}'))
 
-        self.assertIsNone(client.claim(7, "ZXP Series 9"))
+        self.assertEqual(client.claim(7, "ZXP Series 9"), (None, "completed"))
 
     def test_heartbeat_renews_the_lease_for_one_job(self):
         # A retransfer card takes over a minute; without this the lease reaper

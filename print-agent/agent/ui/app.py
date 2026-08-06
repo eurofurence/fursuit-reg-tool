@@ -352,6 +352,14 @@ class AgentApp(tk.Tk):
         self.active_batch = batch
         self._show_console()
         self._render_batch()
+
+        # Tell a worker that is already running. Without this the choice only
+        # ever reached a worker built afterwards, so picking a batch while one
+        # was alive left it claiming against no batch at all and reporting the
+        # run finished a few seconds later.
+        if self.worker is not None and self.worker.is_alive():
+            self.worker.select_batch(batch.get("id"))
+
         self._log("Selected batch: %s" % batch.get("name", "?"))
 
     def _render_batch(self) -> None:
@@ -1098,6 +1106,19 @@ class AgentApp(tk.Tk):
 
             self.stop_flag.wait(POLL_SECONDS)
 
+    def _sync_controls(self) -> None:
+        """Start follows the worker's real state, not the last button pressed.
+
+        The worker pauses itself whenever the printer or the server says no,
+        and nobody clicked anything on the way. Setting the button state only
+        inside the click handlers left Start greyed out on a run that had
+        already stopped, with no way back other than restarting the agent.
+        """
+        running = self.worker is not None and self.worker.is_alive()
+        printing = running and not self.worker.is_paused()
+
+        self.start_button.config(state="disabled" if printing else "normal")
+
     def _drain_events(self) -> None:
         try:
             while True:
@@ -1137,6 +1158,7 @@ class AgentApp(tk.Tk):
         except queue.Empty:
             pass
 
+        self._sync_controls()
         self.clock_label.config(text=datetime.now().strftime("%H:%M:%S"))
         self.after(400, self._drain_events)
 
@@ -1404,6 +1426,7 @@ class AgentApp(tk.Tk):
                 self.worker.resume()
                 self._log("Resumed")
                 self.pause_button.config(state="normal")
+                self.start_button.config(state="disabled")
             return
 
         worker = self._build_worker()
@@ -1418,6 +1441,7 @@ class AgentApp(tk.Tk):
 
         self._log("Printing %s" % self.active_batch.get("name", "?"))
         self.pause_button.config(state="normal")
+        self.start_button.config(state="disabled")
 
         if self.telegram_sender is not None:
             self.telegram_channel.send_message(
@@ -1552,6 +1576,8 @@ class AgentApp(tk.Tk):
 
         self._log("Paused by operator")
         self.pause_button.config(state="disabled")
+        # Start doubles as Resume, so it has to come back when paused.
+        self.start_button.config(state="normal")
 
     # -- telegram ----------------------------------------------------------
 
@@ -1615,6 +1641,7 @@ class AgentApp(tk.Tk):
             if self.worker is not None and self.worker.is_alive() and self.worker.is_paused():
                 self.worker.resume()
                 self.pause_button.config(state="normal")
+                self.start_button.config(state="disabled")
                 reply = "Resumed by %s from Telegram" % who
             else:
                 reply = "Nothing to resume: %s" % self._telegram_status()

@@ -102,6 +102,10 @@ JOB_FAILED = "failed"        # the card did not print and will not be retried
 WAITING = "waiting"          # an operator has to answer a reprint question
 STOPPED = "stopped"          # the worker was told to stop
 
+# Batch states the server will actually hand cards out of. Anything else means
+# an empty claim is a reason to stop, not evidence the batch is done.
+CLAIMABLE_STATUSES = ("printing",)
+
 # --- Worker state -------------------------------------------------------------
 
 IDLE = "idle"
@@ -249,6 +253,12 @@ class _BaseWorker:
         # Set by the card worker; always None for anything unbatched. Kept on the
         # base because the local store records it with every claimed job.
         self.batch_id: Optional[int] = None
+
+        # The batch the server has been told to start. A batch sits in "ready"
+        # until somebody starts it, and a ready batch is not claimable, so
+        # claiming without this returns nothing and looks exactly like a batch
+        # that is finished.
+        self._started_batch: Optional[int] = None
 
         self._cache_dir = cache_dir
 
@@ -771,6 +781,11 @@ class PrintWorker(_BaseWorker):
 
     def select_batch(self, batch_id: Optional[int]) -> None:
         self.batch_id = int(batch_id) if batch_id is not None else None
+
+        # A different batch has to be started in its own right.
+        if self.batch_id != self._started_batch:
+            self._started_batch = None
+
         self._notify_batch(self.batch_id)
 
     def snapshot(self) -> Dict[str, Any]:
@@ -853,10 +868,22 @@ class PrintWorker(_BaseWorker):
         if self.batch_id is None:
             return Outcome(EMPTY, "No batch selected")
 
+        if self.batch_id != self._started_batch:
+            # Attended runs used to skip this entirely: the operator pressed
+            # Start, the worker span up, and nobody ever told the server. The
+            # batch stayed ready, every claim came back empty, and the agent
+            # reported the batch finished without printing a card.
+            if not self._start_batch(self.batch_id):
+                detail = "Could not start batch %s on the server" % self.batch_id
+                self._progress(STEP_CLAIM, FAILED, "could not start the batch")
+                return Outcome(BLOCKED, detail)
+
+            self._started_batch = self.batch_id
+
         self._progress(STEP_CLAIM, ACTIVE, "asking the server for the next card")
 
         try:
-            job = self.api.claim(self.batch_id, self.printer_name)
+            job, batch_status = self.api.claim(self.batch_id, self.printer_name)
         except NetworkError as error:
             detail = "Server unreachable, cannot claim a card: %s" % error
             self._progress(STEP_CLAIM, FAILED, "server unreachable")
@@ -869,6 +896,18 @@ class PrintWorker(_BaseWorker):
             return Outcome(BLOCKED, detail)
 
         if not job:
+            # A paused or not-yet-started batch still holds all its cards.
+            # Treating that as finished would move the operator on and quietly
+            # skip the whole run.
+            if batch_status and batch_status not in CLAIMABLE_STATUSES:
+                detail = "Batch %s is %s, not printing" % (self.batch_id, batch_status)
+                self._progress(STEP_CLAIM, FAILED, "batch is %s" % batch_status)
+
+                # Re-start it next time round rather than sitting here stuck.
+                self._started_batch = None
+
+                return Outcome(BLOCKED, detail)
+
             self._progress(STEP_CLAIM, SKIPPED, "no cards left in this batch")
             return Outcome(EMPTY, "Batch has no more cards")
 

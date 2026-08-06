@@ -25,7 +25,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from . import __version__
 from .config import AgentConfig, ROLE_CARD, ROLE_RECEIPT
@@ -210,19 +210,26 @@ class PrintAgentClient:
     # Jobs
     # ------------------------------------------------------------------
 
-    def claim(self, batch_id: int, printer_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """POST /jobs/claim. One card, or None when the batch has no more work.
+    def claim(self, batch_id: int,
+              printer_name: Optional[str] = None) -> Tuple[Optional[Dict[str, Any]], str]:
+        """POST /jobs/claim. Returns (job, batch_status).
 
         The server returns ``{"job": null, "batch_status": ...}`` rather than a
-        404 when a batch is drained, so a null job is an ordinary outcome and
-        not an error.
+        404 when a batch yields nothing, so a null job is an ordinary outcome
+        and not an error.
+
+        The status comes back with it because "no job" has two very different
+        meanings. A drained batch is finished and the agent should move on; a
+        batch that is merely not started, or paused, has every card still in it
+        and moving on would silently skip the lot. Only the status tells them
+        apart.
         """
         response = self.post("/jobs/claim", {
             "batch_id": int(batch_id),
             "printer_name": printer_name,
         })
 
-        return response.get("job")
+        return response.get("job"), str(response.get("batch_status") or "")
 
     def heartbeat(self, job_id: int) -> Dict[str, Any]:
         """Renew the lease. A retransfer card takes over a minute to print, and

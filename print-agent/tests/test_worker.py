@@ -97,6 +97,10 @@ class FakeApi:
         # Set to an exception instance to make that call blow up.
         self.printed_error = None
         self.claim_error = None
+        self.start_batch_error = None
+
+        # What the server says the batch is once the queue runs dry.
+        self.drained_status = "printing"
 
     def claim(self, batch_id, printer_name=None):
         self.claims.append((batch_id, printer_name))
@@ -104,7 +108,12 @@ class FakeApi:
         if self.claim_error is not None:
             raise self.claim_error
 
-        return self.queue.pop(0) if self.queue else None
+        # (job, batch_status), matching the real client. The status is what
+        # tells a drained batch apart from one that was never started.
+        if self.queue:
+            return self.queue.pop(0), "printing"
+
+        return None, self.drained_status
 
     def download(self, url, dest_path):
         self.downloads.append((url, dest_path))
@@ -147,6 +156,10 @@ class FakeApi:
 
     def start_batch(self, batch_id, printer_name):
         self.started.append((batch_id, printer_name))
+
+        if self.start_batch_error is not None:
+            raise self.start_batch_error
+
         return {}
 
 
@@ -845,6 +858,86 @@ class ControlTest(WorkerTestCase):
         printer.print_next()
 
         self.assertEqual(printer.snapshot()["card_number"], "24-0202")
+
+
+class BatchStartTest(WorkerTestCase):
+    """A batch has to be started on the server before it will yield cards.
+
+    The field failure this locks out: the operator pressed Start, the worker
+    span up, and nobody ever told the server. The batch stayed "ready", which
+    is not claimable, so every claim came back empty. The agent read that as a
+    finished batch, unloaded it and announced the run was done -- without
+    printing a single card, and with the Start button still live.
+    """
+
+    def test_the_batch_is_started_before_the_first_claim(self):
+        printer = self.build()
+        printer.print_next()
+
+        self.assertEqual([b for b, _ in self.api.started], [77])
+
+    def test_the_batch_is_started_only_once(self):
+        printer = self.build()
+        printer.print_next()
+        printer.print_next()
+
+        self.assertEqual(len(self.api.started), 1)
+
+    def test_a_batch_that_will_not_start_blocks_rather_than_looking_finished(self):
+        self.api.start_batch_error = api.ApiError(409, "not startable")
+        printer = self.build()
+
+        outcome = printer.print_next()
+
+        self.assertEqual(outcome.kind, worker.BLOCKED)
+
+    def test_a_new_batch_is_started_in_its_own_right(self):
+        printer = self.build()
+        printer.print_next()
+
+        printer.select_batch(78)
+        printer.print_next()
+
+        self.assertEqual([b for b, _ in self.api.started], [77, 78])
+
+
+class EmptyClaimTest(WorkerTestCase):
+    """Why a claim came back empty decides whether the run is over."""
+
+    def test_a_drained_batch_is_finished(self):
+        self.api.queue = []
+        self.api.drained_status = "printing"
+        printer = self.build()
+
+        self.assertEqual(printer.print_next().kind, worker.EMPTY)
+
+    def test_a_paused_batch_still_holds_its_cards(self):
+        # Reporting EMPTY here would move the operator on to the next batch and
+        # silently skip every card in this one.
+        self.api.queue = []
+        self.api.drained_status = "paused"
+        printer = self.build()
+
+        self.assertEqual(printer.print_next().kind, worker.BLOCKED)
+
+    def test_a_batch_that_never_started_is_not_finished(self):
+        self.api.queue = []
+        self.api.drained_status = "ready"
+        printer = self.build()
+
+        self.assertEqual(printer.print_next().kind, worker.BLOCKED)
+
+    def test_a_blocked_batch_is_started_again_on_the_next_pass(self):
+        # Otherwise the worker sits on a stale "already started" marker and
+        # never recovers once somebody resumes the batch from the server.
+        self.api.queue = []
+        self.api.drained_status = "ready"
+        printer = self.build()
+
+        printer.print_next()
+        printer.print_next()
+
+        self.assertEqual(len(self.api.started), 2)
 
 
 if __name__ == "__main__":
