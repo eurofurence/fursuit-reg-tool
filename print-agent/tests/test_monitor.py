@@ -3,6 +3,8 @@
 import os
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -232,6 +234,75 @@ class OfflineDebounceTest(unittest.TestCase):
         subject.poll()
 
         self.assertEqual(changes, [zebra.OK])
+
+
+class ConcurrentPollTest(unittest.TestCase):
+    """Two threads poll this monitor, and they must not collide.
+
+    The regression: a shared pysnmp SnmpEngine was introduced to speed up the
+    confirm step, but the engine is not thread-safe and both the UI loop and
+    the print worker drive it. Concurrent walks threw, the exception became
+    `reachable=False`, and the printer "went offline" in the middle of a card
+    it was printing perfectly well.
+    """
+
+    class SlowPoller:
+        """Fails if two reads overlap, the way a real SNMP engine would."""
+
+        def __init__(self):
+            self.reads = 0
+            self.overlaps = 0
+            self._inside = False
+
+        def read(self):
+            if self._inside:
+                self.overlaps += 1
+            self._inside = True
+            time.sleep(0.005)
+            self.reads += 1
+            self._inside = False
+
+            return reading()
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def test_reads_do_not_overlap(self):
+        poller = self.SlowPoller()
+        subject = monitor.PrinterMonitor(
+            poller, vocabulary.ConditionJournal(Path(self.dir.name) / "j.jsonl"))
+
+        threads = [threading.Thread(target=subject.poll) for _ in range(8)]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(poller.overlaps, 0, "two threads read the printer at once")
+        self.assertEqual(subject.condition, zebra.OK)
+
+    def test_the_condition_survives_concurrent_polling(self):
+        poller = self.SlowPoller()
+        subject = monitor.PrinterMonitor(
+            poller, vocabulary.ConditionJournal(Path(self.dir.name) / "j.jsonl"))
+        seen = []
+
+        def poll_many():
+            for _ in range(5):
+                seen.append(subject.poll())
+
+        threads = [threading.Thread(target=poll_many) for _ in range(4)]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(set(seen), {zebra.OK}, seen)
 
 
 if __name__ == "__main__":

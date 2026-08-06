@@ -13,6 +13,7 @@ tested against recorded fault states without a printer attached.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -329,6 +330,13 @@ class ZebraPoller:
         # per reading, and constructing one is far from free -- it dominated
         # the time spent waiting for the printer to confirm a card.
         self._engine = None
+
+        # One walk at a time. Two threads read this poller -- the UI's monitor
+        # loop and the print worker waiting for a card -- and a pysnmp engine
+        # is not safe to drive from both. Sharing one without this lock made
+        # concurrent reads throw, which surfaced as the printer going offline
+        # for a second in the middle of a job it was printing perfectly well.
+        self._lock = threading.RLock()
         self.timeout = timeout
 
     def read(self) -> Reading:
@@ -336,7 +344,8 @@ class ZebraPoller:
             return Reading(reachable=False)
 
         try:
-            values = self._get_all()
+            with self._lock:
+                values = self._get_all()
         except Exception:
             return Reading(reachable=False)
 

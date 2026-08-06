@@ -12,6 +12,7 @@ healthy.
 
 from __future__ import annotations
 
+import threading
 import time
 from typing import Callable, List, Optional
 
@@ -43,6 +44,12 @@ class PrinterMonitor:
         # When the last reading was taken, for the max_age cache in poll().
         self._read_at = 0.0
 
+        # Two threads poll this monitor: the UI loop and the print worker.
+        # Without a lock the cache check, the read and the state update
+        # interleave, so one thread could publish a condition derived from the
+        # other's reading -- and both could take their own SNMP walk at once.
+        self._lock = threading.RLock()
+
         # Called with (condition, reading) whenever the condition changes.
         # Used to push the state to the server and to alert staff.
         self.on_change: List[Callable[[str, zebra.Reading], None]] = []
@@ -61,6 +68,10 @@ class PrinterMonitor:
         whole job table. Without this they each took their own, doubling the
         traffic and making the confirm step crawl.
         """
+        with self._lock:
+            return self._poll_locked(max_age)
+
+    def _poll_locked(self, max_age: float) -> str:
         if max_age > 0.0 and self.reading is not None:
             if (time.monotonic() - self._read_at) < max_age:
                 return self.condition
