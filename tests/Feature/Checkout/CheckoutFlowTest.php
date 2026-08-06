@@ -10,7 +10,9 @@ use App\Models\Badge\Badge;
 use App\Models\Machine;
 use App\Models\Staff;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -78,7 +80,7 @@ class CheckoutFlowTest extends TestCase
     {
         $checkout = $this->createBasicCheckout();
 
-        $badge = \App\Models\Badge\Badge::factory()->create();
+        $badge = Badge::factory()->create();
         $item = CheckoutItem::create([
             'checkout_id' => $checkout->id,
             'payable_type' => Badge::class,
@@ -256,7 +258,7 @@ class CheckoutFlowTest extends TestCase
     /** @test */
     public function it_validates_required_checkout_fields()
     {
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         // Try to create checkout without required fields
         Checkout::create([]);
@@ -291,7 +293,7 @@ class CheckoutFlowTest extends TestCase
         $checkout = $this->createBasicCheckout(['remote_id' => 'f1f1f103-f1f1-f1f1-f1f1-f1f1f1f1f003', 'remote_rev_count' => 0]);
         $fiskalyService = app(FiskalyService::class);
 
-        $this->expectException(\Illuminate\Http\Client\RequestException::class);
+        $this->expectException(RequestException::class);
         $fiskalyService->updateOrCreateTransaction($checkout);
     }
 
@@ -403,7 +405,7 @@ class CheckoutFlowTest extends TestCase
 
     private function addCheckoutItem(Checkout $checkout): CheckoutItem
     {
-        $badge = \App\Models\Badge\Badge::factory()->create();
+        $badge = Badge::factory()->create();
 
         return CheckoutItem::create([
             'checkout_id' => $checkout->id,

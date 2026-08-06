@@ -537,8 +537,17 @@ class AgentApp(tk.Tk):
             style="Sub.TLabel")
         self.snmp_hint.grid(row=5, column=1, sticky="w")
 
+        ttk.Label(detail, text="Two-sided flip").grid(row=6, column=0, sticky="w", pady=4)
+        self.binding_flip = ttk.Combobox(detail, width=20, state="readonly",
+                                         values=[config_module.FLIP_SHORT_EDGE,
+                                                 config_module.FLIP_LONG_EDGE])
+        self.binding_flip.grid(row=6, column=1, sticky="w")
+        ttk.Label(detail,
+                  text="Change this if the back of a badge prints upside down.",
+                  style="Sub.TLabel").grid(row=7, column=1, sticky="w")
+
         actions = ttk.Frame(detail)
-        actions.grid(row=6, column=1, sticky="w", pady=(10, 0))
+        actions.grid(row=8, column=1, sticky="w", pady=(10, 0))
         ttk.Button(actions, text="Apply to printer",
                    command=self._apply_binding).pack(side="left")
         ttk.Button(actions, text="Test SNMP",
@@ -589,6 +598,7 @@ class AgentApp(tk.Tk):
         self.binding_snmp.insert(0, binding.snmp_host)
         self.binding_community.delete(0, "end")
         self.binding_community.insert(0, binding.snmp_community)
+        self.binding_flip.set(getattr(binding, "duplex_flip", config_module.FLIP_SHORT_EDGE))
 
         self._on_role_changed()
         self._load_camera_fields(binding)
@@ -631,6 +641,8 @@ class AgentApp(tk.Tk):
         binding.role = self.binding_role.get().strip() or config_module.ROLE_CARD
         binding.snmp_host = self.binding_snmp.get().strip()
         binding.snmp_community = self.binding_community.get().strip() or "public"
+        binding.duplex_flip = (self.binding_flip.get().strip()
+                               or config_module.FLIP_SHORT_EDGE)
 
         self._reload_printer_list(select=index)
         self._log("Updated %s" % binding.display_name())
@@ -1740,9 +1752,19 @@ class AgentApp(tk.Tk):
 
         pages = render_module.render_pdf(path)
 
+        # Two-sided printing comes from the job, not from whatever the driver
+        # was last left set to. The server knows whether this badge is
+        # dual-sided; the flip edge is a per-printer setting because it depends
+        # on the hardware.
+        duplex = bool(job.get("duplex"))
+
         return printing_module.print_pages(
-            binding.name, pages, job_name="Badge %s" % (job.get("expected") or {}).get(
-                "custom_id", job.get("id")))
+            binding.name, pages,
+            job_name="Badge %s" % (job.get("expected") or {}).get(
+                "custom_id", job.get("id")),
+            duplex=duplex,
+            flip=getattr(binding, "duplex_flip", config_module.FLIP_SHORT_EDGE),
+        )
 
     def _pause_printing(self) -> None:
         if self.worker is not None and self.worker.is_alive():

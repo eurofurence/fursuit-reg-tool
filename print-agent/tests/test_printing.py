@@ -14,6 +14,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -462,6 +463,96 @@ class RenderWithoutPdfiumTest(unittest.TestCase):
             self.assertIn("pypdfium2", str(caught.exception))
         finally:
             os.unlink(handle.name)
+
+
+class DuplexDevModeTest(unittest.TestCase):
+    """Two-sided printing comes from the job, not the driver's saved settings.
+
+    The agent used to open the DC with no DEVMODE, so whether a card printed on
+    both sides -- and which edge it flipped about -- was whatever the printer
+    preferences were last left on. A single-sided badge could waste the back of
+    a card, and a dual-sided one could put its back on the next card.
+    """
+
+    class DevMode:
+        def __init__(self):
+            self.Duplex = 0
+            self.Fields = 0
+
+    def patched(self, devmode, driver="ZBR"):
+        win32print = mock.Mock()
+        win32print.OpenPrinter.return_value = 1
+        win32print.GetPrinter.return_value = {"pDevMode": devmode, "pDriverName": driver}
+
+        return mock.patch.dict(sys.modules, {
+            "win32print": win32print,
+            "win32con": mock.Mock(DM_DUPLEX=printing.DM_DUPLEX),
+        })
+
+    def test_a_dual_sided_badge_asks_for_two_sided_printing(self):
+        devmode = self.DevMode()
+
+        with self.patched(devmode):
+            printing.duplex_devmode("ZXP9", duplex=True, flip=printing.FLIP_SHORT)
+
+        self.assertEqual(devmode.Duplex, printing.DMDUP_HORIZONTAL)
+
+    def test_the_flip_edge_is_honoured(self):
+        # The one setting that decides whether the pre-rotated back lands
+        # upright. Short and long must not resolve to the same value.
+        short, long_ = self.DevMode(), self.DevMode()
+
+        with self.patched(short):
+            printing.duplex_devmode("ZXP9", duplex=True, flip=printing.FLIP_SHORT)
+        with self.patched(long_):
+            printing.duplex_devmode("ZXP9", duplex=True, flip=printing.FLIP_LONG)
+
+        self.assertEqual(short.Duplex, printing.DMDUP_HORIZONTAL)
+        self.assertEqual(long_.Duplex, printing.DMDUP_VERTICAL)
+        self.assertNotEqual(short.Duplex, long_.Duplex)
+
+    def test_a_single_sided_badge_asks_for_simplex(self):
+        # Explicitly simplex, not "unset". Leaving it alone is how a one-sided
+        # badge ends up wasting the back of a card on a duplex-defaulted driver.
+        devmode = self.DevMode()
+
+        with self.patched(devmode):
+            printing.duplex_devmode("ZXP9", duplex=False)
+
+        self.assertEqual(devmode.Duplex, printing.DMDUP_SIMPLEX)
+
+    def test_the_duplex_field_bit_is_set(self):
+        # Without the field bit the driver ignores the value entirely.
+        devmode = self.DevMode()
+
+        with self.patched(devmode):
+            printing.duplex_devmode("ZXP9", duplex=True)
+
+        self.assertTrue(devmode.Fields & printing.DM_DUPLEX)
+
+    def test_the_driver_name_comes_back_for_the_dc(self):
+        with self.patched(self.DevMode(), driver="Zebra ZXP Series 9"):
+            driver, _devmode = printing.duplex_devmode("ZXP9", duplex=True)
+
+        self.assertEqual(driver, "Zebra ZXP Series 9")
+
+    def test_an_unreadable_devmode_falls_back_rather_than_failing(self):
+        # A card on the driver's default settings beats no card at all.
+        win32print = mock.Mock()
+        win32print.OpenPrinter.side_effect = RuntimeError("no such printer")
+
+        with mock.patch.dict(sys.modules, {"win32print": win32print,
+                                           "win32con": mock.Mock()}):
+            self.assertIsNone(printing.duplex_devmode("ZXP9", duplex=True))
+
+    def test_a_printer_with_no_devmode_falls_back(self):
+        win32print = mock.Mock()
+        win32print.OpenPrinter.return_value = 1
+        win32print.GetPrinter.return_value = {"pDevMode": None}
+
+        with mock.patch.dict(sys.modules, {"win32print": win32print,
+                                           "win32con": mock.Mock()}):
+            self.assertIsNone(printing.duplex_devmode("ZXP9", duplex=True))
 
 
 if __name__ == "__main__":

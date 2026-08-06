@@ -12,6 +12,7 @@
 
 use App\Models\Event;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -93,7 +94,7 @@ test('the two gates agree with the panel access User::canAccessPanel() grants to
     // Nobody may lose access at cutover, so access-manage has to be exactly the old rule.
     foreach ([$this->admin, $this->reviewer, $this->attendee] as $user) {
         expect(Gate::forUser($user)->allows('access-manage'))
-            ->toBe($user->canAccessPanel(\Filament\Facades\Filament::getPanel('admin')));
+            ->toBe($user->canAccessPanel(Filament::getPanel('admin')));
     }
 });
 

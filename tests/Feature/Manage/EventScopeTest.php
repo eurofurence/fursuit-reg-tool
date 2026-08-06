@@ -26,7 +26,6 @@ use Inertia\Testing\AssertableInertia as Assert;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\from;
 use function Pest\Laravel\get;
-use function Pest\Laravel\post;
 
 beforeEach(function () {
     $this->admin = User::factory()->create(['is_admin' => true]);

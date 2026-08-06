@@ -146,6 +146,16 @@ class Checkpoint:
     enabled: bool = True
 
 
+# Which edge the printer turns the card about when printing both sides.
+#
+# The back artwork is stored already rotated 180, so exactly one of these
+# produces an upright back and the other prints it upside down. It depends on
+# how the flipper is built, so it is a setting an operator can change at the
+# station rather than something baked into a release.
+FLIP_SHORT_EDGE = "short"
+FLIP_LONG_EDGE = "long"
+
+
 @dataclass
 class CameraConfig:
     """Optional webcam verification for one printer.
@@ -289,6 +299,10 @@ class PrinterBinding:
     snmp_community: str = "public"
 
     camera: CameraConfig = field(default_factory=CameraConfig)
+
+    # Which edge the printer flips a card about for two-sided printing. Change
+    # this if the back of a badge comes out upside down; see FLIP_SHORT_EDGE.
+    duplex_flip: str = FLIP_SHORT_EDGE
 
     def is_card(self) -> bool:
         return self.role == ROLE_CARD

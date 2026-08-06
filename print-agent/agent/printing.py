@@ -32,6 +32,27 @@ from .render import BITS_PER_PIXEL
 IS_WINDOWS = sys.platform.startswith("win")
 
 
+# DEVMODE duplex values from wingdi.h, and the DM_DUPLEX field bit.
+#
+# The distinction that matters for a card is not on/off but which edge the
+# printer flips about. The back artwork is stored already rotated 180, so
+# exactly one of these two produces an upright back; the other prints it
+# upside down. Which one depends on how the flipper is built, so it is a
+# setting rather than a constant.
+DMDUP_SIMPLEX = 1
+DMDUP_VERTICAL = 2      # long-edge binding
+DMDUP_HORIZONTAL = 3    # short-edge binding
+DM_DUPLEX = 0x00001000
+
+FLIP_LONG = "long"
+FLIP_SHORT = "short"
+
+DUPLEX_MODES = {
+    FLIP_LONG: DMDUP_VERTICAL,
+    FLIP_SHORT: DMDUP_HORIZONTAL,
+}
+
+
 class PrintError(RuntimeError):
     """Something went wrong on the way to the printer driver."""
 
@@ -346,12 +367,92 @@ def print_bitmap(printer_name: str, bitmap, job_name: str = "Badge") -> int:
     return print_pages(printer_name, [bitmap], job_name)
 
 
-def print_pages(printer_name: str, bitmaps: Sequence, job_name: str = "Badge") -> int:
+def duplex_devmode(printer_name: str, duplex: bool, flip: str = FLIP_SHORT):
+    """(driver_name, DEVMODE) with two-sided printing set the way we want it.
+
+    Returns None when the DEVMODE cannot be read, so the caller falls back to
+    the driver's own default rather than failing to print.
+
+    This exists because the agent used to open the DC with no DEVMODE at all,
+    which meant two-sided printing was whatever the driver happened to be left
+    set to. A single-sided badge could waste the back of a card, a dual-sided
+    one could print its back onto the *next* card, and the flip edge -- which
+    decides whether the back lands upright -- was nobody's decision.
+    """
+    import win32con
+    import win32print
+
+    try:
+        handle = win32print.OpenPrinter(printer_name)
+    except Exception:  # noqa: BLE001 - fall back to the driver default
+        return None
+
+    try:
+        properties = win32print.GetPrinter(handle, 2)
+        devmode = properties.get("pDevMode")
+
+        if devmode is None:
+            return None
+
+        devmode.Duplex = DUPLEX_MODES.get(flip, DMDUP_HORIZONTAL) if duplex else DMDUP_SIMPLEX
+        devmode.Fields = devmode.Fields | getattr(win32con, "DM_DUPLEX", DM_DUPLEX)
+
+        return (properties.get("pDriverName") or "winspool", devmode)
+    except Exception:  # noqa: BLE001
+        return None
+    finally:
+        try:
+            win32print.ClosePrinter(handle)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _printer_dc(printer_name: str, duplex: bool, flip: str):
+    """A printer DC carrying our DEVMODE, or the driver default if that fails.
+
+    win32ui.PyCDC.CreatePrinterDC takes only a name and so always uses the
+    driver's stored settings. Getting our own DEVMODE in means creating the HDC
+    through win32gui and wrapping it. If any part of that is unavailable we
+    fall back rather than refuse to print: a card on the wrong side beats no
+    card at all, and the fallback is exactly the old behaviour.
+    """
+    import win32ui
+
+    settings = duplex_devmode(printer_name, duplex, flip)
+
+    if settings is not None:
+        driver_name, devmode = settings
+
+        try:
+            import win32gui
+
+            handle = win32gui.CreateDC(driver_name, printer_name, devmode)
+
+            if handle:
+                return win32ui.CreateDCFromHandle(handle)
+        except Exception:  # noqa: BLE001 - fall through to the default DC
+            pass
+
+    try:
+        dc = win32ui.CreateDC()
+        dc.CreatePrinterDC(printer_name)
+
+        return dc
+    except Exception as error:
+        raise PrintError("Could not open printer %r: %s" % (printer_name, error)) from error
+
+
+def print_pages(printer_name: str, bitmaps: Sequence, job_name: str = "Badge",
+                duplex: bool = False, flip: str = FLIP_SHORT) -> int:
     """Send several pages as one spooler document. Returns the job id.
 
     Duplex badges are two pages that must arrive as a single document, or the
     driver treats them as two cards and the back of one badge lands on the front
     of the next.
+
+    `duplex` and `flip` are set on the DEVMODE rather than left to the driver's
+    stored defaults, so the same badge prints the same way whatever the printer
+    preferences were last changed to.
 
     The DC route is used rather than raw `StartDocPrinter`/`WritePrinter`: raw
     mode expects data the device already understands, and what we have is a
@@ -367,11 +468,7 @@ def print_pages(printer_name: str, bitmaps: Sequence, job_name: str = "Badge") -
 
     import win32ui
 
-    try:
-        dc = win32ui.CreateDC()
-        dc.CreatePrinterDC(printer_name)
-    except Exception as error:
-        raise PrintError("Could not open printer %r: %s" % (printer_name, error)) from error
+    dc = _printer_dc(printer_name, duplex, flip)
 
     job_id = 0
 
