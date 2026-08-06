@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import logging
 import mimetypes
+import ssl
 import threading
 import time
 import urllib.error
@@ -44,6 +45,42 @@ from typing import Any, Callable, Dict, List, Optional
 from .config import TelegramConfig
 
 API_ROOT = "https://api.telegram.org"
+
+
+def _ssl_context():
+    """A CA bundle Windows 7 can actually verify Telegram against.
+
+    Measured on the station: Python 3.8 on Windows 7 rejects api.telegram.org
+    with CERTIFICATE_VERIFY_FAILED ("self signed certificate in certificate
+    chain"). It is not interception - the leaf presented there is byte-identical
+    to the genuine GoDaddy-issued certificate - the machine's root store simply
+    does not trust that chain any more, and Windows 7 stopped receiving root
+    updates in 2020.
+
+    certifi ships its own roots and sidesteps the system store entirely. If it
+    is missing we fall back to the default context rather than disabling
+    verification: a print agent that silently accepts any certificate is worse
+    than one that cannot reach Telegram.
+    """
+    try:
+        import certifi  # type: ignore
+    except ImportError:
+        return None
+
+    try:
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def build_opener():
+    """An opener that can validate Telegram's certificate on the target box."""
+    context = _ssl_context()
+
+    if context is None:
+        return urllib.request.build_opener()
+
+    return urllib.request.build_opener(urllib.request.HTTPSHandler(context=context))
 
 # What a button press asks for. Sent as callback_data, which Telegram caps at
 # 64 bytes, so these stay short.
@@ -192,7 +229,7 @@ class TelegramChannel:
         self.timeout = timeout
 
         # Injected so tests can assert on the request without a network.
-        self._opener = opener or urllib.request.build_opener()
+        self._opener = opener or build_opener()
 
         # Telegram replays updates until they are acknowledged by asking for a
         # higher offset. Without this every poll would re-deliver the same

@@ -58,6 +58,11 @@ Pillow==9.5.0
 # 4.4.12 is the last release of the original pysnmp; the 5/6/7 line (lextudio)
 # requires Python 3.10+. agent/zebra.py uses the pysnmp.hlapi sync API, which
 # 4.4.12 provides.
+# Windows 7 stopped getting root certificate updates in 2020, and its store no
+# longer validates api.telegram.org. certifi ships its own roots so the Telegram
+# channel can connect; without it the agent still prints, it just cannot post.
+certifi==2024.7.4
+
 pysnmp==4.4.12
 
 # Hard pin, not incidental: pysnmp 4.4.12 breaks on pyasn1 0.5+, which removed

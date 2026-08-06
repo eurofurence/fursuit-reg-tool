@@ -11,9 +11,11 @@ Two things are load-bearing here and both are easy to get subtly wrong:
 
 import json
 import os
+import ssl
 import urllib.parse
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -460,7 +462,10 @@ class OnboardingTest(unittest.TestCase):
         self.assertIsNone(subject.poll()[0]["chat_id"])
 
     def test_the_poller_starts_on_a_token_alone(self):
-        subject = telegram.TelegramChannel(config(chat_id=""))
+        # Opener injected deliberately. Without it the thread this starts polls
+        # the real Telegram API, which is how a unit suite ends up making
+        # network calls from a print station.
+        subject, _opener = channel(chat_id="")
         poller = telegram.CommandPoller(subject, on_command=lambda _c: None)
 
         self.assertTrue(poller.start())
@@ -471,6 +476,28 @@ class OnboardingTest(unittest.TestCase):
 
         self.assertFalse(subject.send_message("hello"))
         self.assertEqual(opener.requests, [])
+
+
+class TlsTest(unittest.TestCase):
+    """Verification must never be silently weakened to make a send work."""
+
+    def test_a_default_opener_is_built_when_certifi_is_missing(self):
+        # Falling back is fine. Turning verification off would not be: a print
+        # agent that accepts any certificate is worse than one that cannot
+        # reach Telegram.
+        with mock.patch.dict("sys.modules", {"certifi": None}):
+            opener = telegram.build_opener()
+
+        self.assertIsNotNone(opener)
+
+    def test_the_context_never_disables_verification(self):
+        context = telegram._ssl_context()
+
+        if context is None:
+            self.skipTest("certifi not installed in this environment")
+
+        self.assertTrue(context.check_hostname)
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
 
 
 if __name__ == "__main__":
