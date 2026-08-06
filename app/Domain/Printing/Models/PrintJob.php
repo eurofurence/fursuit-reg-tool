@@ -103,6 +103,12 @@ class PrintJob extends Model
         // Create a new job with the same data but referencing this as the original
         $retryJob = self::create([
             'printer_id' => $printerId,
+            // Stay in the batch. Dropping these orphaned a retried card out of
+            // its run: the batch lane would never serve it again, the counters
+            // stopped seeing it, and it fell through to the unbatched lane
+            // instead -- printed, but outside every guard the batch provides.
+            'print_batch_id' => $this->print_batch_id,
+            'sequence' => $this->sequence,
             'printable_type' => $this->printable_type,
             'printable_id' => $this->printable_id,
             'type' => $this->type,
@@ -245,6 +251,11 @@ class PrintJob extends Model
             $job = self::query()
                 ->where('printer_id', $printer->id)
                 ->whereNull('print_batch_id')
+                // Receipts only. This lane has none of the batch guarantees,
+                // and badges must not reach it: every badge print now builds a
+                // batch, so a batch-less badge job is a bug rather than work
+                // to be quietly picked up.
+                ->where('type', PrintJobTypeEnum::Receipt)
                 ->where('status', PrintJobStatusEnum::Pending)
                 ->orderBy('id')
                 ->lockForUpdate()

@@ -23,3 +23,9 @@ yarn-error.log
 .direnv/*
 dataimport/
 /logs
+
+# Playwright MCP debug dumps
+.playwright-mcp/
+
+# Ad-hoc screenshots taken while debugging
+/*.png

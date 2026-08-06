@@ -3,10 +3,10 @@
 namespace App\Filament\Resources;
 
 use App\Domain\Printing\Models\Printer;
+use App\Domain\Printing\Services\BadgePrintQueue;
 use App\Enum\PrintJobTypeEnum;
 use App\Filament\Resources\BadgeResource\Pages;
 use App\Filament\Traits\HasEventFilter;
-use App\Jobs\Printing\PrintBadgeJob;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\BadgeFulfillmentStatusState;
 use App\Models\Badge\State_Fulfillment\Processing;
@@ -17,7 +17,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Bus;
 
 class BadgeResource extends Resource
 {
@@ -474,27 +473,13 @@ class BadgeResource extends Resource
                         // sort by attendee id numerically
                         $sortedRecords = $records->sortBy(fn (Badge $badge) => (int) $badge->sort_attendee_id);
 
-                        // Update badge states to mark them as sent for printing
-                        $sortedRecords->each(function (Badge $record) {
-                            if ($record->status_fulfillment->canTransitionTo(Processing::class)) {
-                                $record->status_fulfillment->transitionTo(Processing::class);
-                            }
-                        });
-
-                        // Create individual print jobs for batching in the correct order
-                        $printJobs = $sortedRecords->map(function (Badge $badge) use ($printerId) {
-                            return new PrintBadgeJob($badge, $printerId);
-                        })->toArray();
-
-                        // Create a Laravel batch with proper chaining
-                        Bus::batch([
-                            // wrap in array to chain!
-                            $printJobs,
-                        ])
-                            ->name("Badge Bulk Print - {$records->count()} badges")
-                            ->onQueue('batch-print')
-                            ->allowFailures()
-                            ->dispatch();
+                        // PrintBatch::build() does the ordering itself, from
+                        // one definition shared with every other caller.
+                        BadgePrintQueue::queue(
+                            badges: $sortedRecords,
+                            printer: Printer::find($printerId),
+                            createdById: auth()->id(),
+                        );
 
                         return true;
                     }),
@@ -526,10 +511,16 @@ class BadgeResource extends Resource
             'after_payment' => $badge->status_payment->getValue(),
         ]);
 
-        // Always use PrintBadgeJob for consistency - it handles PDF generation and file storage
-        PrintBadgeJob::dispatch($badge)->delay(now()->addSeconds($mass * 15));
+        // One badge still gets its own batch. The batch is what carries the
+        // frozen order, the pause-on-failure and the badge lock; a bare job
+        // has none of them.
+        BadgePrintQueue::queue(
+            badges: collect([$badge]),
+            printer: $printerId ? Printer::find($printerId) : null,
+            createdById: auth()->id(),
+        );
 
-        return $badge;
+        return $badge->fresh();
     }
 
     public static function printBadgeWithPrinter(Badge $badge, int $printerId, int $delaySeconds = 0): Badge

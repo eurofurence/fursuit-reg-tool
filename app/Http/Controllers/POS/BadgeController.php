@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\POS;
 
+use App\Domain\Printing\Models\Printer;
+use App\Domain\Printing\Services\BadgePrintQueue;
 use App\Http\Controllers\Controller;
-use App\Jobs\Printing\PrintBadgeJob;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\PickedUp;
 use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Bus;
 
 class BadgeController extends Controller
 {
@@ -57,34 +57,17 @@ class BadgeController extends Controller
             $sortedBadges = $badges; // Already sorted by the query
         }
 
-        // Update badge states to mark them as sent for printing
-        $printedCount = 0;
-        $sortedBadges->each(function ($badge) use (&$printedCount) {
-            if ($badge->status_fulfillment->canTransitionTo(Processing::class)) {
-                $badge->status_fulfillment->transitionTo(Processing::class);
-                $printedCount++;
-            }
-        });
+        $batch = BadgePrintQueue::queue(
+            badges: $sortedBadges,
+            printer: $printerId ? Printer::find($printerId) : null,
+            createdById: auth()->id(),
+        );
 
-        if ($printedCount === 0) {
+        if ($batch === null) {
             return back()->with('error', 'No badges could be printed - all are in wrong state');
         }
 
-        // Create individual print jobs for batching in the correct order
-        $printJobs = $sortedBadges->map(function ($badge) use ($printerId) {
-            return new PrintBadgeJob($badge, $printerId);
-        })->toArray();
-
-        // Create a Laravel batch with proper chaining
-        Bus::batch([
-            $printJobs,
-        ])
-            ->name("POS Badge Bulk Print - {$printedCount} badges")
-            ->onQueue('batch-print')
-            ->allowFailures()
-            ->dispatch();
-
-        return back()->with('success', "{$printedCount} badge(s) have been added to the print queue");
+        return back()->with('success', "{$batch->total_jobs} badge(s) have been added to the print queue");
     }
 
     public function handoutBulk(Request $request)
