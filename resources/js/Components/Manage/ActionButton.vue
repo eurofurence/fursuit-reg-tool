@@ -38,13 +38,20 @@ watch(open, (isOpen) => {
   }
 });
 
+/*
+ * router.visit rather than router[method]: router.delete takes (url, options), not
+ * (url, data, options) the way post/put/patch do. Called through the shorthand, a delete
+ * swallowed the payload as its options object and dropped the real options entirely, so
+ * a bulk delete sent no ids, a field-carrying delete sent no fields, and onFinish never
+ * ran - which left processing and the dialog stuck open forever. visit() has one shape
+ * for every method, so the difference cannot come back.
+ */
 const submit = () => {
-  const method = props.action.method;
-  const payload = { ...props.data, ...form };
-
   processing.value = true;
 
-  router[method](props.action.url, payload, {
+  router.visit(props.action.url, {
+    method: props.action.method,
+    data: { ...props.data, ...form },
     preserveScroll: true,
     onFinish: () => {
       processing.value = false;

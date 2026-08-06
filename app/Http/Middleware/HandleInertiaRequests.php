@@ -74,9 +74,28 @@ class HandleInertiaRequests extends Middleware
         }
 
         return [
-            'manageNav' => fn () => app(Navigation::class)->groups(),
+            'manageNav' => fn () => $this->manageNavigation()->groups(),
             'manageEvent' => fn () => app(EventScope::class)->toArray(),
+            'manageStrip' => fn () => $this->manageNavigation()->strip(),
         ];
+    }
+
+    /**
+     * Navigation with the selected event handed to it.
+     *
+     * The event id is a constructor argument, not something Navigation reads, so
+     * EventScope stays the one reader of the selection. Resolving it out of the
+     * container instead would hand the constructor its null default and every rail
+     * count would silently be an all-events count, cached under one key.
+     *
+     * Built inside the shared closures rather than in share(): Inertia's middleware
+     * calls share() before passing the request on, and ManageEventScope has not seeded
+     * the scope yet at that point. Two calls, one per prop, cost one extra object; the
+     * counts behind them are the same cached read.
+     */
+    private function manageNavigation(): Navigation
+    {
+        return new Navigation(app(EventScope::class)->id());
     }
 
     private function getAuthContent(Request $request): array

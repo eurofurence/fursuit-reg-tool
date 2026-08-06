@@ -1,12 +1,13 @@
 <script setup>
 /**
  * The strip an operator reads without navigating: which event everything is scoped to,
- * whether that event's order window is open, and the counts staff act on.
+ * whether that event's order window is open, and the two counts staff act on, pending
+ * fursuit approvals and printed-but-unverified cards.
  *
- * The counts are not built yet. Phase 0 ships the strip as the slot it is - the event
- * selector plus the orders-open marker, both of which come straight off the event scope
- * prop - and renders KPI segments only if the server sends them, so later phases add
- * data rather than markup. Nothing here fabricates a number.
+ * Every number is server-decided. The segments arrive shaped, tone and all, from
+ * App\Support\Manage\Navigation::strip(), and a segment whose module has not been built
+ * yet arrives with a null url and renders as plain text. Nothing here fabricates a
+ * number and nothing here picks a colour.
  *
  * Polls on its own interval and reloads only its own prop, so it keeps ticking while a
  * list page is being filtered or a form is being filled in (plan 2.4, 15s).
@@ -20,12 +21,12 @@ import { resolve, toneDot, toneText } from './tones.js';
 const props = defineProps({
   /** { id, name, year, orders_open, options: [...] } from App\Support\Manage\EventScope. */
   event: { type: Object, default: null },
-  /** { segments: [{ key, label, value, tone, icon, url }] }. Absent until phase 2.8. */
+  /** { segments: [{ key, label, value, tone, icon, url }] } from Navigation::strip(). */
   strip: { type: Object, default: null },
   user: { type: Object, default: null },
 });
 
-usePoll(15000, { only: ['manageStrip'] }, { autoStart: Boolean(props.strip) });
+usePoll(15000, { only: ['manageStrip'] });
 
 const segments = computed(() => props.strip?.segments ?? []);
 

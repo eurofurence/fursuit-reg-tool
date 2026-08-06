@@ -27,6 +27,18 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class Filter implements Arrayable
 {
+    /**
+     * The token the client sends for a filter the operator has explicitly cleared.
+     *
+     * A `filter[...]` key that is simply absent means "not set", and that is what falls
+     * back to `default`. Clearing needs a form of its own, or picking "All statuses" on
+     * the fursuit list would send nothing and the list would snap straight back to
+     * Pending. An empty string cannot be that form: ConvertEmptyStringsToNull runs
+     * globally and turns `filter[status]=` into a missing key before this class sees it.
+     * Mirrored by FILTER_CLEARED in resources/js/Components/Manage/useTableQuery.js.
+     */
+    public const CLEARED = '__none';
+
     /** @var array<string, string> */
     private array $options = [];
 
@@ -129,7 +141,17 @@ final class Filter implements Arrayable
 
     public function defaultValue(): mixed
     {
-        return $this->default ?? match ($this->type) {
+        return $this->default ?? $this->emptyValue();
+    }
+
+    /**
+     * The blank value for this filter's type, ignoring any declared default. This is
+     * what an explicit clear resolves to, which is the whole point of it being separate
+     * from defaultValue().
+     */
+    public function emptyValue(): mixed
+    {
+        return match ($this->type) {
             'boolean' => false,
             'select' => $this->multiple ? [] : '',
             'range' => ['min' => '', 'max' => ''],

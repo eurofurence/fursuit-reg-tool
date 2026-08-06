@@ -258,6 +258,11 @@ final class Table
      * A filter absent from the request falls back to its declared default, which is how
      * the fursuit list keeps opening on "pending" the way the Filament table did.
      *
+     * Filter::CLEARED is the third state: the operator picked the "all" placeholder or
+     * hit Clear, and the filter must stay off rather than be re-defaulted. Without it
+     * "not set" and "explicitly empty" are the same request and a defaulted filter can
+     * never be turned off.
+     *
      * @return array<string, mixed>
      */
     private function resolveFilterValues(Request $request): array
@@ -267,9 +272,11 @@ final class Table
         foreach ($this->filters as $filter) {
             $raw = $request->input("filter.{$filter->key}");
 
-            $values[$filter->key] = $raw === null
-                ? $filter->defaultValue()
-                : $filter->normalize($raw);
+            $values[$filter->key] = match (true) {
+                $raw === null => $filter->defaultValue(),
+                $raw === Filter::CLEARED => $filter->emptyValue(),
+                default => $filter->normalize($raw),
+            };
         }
 
         return $values;

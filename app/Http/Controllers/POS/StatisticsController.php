@@ -72,22 +72,22 @@ class StatisticsController extends Controller
     }
 
     /**
-     * Finished checkouts only: ACTIVE ones are baskets that nobody has paid
-     * yet, and CANCELLED ones never took money.
+     * Finished checkouts only: ACTIVE ones are baskets nobody has paid yet and
+     * CANCELLED ones never took money.
+     *
+     * Deliberately not filtered by event. A checkout's items are polymorphic
+     * and a single one can mix badges from several years, so there is no honest
+     * way to split its total per event — and the till belongs to one convention
+     * anyway, so every finished checkout on it is this convention's money.
      */
-    private function checkouts(?Event $currentEvent): Builder
+    private function checkouts(): Builder
     {
-        return Checkout::query()
-            ->where('status', 'FINISHED')
-            ->when($currentEvent, fn ($q) => $q->whereHas(
-                'items.badge.fursuit',
-                fn ($f) => $f->where('event_id', $currentEvent->id)
-            ));
+        return Checkout::query()->where('status', 'FINISHED');
     }
 
     private function getToday(?Event $currentEvent): array
     {
-        $paidToday = (clone $this->checkouts($currentEvent))->whereDate('updated_at', today());
+        $paidToday = $this->checkouts()->whereDate('updated_at', today());
 
         return [
             'badges_ordered' => $this->badges($currentEvent)->whereDate('created_at', today())->count(),
@@ -105,7 +105,7 @@ class StatisticsController extends Controller
 
     private function getTotals(?Event $currentEvent): array
     {
-        $paid = $this->checkouts($currentEvent);
+        $paid = $this->checkouts();
 
         return [
             'participants' => $currentEvent
@@ -181,15 +181,17 @@ class StatisticsController extends Controller
     }
 
     /**
-     * Measured over today's prints only. Averaging the whole event would drag
-     * in jobs that sat in a paused queue overnight and tell the desk nothing
-     * about how the printer is behaving now.
+     * Queue time for jobs both created AND printed today.
+     *
+     * Both halves matter: a job queued yesterday and printed this morning spent
+     * the night in a paused queue, and averaging that in reported hours where
+     * the desk wanted to know whether the printer is keeping up right now.
      */
     private function averagePrintSeconds(): ?int
     {
         $seconds = PrintJob::where('status', PrintJobStatusEnum::Printed->value)
             ->whereDate('printed_at', today())
-            ->whereNotNull('printed_at')
+            ->whereDate('created_at', today())
             ->get(['created_at', 'printed_at'])
             ->map(fn ($job) => $job->created_at->diffInSeconds($job->printed_at))
             ->avg();
@@ -208,7 +210,10 @@ class StatisticsController extends Controller
 
         $days = [];
         $day = $currentEvent->starts_at->copy()->startOfDay();
-        $end = $currentEvent->ends_at->copy()->endOfDay();
+
+        // Stop at today: printing rows of zeroes for days that have not
+        // happened yet reads as broken rather than as "not yet".
+        $end = $currentEvent->ends_at->copy()->endOfDay()->min(now()->endOfDay());
 
         while ($day->lte($end)) {
             $days[] = [
@@ -219,7 +224,7 @@ class StatisticsController extends Controller
                     ->where('status_fulfillment', 'picked_up')
                     ->whereDate('picked_up_at', $day)
                     ->count(),
-                'money' => (int) $this->checkouts($currentEvent)->whereDate('updated_at', $day)->sum('total'),
+                'money' => (int) $this->checkouts()->whereDate('updated_at', $day)->sum('total'),
             ];
 
             $day->addDay();

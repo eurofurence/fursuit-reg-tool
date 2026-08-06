@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 
 /**
- * The rail structure, shared on every /manage response.
+ * The rail structure and the top strip's counts, shared on every /manage response.
  *
  * Items whose route does not exist yet are dropped, so each rebuild phase can add a
  * module without touching this file, and items the current user cannot open are dropped
@@ -106,6 +106,54 @@ final class Navigation
     }
 
     /**
+     * The top strip's own segments: the two numbers staff act on (plan 1.2).
+     *
+     * Same counts as the rail, from the same cached read, so the chip beside "Fursuits"
+     * and the "pending" segment three elements to its left can never disagree. The strip
+     * counts unverified *cards* while the rail chip counts the *batches* holding them:
+     * two different questions, both named in plan 2.8 and 1.2, so both are computed.
+     *
+     * Segments are rendered at zero as well, tone idle. An operator reading "0 pending"
+     * knows the queue is empty; a segment that vanishes only says the strip changed.
+     *
+     * @return array{segments: array<int, array<string, mixed>>}
+     */
+    public function strip(): array
+    {
+        $counts = $this->counts();
+        $segments = [];
+
+        if ($this->permits('viewAny', Fursuit::class)) {
+            $segments[] = [
+                'key' => 'pending_fursuits',
+                'label' => 'pending',
+                'value' => $counts['fursuits'],
+                'tone' => $counts['fursuits'] > 0 ? Status::WARN : Status::IDLE,
+                'icon' => 'hourglass',
+                // No filter in the link: the fursuit list declares
+                // Filter::select('status')->default('pending') (plan 2.3), so its plain
+                // URL already is the pending set this segment counts.
+                'url' => $this->urlFor('manage.fursuits.index'),
+            ];
+        }
+
+        if ($this->permits('viewAny', PrintJob::class)) {
+            $segments[] = [
+                'key' => 'unverified_cards',
+                'label' => 'unverified',
+                'value' => $counts['cards'],
+                'tone' => $counts['cards'] > 0 ? Status::WARN : Status::IDLE,
+                'icon' => 'id-card',
+                'url' => $this->urlFor('manage.print-jobs.index', [
+                    'filter' => ['status' => PrintJobStatusEnum::Printed->value, 'verified' => '0'],
+                ]),
+            ];
+        }
+
+        return ['segments' => $segments];
+    }
+
+    /**
      * @param  array{label: string, tone: string}|null  $badge
      * @return array<string, mixed>|null
      */
@@ -122,6 +170,17 @@ final class Navigation
             'url' => route($route),
             'badge' => $badge,
         ];
+    }
+
+    /**
+     * Null for a route a later phase has not registered yet, which the strip renders as
+     * plain text rather than a dead link.
+     *
+     * @param  array<string, mixed>  $parameters
+     */
+    private function urlFor(string $route, array $parameters = []): ?string
+    {
+        return Route::has($route) ? route($route, $parameters) : null;
     }
 
     /**
@@ -153,9 +212,31 @@ final class Navigation
      */
     private function badges(): array
     {
+        $counts = $this->counts();
+
+        return [
+            'badges' => $counts['badges'] > 0 ? ['label' => (string) $counts['badges'], 'tone' => Status::IDLE] : null,
+            'fursuits' => $counts['fursuits'] > 0 ? ['label' => (string) $counts['fursuits'], 'tone' => Status::WARN] : null,
+            'printers' => $counts['printers'] > 0 ? ['label' => (string) $counts['printers'], 'tone' => Status::DANGER] : null,
+            'batches' => $counts['batches'] > 0 ? ['label' => (string) $counts['batches'], 'tone' => Status::WARN] : null,
+        ];
+    }
+
+    /**
+     * The raw numbers behind both the rail chips and the strip segments.
+     *
+     * Cached briefly and keyed by the selected event, because the strip polls and the
+     * two surfaces ask for them on the same request. Only the two event-owned counts are
+     * scoped: printers and print jobs belong to the hall, not to an event, and plan 2.9
+     * lists neither as scoped.
+     *
+     * @return array<string, int>
+     */
+    private function counts(): array
+    {
         $eventId = $this->eventId;
 
-        return Cache::remember('manage.nav.badges.'.($eventId ?? 'all'), self::BADGE_TTL, function () use ($eventId) {
+        return Cache::remember('manage.nav.counts.'.($eventId ?? 'all'), self::BADGE_TTL, function () use ($eventId) {
             $badges = Badge::query()
                 ->when($eventId, fn (Builder $query) => $query->whereHas(
                     'fursuit',
@@ -178,17 +259,23 @@ final class Navigation
                 ->whereIn('condition', $this->stopConditions())
                 ->count();
 
-            $unverified = PrintBatch::query()
+            $unverifiedCards = PrintJob::query()
+                ->where('status', PrintJobStatusEnum::Printed)
+                ->whereNull('verified_print_at')
+                ->count();
+
+            $unverifiedBatches = PrintBatch::query()
                 ->whereHas('printJobs', fn (Builder $query) => $query
                     ->where('status', PrintJobStatusEnum::Printed)
                     ->whereNull('verified_print_at'))
                 ->count();
 
             return [
-                'badges' => $badges > 0 ? ['label' => (string) $badges, 'tone' => Status::IDLE] : null,
-                'fursuits' => $pendingFursuits > 0 ? ['label' => (string) $pendingFursuits, 'tone' => Status::WARN] : null,
-                'printers' => $stopped > 0 ? ['label' => (string) $stopped, 'tone' => Status::DANGER] : null,
-                'batches' => $unverified > 0 ? ['label' => (string) $unverified, 'tone' => Status::WARN] : null,
+                'badges' => $badges,
+                'fursuits' => $pendingFursuits,
+                'printers' => $stopped,
+                'cards' => $unverifiedCards,
+                'batches' => $unverifiedBatches,
             ];
         });
     }

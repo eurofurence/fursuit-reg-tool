@@ -26,6 +26,7 @@ const props = defineProps({
 
 const page = usePage();
 const machine = computed(() => page.props.auth.machine);
+const flashError = computed(() => page.props.flash?.error);
 
 // Debug: Log machine data to console
 console.log('🔍 Machine data:', machine.value);
@@ -119,6 +120,47 @@ function startCardPayment() {
 function isCardPaymentDisabled() {
     return !!(props.transaction && (props.transaction.status === 'SUCCESSFUL' || props.transaction.status === 'PENDING'));
 }
+
+// Auto-start the card payment as soon as the page is ready. This is done
+// client-side on purpose: if SumUp is unreachable the request simply fails and
+// the operator can still fall back to cash on the very same screen.
+//
+// The attempt is remembered in sessionStorage because a failed start redirects
+// back to this page, which remounts the component - without the marker that
+// would retry forever while the reader is offline.
+const autoCardPaymentKey = `pos.checkout.${props.checkout.id}.autoCardPayment`;
+
+function autoCardPaymentAttempted() {
+    try {
+        return window.sessionStorage.getItem(autoCardPaymentKey) === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
+function markAutoCardPaymentAttempted() {
+    try {
+        window.sessionStorage.setItem(autoCardPaymentKey, '1');
+    } catch (e) {
+        // Private mode or storage full - worst case we retry once more.
+    }
+}
+
+function canAutoStartCardPayment() {
+    return props.checkout.status !== 'FINISHED'
+        && props.checkout.total > 0
+        && !!machine.value?.sumup_reader
+        && !props.transaction
+        && !startCardPaymentForm.processing;
+}
+
+onMounted(() => {
+    if (autoCardPaymentAttempted() || !canAutoStartCardPayment()) {
+        return;
+    }
+    markAutoCardPaymentAttempted();
+    startCardPayment();
+});
 
 // Use keyboard composable with custom handlers
 usePosKeyboard({
@@ -350,6 +392,10 @@ function receiptForm(via) {
 
                         <!-- Status -->
                         <div class="mt-4">
+                            <!-- Card payment problems must not hide the cash fallback -->
+                            <Message v-if="flashError" :closable="false" severity="error" class="text-xs p-2 mb-2">
+                                {{ flashError }}
+                            </Message>
                             <div v-if="transaction" class="mb-2">
                                 <div class="text-xs font-medium mb-1">Payment Status:</div>
                                 <Message :closable="false" :severity="getSeverityFromTransactionStatus(transaction.status)" class="text-xs p-2">

@@ -192,7 +192,7 @@ class CheckoutController extends Controller
             $checkout->payment_method_remote_id = $uuid;
             $checkout->save();
 
-        } catch (\Illuminate\Http\Client\RequestException $e) {
+        } catch (\Illuminate\Http\Client\RequestException|\Illuminate\Http\Client\ConnectionException $e) {
             return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id])
                 ->with('error', 'Card payment failed: Unable to connect to payment system.');
         }

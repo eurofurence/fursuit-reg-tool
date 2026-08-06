@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * One endpoint for every file a manage form can attach.
@@ -64,14 +65,47 @@ class UploadController extends Controller
 
         $file = $request->file('file');
 
+        /*
+         * The extension comes from the file's own bytes, never from the client's
+         * filename. `mimes:` validates guessExtension(), which is content-derived, so a
+         * genuine PNG named "x.html" passes; storing it under the client extension would
+         * put it on the bucket as .html, and S3 takes an object's Content-Type from the
+         * key when it is handed a stream. The signed preview URL would then serve
+         * attacker-authored markup as HTML from the bucket origin. Laravel's own
+         * UploadedFile::hashName() takes the extension from the same place this does.
+         */
+        $extension = $file->guessExtension();
+
+        if ($extension === null || ! in_array($extension, $config['mimes'], true)) {
+            // Unreachable while `mimes:` validates the same guessExtension(). Asserted
+            // anyway: the stored key decides the object's Content-Type, so it does not
+            // get to depend on that staying true.
+            throw ValidationException::withMessages([
+                'file' => 'That file type is not accepted.',
+            ]);
+        }
+
         $name = $config['preserve_filename']
-            ? Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)).'.'.$file->getClientOriginalExtension()
-            : Str::random(40).'.'.$file->getClientOriginalExtension();
+            ? Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)).'.'.$extension
+            : Str::random(40).'.'.$extension;
 
         $path = $file->storeAs($config['directory'], $name, [
             'disk' => $config['disk'],
             'visibility' => $config['visibility'],
         ]);
+
+        /*
+         * The s3 disk is configured 'throw' => false, so a failed write - credentials,
+         * network, or an ACL-disabled bucket rejecting the explicit private visibility -
+         * comes back as false rather than raising. Flashing that through would put the
+         * literal false in the form's image field and overwrite a good reference with
+         * nothing, under a green success toast.
+         */
+        if ($path === false) {
+            Toast::flashDanger('Upload failed', 'The file could not be stored. Nothing was changed.');
+
+            return back()->withErrors(['file' => 'The file could not be stored.']);
+        }
 
         Toast::put('upload', [
             'purpose' => $purpose,

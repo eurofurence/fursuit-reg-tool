@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import dayjs from 'dayjs';
 import { formatEuroFromCents } from '@/helpers.js';
-import { ACTION_LABELS, badgeAction, statusPill } from '@/Components/POS/Attendee/badgeAction.js';
+import { ACTION_LABELS, approvalNote, badgeAction, statusPill } from '@/Components/POS/Attendee/badgeAction.js';
 
 const props = defineProps({
     badge: Object,
@@ -33,7 +33,7 @@ const pill = computed(() => statusPill(props.badge));
 const canSelect = computed(() => props.selectable && action.value !== null);
 
 const isDone = computed(() => props.badge.status_fulfillment === 'picked_up');
-const isRejected = computed(() => props.badge.fursuit?.status === 'rejected');
+const approval = computed(() => approvalNote(props.badge));
 
 // One accent for every "do this" button, the same blue the rest of the POS
 // uses. Green stays reserved for status, so a colour never means two things.
@@ -58,7 +58,6 @@ const extras = computed(() => {
         :class="[
             selected ? 'pos-badge--picked' : '',
             isDone ? 'pos-badge--done' : '',
-            isRejected ? 'pos-badge--bad' : '',
         ]"
     >
         <button
@@ -97,6 +96,7 @@ const extras = computed(() => {
                 </span>
                 <span class="pos-badge__meta">
                     <span class="pos-pill" :class="pill.tone">{{ pill.text }}</span>
+                    <span v-if="approval" class="pos-pill" :class="approval.tone">{{ approval.text }}</span>
                     <span
                         class="pos-badge__price"
                         :class="badge.status_payment === 'unpaid' && badge.total > 0 ? 'text-pos-bad' : 'text-pos-muted'"
@@ -120,14 +120,12 @@ const extras = computed(() => {
         -->
         <div class="pos-badge__act">
             <button
-                v-if="!isRejected"
                 type="button"
                 class="pos-btn pos-badge__go"
                 @click="emit('print', badge)"
             >
                 {{ badge.printed_at ? 'Reprint' : 'Print' }}
             </button>
-            <span v-else class="pos-badge__go"></span>
 
             <button
                 v-if="isDone"

@@ -253,6 +253,7 @@ class WorkerTestCase(unittest.TestCase):
         self.progress = []
         self.decisions = []
         self.sent = []
+        self.logs = []
 
         # The default sender behaves like a working printer: Windows accepts the
         # job and the card turns up in the firmware table.
@@ -288,6 +289,7 @@ class WorkerTestCase(unittest.TestCase):
             cache_dir=self.cache,
             on_progress=lambda step, state, detail: self.progress.append((step, state)),
             on_decision=self.decisions.append,
+            on_log=self.logs.append,
             heartbeat_seconds=0.0,
             firmware_timeout=30.0,
             poll_seconds=1.0,
@@ -1115,6 +1117,59 @@ class RestartAssertionTest(WorkerTestCase):
         self.api.start_batch_error = api.ApiError(409, "assigned to another printer")
 
         self.assertEqual(self.build().print_next().kind, worker.BLOCKED)
+
+
+class UnattendedWaitTest(WorkerTestCase):
+    """Unattended means nobody is watching, so it must not park.
+
+    Running dry used to pause the worker with "Choose the next one" -- attended
+    language, and an attended outcome. The station then sat idle through every
+    batch built after that moment until somebody noticed and pressed Start.
+    """
+
+    def test_it_keeps_watching_when_nothing_is_queued(self):
+        self.api.available_batches = []
+        printer = self.build(unattended=True)
+
+        self.assertIsNone(printer.advance_batch())
+        self.assertFalse(printer.is_paused(), "unattended must not park itself")
+
+    def test_attended_still_stops_and_asks(self):
+        # Picking the wrong batch by hand means printing the wrong hundred
+        # cards, so an operator chooses.
+        self.api.available_batches = []
+        printer = self.build(unattended=False)
+
+        printer.advance_batch()
+
+        self.assertIsNone(printer.batch_id)
+
+    def test_a_batch_appearing_later_is_picked_up(self):
+        self.api.available_batches = []
+        printer = self.build(unattended=True)
+
+        self.assertIsNone(printer.advance_batch())
+
+        # A batch is built while the station sits idle.
+        self.api.available_batches = [{"id": 91, "name": "late", "status": "ready"}]
+
+        self.assertEqual(printer.advance_batch(), 91)
+        self.assertEqual([b for b, _ in self.api.started], [91])
+
+    def test_running_dry_is_announced_once_not_every_poll(self):
+        # advance_batch is now called every few seconds while waiting, and
+        # logging each time would bury everything else.
+        self.api.available_batches = []
+        printer = self.build(unattended=True)
+        printer.batch_id = 77
+
+        printer.advance_batch()
+        printer.advance_batch()
+        printer.advance_batch()
+
+        said = [m for m in self.logs if "nothing else to print" in m]
+
+        self.assertEqual(len(said), 1, said)
 
 
 if __name__ == "__main__":

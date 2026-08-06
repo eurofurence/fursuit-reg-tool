@@ -901,7 +901,15 @@ class PrintWorker(_BaseWorker):
 
             if outcome.kind == EMPTY:
                 if self.advance_batch() is None:
-                    self.pause("Batch finished. Choose the next one.")
+                    if self.unattended:
+                        # Nothing to print *yet*. Wait and look again rather
+                        # than parking: unattended means nobody is watching, so
+                        # pausing here left the station idle through every
+                        # batch built after it ran dry until somebody noticed
+                        # and pressed Start.
+                        self._sleep(self.idle_seconds)
+                    else:
+                        self.pause("Batch finished. Choose the next one.")
                 continue
 
             if outcome.kind == JOB_SKIPPED:
@@ -1029,9 +1037,16 @@ class PrintWorker(_BaseWorker):
 
             return self.batch_id
 
+        was_loaded = self.batch_id is not None
+
         self.batch_id = None
-        self._notify_batch(None)
-        self._log("Unattended: nothing else to print.")
+
+        # Only on the way from having work to having none. This is now called
+        # every few seconds while waiting for the next batch, and saying so
+        # each time would bury everything else in the log.
+        if was_loaded:
+            self._notify_batch(None)
+            self._log("Unattended: nothing else to print. Watching for a new batch.")
 
         return None
 

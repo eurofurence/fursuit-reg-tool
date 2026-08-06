@@ -1,6 +1,19 @@
 import { router } from '@inertiajs/vue3';
 
 /**
+ * The token a filter carries once the operator has explicitly cleared it.
+ *
+ * A missing `filter[...]` key means "not set", and the server answers that with the
+ * filter's declared default - which is exactly how the fursuit list keeps opening on
+ * Pending (plan 2.3). So "cleared" needs a query-string form of its own, and an empty
+ * string cannot be it: Laravel's ConvertEmptyStringsToNull global middleware turns
+ * `filter[status]=` back into a missing key before the table ever sees it, and picking
+ * "All statuses" would snap straight back to Pending. App\Support\Manage\Table reads the
+ * same constant.
+ */
+export const FILTER_CLEARED = '__none';
+
+/**
  * All list-page state lives in the query string: search, sort, dir, page, per_page and
  * filter[...]. That keeps every view linkable and shareable, and means a poll can reload
  * just the data props without losing where the operator was.
@@ -8,6 +21,11 @@ import { router } from '@inertiajs/vue3';
 export function useTableQuery(only = ['rows', 'meta', 'filters', 'sort', 'search']) {
   const current = () => Object.fromEntries(new URLSearchParams(window.location.search));
 
+  /**
+   * `null` in `params` removes a key. An empty string is dropped too, which is right for
+   * search, sort and page - none of them has a server-side default to fall back on - but
+   * a filter never sends one; it sends FILTER_CLEARED instead.
+   */
   const visit = (params, { resetPage = true } = {}) => {
     const query = { ...current(), ...params };
 
@@ -44,26 +62,34 @@ export function useTableQuery(only = ['rows', 'meta', 'filters', 'sort', 'search
   const setFilter = (key, value) => {
     const params = {};
 
-    if (Array.isArray(value)) {
-      // Drop any previous indexed entries for this filter before writing the new set.
-      for (const existing of Object.keys(current())) {
-        if (existing.startsWith(`filter[${key}]`)) {
-          params[existing] = '';
-        }
+    // Drop any previous entry for this filter, indexed or scalar, before writing the
+    // new one. Written as null so `visit` removes them rather than as '', which would
+    // now be indistinguishable from a value.
+    for (const existing of Object.keys(current())) {
+      if (existing === `filter[${key}]` || existing.startsWith(`filter[${key}][`)) {
+        params[existing] = null;
       }
+    }
 
-      value.forEach((item, index) => {
-        params[`filter[${key}][${index}]`] = item;
-      });
-
+    if (Array.isArray(value)) {
       if (value.length === 0) {
-        params[`filter[${key}][0]`] = '';
+        params[`filter[${key}]`] = FILTER_CLEARED;
+      } else {
+        value.forEach((item, index) => {
+          params[`filter[${key}][${index}]`] = item;
+        });
       }
 
       return visit(params);
     }
 
-    return visit({ [`filter[${key}]`]: typeof value === 'boolean' ? (value ? '1' : '0') : value });
+    if (typeof value === 'boolean') {
+      params[`filter[${key}]`] = value ? '1' : '0';
+    } else {
+      params[`filter[${key}]`] = value === '' ? FILTER_CLEARED : value;
+    }
+
+    return visit(params);
   };
 
   const setPage = (page) => visit({ page }, { resetPage: false });

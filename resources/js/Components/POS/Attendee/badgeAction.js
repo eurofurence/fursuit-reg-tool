@@ -21,10 +21,9 @@ export function isHandoutable(badge) {
 }
 
 export function badgeAction(badge) {
-    if (badge.fursuit?.status === 'rejected') {
-        return null;
-    }
-
+    // A rejected fursuit is rejected for the gallery and the Catch-Em-All game
+    // only. The attendee still ordered a badge, still paid for it and still
+    // collects it at the desk, so rejection changes nothing about this queue.
     if (badge.status_fulfillment === 'picked_up') {
         return null;
     }
@@ -50,6 +49,22 @@ export const ACTION_LABELS = {
     handout: 'Hand out',
 };
 
+/*
+ * Approval only governs the gallery and the Catch-Em-All game. Shown as a
+ * quiet aside so staff know why a suit is missing from the gallery, without
+ * suggesting the badge cannot be printed or handed over.
+ */
+export function approvalNote(badge) {
+    switch (badge.fursuit?.status) {
+        case 'rejected':
+            return { text: 'not in gallery', tone: 'pos-pill--warn' };
+        case 'pending':
+            return { text: 'approval pending', tone: '' };
+        default:
+            return null;
+    }
+}
+
 export const STATUS_LABELS = {
     pending: 'Not printed',
     processing: 'Printing',
@@ -58,15 +73,12 @@ export const STATUS_LABELS = {
     picked_up: 'Picked up',
 };
 
+/*
+ * The pill states where the badge is in the pickup queue. Fursuit approval is
+ * a separate axis — it decides gallery and Catch-Em-All, not the desk — so it
+ * gets its own chip instead of hiding whether this badge is ready to hand over.
+ */
 export function statusPill(badge) {
-    if (badge.fursuit?.status === 'rejected') {
-        return { text: 'Fursuit rejected', tone: 'pos-pill--bad' };
-    }
-
-    if (badge.fursuit?.status === 'pending') {
-        return { text: 'Approval pending', tone: 'pos-pill--warn' };
-    }
-
     switch (badge.status_fulfillment) {
         case 'pending':
             return { text: STATUS_LABELS.pending, tone: '' };
