@@ -514,17 +514,25 @@ def checkpoint_changed(frame: "np.ndarray", checkpoint: "config.Checkpoint") -> 
 
     sample = sample_point(frame, checkpoint)
 
-    # Too dark to have a colour, so there is nothing here worth comparing.
-    # Reporting "unchanged" is the safe answer: a checkpoint on unlit black
-    # plastic would otherwise flap constantly on sensor noise and stop the
-    # queue at random. The fix is coloured tape on the spot, which the
-    # calibration page says when it sees this.
-    if not sample.has_light():
-        return False
+    # Brightness first, and darkness is never a reason to stop looking.
+    #
+    # This used to bail out on any dark patch, on the grounds that hue and
+    # saturation are noise without light. True, but it threw away the one
+    # signal that actually works over an output bin: the bin is black and a
+    # card is not. Bailing out meant a point there could never see a card
+    # arrive, and -- if calibrated with a card present -- never see one leave.
+    if checkpoint.reference_value is not None:
+        if abs(sample.value - checkpoint.reference_value) > checkpoint.value_tolerance:
+            return True
 
     # Saturation is a real measurement wherever there is light, and it is the
     # signal that matters most here: a white card dropping onto green tape
     # barely moves the hue but collapses the saturation.
+    # Colour comparisons still need light on both sides: the hue of an unlit
+    # patch wanders the whole range on sensor noise alone.
+    if not sample.has_light():
+        return False
+
     if abs(sample.saturation - checkpoint.reference_saturation) > checkpoint.saturation_tolerance:
         return True
 

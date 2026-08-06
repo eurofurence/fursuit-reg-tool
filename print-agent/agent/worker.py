@@ -1429,6 +1429,14 @@ class PrintWorker(_BaseWorker):
         return False
 
     def _read_printer(self) -> Any:
+        """The current printer reading, always fresh.
+
+        Deliberately never served from the monitor's cache. This is what reads
+        the firmware job table, and a stale one means missing the done_ok that
+        confirms a card -- which then waits out the full firmware timeout
+        before falling back to weaker evidence. The UI loop is the side that
+        reuses readings; see PrinterMonitor.poll.
+        """
         try:
             self.monitor.poll()
         except Exception:  # noqa: BLE001 - a failed read is no information, not a fault

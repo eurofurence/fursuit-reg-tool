@@ -335,6 +335,62 @@ class GrayscaleTest(unittest.TestCase):
         self.assertEqual(camera.to_gray(np.full((2, 2), 40, dtype=np.uint8))[0, 0], 40.0)
 
 
+class DarkPatchTest(unittest.TestCase):
+    """Over an output bin, darkness is the signal, not an excuse to give up.
+
+    The bin is black and a card is not, so "is it dark?" answers "is a card
+    there?". An earlier brightness floor bailed out of the comparison on any
+    dark patch, which meant a point over the bin could never see a card arrive
+    -- and, if calibrated with a card present, never see one leave.
+    """
+
+    def point(self, **kwargs):
+        defaults = dict(purpose=config.POINT_TRAY_FULL, x=0.5, y=0.5, radius=0.2,
+                        calibrated=True, reference_value=0.05,
+                        reference_hue=0.0, reference_saturation=0.0)
+        defaults.update(kwargs)
+        return config.Checkpoint(**defaults)
+
+    def frame(self, colour):
+        return np.full((60, 60, 3), colour, np.uint8)
+
+    def test_a_card_landing_on_a_dark_bin_reads_as_changed(self):
+        # Calibrated on the empty black bin; a card is far brighter.
+        changed = camera.checkpoint_changed(self.frame((200, 200, 200)), self.point())
+
+        self.assertTrue(changed)
+
+    def test_the_empty_bin_still_reads_as_unchanged(self):
+        changed = camera.checkpoint_changed(self.frame((12, 12, 12)), self.point())
+
+        self.assertFalse(changed)
+
+    def test_a_card_leaving_is_seen_even_though_the_bin_is_black(self):
+        # Calibrated with a card present, so the dark frame is the change. This
+        # is the case the brightness floor made invisible.
+        bright = self.point(reference_value=0.80)
+        changed = camera.checkpoint_changed(self.frame((10, 10, 10)), bright)
+
+        self.assertTrue(changed)
+
+
+    def test_a_point_calibrated_before_brightness_existed_is_unaffected(self):
+        # Config files outlive code. A point saved without a reference
+        # brightness must behave exactly as it did, or updating the agent would
+        # make every existing point read as changed on the first frame.
+        old = self.point(reference_value=None)
+
+        self.assertFalse(camera.checkpoint_changed(self.frame((200, 200, 200)), old))
+
+    def test_room_lighting_drift_is_still_ignored(self):
+        # The tolerance is wide compared with a light change and narrow
+        # compared with black plastic against a printed card.
+        point = self.point(reference_value=0.50, value_tolerance=0.18)
+        nudged = self.frame((140, 140, 140))
+
+        self.assertFalse(camera.checkpoint_changed(nudged, point))
+
+
 if __name__ == "__main__":
     unittest.main()
 

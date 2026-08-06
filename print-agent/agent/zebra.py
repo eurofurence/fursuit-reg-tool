@@ -311,6 +311,11 @@ class ZebraPoller:
     def __init__(self, host: str, community: str = "public", timeout: int = 3):
         self.host = host
         self.community = community
+
+        # Built once and kept. A fresh SnmpEngine per walk means three of them
+        # per reading, and constructing one is far from free -- it dominated
+        # the time spent waiting for the printer to confirm a card.
+        self._engine = None
         self.timeout = timeout
 
     def read(self) -> Reading:
@@ -425,11 +430,14 @@ class ZebraPoller:
 
         values: Dict[str, str] = {}
 
+        if self._engine is None:
+            self._engine = SnmpEngine()
+
         # Walking the subtrees is cheaper than issuing one GET per OID and keeps
         # the job table complete regardless of how many rows it holds.
         for root in self.ROOTS:
             iterator = nextCmd(
-                SnmpEngine(),
+                self._engine,
                 CommunityData(self.community, mpModel=1),
                 UdpTransportTarget((self.host, 161), timeout=self.timeout, retries=1),
                 ContextData(),

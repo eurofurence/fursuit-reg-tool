@@ -17,8 +17,11 @@ class FakePoller:
     def __init__(self, *readings):
         self.readings = list(readings)
         self.last = None
+        self.reads = 0
 
     def read(self):
+        self.reads += 1
+
         if self.readings:
             self.last = self.readings.pop(0)
         return self.last
@@ -132,6 +135,42 @@ class MonitorTest(unittest.TestCase):
         gate.poll()
 
         self.assertEqual(self.journal.summary()["unknown"], 1)
+
+
+class ReadingCacheTest(unittest.TestCase):
+    """Two callers, one reading.
+
+    Both the UI loop and the print worker poll this monitor, and every reading
+    is three SNMP subtree walks including the whole job table. Taking one each
+    made the confirm step crawl.
+    """
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.poller = FakePoller(reading(), reading())
+        self.subject = monitor.PrinterMonitor(
+            self.poller, vocabulary.ConditionJournal(Path(self.dir.name) / "j.jsonl"))
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def test_a_recent_reading_is_reused(self):
+        self.subject.poll()
+        self.subject.poll(max_age=60.0)
+
+        self.assertEqual(self.poller.reads, 1)
+
+    def test_a_stale_reading_is_replaced(self):
+        self.subject.poll()
+        self.subject.poll(max_age=0.0)
+
+        self.assertEqual(self.poller.reads, 2)
+
+    def test_the_first_poll_always_reads(self):
+        # No reading yet, so max_age has nothing to reuse.
+        self.subject.poll(max_age=60.0)
+
+        self.assertEqual(self.poller.reads, 1)
 
 
 if __name__ == "__main__":

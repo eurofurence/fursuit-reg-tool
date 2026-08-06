@@ -1168,7 +1168,12 @@ class AgentApp(tk.Tk):
     def _monitor_loop(self) -> None:
         while not self.stop_flag.is_set():
             try:
-                self.monitor.poll()
+                # Reuse whatever the print worker just read. It polls the same
+                # monitor every second while waiting for a card, and each
+                # reading is three SNMP subtree walks including the job table;
+                # taking our own as well doubled the traffic and slowed the
+                # confirmation the worker is waiting on.
+                self.monitor.poll(max_age=POLL_SECONDS)
                 self.events.put(("reading", None))
             except Exception as error:
                 self.events.put(("log", "Monitor error: %s" % error))

@@ -115,12 +115,29 @@ class Checkpoint:
     # Reference colour captured during calibration with the tray empty.
     reference_hue: float = 0.0
     reference_saturation: float = 0.0
+
+    # Brightness when calibrated. Over the output bin this is the signal that
+    # matters: the bin is black and a card is not, so "is it dark?" answers
+    # "is a card there?" far more reliably than hue, which is pure noise on
+    # unlit plastic.
+    #
+    # None means no brightness was captured, which is what every point
+    # calibrated before this field existed looks like. It cannot default to 0.0
+    # instead: 0.0 is a real reading -- an unlit black bin -- and treating a
+    # config written last week as "reference black" would make every existing
+    # point read as changed the moment the agent was updated.
+    reference_value: Optional[float] = None
     calibrated: bool = False
 
     # How far the patch may drift before we call it changed. Generous on
     # purpose: lighting shifts move these more than you would expect.
     hue_tolerance: float = 15.0
     saturation_tolerance: float = 0.30
+
+    # How far brightness may drift before the point counts as changed. Wide
+    # enough to ignore the hall lights moving, far narrower than the gap
+    # between black plastic and a printed card.
+    value_tolerance: float = 0.18
 
     # Consecutive frames that must agree before acting, so a hand passing in
     # front of the lens does not stop the queue.

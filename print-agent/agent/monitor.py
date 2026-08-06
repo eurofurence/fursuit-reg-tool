@@ -12,6 +12,7 @@ healthy.
 
 from __future__ import annotations
 
+import time
 from typing import Callable, List, Optional
 
 from . import vocabulary, zebra
@@ -31,6 +32,9 @@ class PrinterMonitor:
         self.condition: str = zebra.UNKNOWN
         self.reading: Optional[zebra.Reading] = None
 
+        # When the last reading was taken, for the max_age cache in poll().
+        self._read_at = 0.0
+
         # Called with (condition, reading) whenever the condition changes.
         # Used to push the state to the server and to alert staff.
         self.on_change: List[Callable[[str, zebra.Reading], None]] = []
@@ -39,9 +43,22 @@ class PrinterMonitor:
         # UI can prompt the operator to send the file in.
         self.on_unknown: List[Callable[[zebra.Reading], None]] = []
 
-    def poll(self) -> str:
-        """Read the printer and update the current condition."""
+    def poll(self, max_age: float = 0.0) -> str:
+        """Read the printer and update the current condition.
+
+        ``max_age`` returns the last reading instead of taking a new one when
+        it is younger than that many seconds. Two things poll this monitor --
+        the UI's own loop and the print worker waiting for a card to be
+        confirmed -- and each reading is three SNMP subtree walks including the
+        whole job table. Without this they each took their own, doubling the
+        traffic and making the confirm step crawl.
+        """
+        if max_age > 0.0 and self.reading is not None:
+            if (time.monotonic() - self._read_at) < max_age:
+                return self.condition
+
         reading = self.poller.read()
+        self._read_at = time.monotonic()
         condition = zebra.classify(reading, self.ribbon_warn_threshold)
 
         logged = self.journal.record(reading, condition)

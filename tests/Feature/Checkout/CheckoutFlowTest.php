@@ -140,7 +140,7 @@ class CheckoutFlowTest extends TestCase
         ]);
 
         // Pre-cache auth data to avoid auth flow
-        cache()->put('fiskaly_auth_data', encrypt([
+        cache()->put(FiskalyService::authCacheKey(), encrypt([
             'access_token' => 'test-access-token',
             'refresh_token' => 'test-refresh-token',
             'access_token_expires_at' => now()->addHour()->toISOString(),
@@ -199,7 +199,7 @@ class CheckoutFlowTest extends TestCase
         ]);
 
         // Pre-cache auth data to avoid auth flow
-        cache()->put('fiskaly_auth_data', encrypt([
+        cache()->put(FiskalyService::authCacheKey(), encrypt([
             'access_token' => 'test-access-token',
             'refresh_token' => 'test-refresh-token',
             'access_token_expires_at' => now()->addHour()->toISOString(),
@@ -273,7 +273,7 @@ class CheckoutFlowTest extends TestCase
         ]);
 
         // Pre-cache auth data to avoid auth flow
-        cache()->put('fiskaly_auth_data', encrypt([
+        cache()->put(FiskalyService::authCacheKey(), encrypt([
             'access_token' => 'test-access-token',
             'refresh_token' => 'test-refresh-token',
             'access_token_expires_at' => now()->addHour()->toISOString(),
@@ -311,7 +311,7 @@ class CheckoutFlowTest extends TestCase
         ]);
 
         // Pre-cache auth data to avoid auth flow
-        cache()->put('fiskaly_auth_data', encrypt([
+        cache()->put(FiskalyService::authCacheKey(), encrypt([
             'access_token' => 'test-access-token',
             'refresh_token' => 'test-refresh-token',
             'access_token_expires_at' => now()->addHour()->toISOString(),
@@ -351,7 +351,7 @@ class CheckoutFlowTest extends TestCase
         ]);
 
         // Pre-cache auth data to avoid auth flow
-        cache()->put('fiskaly_auth_data', encrypt([
+        cache()->put(FiskalyService::authCacheKey(), encrypt([
             'access_token' => 'test-access-token',
             'refresh_token' => 'test-refresh-token',
             'access_token_expires_at' => now()->addHour()->toISOString(),

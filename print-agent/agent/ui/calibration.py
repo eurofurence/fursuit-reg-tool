@@ -245,6 +245,7 @@ def calibrate_checkpoint(checkpoint: Checkpoint, frame) -> bool:
 
     checkpoint.reference_hue = float(sample.hue)
     checkpoint.reference_saturation = float(sample.saturation)
+    checkpoint.reference_value = float(sample.value)
     checkpoint.calibrated = True
 
     return True
@@ -1237,8 +1238,13 @@ class CalibrationPage(ttk.Frame):
                         text="reads blank card stock directly; nothing to calibrate")
                 else:
                     self.reference_label.config(
-                        text=("reference hue %.0f, saturation %.2f" % (
-                            item.reference_hue, item.reference_saturation))
+                        text=(("reference brightness %.2f, hue %.0f, saturation %.2f" % (
+                            item.reference_value, item.reference_hue,
+                            item.reference_saturation))
+                            if item.reference_value is not None else
+                            ("reference hue %.0f, saturation %.2f "
+                             "- recapture to use brightness" % (
+                                 item.reference_hue, item.reference_saturation)))
                         if item.calibrated else "no reference colour stored yet")
                 self.point_controls.grid()
             else:

@@ -58,6 +58,7 @@ return [
         'api_secret' => env('FISKALY_API_SECRET'),
         'tss_id' => env('FISKALY_TSS_ID'),
         'puk' => env('FISKALY_ADMIN_PUK'),
+        'pin' => env('FISKALY_ADMIN_PIN'),
     ],
 
     'sumup' => [
