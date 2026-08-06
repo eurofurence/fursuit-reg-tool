@@ -6,7 +6,6 @@ use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\SpecialCodeAction;
 use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Models\Event;
-use Illuminate\Database\Eloquent\Casts\AsArrayObject;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,7 +17,7 @@ class SpecialCode extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'constructor_data' => AsArrayObject::class,
+        'constructor_data' => 'array',
         'type' => SpecialCodeType::class,
     ];
 

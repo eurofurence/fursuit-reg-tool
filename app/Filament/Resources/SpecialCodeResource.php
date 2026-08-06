@@ -19,9 +19,9 @@ class SpecialCodeResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-qr-code';
 
-    protected static ?string $navigationGroup = 'Events & Registration';
+    protected static ?string $navigationGroup = 'Catch Em All';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -41,14 +41,33 @@ class SpecialCodeResource extends Resource
                     ->helperText('PHP class used for code handling')
                     ->options(
                         SpecialActionsRegister::getFillamentOptions())
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set, callable $get): void {
+                        if (filled($get('constructor_data'))) {
+                            return;
+                        }
+
+                        $configData = self::getConfigDataForType($state);
+
+                        if ($configData === null) {
+                            $set('constructor_data', null);
+
+                            return;
+                        }
+
+                        $set('constructor_data', json_encode($configData, JSON_PRETTY_PRINT));
+                    })
                     ->columnSpanFull(),
                 Forms\Components\Textarea::make('constructor_data')
                     ->label('Constructor Data')
                     ->helperText('Data to be passed to the constructor of the action class')
                     ->rows(3)
                     ->columnSpanFull()
-                    ->disabled(fn ($get) => $get('type') && SpecialActionsRegister::getConfigDataForSpecialCodeType(SpecialCodeType::tryFrom($get('type'))) === null)
-                    ->placeholder(fn ($get) => $get('type') ? (SpecialActionsRegister::getConfigDataForSpecialCodeType(SpecialCodeType::tryFrom($get('type'))) ? json_encode(SpecialActionsRegister::getConfigDataForSpecialCodeType(SpecialCodeType::tryFrom($get('type'))), JSON_PRETTY_PRINT) : 'No data required for this type.') : 'Nothing selected')
+                    ->disabled(fn ($get) => $get('type') && self::getConfigDataForType($get('type')) === null)
+                    ->placeholder(fn ($get) => self::buildConstructorDataPlaceholder($get('type')))
+                    ->formatStateUsing(fn ($state) => self::encodeConstructorDataForForm($state))
+                    ->dehydrated(true)
+                    ->dehydrateStateUsing(fn ($state) => self::decodeConstructorDataFromForm($state))
                     ->rules(['nullable', 'json']),
                 Forms\Components\TextInput::make('code')
                     ->label('Code')
@@ -125,5 +144,55 @@ class SpecialCodeResource extends Resource
             $baseDomain,
             urlencode($code)
         );
+    }
+
+    private static function getConfigDataForType(mixed $type): ?array
+    {
+        $specialCodeType = SpecialCodeType::tryFrom((int) $type);
+
+        if (! $specialCodeType) {
+            return null;
+        }
+
+        return SpecialActionsRegister::getConfigDataForSpecialCodeType($specialCodeType);
+    }
+
+    private static function buildConstructorDataPlaceholder(mixed $type): string
+    {
+        if (! $type) {
+            return 'Nothing selected';
+        }
+
+        $configData = self::getConfigDataForType($type);
+
+        if ($configData === null) {
+            return 'No data required for this type.';
+        }
+
+        return json_encode($configData, JSON_PRETTY_PRINT) ?: '{}';
+    }
+
+    private static function encodeConstructorDataForForm(mixed $state): ?string
+    {
+        if ($state === null || $state === '') {
+            return null;
+        }
+
+        if (is_string($state)) {
+            return $state;
+        }
+
+        return json_encode($state, JSON_PRETTY_PRINT) ?: null;
+    }
+
+    private static function decodeConstructorDataFromForm(mixed $state): ?array
+    {
+        if (! is_string($state) || trim($state) === '') {
+            return null;
+        }
+
+        $decoded = json_decode($state, true);
+
+        return is_array($decoded) ? $decoded : null;
     }
 }
