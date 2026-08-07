@@ -262,7 +262,9 @@ class GameController extends Controller
 
     public function profile()
     {
-        return Inertia::render('CatchEmAll/Profile');
+        $profile = Auth::user()->userProfile()->firstOrCreate([]);
+
+        return to_route('catch-em-all.profiles.show', $profile);
     }
 
     public function completeIntroduction(Request $request)

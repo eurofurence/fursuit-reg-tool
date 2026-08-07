@@ -35,7 +35,11 @@ class UserResource extends Resource
                     ->email()
                     ->required()
                     ->maxLength(255),
-                Forms\Components\Textarea::make('avatar')
+                Forms\Components\TextInput::make('avatar')
+                    ->label('Avatar URL (from OIDC provider)')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('Synced from the identity provider on every login.')
                     ->columnSpanFull(),
                 Forms\Components\Toggle::make('is_reviewer')
                     ->required(),
@@ -49,6 +53,9 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('avatar_url')
+                    ->label('Avatar')
+                    ->circular(),
                 Tables\Columns\TextColumn::make('remote_id')
                     ->searchable(),
                 Tables\Columns\IconColumn::make('valid_registration')

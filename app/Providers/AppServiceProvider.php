@@ -6,6 +6,7 @@ use App\Domain\Checkout\Models\TseClient;
 use App\Models\Badge\Badge;
 use App\Models\Fursuit\Fursuit;
 use App\Models\SumUpReader;
+use App\Models\User;
 use App\Providers\Socialite\SocialiteIdentityProvider;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         Badge::observe(\App\Observers\BadgeObserver::class);
         TseClient::observe(\App\Observers\TseClientsObserver::class);
         SumUpReader::observe(\App\Observers\SumUpReaderObserver::class);
+        User::observe(\App\Observers\UserObserver::class);
         $socialite = $this->app->make(Factory::class);
         $socialite->extend('identity', function () use ($socialite) {
             $config = config('services.identity');

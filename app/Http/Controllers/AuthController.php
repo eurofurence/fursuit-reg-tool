@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\MirrorUserAvatarJob;
 use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
@@ -27,9 +28,9 @@ class AuthController extends Controller
 
         if ($isCatchEmAll) {
             $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-            $callbackUrl = $protocol . '://' . $currentHost . '/auth/callback';
+            $callbackUrl = $protocol.'://'.$currentHost.'/auth/callback';
         } else {
-            $callbackUrl = rtrim(config('app.url'), '/') . '/auth/callback';
+            $callbackUrl = rtrim(config('app.url'), '/').'/auth/callback';
         }
 
         $url = Socialite::driver('identity')
@@ -50,9 +51,9 @@ class AuthController extends Controller
 
             if ($isCatchEmAll) {
                 $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-                $callbackUrl = $protocol . '://' . $currentHost . '/auth/callback';
+                $callbackUrl = $protocol.'://'.$currentHost.'/auth/callback';
             } else {
-                $callbackUrl = rtrim(config('app.url'), '/') . '/auth/callback';
+                $callbackUrl = rtrim(config('app.url'), '/').'/auth/callback';
             }
 
             $socialLiteUser = Socialite::driver('identity')
@@ -65,7 +66,8 @@ class AuthController extends Controller
 
             if ($isCatchEmAll) {
                 $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-                return redirect($protocol . '://' . $currentHost . '/auth/login');
+
+                return redirect($protocol.'://'.$currentHost.'/auth/login');
             } else {
                 return redirect()->route('auth.login');
             }
@@ -101,6 +103,13 @@ class AuthController extends Controller
             'email' => $socialLiteUser->getEmail(),
             'avatar' => $socialLiteUser->getAvatar(),
         ]);
+
+        // Mirror the IDP avatar onto our storage bucket if it's out of sync.
+        if ($user->wasRecentlyCreated
+            || $user->wasChanged('avatar')
+            || ($user->avatar && ! $user->avatar_path)) {
+            MirrorUserAvatarJob::dispatch($user);
+        }
 
         $user->wallet->balance;
 
@@ -193,8 +202,9 @@ class AuthController extends Controller
         if ($isCatchEmAll) {
             // Include post logout redirect for Catch-Em-All
             $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-            $returnUrl = $protocol . '://' . $currentHost;
-            return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout?post_logout_redirect_uri=' . urlencode($returnUrl));
+            $returnUrl = $protocol.'://'.$currentHost;
+
+            return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout?post_logout_redirect_uri='.urlencode($returnUrl));
         } else {
             return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout');
         }
@@ -212,7 +222,8 @@ class AuthController extends Controller
 
         if ($isCatchEmAll) {
             $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-            return redirect($protocol . '://' . $currentHost);
+
+            return redirect($protocol.'://'.$currentHost);
         }
 
         // For main domain, just complete the logout (no redirect needed)
