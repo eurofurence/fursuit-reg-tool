@@ -231,6 +231,16 @@ class PrintAgentClient:
 
         return response.get("job"), str(response.get("batch_status") or "")
 
+    def reprint(self, job_id: int, reason: str = "") -> Dict[str, Any]:
+        """POST /jobs/{id}/reprint. Queue this card again, batch keeps running.
+
+        Deliberately not `failed`: that pauses the batch and asks for a human.
+        A card that came out badly needs printing again, not the rest of the
+        run stopped behind it.
+        """
+        return self.post("/jobs/%d/reprint" % int(job_id),
+                         {"reason": reason or "Card rejected at the printer"})
+
     def heartbeat(self, job_id: int) -> Dict[str, Any]:
         """Renew the lease. A retransfer card takes over a minute to print, and
         an unrenewed lease gets reaped out from under us mid-print."""

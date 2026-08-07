@@ -154,6 +154,37 @@ class AgentJobController extends AgentController
     }
 
     /**
+     * Print this card again, leaving the rest of the run alone.
+     *
+     * Distinct from `failed`, which pauses the batch and asks for a human.
+     * A card that came out badly needs reprinting, not the other twenty-three
+     * cards stopped behind it.
+     */
+    public function reprint(Request $request, int $job): JsonResponse
+    {
+        $data = $request->validate([
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        $printJob = $this->jobForMachine($job);
+        $this->touchAgent($request);
+
+        $replacement = $printJob->reprintCard($data['reason'] ?? 'Card rejected at the printer');
+
+        if ($replacement === null) {
+            return response()->json([
+                'error' => 'That batch is finished, so the card cannot be added back to it. '
+                    .'Print the badge again from the POS.',
+            ], 409);
+        }
+
+        return response()->json([
+            'job' => ['id' => $replacement->id, 'sequence' => $replacement->sequence],
+            'batch_status' => $printJob->batch?->fresh()->status->value,
+        ]);
+    }
+
+    /**
      * Stamp the card as verified.
      *
      * Deliberately separate from `printed`. Whether the job finished and whether

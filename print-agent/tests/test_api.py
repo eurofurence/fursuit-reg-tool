@@ -795,5 +795,32 @@ class DownloadTest(unittest.TestCase):
         self.assertEqual(opener.calls, 2)
 
 
+class ReprintEndpointTest(unittest.TestCase):
+    """Queue one card again without stopping the run."""
+
+    def test_it_posts_to_the_reprint_endpoint(self):
+        client, opener = build(FakeResponse(b'{"job": {"id": 99, "sequence": 4}}'))
+
+        client.reprint(42, "smudged")
+
+        self.assertIn("/jobs/42/reprint", opener.last.full_url)
+
+    def test_it_sends_a_reason(self):
+        client, opener = build(FakeResponse())
+
+        client.reprint(42, "half transferred")
+
+        self.assertIn("half transferred", opener.last.data.decode("utf-8"))
+
+    def test_a_missing_reason_still_says_something_useful(self):
+        # The reason lands on the printed job's record, and "" there tells
+        # whoever reads it later nothing at all.
+        client, opener = build(FakeResponse())
+
+        client.reprint(42)
+
+        self.assertIn("rejected", opener.last.data.decode("utf-8").lower())
+
+
 if __name__ == "__main__":
     unittest.main()

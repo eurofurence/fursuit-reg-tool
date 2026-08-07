@@ -36,5 +36,7 @@ Route::middleware('auth:sanctum')->prefix('api/print-agent')->name('print-agent.
     Route::post('/jobs/{job}/printing', [AgentJobController::class, 'printing'])->name('jobs.printing');
     Route::post('/jobs/{job}/printed', [AgentJobController::class, 'printed'])->name('jobs.printed');
     Route::post('/jobs/{job}/failed', [AgentJobController::class, 'failed'])->name('jobs.failed');
+
+    Route::post('/jobs/{job}/reprint', [AgentJobController::class, 'reprint'])->name('jobs.reprint');
     Route::post('/jobs/{job}/verify', [AgentJobController::class, 'verify'])->name('jobs.verify');
 });

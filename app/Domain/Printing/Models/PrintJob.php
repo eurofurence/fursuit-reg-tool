@@ -352,6 +352,57 @@ class PrintJob extends Model
      * run drain onto a broken printer, which is how badges went missing.
      */
     /**
+     * Print this card again, without stopping the run.
+     *
+     * For the card that came out smudged, half-transferred or plainly wrong.
+     * The operator is holding it, the batch is midway through, and pausing
+     * twenty-three good cards over one bad one is the wrong trade.
+     *
+     * A new job rather than un-printing this one. Printed is terminal on
+     * purpose: the card physically existed and somebody rejected it, and that
+     * is worth keeping. The replacement goes on the end of the batch so it
+     * prints after the run rather than claiming a place in the middle of a
+     * sequence that is already half-filed.
+     *
+     * Returns null when the batch can no longer take work.
+     */
+    public function reprintCard(string $reason = 'Card rejected at the printer'): ?self
+    {
+        $batch = $this->batch;
+
+        if ($batch === null || $batch->status->isTerminal()) {
+            return null;
+        }
+
+        $next = (int) $batch->printJobs()->max('sequence') + 1;
+
+        $replacement = $batch->printJobs()->create([
+            'printer_id' => $this->printer_id,
+            'printable_type' => $this->printable_type,
+            'printable_id' => $this->printable_id,
+            'type' => $this->type,
+            'status' => PrintJobStatusEnum::Pending,
+            'file' => $this->file,
+            'sequence' => $next,
+            'priority' => 1,
+            'retry_of' => $this->id,
+            'error_message' => null,
+        ]);
+
+        // The badge is being printed again, so it stays committed to the run.
+        $printable = $this->printable;
+
+        if ($printable instanceof Badge && ! $printable->isPrintingLocked()) {
+            $printable->forceFill(['printing_locked_at' => now()])->saveQuietly();
+        }
+
+        $this->update(['error_message' => $reason]);
+        $batch->recalculateCounters();
+
+        return $replacement;
+    }
+
+    /**
      * Put a failed job back in the queue.
      *
      * A failed card is not a lost card. Whatever stopped it -- a jam, an empty

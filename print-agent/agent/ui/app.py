@@ -790,8 +790,19 @@ class AgentApp(tk.Tk):
         ttk.Label(top, text="badge number, fursuit name, or any word in the detail",
                   style="Sub.TLabel").pack(side="left", padx=(10, 0))
 
+        # For the card in somebody's hand that came out badly. Deliberately not
+        # "fail": failing a job pauses the batch and fetches a human, and the
+        # cards queued behind a smudged one do not need stopping.
+        ttk.Button(top, text="Print this card again",
+                   command=self._reprint_selected).pack(side="right")
+
         columns = ("at", "kind", "card", "fursuit", "printer", "outcome", "detail")
         self.history_tree = ttk.Treeview(tab, columns=columns, show="headings", height=18)
+
+        # Row id -> the print job behind it, so a selected line can be acted on.
+        # The job id is not shown: it means nothing to anybody at the desk, who
+        # is looking at the badge number printed on the card in their hand.
+        self.history_jobs = {}
 
         for column, heading, width in (
             ("at", "When", 140),
@@ -817,12 +828,49 @@ class AgentApp(tk.Tk):
 
         self.history_status = ttk.Label(tab, text="", style="Sub.TLabel")
 
+    def _reprint_selected(self) -> None:
+        """Queue the selected card again, without stopping the run."""
+        selection = self.history_tree.selection()
+
+        if not selection:
+            messagebox.showinfo("No card chosen",
+                                "Choose the card in the list first.")
+            return
+
+        job_id = self.history_jobs.get(selection[0])
+        card = self.history_tree.set(selection[0], "card") or "?"
+
+        if not job_id:
+            messagebox.showinfo(
+                "Nothing to reprint",
+                "That line is not a print job, so there is no card to queue again.")
+            return
+
+        if not messagebox.askyesno(
+            "Print card %s again?" % card,
+            "The card already printed. This adds another one to the end of the "
+            "batch and leaves the rest of the run alone.\n\nPrint %s again?" % card,
+        ):
+            return
+
+        try:
+            client, _store, _notifier = self._services()
+            client.reprint(job_id, "Rejected at the printer")
+        except Exception as error:  # noqa: BLE001 - the operator gets told
+            messagebox.showerror("Could not queue it",
+                                 "The server refused:\n\n%s" % error)
+            return
+
+        self._log("Card %s queued to print again" % card)
+        self._refresh_history()
+
     def _clear_history_search(self) -> None:
         self.history_search.delete(0, "end")
         self._refresh_history()
 
     def _refresh_history(self) -> None:
         self.history_tree.delete(*self.history_tree.get_children())
+        self.history_jobs = {}
 
         try:
             _, store, _ = self._services()
@@ -840,7 +888,7 @@ class AgentApp(tk.Tk):
             elif outcome in ("unverified", "unreadable", "retrying") or "low" in outcome:
                 tags = ("warn",)
 
-            self.history_tree.insert("", "end", tags=tags, values=(
+            item = self.history_tree.insert("", "end", tags=tags, values=(
                 row.get("at", ""),
                 row.get("kind", ""),
                 row.get("card_number") or "",
@@ -849,6 +897,8 @@ class AgentApp(tk.Tk):
                 row.get("outcome") or "",
                 row.get("detail") or "",
             ))
+
+            self.history_jobs[item] = row.get("job_id")
 
     def _build_diagnostics_tab(self) -> None:
         tab = ttk.Frame(self.tabs, padding=14)
