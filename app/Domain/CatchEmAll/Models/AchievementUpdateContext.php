@@ -56,15 +56,11 @@ readonly class AchievementUpdateContext
         if ($specialCodeType !== SpecialCodeType::EXPLORER) {
             $locationsExplored = 0;
         } else {
-            // TODO: OPTIMIZATION: Count this in a separate table
-            $locationsExplored = SpecialCode::where('type', SpecialCodeType::EXPLORER)
-                ->where('special_codes.event_id', $currentEvent->id)
-                ->join('user_catch_logs', 'special_codes.code', '=', 'user_catch_logs.catch_code')
-                ->where('user_catch_logs.user_id', $eventUser->user_id)
-                ->where('user_catch_logs.is_successful', true)
-                ->distinct('code')
+            $locationsExplored = UserSpecialCatch::query()
+                ->where('event_user_id', $eventUser->id)
+                ->where('user_special_catches.type', SpecialCodeType::EXPLORER)
+                ->distinct('special_code_id')
                 ->count();
-            $locationsExplored++; // Lacy Updated because it reads the log
         }
         $userTotalDaysCaught = UserCatch::where('event_user_id', $eventUser->id)
             ->selectRaw('DISTINCT DATE(created_at) as date')

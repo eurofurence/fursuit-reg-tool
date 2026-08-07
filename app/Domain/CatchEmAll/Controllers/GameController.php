@@ -7,6 +7,7 @@ use App\Domain\CatchEmAll\Achievements\Utils\AchievementRegister;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\Models\UserCatch;
+use App\Domain\CatchEmAll\Models\UserSpecialCatch;
 use App\Domain\CatchEmAll\Services\AchievementService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
 use App\Http\Controllers\Controller;
@@ -114,6 +115,12 @@ class GameController extends Controller
                 try {
                     $actionInstance = $specialCode->createActionInstance();
                     $specialCodeType = $actionInstance->use($eventUser);
+
+                    UserSpecialCatch::create([
+                        'event_user_id' => $eventUser->id,
+                        'special_code_id' => $specialCode->id,
+                        'type' => $specialCodeType,
+                    ]);
                 } catch (\Exception $e) {
                     $errors[] = 'Error processing special code';
                 }

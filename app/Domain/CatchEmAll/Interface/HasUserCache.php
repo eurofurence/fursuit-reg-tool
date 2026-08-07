@@ -11,5 +11,5 @@ interface HasUserCache extends Achievement
      *
      * @return array<string> An array of cache keys that can be cleared by the main process
      */
-    public function getCacheKeys(EventUser $eventUser): array;
+    public function getUserCacheKeys(EventUser $eventUser): array;
 }

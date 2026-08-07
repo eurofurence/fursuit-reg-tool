@@ -9,6 +9,7 @@ use App\Models\Event;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SpecialCode extends Model
 {
@@ -27,6 +28,11 @@ class SpecialCode extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function userSpecialCatches(): HasMany
+    {
+        return $this->hasMany(UserSpecialCatch::class);
     }
 
     /**
