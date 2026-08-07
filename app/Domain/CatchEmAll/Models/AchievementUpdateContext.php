@@ -22,7 +22,8 @@ readonly class AchievementUpdateContext
         public int $userUniqueFursuits,
         public int $userUniqueSpecies,
         public int $locationsExplored,
-        public int $userTotalDaysCaught
+        public int $userTotalDaysCaught,
+        public int $userTotalTeamCatches
     ) {}
 
     /**
@@ -53,18 +54,18 @@ readonly class AchievementUpdateContext
             ->where('species.checked', true)
             ->distinct('fursuits.species_id')
             ->count('fursuits.species_id');
-        if ($specialCodeType !== SpecialCodeType::EXPLORER) {
-            $locationsExplored = 0;
-        } else {
-            $locationsExplored = UserSpecialCatch::query()
-                ->where('event_user_id', $eventUser->id)
-                ->where('user_special_catches.type', SpecialCodeType::EXPLORER)
-                ->distinct('special_code_id')
-                ->count();
-        }
+        $locationsExplored = ($specialCodeType !== SpecialCodeType::EXPLORER) ? 0 : UserSpecialCatch::query()
+            ->where('event_user_id', $eventUser->id)
+            ->where('user_special_catches.type', SpecialCodeType::EXPLORER)
+            ->distinct('special_code_id')
+            ->count();
         $userTotalDaysCaught = UserCatch::where('event_user_id', $eventUser->id)
             ->selectRaw('DISTINCT DATE(created_at) as date')
             ->get()
+            ->count();
+        $userTotalTeamCatches = ($specialCodeType !== SpecialCodeType::CATCH_EM_ALL_TEAM) ? 0 : UserSpecialCatch::query()
+            ->where('event_user_id', $eventUser->id)
+            ->where('user_special_catches.type', SpecialCodeType::CATCH_EM_ALL_TEAM)
             ->count();
 
         return new self(
@@ -76,7 +77,8 @@ readonly class AchievementUpdateContext
             userUniqueFursuits: $userUniqueFursuits,
             userUniqueSpecies: $userUniqueSpecies,
             locationsExplored: $locationsExplored,
-            userTotalDaysCaught: $userTotalDaysCaught
+            userTotalDaysCaught: $userTotalDaysCaught,
+            userTotalTeamCatches: $userTotalTeamCatches
         );
     }
 
