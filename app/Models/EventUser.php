@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Domain\CatchEmAll\Models\UserCatch;
+use App\Domain\CatchEmAll\Models\UserSpecialCatch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,6 +39,11 @@ class EventUser extends Model
     public function achievements(): HasMany
     {
         return $this->hasMany(UserAchievement::class);
+    }
+
+    public function specialCatches(): HasMany
+    {
+        return $this->hasMany(UserSpecialCatch::class);
     }
 
     public function hasFreeBadge(): bool

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import {
     Award,
@@ -14,25 +15,62 @@ import {
 } from "lucide-vue-next";
 import Card from "primevue/card";
 
+type Achievement = {
+    id: number;
+    title: string;
+    description: string;
+    task: string;
+    achievement: string;
+    completed: boolean;
+    progress: number;
+    maxProgress: number;
+    progressPercentage: number;
+    earnedAt?: string | null;
+    isOptional: boolean;
+    isLocked: boolean;
+    hiddenByLock: boolean;
+    expandable: boolean;
+    progressDetail?: {
+        totalProgress: string[];
+        currentProgress: string[];
+    };
+};
+
+const extendedAchievements = ref<number[]>([]);
+
+const toggleAchievementExpansion = (achievementId: number) => {
+    const index = extendedAchievements.value.indexOf(achievementId);
+    if (index > -1) {
+        // Achievement is already expanded, collapse it
+        extendedAchievements.value.splice(index, 1);
+    } else {
+        // Achievement is not expanded, expand it
+        extendedAchievements.value.push(achievementId);
+    }
+    console.log("Extended Achievements:", extendedAchievements.value);
+};
+
 const props = defineProps<{
-    achievements: Array<any>;
+    achievements: Array<Achievement>;
     flash?: any;
 }>();
+
+console.log("Achievements Props:", props.achievements);
 
 // Group achievements by completion status and sort by progress
 const completedAchievements = props.achievements
     .filter((a) => a.completed)
     .sort(
         (a, b) =>
-            new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime()
+            new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime(),
     ); // Most recently earned first
 
 const inProgressAchievements = props.achievements
-    .filter((a) => !a.completed && a.progress > 0)
+    .filter((a) => !a.completed && !a.isLocked)
     .sort((a, b) => b.progressPercentage - a.progressPercentage); // Highest progress first
 
 const lockedAchievements = props.achievements
-    .filter((a) => !a.completed && a.progress === 0)
+    .filter((a) => !a.completed && a.isLocked)
     .sort((a, b) => a.title.localeCompare(b.title)); // Alphabetical order
 
 // Get achievement category icon
@@ -108,12 +146,17 @@ const formatDate = (dateString: string) => {
         year: "numeric",
     });
 };
+
+const hasProgressItem = (achievement: Achievement, item: string) => {
+    return achievement.progressDetail?.currentProgress.includes(item) ?? false;
+};
 </script>
 
 <template>
     <CatchEmAllLayout
         title="Achievements"
         subtitle="Your progress and unlocks"
+        class="select-none"
         :flash="flash"
         icon="gem"
     >
@@ -164,7 +207,15 @@ const formatDate = (dateString: string) => {
                 <Card
                     v-for="achievement in completedAchievements"
                     :key="achievement.id"
-                    class="bg-white shadow-sm border border-gray-700"
+                    :class="[
+                        'bg-white shadow-sm border border-gray-700',
+                        achievement.expandable ? 'cursor-pointer' : '',
+                    ]"
+                    @click="
+                        achievement.expandable
+                            ? toggleAchievementExpansion(achievement.id)
+                            : null
+                    "
                 >
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
@@ -189,10 +240,44 @@ const formatDate = (dateString: string) => {
                                     <Star
                                         class="w-5 h-5 text-yellow-500 fill-current"
                                     />
+                                    <span
+                                        v-if="achievement.expandable"
+                                        :class="[
+                                            'ml-auto text-gray-400 text-xs leading-none transition-transform duration-300 ease-out',
+                                            extendedAchievements.includes(
+                                                achievement.id,
+                                            )
+                                                ? 'rotate-180'
+                                                : '',
+                                        ]"
+                                        >▼</span
+                                    >
                                 </div>
-                                <p class="text-sm text-gray-300 mb-2">
-                                    {{ achievement.description }}
-                                </p>
+                                <div
+                                    :class="[
+                                        'achievement-text-wrapper mb-2',
+                                        achievement.expandable &&
+                                        extendedAchievements.includes(
+                                            achievement.id,
+                                        )
+                                            ? 'is-expanded'
+                                            : 'is-collapsed',
+                                    ]"
+                                >
+                                    <p
+                                        :class="[
+                                            'text-sm text-gray-300 text-justify',
+                                            achievement.expandable &&
+                                            !extendedAchievements.includes(
+                                                achievement.id,
+                                            )
+                                                ? 'line-clamp-2'
+                                                : '',
+                                        ]"
+                                    >
+                                        {{ achievement.description }}
+                                    </p>
+                                </div>
                                 <div class="flex items-center justify-between">
                                     <div
                                         class="text-xs text-green-600 font-medium"
@@ -227,7 +312,12 @@ const formatDate = (dateString: string) => {
                 <Card
                     v-for="achievement in inProgressAchievements"
                     :key="achievement.id"
-                    class="bg-white shadow-sm border border-gray-700"
+                    class="bg-white shadow-sm border border-gray-700 cursor-pointer"
+                    @click="
+                        achievement.expandable
+                            ? toggleAchievementExpansion(achievement.id)
+                            : null
+                    "
                 >
                     <template #content>
                         <div class="flex items-center space-x-4 p-2">
@@ -246,12 +336,48 @@ const formatDate = (dateString: string) => {
 
                             <!-- Achievement Info -->
                             <div class="flex-1">
-                                <h4 class="font-semibold text-gray-200 mb-1">
-                                    {{ achievement.title }}
-                                </h4>
-                                <p class="text-sm text-gray-300 mb-3">
-                                    {{ achievement.description }}
-                                </p>
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <h4 class="font-semibold text-gray-200">
+                                        {{ achievement.title }}
+                                    </h4>
+                                    <span
+                                        v-if="achievement.expandable"
+                                        :class="[
+                                            'ml-auto text-gray-400 text-xs leading-none transition-transform duration-300 ease-out',
+                                            extendedAchievements.includes(
+                                                achievement.id,
+                                            )
+                                                ? 'rotate-180'
+                                                : '',
+                                        ]"
+                                        >▼</span
+                                    >
+                                </div>
+                                <div
+                                    :class="[
+                                        'achievement-text-wrapper mb-2',
+                                        achievement.expandable &&
+                                        extendedAchievements.includes(
+                                            achievement.id,
+                                        )
+                                            ? 'is-expanded'
+                                            : 'is-collapsed',
+                                    ]"
+                                >
+                                    <p
+                                        :class="[
+                                            'text-sm text-gray-300 text-justify',
+                                            achievement.expandable &&
+                                            !extendedAchievements.includes(
+                                                achievement.id,
+                                            )
+                                                ? 'line-clamp-2'
+                                                : '',
+                                        ]"
+                                    >
+                                        {{ achievement.task }}
+                                    </p>
+                                </div>
 
                                 <!-- Progress Bar -->
                                 <div class="space-y-2">
@@ -277,6 +403,52 @@ const formatDate = (dateString: string) => {
                                         ></div>
                                     </div>
                                 </div>
+
+                                <div
+                                    v-if="
+                                        achievement.expandable &&
+                                        achievement.progressDetail
+                                            ?.totalProgress.length
+                                    "
+                                    :class="[
+                                        'progress-detail-wrapper',
+                                        extendedAchievements.includes(
+                                            achievement.id,
+                                        )
+                                            ? 'is-open'
+                                            : 'is-closed',
+                                    ]"
+                                >
+                                    <div class="mt-4">
+                                        <div
+                                            class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2"
+                                        >
+                                            Progress Overview
+                                        </div>
+                                        <div class="flex flex-wrap gap-2">
+                                            <div
+                                                v-for="progressItem in [
+                                                    ...achievement
+                                                        .progressDetail
+                                                        .totalProgress,
+                                                ].sort((a, b) =>
+                                                    a.localeCompare(b),
+                                                )"
+                                                :key="progressItem"
+                                                :class="[
+                                                    'rounded-md border px-2 py-1 text-xs font-medium transition-colors',
+                                                    achievement.progressDetail.currentProgress.includes(
+                                                        progressItem,
+                                                    )
+                                                        ? 'border-green-500 bg-green-100 text-green-700'
+                                                        : 'border-red-500 bg-red-100 text-red-700',
+                                                ]"
+                                            >
+                                                {{ progressItem }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -288,11 +460,14 @@ const formatDate = (dateString: string) => {
         <div v-if="lockedAchievements.length > 0">
             <h3 class="text-lg font-bold text-gray-100 mb-3 flex items-center">
                 <Circle class="w-6 h-6 mr-2 text-gray-400" />
-                Locked ({{ lockedAchievements.length }})
+                Locked ({{ lockedAchievements.length }}) (Hidden:
+                {{ lockedAchievements.filter((a) => a.hiddenByLock).length }}
+                )
             </h3>
             <div class="space-y-3">
                 <Card
                     v-for="achievement in lockedAchievements"
+                    :hidden="achievement.hiddenByLock"
                     :key="achievement.id"
                     class="bg-white shadow-sm opacity-75 border border-gray-700"
                 >
@@ -316,10 +491,11 @@ const formatDate = (dateString: string) => {
                                     {{ achievement.title }}
                                 </h4>
                                 <p class="text-sm text-gray-300 mb-2">
-                                    {{ achievement.description }}
+                                    {{ achievement.task }}
                                 </p>
                                 <div class="text-xs text-gray-400 font-medium">
-                                    🔒 Start hunting to unlock!
+                                    🔒 You need to do more tasks to unlock this
+                                    achievement!
                                 </div>
                             </div>
                         </div>
@@ -361,5 +537,48 @@ const formatDate = (dateString: string) => {
 /* Progress bar animation */
 .progress-bar {
     transition: width 0.8s ease-out;
+}
+
+.achievement-text-wrapper {
+    overflow: hidden;
+    transition:
+        max-height 260ms ease,
+        opacity 200ms ease;
+    will-change: max-height, opacity;
+}
+
+.achievement-text-wrapper.is-collapsed {
+    max-height: 3.2em;
+    opacity: 0.96;
+}
+
+.achievement-text-wrapper.is-expanded {
+    max-height: 20em;
+    opacity: 1;
+}
+
+.progress-detail-wrapper {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+        max-height 320ms ease,
+        opacity 220ms ease,
+        transform 260ms ease;
+    transition-delay: 120ms;
+    will-change: max-height, opacity, transform;
+}
+
+.progress-detail-wrapper.is-open {
+    max-height: 160rem;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.progress-detail-wrapper.is-closed {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-4px);
 }
 </style>

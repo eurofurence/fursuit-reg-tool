@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources;
 
+use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Models\SpecialCode;
+use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Filament\Resources\SpecialCodeResource\Pages;
 use App\Models\Fursuit\Fursuit;
 use Filament\Forms;
@@ -17,9 +19,9 @@ class SpecialCodeResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-qr-code';
 
-    protected static ?string $navigationGroup = 'Events & Registration';
+    protected static ?string $navigationGroup = 'Catch Em All';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -29,32 +31,44 @@ class SpecialCodeResource extends Resource
                     ->label('Event')
                     ->helperText('Event in which the code can be used')
                     ->options(
-                        \App\Models\Event::all()->pluck('name', 'id')
+                        \App\Models\Event::all()->sortByDesc('name')->pluck('name', 'id')
                     )
+                    ->default(\App\Models\Event::latest('starts_at')->first()?->id)
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\Select::make('class_name')
-                    ->label('Class')
+                Forms\Components\Select::make('type')
+                    ->label('Type')
                     ->helperText('PHP class used for code handling')
-                    ->options([
-                        'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
-                    ])
+                    ->options(
+                        SpecialActionsRegister::getFillamentOptions())
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set, callable $get): void {
+                        if (filled($get('constructor_data'))) {
+                            return;
+                        }
+
+                        $configData = self::getConfigDataForType($state);
+
+                        if ($configData === null) {
+                            $set('constructor_data', null);
+
+                            return;
+                        }
+
+                        $set('constructor_data', json_encode($configData, JSON_PRETTY_PRINT));
+                    })
                     ->columnSpanFull(),
                 Forms\Components\Textarea::make('constructor_data')
                     ->label('Constructor Data')
                     ->helperText('Data to be passed to the constructor of the action class')
                     ->rows(3)
                     ->columnSpanFull()
-                    ->disabled(fn ($get) => match ($get('class_name')) {
-                        'EXAMPLE' => false,
-                        default => true
-                    })
-                    ->placeholder(fn ($get) => match ($get('class_name')) {
-                        'EXAMPLE' => '{"amount": 100, "reason": "An Example"}',
-                        default => '',
-                    })
+                    ->disabled(fn ($get) => $get('type') && self::getConfigDataForType($get('type')) === null)
+                    ->placeholder(fn ($get) => self::buildConstructorDataPlaceholder($get('type')))
+                    ->formatStateUsing(fn ($state) => self::encodeConstructorDataForForm($state))
+                    ->dehydrated(true)
+                    ->dehydrateStateUsing(fn ($state) => self::decodeConstructorDataFromForm($state))
                     ->rules(['nullable', 'json']),
-
                 Forms\Components\TextInput::make('code')
                     ->label('Code')
                     ->helperText('E.g. ABC45')
@@ -85,12 +99,9 @@ class SpecialCodeResource extends Resource
                 Tables\Columns\TextColumn::make('code')
                     ->label('Code')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('class_name')
-                    ->label('Class')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
-                        default => $state
-                    })
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Type')
+                    ->formatStateUsing(fn (SpecialCodeType $state): string => SpecialActionsRegister::getDisplayNameForSpecialCodeType($state) ?? $state->name)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('constructor_data')
                     ->label('Data')
@@ -133,5 +144,55 @@ class SpecialCodeResource extends Resource
             $baseDomain,
             urlencode($code)
         );
+    }
+
+    private static function getConfigDataForType(mixed $type): ?array
+    {
+        $specialCodeType = SpecialCodeType::tryFrom((int) $type);
+
+        if (! $specialCodeType) {
+            return null;
+        }
+
+        return SpecialActionsRegister::getConfigDataForSpecialCodeType($specialCodeType);
+    }
+
+    private static function buildConstructorDataPlaceholder(mixed $type): string
+    {
+        if (! $type) {
+            return 'Nothing selected';
+        }
+
+        $configData = self::getConfigDataForType($type);
+
+        if ($configData === null) {
+            return 'No data required for this type.';
+        }
+
+        return json_encode($configData, JSON_PRETTY_PRINT) ?: '{}';
+    }
+
+    private static function encodeConstructorDataForForm(mixed $state): ?string
+    {
+        if ($state === null || $state === '') {
+            return null;
+        }
+
+        if (is_string($state)) {
+            return $state;
+        }
+
+        return json_encode($state, JSON_PRETTY_PRINT) ?: null;
+    }
+
+    private static function decodeConstructorDataFromForm(mixed $state): ?array
+    {
+        if (! is_string($state) || trim($state) === '') {
+            return null;
+        }
+
+        $decoded = json_decode($state, true);
+
+        return is_array($decoded) ? $decoded : null;
     }
 }
