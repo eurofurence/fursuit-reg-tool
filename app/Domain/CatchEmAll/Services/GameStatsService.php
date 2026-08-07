@@ -7,9 +7,9 @@ use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\Fursuit\Fursuit;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
-use App\Models\User;
 
 class GameStatsService
 {
@@ -43,36 +43,23 @@ class GameStatsService
         });
     }
 
-    public function getLeaderboard(?Event $filterEvent, int $limit = 10, int $rankCutoff = 3): array
+    public function getLeaderboard(Event $filterEvent, int $limit = 10, int $rankCutoff = 3): array
     {
-        $cacheKey = 'leaderboard_'.($filterEvent->id ?? 'global');
+        $cacheKey = 'leaderboard_'.$filterEvent->id;
 
         $result = Cache::remember($cacheKey, 600, function () use ($filterEvent, $limit, $rankCutoff) {
-            if ($filterEvent) {
-                $rows = EventUser::where('event_id', $filterEvent->id)
-                    ->with('user')
-                    ->withCount(['fursuitsCatched'])
-                    ->having('fursuits_catched_count', '>', 0)
-                    ->orderByDesc('fursuits_catched_count')
-                    ->limit($limit)
-                    ->get()
-                    ->map(fn ($eventUser) => [
-                        'id' => $eventUser->user_id,
-                        'name' => $eventUser->user->name ?? 'Unknown User',
-                        'catches' => $eventUser->fursuits_catched_count ?? 0,
-                    ]);
-            } else {
-                $rows = EventUser::with('user')
-                    ->withCount('fursuitsCatched')
-                    ->having('fursuits_catched_count', '>', 0)
-                    ->get()
-                    ->groupby('user_id')
-                    ->map(fn ($group) => [
-                        'id' => $group->first()->user_id,
-                        'name' => $group->first()->user->name ?? 'Unknown User',
-                        'catches' => $group->sum('fursuits_catched_count'),
-                    ]);
-            }
+            $rows = EventUser::where('event_id', $filterEvent->id)
+                ->with('user')
+                ->withCount(['fursuitsCatched'])
+                ->having('fursuits_catched_count', '>', 0)
+                ->orderByDesc('fursuits_catched_count')
+                ->limit($limit)
+                ->get()
+                ->map(fn ($eventUser) => [
+                    'id' => $eventUser->user_id,
+                    'name' => $eventUser->user->name ?? 'Unknown User',
+                    'catches' => $eventUser->fursuits_catched_count ?? 0,
+                ]);
 
             $rows = $rows
                 ->sortBy([
@@ -110,20 +97,16 @@ class GameStatsService
         return is_array($result) ? $result : [];
     }
 
-    public function getUserCollection(User $user, ?Event $filterEvent = null): array
+    public function getUserCollection(EventUser $eventUser): array
     {
-        $cacheKey = "collection_{$user->id}_".($filterEvent?->id ?? 'global');
+        $cacheKey = "collection_{$eventUser->id}";
 
-        $result = Cache::remember($cacheKey, 600, function () use ($user, $filterEvent) {
-            $eventUserIds = EventUser::where('user_id', $user->id)
-                ->when($filterEvent, fn ($q) => $q->where('event_id', $filterEvent->id))
-                ->pluck('id');
-
-            $catches = UserCatch::whereIn('event_user_id', $eventUserIds)
+        $result = Cache::remember($cacheKey, 600, function () use ($eventUser) {
+            $catches = UserCatch::where('event_user_id', $eventUser->id)
                 ->with(['fursuit.species'])
                 ->get()
                 ->unique('fursuit_id');
-        
+
             $fursuits = [];
             $speciesIndex = [];
 
@@ -164,39 +147,90 @@ class GameStatsService
         });
 
         return is_array($result) ? $result : [];
-
-        return Cache::remember($result) ? $result : [];
     }
 
-    public function getDetailedCollection(EventUser $eventUser): array
+    /**
+     * @param  Event[]|int[]  $events
+     */
+    public function getUserCollectionForEvents(User $user, array $events, bool $useGlobalCacheKey = false): array
     {
-        $query = UserCatch::where('event_user_id', $eventUser->id)
-            ->with(['fursuit.species', 'fursuit.user']);
+        $eventIds = collect($events)
+            ->map(fn ($event) => $event instanceof Event ? $event->id : (int) $event)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->sort()
+            ->values();
 
-        $catches = $query->orderByDesc('created_at')->get();
-
-        $result = [];
-        foreach ($catches as $catch) {
-            $rarity = $catch->getFursuitRarity();
-
-            $result[] = [
-                'id' => $catch->id,
-                'fursuitName' => $catch->fursuit?->name ?? 'Unknown Fursuit',
-                'species' => $catch->fursuit?->species?->name ?? 'Unknown',
-                'owner' => $catch->fursuit?->user?->name ?? 'Anonymous',
-                'image' => $catch->fursuit?->image,
-                'caughtAt' => $catch->created_at,
-                'rarity' => [
-                    'level' => $rarity->value,
-                    'label' => $rarity->getLabel(),
-                    'color' => $rarity->getColor(),
-                    'gradient' => $rarity->getGradient(),
-                    'icon' => $rarity->getIcon(),
-                ],
+        if ($eventIds->isEmpty()) {
+            return [
+                'suits' => [],
+                'species' => [],
+                'totalCatches' => 0,
             ];
         }
 
-        return $result;
+        $cacheKey = $useGlobalCacheKey
+            ? sprintf('collection_user_%d', $user->id)
+            : sprintf('collection_user_%d_events_%s', $user->id, $eventIds->implode('_'));
+
+        $result = Cache::remember($cacheKey, 600, function () use ($user, $eventIds) {
+            $eventUserIds = EventUser::where('user_id', $user->id)
+                ->whereIn('event_id', $eventIds)
+                ->pluck('id');
+
+            if ($eventUserIds->isEmpty()) {
+                return [
+                    'suits' => [],
+                    'species' => [],
+                    'totalCatches' => 0,
+                ];
+            }
+
+            $catches = UserCatch::whereIn('event_user_id', $eventUserIds)
+                ->with(['fursuit.species'])
+                ->get()
+                ->unique('fursuit_id');
+
+            $fursuits = [];
+            $speciesIndex = [];
+
+            foreach ($catches as $catch) {
+                $rarity = $catch->getFursuitRarity();
+                $specie = $catch->getFursuitSpecies();
+                $catch_count = $catch->getCatches();
+                $fursuits[] = [
+                    'species' => $specie,
+                    'count' => $catch_count,
+                    'rarity' => [
+                        'level' => $rarity->value,
+                        'label' => $rarity->getLabel(),
+                        'color' => $rarity->getColor(),
+                        'icon' => $rarity->getIcon(),
+                    ],
+                    'gallery' => [
+                        'id' => $catch->fursuit->id,
+                        'name' => $catch->fursuit->name,
+                        'species' => $catch->fursuit->species->name,
+                        'image' => $catch->fursuit->image_webp_url,
+                        'scoring' => $catch_count,
+                    ],
+                ];
+                $speciesIndex[$specie] = ($speciesIndex[$specie] ?? 0) + 1;
+            }
+
+            // Sort by total catches descending
+            usort($fursuits, function ($a, $b) {
+                return $b['count'] <=> $a['count'];
+            });
+
+            return [
+                'suits' => $fursuits,
+                'species' => $speciesIndex,
+                'totalCatches' => $catches->count(),
+            ];
+        });
+
+        return is_array($result) ? $result : [];
     }
 
     private function calculateUserRank(int $userCatches): int
