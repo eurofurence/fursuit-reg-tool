@@ -317,6 +317,7 @@ description, and submit `Confirm`.
 - [x] 2 `class_name`, label `Class`, sortable, `App\Domain\CatchEmAll\SpecialActions\BugBountyAction` renders as `Bug Hunter Bounty` — `SpecialCodesTest`: the Class column renders the option label, and an unknown class as itself; sorting and paging survive the partial reload the client actually sends
 - [~] 2a `class_name` renders safely when null — fixed, see rebuild-plan 2.10 #7 (audit 30: `string $state` hint 500s the table) — `SpecialCodesTest`: a code with no class does not take the whole table down
 - [x] 3 `constructor_data`, label `Data`, sortable — `SpecialCodesTest`: the Data column renders the stored JSON and nothing for an empty one; sorting and paging survive the partial reload the client actually sends
+- [~] 3a the `Data` cell is the stored value re-encoded rather than an `object` cast printing `Object` — changed, see rebuild-plan 2.10 #52 — `SpecialCodesTest`: the Data column renders the stored JSON and nothing for an empty one
 - [x] 4 `event_id`, label `Event`, sortable, renders the event name — `SpecialCodesTest`: the Event column shows the event name and costs one query however many rows there are; sorting and paging survive the partial reload the client actually sends
 - [~] 4a `event_id` renders safely when the event row is gone, and the name is eager-loaded rather than one query per row — fixed, see rebuild-plan 2.10 #7 (audit 31, 99) — `SpecialCodesTest`: a code whose event row is gone renders an empty cell instead of a 500; the Event column shows the event name and costs one query however many rows there are
 
@@ -334,9 +335,13 @@ description, and submit `Confirm`.
 
 ### Form
 
+- [~] the `event_id` options are ordered `starts_at desc` rather than insertion order — changed, see rebuild-plan 2.10 #53 — `SpecialCodesTest`: the create form ships its options and the live catch-url base
 - [x] `event_id` Select, label `Event`, required, helper `Event in which the code can be used` — `SpecialCodesTest`: the create form ships its options and the live catch-url base; event_id is required and must exist. Helper text in `Pages/Manage/SpecialCodes/Form.vue`
+- [~] `class_name` is validated against the options the Select offers — changed, see rebuild-plan 2.10 #49 — `SpecialCodesTest`: class_name must be one of the offered options
 - [~] `class_name` Select, label `Class`, helper `PHP class used for code handling`, becomes `live()` — fixed, see rebuild-plan 2.10 #39 (audit 33) — options asserted by `SpecialCodesTest`: the create form ships its options and the live catch-url base. The liveness is client state in `Form.vue` (`v-model` drives the placeholder), not server behaviour, so no server test covers it
 - [~] `constructor_data` Textarea, label `Constructor Data`, 3 rows, `nullable|json`, helper `Data to be passed to the constructor of the action class`, becomes **editable** — fixed, see rebuild-plan 2.10 #39 (audit 32: the `disabled()` matcher compares against a literal `'EXAMPLE'` that is not an option) — `SpecialCodesTest`: constructor_data is editable and must be valid JSON
+- [~] `constructor_data` must be a JSON **object**, not merely valid JSON — changed, see rebuild-plan 2.10 #51 — `SpecialCodesTest`: constructor_data must be a JSON object, not just valid JSON; a stored constructor_data never trips the action constructor type hint
+- [~] a code saved with no class writes `''`, since `special_codes.class_name` is NOT NULL — changed, see rebuild-plan 2.10 #50 — `SpecialCodesTest`: a code without a class saves rather than failing at the database
 - [x] `code` TextInput, label `Code`, required, exactly 5 chars, unique on `special_codes.code` ignoring self, helper `E.g. ABC45` — `SpecialCodesTest`: code is required and must be exactly five characters; code is unique among special codes, ignoring the record being edited
 - [x] `code` cross-check against `fursuits.catch_code` fails with `This code is already used in Fursuits.` — `SpecialCodesTest`: code is cross-checked against fursuit catch codes, with the message verbatim
 - [~] `catch_url` TextInput, label `Catch URL`, read-only, not dehydrated, helper `URL to catch the fursuiter with this code`, updates live as you type — fixed, see rebuild-plan 2.10 #39 (audit 33) — not dehydrated is asserted by `SpecialCodesTest`: catch_url is never written, whatever the request carries. The live rebuild is client state in `Form.vue`, fed by the `catchUrlBase` prop, so no server test covers it
@@ -345,6 +350,7 @@ description, and submit `Confirm`.
 ### Table config
 
 - [x] Default sort `created_at` desc — `SpecialCodesTest`: the list carries no filters and is sorted newest first
+- [x] Sorting, paging and per-page work through the partial reload the client sends, so the list envelope is top-level props and not one nested `table` prop — `SpecialCodesTest`: sorting and paging survive the partial reload the client actually sends
 - [x] No custom notifications today; any toast added is new behaviour — the stock Filament `Created` / `Saved` / `Deleted` copy is reproduced, which is what the stock actions flashed (audit 7.2); `SpecialCodesTest`: storing a code writes it and flashes the stock Created toast; constructor_data is editable and must be valid JSON; a code is hard deleted, one at a time or in bulk
 
 ## 9. Checkouts (audit 4.5)
@@ -781,12 +787,13 @@ description, and submit `Confirm`.
 ### Form
 
 - [x] `remote_id` TextInput, required, max 255 — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; email must be an email and the two text fields cap at 255
+- [~] `remote_id` and `email` are validated for uniqueness, ignoring the record being edited — changed, see rebuild-plan 2.10 #48 — `UsersTest`: a duplicate remote_id or email is a field error, not an SQL 1062; saving an unchanged record is not blocked by its own unique columns
 - [~] `valid_registration` Toggle is removed from the form — dropped, see rebuild-plan 2.10 #4 (saving throws SQL 1054 today) — `UsersTest`: a valid_registration value in the payload is dropped rather than written
 - [x] `name` TextInput, required, max 255 — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; email must be an email and the two text fields cap at 255
 - [x] `email` TextInput, email, required, max 255 — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; email must be an email and the two text fields cap at 255
 - [x] `avatar` Textarea, full width — `UsersTest`: avatar is optional; the edit page carries exactly the fields the form writes
-- [x] `is_reviewer` Toggle, required — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; a false toggle is accepted, because required means present and not empty
-- [x] `is_admin` Toggle, required — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; a false toggle is accepted, because required means present and not empty
+- [x] `is_reviewer` Toggle, required — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; a false toggle is accepted, because required means present and not empty. The switch itself is `FormField.vue`'s `type="toggle"`, a styled checkbox, so no server test covers the widget
+- [x] `is_admin` Toggle, required — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; a false toggle is accepted, because required means present and not empty. The switch itself is `FormField.vue`'s `type="toggle"`, a styled checkbox, so no server test covers the widget
 - [x] Create and Edit both work end to end (both are broken today, audit 26) — `UsersTest`: creating a user works, which it does not today; editing a user works, which it does not today
 
 ## 21. PDF Generator (audit 5.1)

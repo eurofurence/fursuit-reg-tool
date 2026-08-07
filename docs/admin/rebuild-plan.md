@@ -977,6 +977,43 @@ refer to the audit's landmine table.
 47. **`is_reviewer` gets a `bool` cast** on `User`. It is uncast today while `is_admin` is cast, which
     is a trap for any `=== true` check [58].
 
+**Write paths the Filament forms left open.** Found while building phase 1. Each is a rule the old
+form did not have, on a column the database or a consumer already required.
+
+48. **Users validates `remote_id` and `email` for uniqueness.** Both carry a UNIQUE index from
+    `0001_01_01_000000_create_users_table` and the Filament form validated neither, so a duplicate
+    surfaced as SQL 1062 instead of a field error. Nobody ever hit it, because the form could not get
+    past the missing `valid_registration` column first (change 4). Both rules ignore the record being
+    edited, so saving an unchanged user is not blocked by its own values.
+49. **Special-code `class_name` is validated against the options the form offers.** The Select
+    declares exactly one option and validated nothing against it, while
+    `SpecialCode::createActionInstance()` does `new $className(...)` on whatever is stored. `Rule::in`
+    on the option keys closes the gap between what the form offers and what the redeem path
+    instantiates.
+50. **A special code saved with no class writes `''`, not null.** `special_codes.class_name` is
+    NOT NULL (migration `2025_08_26_141448`) while the field is not required, so an unselected class
+    has to write something. `''` renders as the same empty cell as the null rows already in the
+    database; writing null would make saving the form a database error.
+51. **Special-code `constructor_data` must be a JSON object, not merely valid JSON.** The rule was
+    `nullable|json`, which accepts any JSON document, so `[1,2,3]` or `5` stored happily. The value
+    reaches `AbstractSpecialCodeAction::__construct`, whose third argument is typed `?object`, and
+    `GameController` catches `\Exception` only; a `TypeError` is an `\Error`, so it escapes the
+    handler and 500s an attendee's scan rather than degrading to `Error processing special code`.
+    The field only became editable with change 39, so this is the first time anything could write a
+    non-object into it.
+
+**Phase 1 rendering and ordering.**
+
+52. **The special-code `Data` column renders canonical JSON.** The audit records "raw output of an
+    `object`-cast column", which through Filament's string cast prints a `stdClass` as the literal
+    `Object`. The column is `constructor_data` re-encoded with `json_encode`, so what the operator
+    reads is the value that is actually stored. The null-safety half of this is change 7; the
+    encoding is this entry.
+53. **The special-code event Select is ordered `starts_at desc`.** Filament built its options from
+    `Event::all()`, so they came out in insertion order. It matches the global event selector, which
+    the checklist already specifies as `starts_at desc`, rather than leaving one event list in the
+    panel ordered differently from every other.
+
 ---
 
 ## Part 3 - Build order

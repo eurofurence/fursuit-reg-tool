@@ -16,13 +16,13 @@
 
 use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Http\Controllers\Manage\SpecialCodeController;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 use App\Policies\SpecialCodePolicy;
 use App\Support\Manage\Action;
 use App\Support\Manage\EventScope;
-use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -334,6 +334,30 @@ test('constructor_data is editable and must be valid JSON', function () {
         ->assertInertiaFlash('toast', ['tone' => 'success', 'title' => 'Saved', 'body' => null]);
 
     expect($code->fresh()->constructor_data->amount)->toBe(250);
+});
+
+test('class_name must be one of the offered options', function () {
+    // The Select offered one option and validated nothing against it, while
+    // createActionInstance() does `new $className(...)` on whatever is stored.
+    actingAs($this->admin)
+        ->post(route('manage.special-codes.store'), [
+            'event_id' => $this->event->id,
+            'class_name' => 'App\\Something\\Else',
+            'code' => 'BAD01',
+        ])
+        ->assertSessionHasErrors('class_name');
+
+    expect(SpecialCode::count())->toBe(0);
+
+    actingAs($this->admin)
+        ->post(route('manage.special-codes.store'), [
+            'event_id' => $this->event->id,
+            'class_name' => BUG_BOUNTY,
+            'code' => 'OKA01',
+        ])
+        ->assertRedirect(route('manage.special-codes.index'));
+
+    expect(SpecialCode::sole()->class_name)->toBe(BUG_BOUNTY);
 });
 
 test('constructor_data must be a JSON object, not just valid JSON', function () {
