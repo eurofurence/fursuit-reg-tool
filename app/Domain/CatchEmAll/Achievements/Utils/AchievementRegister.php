@@ -117,6 +117,8 @@ class AchievementRegister
      */
     public static function init(): void
     {
+        self::resetState();
+
         // Build achievement instances from classes
         self::buildAchievementInstances();
 
@@ -143,12 +145,25 @@ class AchievementRegister
     }
 
     /**
+     * Clear all cached registry state before rebuilding it.
+     */
+    private static function resetState(): void
+    {
+        self::$achievements = [];
+        self::$idIndex = [];
+        self::$specialCodeIndex = [];
+        self::$normalAchievements = [];
+        self::$hasUserCacheAchievements = [];
+        self::$hasGlobalCacheAchievements = [];
+        self::$requiredAchievementCount = 0;
+        self::$optionalAchievementCount = 0;
+    }
+
+    /**
      * Build achievement instances from registered classes.
      */
     protected static function buildAchievementInstances(): void
     {
-        self::$achievements = [];
-
         foreach (self::$achievementClasses as $className) {
             self::$achievements[$className] = new $className;
         }
@@ -171,8 +186,6 @@ class AchievementRegister
      */
     protected static function buildIdIndex(): void
     {
-        self::$idIndex = [];
-
         foreach (self::$achievements as $achievement) {
             $id = $achievement->getId();
             self::$idIndex[$id] = $achievement;
@@ -184,8 +197,6 @@ class AchievementRegister
      */
     protected static function buildSpecialCodeIndex(): void
     {
-        self::$specialCodeIndex = [];
-
         foreach (self::$achievements as $achievement) {
             if ($achievement instanceof SpecialAchievement) {
                 $specialCode = $achievement->getSpecialCode();
@@ -205,8 +216,6 @@ class AchievementRegister
      */
     protected static function buildNormalAchievementsIndex(): void
     {
-        self::$normalAchievements = [];
-
         foreach (self::$achievements as $achievement) {
             if (! ($achievement instanceof SpecialAchievement)) {
                 self::$normalAchievements[] = $achievement;
@@ -219,8 +228,6 @@ class AchievementRegister
      */
     protected static function buildHasCacheAchievements(): void
     {
-        self::$hasUserCacheAchievements = [];
-
         foreach (self::$achievements as $achievement) {
             if ($achievement instanceof HasUserCache) {
                 self::$hasUserCacheAchievements[] = $achievement;
@@ -237,9 +244,6 @@ class AchievementRegister
      */
     protected static function calculateAchievementCounts(): void
     {
-        self::$requiredAchievementCount = 0;
-        self::$optionalAchievementCount = 0;
-
         foreach (self::$achievements as $achievement) {
             if ($achievement->isOptional()) {
                 self::$optionalAchievementCount++;

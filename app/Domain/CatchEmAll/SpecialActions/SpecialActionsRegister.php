@@ -38,9 +38,20 @@ class SpecialActionsRegister
      */
     public static function init(): void
     {
+        self::resetIndexes();
+
         self::checkSpecialCodeActionClasses();
 
         self::generateIndexes();
+    }
+
+    /**
+     * Clear the cached register indexes before rebuilding them.
+     */
+    private static function resetIndexes(): void
+    {
+        self::$specialCodeClassNameIndex = [];
+        self::$specialCodeTypeIndex = [];
     }
 
     /**
