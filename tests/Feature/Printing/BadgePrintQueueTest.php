@@ -185,3 +185,67 @@ it('still hands receipts to the unbatched lane', function () {
     expect(PrintJob::claimNextUnbatched($printer, Machine::factory()->create())?->id)
         ->toBe($receipt->id);
 });
+
+/**
+ * What a batch is called.
+ *
+ * A count alone is no use when several runs are waiting: "24 badges" three
+ * times over tells an operator nothing about which pile of cards is which.
+ */
+it('names a multi-badge batch with its attendee range', function () {
+    $badges = collect([
+        queueableBadges()->first(),
+        queueableBadges()->first(),
+        queueableBadges()->first(),
+    ]);
+    $ids = $badges->map(fn ($b) => (int) explode('-', $b->custom_id)[0])->sort()->values();
+
+    $batch = BadgePrintQueue::queue($badges, Printer::factory()->badge()->create());
+
+    expect($batch->name)->toBe('3 badges '.$ids->first().'-'.$ids->last());
+});
+
+it('names a single badge after the badge itself', function () {
+    $badge = queueableBadges()->first();
+
+    $batch = BadgePrintQueue::queue(collect([$badge]), Printer::factory()->badge()->create());
+
+    expect($batch->name)->toBe('Badge '.$badge->custom_id);
+});
+
+it('shows one attendee rather than a range of one', function () {
+    // Spare copies: several cards, all the same person.
+    $first = queueableBadges()->first();
+    $attendee = (int) explode('-', $first->custom_id)[0];
+
+    $second = Badge::factory()->withPrintFile()->create([
+        'custom_id' => $attendee.'-2',
+        'fursuit_id' => $first->fursuit_id,
+    ]);
+
+    $batch = BadgePrintQueue::queue(collect([$first, $second]), Printer::factory()->badge()->create());
+
+    expect($batch->name)->toBe('2 badges '.$attendee);
+});
+
+it('falls back to a plain count when no badge has an id yet', function () {
+    $batch = PrintBatch::build(
+        'placeholder',
+        Badge::factory()->withPrintFile()->count(2)->create(['custom_id' => null]),
+        Printer::factory()->badge()->create(),
+    );
+
+    // Naming is only reached through queue(); this proves the range helper
+    // copes with ids that do not exist rather than producing "2 badges -".
+    expect($batch->name)->toBe('placeholder');
+});
+
+it('keeps an explicit name when one is given', function () {
+    $batch = BadgePrintQueue::queue(
+        queueableBadges(2),
+        Printer::factory()->badge()->create(),
+        name: 'Reprint after the jam',
+    );
+
+    expect($batch->name)->toBe('Reprint after the jam');
+});

@@ -116,7 +116,7 @@ class PrintBatch extends Model
      *
      * @return array{0: int|null, 1: int}
      */
-    private static function parseCustomId(?string $customId): array
+    public static function parseCustomId(?string $customId): array
     {
         if (! $customId) {
             return [null, 0];

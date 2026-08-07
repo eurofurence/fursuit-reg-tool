@@ -105,13 +105,48 @@ class BadgePrintQueue
         }
     }
 
+    /**
+     * What the batch is called on the picker and in the queue.
+     *
+     * A count alone is no use when several runs are waiting: "24 badges" three
+     * times over tells an operator nothing about which one is in front of them
+     * or which pile of cards it belongs to. The attendee range does, and it is
+     * what the cards are filed by.
+     */
     private static function nameFor(Collection $badges): string
     {
         if ($badges->count() === 1) {
             return 'Badge '.($badges->first()->custom_id ?? $badges->first()->id);
         }
 
-        return $badges->count().' badges';
+        $label = $badges->count().' badges';
+        $range = self::attendeeRange($badges);
+
+        return $range === null ? $label : $label.' '.$range;
+    }
+
+    /**
+     * "1069-1093", or "1086" when every card belongs to one attendee.
+     *
+     * Null when nothing in the batch carries a usable id, which happens before
+     * badges reach Processing and get one allocated.
+     */
+    private static function attendeeRange(Collection $badges): ?string
+    {
+        $attendees = $badges
+            ->map(fn (Badge $badge) => PrintBatch::parseCustomId($badge->custom_id)[0])
+            ->filter(fn (?int $attendee) => $attendee !== null)
+            ->sort()
+            ->values();
+
+        if ($attendees->isEmpty()) {
+            return null;
+        }
+
+        $first = $attendees->first();
+        $last = $attendees->last();
+
+        return $first === $last ? (string) $first : $first.'-'.$last;
     }
 
     private static function defaultBadgePrinter(): ?Printer

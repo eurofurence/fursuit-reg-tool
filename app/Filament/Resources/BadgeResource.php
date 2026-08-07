@@ -258,7 +258,7 @@ class BadgeResource extends Resource
                     ->label('Owner')
                     ->searchable()
                     ->toggleable()
-                    ->url(fn (Badge $record): string => '/admin/users?tableSearch='.urlencode($record->fursuit->user->name)),
+                    ->url(fn (Badge $record): string => route('filament.admin.resources.users.index', ['tableSearch' => $record->fursuit->user->name])),
 
                 // Badge ID
                 Tables\Columns\TextColumn::make('custom_id')
