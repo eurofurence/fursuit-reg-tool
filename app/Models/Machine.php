@@ -8,7 +8,6 @@ use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Models\PrinterStatus;
 use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
-use Bavix\Wallet\Traits\HasWalletFloat;
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +22,7 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
     // HasApiTokens is for the native print agent. The POS browser authenticates
     // with a session, but the agent is a desktop app on a different network and
     // needs a bearer token it can hold onto.
-    use Authenticatable, Authorizable, HasApiTokens, HasFactory, HasWalletFloat;
+    use Authenticatable, Authorizable, HasApiTokens, HasFactory;
 
     public $timestamps = false;
 

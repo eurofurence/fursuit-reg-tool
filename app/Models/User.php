@@ -6,9 +6,6 @@ namespace App\Models;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Fursuit\Fursuit;
-use Bavix\Wallet\Interfaces\Customer;
-use Bavix\Wallet\Interfaces\WalletFloat;
-use Bavix\Wallet\Traits\CanPayFloat;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,9 +13,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Gate;
 
-class User extends Authenticatable implements Customer, FilamentUser, WalletFloat
+class User extends Authenticatable implements FilamentUser
 {
-    use CanPayFloat, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.

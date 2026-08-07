@@ -6,9 +6,6 @@ use App\Domain\Printing\Models\PrintJob;
 use App\Models\Badge\State_Fulfillment\BadgeFulfillmentStatusState;
 use App\Models\Badge\State_Payment\BadgePaymentStatusState;
 use App\Models\Fursuit\Fursuit;
-use Bavix\Wallet\Interfaces\Customer;
-use Bavix\Wallet\Interfaces\ProductInterface;
-use Bavix\Wallet\Traits\HasWalletFloat;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,9 +14,9 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\ModelStates\HasStates;
 
-class Badge extends Model implements ProductInterface
+class Badge extends Model
 {
-    use HasFactory, HasStates, HasWalletFloat, LogsActivity, SoftDeletes;
+    use HasFactory, HasStates, LogsActivity, SoftDeletes;
 
     protected $guarded = [];
 
@@ -58,32 +55,6 @@ class Badge extends Model implements ProductInterface
     public function printJobs()
     {
         return $this->morphMany(PrintJob::class, 'printable');
-    }
-
-    public function getAmountProduct(Customer $customer): int|string
-    {
-        return $this->total;
-    }
-
-    public function getMetaProduct(): ?array
-    {
-        // Title Generator
-        $features = [];
-        if ($this->dual_side_print) {
-            $features[] = 'Double Sided Print';
-        }
-        if ($this->extra_copy_of) {
-            $features[] = 'Extra Copy';
-        }
-        $append = '';
-        if (count($features) > 0) {
-            $append = ' with Extras ('.implode(', ', $features).')';
-        }
-
-        return [
-            'title' => 'Fursuit Badge',
-            'description' => 'Purchase of Fursuit Badge #'.$this->id.$append,
-        ];
     }
 
     protected function casts()

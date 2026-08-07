@@ -11,7 +11,6 @@
         "php": "^8.2",
         "ext-openssl": "*",
         "apirone/php-qr-code": "^1.0",
-        "bavix/laravel-wallet": "^11.1",
         "filament/filament": "^3.2",
         "flowframe/laravel-trend": "^0.4.0",
         "imagine/imagine": "^1.3",

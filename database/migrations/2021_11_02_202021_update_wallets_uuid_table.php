@@ -3,12 +3,11 @@
 declare(strict_types=1);
 
 use App\Support\Migrations\SchemaGuard;
-use Bavix\Wallet\Internal\Service\UuidFactoryServiceInterface;
-use Bavix\Wallet\Models\Wallet;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -26,11 +25,14 @@ return new class extends Migration
                 ->unique();
         });
 
-        Wallet::query()->chunk(10000, static function (Collection $wallets) {
-            $wallets->each(function (Wallet $wallet) {
-                $wallet->uuid = app(UuidFactoryServiceInterface::class)->uuid4();
-                $wallet->save();
-            });
+        // Backfilled with the query builder rather than the wallet package's model and
+        // UUID factory: the package is gone, and this only ever needs a unique v4 per row.
+        DB::table($this->table())->orderBy('id')->chunkById(10000, static function ($wallets) {
+            foreach ($wallets as $wallet) {
+                DB::table('wallets')
+                    ->where('id', $wallet->id)
+                    ->update(['uuid' => (string) Str::uuid()]);
+            }
         });
 
         Schema::table($this->table(), static function (Blueprint $table) {
@@ -48,6 +50,6 @@ return new class extends Migration
 
     private function table(): string
     {
-        return (new Wallet)->getTable();
+        return 'wallets';
     }
 };
