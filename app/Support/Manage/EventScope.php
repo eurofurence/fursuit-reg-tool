@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
  * only while no choice has been recorded, so a null id is a decision the middleware
  * leaves alone.
  *
- * The selection is written by POST /manage/event with a validated event_id, never as a
+ * The selection is written by POST /admin/event with a validated event_id, never as a
  * side effect of a query string on an arbitrary GET, so an unknown id is a validation
  * error rather than a poisoned session.
  */

@@ -1,19 +1,23 @@
 <?php
 
 /*
- * Phase 0 access contract for the /manage panel (plan part 4.2, item 1).
+ * Phase 0 access contract for the Inertia panel at /admin (plan part 4.2, item 1).
  *
  * There is no baseline suite to inherit here: DbServiceMaintenancePageTest is the only
  * test in the repository that touches the admin at all, and it covers one Filament page.
  * So this file states the panel-level rules from scratch rather than porting them, and it
- * also pins /admin as still working, because Filament has to keep serving the whole
+ * also pins /admin-legacy as still working, because Filament has to keep serving the whole
  * migration and nothing in phase 0 is allowed to disturb it.
+ *
+ * The route names are still manage.*: admin.* belongs to admin.badge-pdf.* until part 5.
  */
 
 use App\Models\Event;
 use App\Models\User;
 use Filament\Facades\Filament;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -21,7 +25,7 @@ use function Pest\Laravel\get;
 
 beforeEach(function () {
     // Something has to exist for the event scope to seed from; the middleware runs on
-    // every /manage request whether or not the page cares about the selection.
+    // every /admin request whether or not the page cares about the selection.
     $this->event = Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -36,10 +40,28 @@ beforeEach(function () {
 });
 
 test('a guest is redirected to login rather than shown a manage login form', function () {
-    // There is no /manage/login. The `auth` middleware pushes guests into the existing
+    // There is no /admin/login. The `auth` middleware pushes guests into the existing
     // Identity SSO flow, which is what the Filament panel already does.
     get(route('manage.dashboard'))
         ->assertRedirect(route('login'));
+});
+
+test('the panel is mounted at /admin and Filament has moved to /admin-legacy', function () {
+    expect(route('manage.dashboard', absolute: false))->toBe('/admin');
+    expect(route('filament.admin.pages.dashboard', absolute: false))->toBe('/admin-legacy');
+});
+
+test('the admin.badge-pdf routes still resolve under /admin', function () {
+    // They share the /admin prefix with the panel and are registered first, so the
+    // panel's own routes must not be able to swallow them.
+    expect(route('admin.badge-pdf.view', ['customId' => 'EF29-1'], absolute: false))
+        ->toBe('/admin/badge-pdf/EF29-1/view');
+
+    expect(Route::getRoutes()->match(Request::create('/admin/badge-pdf/EF29-1/view', 'GET'))->getName())
+        ->toBe('admin.badge-pdf.view');
+
+    expect(Route::getRoutes()->match(Request::create('/admin', 'GET'))->getName())
+        ->toBe('manage.dashboard');
 });
 
 test('a signed-in user who is neither admin nor reviewer gets 403', function () {
@@ -111,14 +133,14 @@ test('the manage-only props stay off every other interface', function () {
         );
 });
 
-test('/admin is untouched and still reachable for an admin', function () {
-    // Filament serves the real admin until phase 10. Phase 0 must not have moved it.
+test('/admin-legacy is untouched and still reachable for an admin', function () {
+    // Filament serves the real admin until phase 10. Only its mount path moved.
     actingAs($this->admin);
 
     get(route('filament.admin.pages.dashboard'))->assertSuccessful();
 });
 
-test('/admin keeps its own guard: reviewer in, attendee out, guest redirected', function () {
+test('/admin-legacy keeps its own guard: reviewer in, attendee out, guest redirected', function () {
     actingAs($this->reviewer);
     get(route('filament.admin.pages.dashboard'))->assertSuccessful();
 

@@ -70,7 +70,7 @@ it('stops the attendee editing a badge once it is in a batch', function () {
         ->and($owner->can('delete', $badge->fresh()))->toBeFalse();
 });
 
-it('prints highest attendee and badge number first', function () {
+it('prints attendees in order, spare copies before the main badge', function () {
     $badges = collect([
         Badge::factory()->withPrintFile()->create(['custom_id' => '2024-1']),
         Badge::factory()->withPrintFile()->create(['custom_id' => '2025-1']),
@@ -83,8 +83,10 @@ it('prints highest attendee and badge number first', function () {
         ->map(fn ($job) => $job->printable->custom_id)
         ->all();
 
-    // Printed in this order so the finished stack reads ascending from the top.
-    expect($order)->toBe(['2025-2', '2025-1', '2024-1']);
+    // Attendees ascending, because cards are filed into the pickup bins one at
+    // a time as they come out. Badge numbers descending within an attendee, so
+    // the spare copy goes under and the -1 they are handed ends up on top.
+    expect($order)->toBe(['2024-1', '2025-2', '2025-1']);
 });
 
 it('cancels a batch and everything still queued in it', function () {

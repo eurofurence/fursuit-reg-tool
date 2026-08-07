@@ -72,17 +72,22 @@ class PrintBatch extends Model
     }
 
     /**
-     * Order badges for printing: descending by attendee, then descending by
-     * badge number, so 2025-2, 2025-1, 2024-2, 2024-1.
+     * Order badges for printing: ascending by attendee, then *descending* by
+     * badge number, so 1000-1, 1001-2, 1001-1, 1002-1.
      *
-     * Printing highest first means each card lands on top of the previous one,
-     * so the finished stack reads in ascending order from the top and staff can
-     * hand it out without re-sorting.
+     * Attendees ascending because the cards are filed into the pickup bins one
+     * at a time as they come out, so they have to arrive in filing order.
      *
-     * The two implementations this replaces disagreed with each other: the old
-     * polling endpoint sorted attendee ascending with badge number descending,
-     * while PrintJob::scopePrioritized sorted both ascending. Sorting happens
-     * once here and is frozen into PrintJob::sequence.
+     * Badge numbers descending within an attendee so that the spare copies
+     * land under the main badge and the -1 ends up on top of that attendee's
+     * little pile, which is the one staff hand over.
+     *
+     * This is what BatchPrintJob did, and the rework got it wrong twice: first
+     * by sorting both descending (in 06ce8bf, which printed the whole run
+     * backwards), then by sorting both ascending, which fixed the attendees but
+     * put the spare copy on top. Restoring the original behaviour.
+     *
+     * Sorting happens once here and is frozen into PrintJob::sequence.
      *
      * @param  Collection<int, Badge>  $badges
      * @return Collection<int, Badge>
@@ -100,7 +105,7 @@ class PrintBatch extends Model
                     ?: $a->id <=> $b->id;
             }
 
-            return $bAttendee <=> $aAttendee
+            return $aAttendee <=> $bAttendee
                 ?: $bNumber <=> $aNumber
                 ?: $a->id <=> $b->id;
         })->values();

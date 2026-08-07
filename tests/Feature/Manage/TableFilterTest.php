@@ -37,7 +37,7 @@ beforeEach(function () {
             ->columns([Column::text('name', 'Name')])
             ->filters([$filter])
             ->rows(fn (Fursuit $fursuit) => ['name' => $fursuit->name])
-            ->toArray(Request::create('/manage/fursuits', 'GET', $query));
+            ->toArray(Request::create('/admin/fursuits', 'GET', $query));
     };
 });
 

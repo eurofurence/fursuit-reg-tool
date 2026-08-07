@@ -28,9 +28,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->middleware('web')
                 ->group(base_path('routes/web.php'));
 
-            // Manage panel: the Inertia admin, running in parallel with the
-            // Filament panel at /admin until cutover. See
-            // docs/admin/rebuild-plan.md.
+            // Manage panel: the Inertia admin. It owns /admin; Filament has moved
+            // to /admin-legacy and stays there until cutover deletes it. The route
+            // names stay manage.* until then, because admin.* is still taken by
+            // admin.badge-pdf.* above. See docs/admin/rebuild-plan.md.
+            //
+            // Registered after routes/web.php on purpose: the admin.badge-pdf.*
+            // routes also live under /admin and must keep matching first.
             \Illuminate\Support\Facades\Route::domain($mainDomain)
                 ->middleware([
                     'web',
@@ -38,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'can:access-manage',
                     \App\Http\Middleware\ManageEventScope::class,
                 ])
-                ->prefix('manage')
+                ->prefix('admin')
                 ->name('manage.')
                 ->group(base_path('routes/manage.php'));
 

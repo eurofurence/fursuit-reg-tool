@@ -35,7 +35,8 @@ description, and submit `Confirm`.
 - [ ] Dense table rows — successor to `filament-custom.css`'s 2px cell padding
 - [~] Nav groups render in a **declared** order: Events & Registration / Sales / POS / Printing / User Management / Tools / Maintenance — fixed, see rebuild-plan 1.2 (today there is no `->navigationGroups()` and three `navigationSort` collisions make the order accidental)
 - [~] Printing is its own nav group, split out of POS — fixed, see rebuild-plan 1.2
-- [~] Events, Special Codes and Users get real create/edit URLs instead of Filament `ManageRecords` modals — fixed, see rebuild-plan 1.2
+- [~] Special Codes and Users get real create/edit URLs instead of Filament `ManageRecords` modals — fixed, see rebuild-plan 1.2 — `SpecialCodesTest`, `UsersTest`: the create and edit pages render and save
+- [ ] Events gets real create/edit URLs instead of Filament `ManageRecords` modals — phase 2; `routes/manage.php` registers no events routes yet
 - [~] `Filament\Widgets\StatsOverviewWidget` (framework base class, renders an empty stats strip) is not reproduced — dropped, see rebuild-plan 2.10 #44 (audit 44)
 
 ## 2. Global event selector (audit 2.1, 7.3)
@@ -312,39 +313,39 @@ description, and submit `Confirm`.
 
 ### Columns
 
-- [ ] 1 `code`, label `Code`, sortable
-- [ ] 2 `class_name`, label `Class`, sortable, `App\Domain\CatchEmAll\SpecialActions\BugBountyAction` renders as `Bug Hunter Bounty`
-- [~] 2a `class_name` renders safely when null — fixed, see rebuild-plan 2.10 #7 (audit 30: `string $state` hint 500s the table)
-- [ ] 3 `constructor_data`, label `Data`, sortable
-- [ ] 4 `event_id`, label `Event`, sortable, renders the event name
-- [~] 4a `event_id` renders safely when the event row is gone, and the name is eager-loaded rather than one query per row — fixed, see rebuild-plan 2.10 #7 (audit 31, 99)
+- [x] 1 `code`, label `Code`, sortable — `SpecialCodesTest`: the list renders the four columns in order, with their labels; sorting and paging survive the partial reload the client actually sends
+- [x] 2 `class_name`, label `Class`, sortable, `App\Domain\CatchEmAll\SpecialActions\BugBountyAction` renders as `Bug Hunter Bounty` — `SpecialCodesTest`: the Class column renders the option label, and an unknown class as itself; sorting and paging survive the partial reload the client actually sends
+- [~] 2a `class_name` renders safely when null — fixed, see rebuild-plan 2.10 #7 (audit 30: `string $state` hint 500s the table) — `SpecialCodesTest`: a code with no class does not take the whole table down
+- [x] 3 `constructor_data`, label `Data`, sortable — `SpecialCodesTest`: the Data column renders the stored JSON and nothing for an empty one; sorting and paging survive the partial reload the client actually sends
+- [x] 4 `event_id`, label `Event`, sortable, renders the event name — `SpecialCodesTest`: the Event column shows the event name and costs one query however many rows there are; sorting and paging survive the partial reload the client actually sends
+- [~] 4a `event_id` renders safely when the event row is gone, and the name is eager-loaded rather than one query per row — fixed, see rebuild-plan 2.10 #7 (audit 31, 99) — `SpecialCodesTest`: a code whose event row is gone renders an empty cell instead of a 500; the Event column shows the event name and costs one query however many rows there are
 
 ### Filters
 
-- [ ] No filters on this table
-- [~] The list is event-scoped by the global selector — new, see rebuild-plan 2.9
+- [x] No filters on this table — `SpecialCodesTest`: the list carries no filters and is sorted newest first
+- [~] The list is event-scoped by the global selector — new, see rebuild-plan 2.9 — `SpecialCodesTest`: the list is scoped by the global event selector
 
 ### Actions
 
-- [ ] Edit (row)
-- [ ] Delete (row), Filament default delete copy, **hard delete**
-- [ ] Delete selected (bulk), Filament default bulk delete copy
-- [ ] Create (header), label `New special code`
+- [x] Edit (row) — `SpecialCodesTest`: the row, bulk and page actions carry Filament default copy
+- [x] Delete (row), Filament default delete copy, **hard delete** — `SpecialCodesTest`: the row, bulk and page actions carry Filament default copy; a code is hard deleted, one at a time or in bulk
+- [x] Delete selected (bulk), Filament default bulk delete copy — `SpecialCodesTest`: the row, bulk and page actions carry Filament default copy; a code is hard deleted, one at a time or in bulk
+- [x] Create (header), label `New special code` — `SpecialCodesTest`: the row, bulk and page actions carry Filament default copy
 
 ### Form
 
-- [ ] `event_id` Select, label `Event`, required, helper `Event in which the code can be used`
-- [~] `class_name` Select, label `Class`, helper `PHP class used for code handling`, becomes `live()` — fixed, see rebuild-plan 2.10 #39 (audit 33)
-- [~] `constructor_data` Textarea, label `Constructor Data`, 3 rows, `nullable|json`, helper `Data to be passed to the constructor of the action class`, becomes **editable** — fixed, see rebuild-plan 2.10 #39 (audit 32: the `disabled()` matcher compares against a literal `'EXAMPLE'` that is not an option)
-- [ ] `code` TextInput, label `Code`, required, exactly 5 chars, unique on `special_codes.code` ignoring self, helper `E.g. ABC45`
-- [ ] `code` cross-check against `fursuits.catch_code` fails with `This code is already used in Fursuits.`
-- [~] `catch_url` TextInput, label `Catch URL`, read-only, not dehydrated, helper `URL to catch the fursuiter with this code`, updates live as you type — fixed, see rebuild-plan 2.10 #39 (audit 33)
-- [ ] `catch_url` shape `{scheme}://{fcea.domain}/?code={code}&auto`
+- [x] `event_id` Select, label `Event`, required, helper `Event in which the code can be used` — `SpecialCodesTest`: the create form ships its options and the live catch-url base; event_id is required and must exist. Helper text in `Pages/Manage/SpecialCodes/Form.vue`
+- [~] `class_name` Select, label `Class`, helper `PHP class used for code handling`, becomes `live()` — fixed, see rebuild-plan 2.10 #39 (audit 33) — options asserted by `SpecialCodesTest`: the create form ships its options and the live catch-url base. The liveness is client state in `Form.vue` (`v-model` drives the placeholder), not server behaviour, so no server test covers it
+- [~] `constructor_data` Textarea, label `Constructor Data`, 3 rows, `nullable|json`, helper `Data to be passed to the constructor of the action class`, becomes **editable** — fixed, see rebuild-plan 2.10 #39 (audit 32: the `disabled()` matcher compares against a literal `'EXAMPLE'` that is not an option) — `SpecialCodesTest`: constructor_data is editable and must be valid JSON
+- [x] `code` TextInput, label `Code`, required, exactly 5 chars, unique on `special_codes.code` ignoring self, helper `E.g. ABC45` — `SpecialCodesTest`: code is required and must be exactly five characters; code is unique among special codes, ignoring the record being edited
+- [x] `code` cross-check against `fursuits.catch_code` fails with `This code is already used in Fursuits.` — `SpecialCodesTest`: code is cross-checked against fursuit catch codes, with the message verbatim
+- [~] `catch_url` TextInput, label `Catch URL`, read-only, not dehydrated, helper `URL to catch the fursuiter with this code`, updates live as you type — fixed, see rebuild-plan 2.10 #39 (audit 33) — not dehydrated is asserted by `SpecialCodesTest`: catch_url is never written, whatever the request carries. The live rebuild is client state in `Form.vue`, fed by the `catchUrlBase` prop, so no server test covers it
+- [x] `catch_url` shape `{scheme}://{fcea.domain}/?code={code}&auto` — `SpecialCodesTest`: the create form ships its options and the live catch-url base
 
 ### Table config
 
-- [ ] Default sort `created_at` desc
-- [ ] No custom notifications today; any toast added is new behaviour
+- [x] Default sort `created_at` desc — `SpecialCodesTest`: the list carries no filters and is sorted newest first
+- [x] No custom notifications today; any toast added is new behaviour — the stock Filament `Created` / `Saved` / `Deleted` copy is reproduced, which is what the stock actions flashed (audit 7.2); `SpecialCodesTest`: storing a code writes it and flashes the stock Created toast; constructor_data is editable and must be valid JSON; a code is hard deleted, one at a time or in bulk
 
 ## 9. Checkouts (audit 4.5)
 
@@ -757,36 +758,36 @@ description, and submit `Confirm`.
 
 ### Columns
 
-- [ ] 1 `remote_id`, searchable
-- [~] 2 `valid_registration` is removed from the table — dropped, see rebuild-plan 2.10 #4 (audit 26: the column no longer exists on `users`)
-- [ ] 3 `name`, searchable
-- [ ] 4 `email`, searchable
-- [ ] 5 `is_admin`, boolean icon
-- [ ] 6 `is_reviewer`, boolean icon
-- [ ] 7 `created_at`, sortable, toggleable, **hidden by default**
-- [ ] 8 `updated_at`, sortable, toggleable, **hidden by default**
+- [x] 1 `remote_id`, searchable — `UsersTest`: the column list is the audit table without valid_registration; search covers exactly the three columns the audit marks searchable
+- [~] 2 `valid_registration` is removed from the table — dropped, see rebuild-plan 2.10 #4 (audit 26: the column no longer exists on `users`) — `UsersTest`: valid_registration is gone from the columns and from the row cells
+- [x] 3 `name`, searchable — `UsersTest`: the column list is the audit table without valid_registration; search covers exactly the three columns the audit marks searchable
+- [x] 4 `email`, searchable — `UsersTest`: the column list is the audit table without valid_registration; search covers exactly the three columns the audit marks searchable
+- [x] 5 `is_admin`, boolean icon — `UsersTest`: the two flags render as boolean cells
+- [x] 6 `is_reviewer`, boolean icon — `UsersTest`: the two flags render as boolean cells
+- [x] 7 `created_at`, sortable, toggleable, **hidden by default** — `UsersTest`: created_at and updated_at are the two toggleable columns and both start hidden; only the two timestamps sort, matching the audit
+- [x] 8 `updated_at`, sortable, toggleable, **hidden by default** — `UsersTest`: created_at and updated_at are the two toggleable columns and both start hidden; only the two timestamps sort, matching the audit
 
 ### Filters
 
-- [ ] No filters on this table
+- [x] No filters on this table — `UsersTest`: the table declares no filters
 
 ### Actions
 
-- [ ] Edit (row)
-- [ ] Delete (row), Filament default delete copy, **hard delete**
-- [ ] Delete selected (bulk), Filament default bulk delete copy
-- [ ] Create (header), label `New user`
+- [x] Edit (row) — `UsersTest`: each row offers Edit and Delete, with Filament default delete copy
+- [x] Delete (row), Filament default delete copy, **hard delete** — `UsersTest`: each row offers Edit and Delete, with Filament default delete copy; deleting a user removes the row and flashes the Filament copy
+- [x] Delete selected (bulk), Filament default bulk delete copy — `UsersTest`: the bulk action is Delete selected, with Filament default bulk delete copy; bulk delete removes every selected user
+- [x] Create (header), label `New user` — `UsersTest`: the page action is New user and it points at the create page
 
 ### Form
 
-- [ ] `remote_id` TextInput, required, max 255
-- [~] `valid_registration` Toggle is removed from the form — dropped, see rebuild-plan 2.10 #4 (saving throws SQL 1054 today)
-- [ ] `name` TextInput, required, max 255
-- [ ] `email` TextInput, email, required, max 255
-- [ ] `avatar` Textarea, full width
-- [ ] `is_reviewer` Toggle, required
-- [ ] `is_admin` Toggle, required
-- [ ] Create and Edit both work end to end (both are broken today, audit 26)
+- [x] `remote_id` TextInput, required, max 255 — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; email must be an email and the two text fields cap at 255
+- [~] `valid_registration` Toggle is removed from the form — dropped, see rebuild-plan 2.10 #4 (saving throws SQL 1054 today) — `UsersTest`: a valid_registration value in the payload is dropped rather than written
+- [x] `name` TextInput, required, max 255 — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; email must be an email and the two text fields cap at 255
+- [x] `email` TextInput, email, required, max 255 — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; email must be an email and the two text fields cap at 255
+- [x] `avatar` Textarea, full width — `UsersTest`: avatar is optional; the edit page carries exactly the fields the form writes
+- [x] `is_reviewer` Toggle, required — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; a false toggle is accepted, because required means present and not empty
+- [x] `is_admin` Toggle, required — `UsersTest`: remote_id, name, email, is_reviewer and is_admin are all required; a false toggle is accepted, because required means present and not empty
+- [x] Create and Edit both work end to end (both are broken today, audit 26) — `UsersTest`: creating a user works, which it does not today; editing a user works, which it does not today
 
 ## 21. PDF Generator (audit 5.1)
 

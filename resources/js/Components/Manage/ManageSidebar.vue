@@ -28,8 +28,8 @@ const matches = (current, target) => current === target
 
 /**
  * Only the deepest matching item lights up. A plain prefix match lit every ancestor
- * too, so /manage/print-batches also highlighted Dashboard (/manage). The longest match
- * still keeps a detail page on its section, e.g. /manage/fursuits/3 highlights Fursuits.
+ * too, so /admin/print-batches also highlighted Dashboard (/admin). The longest match
+ * still keeps a detail page on its section, e.g. /admin/fursuits/3 highlights Fursuits.
  */
 const activeRoute = computed(() => {
   const current = path(page.url.split('?')[0]);

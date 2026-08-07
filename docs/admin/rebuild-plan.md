@@ -1,4 +1,4 @@
-# Admin Rebuild Plan: Filament -> Inertia + Vue 3 at `/manage`
+# Admin Rebuild Plan: Filament -> Inertia + Vue 3 at `/admin`
 
 Companion to [`current-filament-features.md`](./current-filament-features.md), which is the parity
 contract. That document is 2 824 lines and it is the only baseline this rebuild has. This file is the
@@ -17,7 +17,7 @@ Decisions taken:
 |---|---|
 | Frontend stack | **Stay on Tailwind 3 + PrimeVue 3. Port the ef-streaming Manage components as plain-Tailwind components.** Do not upgrade to Tailwind 4, do not rewrite them onto PrimeVue |
 | Visual direction | Dense operator table, light-first, reusing this repo's existing token conventions rather than forking a second palette |
-| Cutover | Parallel `/manage`; `/admin` stays fully working until the parity suite is green |
+| Cutover | The new panel takes `/admin`; Filament moves to `/admin-legacy` and stays fully working there until the parity suite is green |
 | Test depth | Server-side parity tests per module, transcribed from the audit doc. No Playwright in phase 1 |
 | Authorization | Introduce real policies. Today there are effectively none for three resources |
 
@@ -83,7 +83,7 @@ below bakes it in rather than bolting it on.
 - **Content.** Fluid width.
 - Detail pages are full pages with real URLs, not modals. `EventResource`, `SpecialCodeResource` and
   `UserResource` use Filament `ManageRecords` pages today, so create and edit happen in modals with
-  no URL. Those become `/manage/{module}/{record}/edit` pages so they are linkable and testable.
+  no URL. Those become `/admin/{module}/{record}/edit` pages so they are linkable and testable.
 
 ### 1.3 Tokens
 
@@ -94,7 +94,7 @@ touching either:
   consumed through `tailwind.config.js` as `rgb(var(--surface-200))` and friends.
 - `resources/css/pos.css` (new on this branch, 855 lines at the time of writing and still growing) -
   the POS "Cool Ledger" skin, which works by **re-pointing `--surface-*` inside `.pos`** so the
-  26 701 lines of unstyled PrimeVue preset re-skin themselves. Nothing in `/manage` may disturb that.
+  26 701 lines of unstyled PrimeVue preset re-skin themselves. Nothing in `/admin` may disturb that.
 
 The ef-streaming Manage components use the names `surface-0..3`, `fg-1..3`, `hairline` and
 `state-{live,ok,warn,idle,danger,info}`. Only one of those collides here: `surface-0` is already
@@ -138,7 +138,7 @@ pattern as the POS skin: a different look is a different value block.
 **The token values go on `:root`, not on `.manage`.** `pos.css:12-17` already records why, and the
 lesson transfers exactly: PrimeVue teleports overlays (`Dialog`, `Menu`, `Toast`) to `<body>`, which
 is outside the layout subtree. `ActionButton.vue`'s confirm dialog becomes a PrimeVue `Dialog` (1.5),
-so tokens scoped under `.manage` would leave every `/manage` confirm modal and every toast rendering
+so tokens scoped under `.manage` would leave every `/admin` confirm modal and every toast rendering
 against undefined custom properties. `.manage` claims only the canvas; a `.manage-surface` class is
 put on the teleported overlay roots the way `.pos` does it, and `manage.css` carries a light and a
 dark value block on `:root` / `.dark` like `app.css` does.
@@ -303,7 +303,7 @@ about 15 lines. Against that, Tailwind 4 puts 26 701 lines of live PrimeVue pres
 during a POS rewrite. Add the 37 `mg-surface-*` renames from 1.3 and the port is done.
 
 Tailwind 4 remains a good idea for this repo on its own schedule, after the POS rework lands and as
-its own PR with its own visual regression pass. It is not a prerequisite for `/manage` and must not
+its own PR with its own visual regression pass. It is not a prerequisite for `/admin` and must not
 be coupled to it.
 
 ---
@@ -312,137 +312,144 @@ be coupled to it.
 
 ### 2.1 Routing
 
-New file `routes/manage.php`, registered from `bootstrap/app.php`, prefix `/manage`, names
+New file `routes/manage.php`, registered from `bootstrap/app.php`, prefix `/admin`, names
 `manage.*`, middleware `['web', 'auth', 'can:access-manage', ManageEventScope::class]`.
 
+The panel takes `/admin` from the start; Filament's panel moves to `->path('admin-legacy')` and
+serves the whole migration from there. The **names** stay `manage.*` for now, because `admin.*` is
+still occupied by `admin.badge-pdf.view` and `admin.badge-pdf.download` in `routes/web.php`. Part 5
+renames them once Filament and those two routes are gone. The group is registered after
+`routes/web.php` so the `admin.badge-pdf.*` routes, which share the `/admin` prefix, keep matching
+first.
+
 ```
-GET    /manage                                        manage.dashboard
-POST   /manage/event                                  manage.event.select
-POST   /manage/uploads                                manage.uploads.store
-POST   /manage/tables/{table}/columns                 manage.tables.columns
+GET    /admin                                        manage.dashboard
+POST   /admin/event                                  manage.event.select
+POST   /admin/uploads                                manage.uploads.store
+POST   /admin/tables/{table}/columns                 manage.tables.columns
 
-GET    /manage/events                                 manage.events.index
-GET    /manage/events/create                          manage.events.create
-POST   /manage/events                                 manage.events.store
-GET    /manage/events/{event}/edit                    manage.events.edit
-PUT    /manage/events/{event}                         manage.events.update
-DELETE /manage/events/{event}                         manage.events.destroy
-DELETE /manage/events/bulk                            manage.events.bulk.destroy
+GET    /admin/events                                 manage.events.index
+GET    /admin/events/create                          manage.events.create
+POST   /admin/events                                 manage.events.store
+GET    /admin/events/{event}/edit                    manage.events.edit
+PUT    /admin/events/{event}                         manage.events.update
+DELETE /admin/events/{event}                         manage.events.destroy
+DELETE /admin/events/bulk                            manage.events.bulk.destroy
 
-GET    /manage/badges                                 manage.badges.index
-GET    /manage/badges/{badge}/edit                    manage.badges.edit
-PUT    /manage/badges/{badge}                         manage.badges.update
-DELETE /manage/badges/{badge}                         manage.badges.destroy
-POST   /manage/badges/{badge}/print                   manage.badges.print
-POST   /manage/badges/bulk/print                      manage.badges.bulk.print
+GET    /admin/badges                                 manage.badges.index
+GET    /admin/badges/{badge}/edit                    manage.badges.edit
+PUT    /admin/badges/{badge}                         manage.badges.update
+DELETE /admin/badges/{badge}                         manage.badges.destroy
+POST   /admin/badges/{badge}/print                   manage.badges.print
+POST   /admin/badges/bulk/print                      manage.badges.bulk.print
 
-GET    /manage/fursuits                               manage.fursuits.index
-GET    /manage/fursuits/{fursuit}                     manage.fursuits.show
-GET    /manage/fursuits/{fursuit}/edit                manage.fursuits.edit
-PUT    /manage/fursuits/{fursuit}                     manage.fursuits.update
-DELETE /manage/fursuits/{fursuit}                     manage.fursuits.destroy
-POST   /manage/fursuits/{fursuit}/claim               manage.fursuits.claim
-DELETE /manage/fursuits/{fursuit}/claim               manage.fursuits.unclaim
-POST   /manage/fursuits/{fursuit}/approve             manage.fursuits.approve
-POST   /manage/fursuits/{fursuit}/approve-rejected    manage.fursuits.approve-rejected
-POST   /manage/fursuits/{fursuit}/reject              manage.fursuits.reject
-POST   /manage/fursuits/{fursuit}/notify              manage.fursuits.notify
-GET    /manage/fursuits/{fursuit}/next                manage.fursuits.next
+GET    /admin/fursuits                               manage.fursuits.index
+GET    /admin/fursuits/{fursuit}                     manage.fursuits.show
+GET    /admin/fursuits/{fursuit}/edit                manage.fursuits.edit
+PUT    /admin/fursuits/{fursuit}                     manage.fursuits.update
+DELETE /admin/fursuits/{fursuit}                     manage.fursuits.destroy
+POST   /admin/fursuits/{fursuit}/claim               manage.fursuits.claim
+DELETE /admin/fursuits/{fursuit}/claim               manage.fursuits.unclaim
+POST   /admin/fursuits/{fursuit}/approve             manage.fursuits.approve
+POST   /admin/fursuits/{fursuit}/approve-rejected    manage.fursuits.approve-rejected
+POST   /admin/fursuits/{fursuit}/reject              manage.fursuits.reject
+POST   /admin/fursuits/{fursuit}/notify              manage.fursuits.notify
+GET    /admin/fursuits/{fursuit}/next                manage.fursuits.next
 
-GET    /manage/special-codes                          manage.special-codes.index
-GET    /manage/special-codes/create                   manage.special-codes.create
-POST   /manage/special-codes                          manage.special-codes.store
-GET    /manage/special-codes/{code}/edit              manage.special-codes.edit
-PUT    /manage/special-codes/{code}                   manage.special-codes.update
-DELETE /manage/special-codes/{code}                   manage.special-codes.destroy
-DELETE /manage/special-codes/bulk                     manage.special-codes.bulk.destroy
+GET    /admin/special-codes                          manage.special-codes.index
+GET    /admin/special-codes/create                   manage.special-codes.create
+POST   /admin/special-codes                          manage.special-codes.store
+GET    /admin/special-codes/{code}/edit              manage.special-codes.edit
+PUT    /admin/special-codes/{code}                   manage.special-codes.update
+DELETE /admin/special-codes/{code}                   manage.special-codes.destroy
+DELETE /admin/special-codes/bulk                     manage.special-codes.bulk.destroy
 
-GET    /manage/checkouts                              manage.checkouts.index
-GET    /manage/checkouts/{checkout}                   manage.checkouts.show
-GET    /manage/checkouts/{checkout}/receipt           manage.checkouts.receipt
-POST   /manage/checkouts/{checkout}/print             manage.checkouts.print
+GET    /admin/checkouts                              manage.checkouts.index
+GET    /admin/checkouts/{checkout}                   manage.checkouts.show
+GET    /admin/checkouts/{checkout}/receipt           manage.checkouts.receipt
+POST   /admin/checkouts/{checkout}/print             manage.checkouts.print
 
-GET    /manage/machines                               manage.machines.index
-GET    /manage/machines/create                        manage.machines.create
-POST   /manage/machines                               manage.machines.store
-GET    /manage/machines/{machine}/edit                manage.machines.edit
-PUT    /manage/machines/{machine}                     manage.machines.update
-POST   /manage/machines/{machine}/archive             manage.machines.archive
-DELETE /manage/machines/{machine}/archive             manage.machines.unarchive
-POST   /manage/machines/bulk/archive                  manage.machines.bulk.archive
-DELETE /manage/machines/bulk/archive                  manage.machines.bulk.unarchive
-POST   /manage/machines/{machine}/login-link          manage.machines.login-link
+GET    /admin/machines                               manage.machines.index
+GET    /admin/machines/create                        manage.machines.create
+POST   /admin/machines                               manage.machines.store
+GET    /admin/machines/{machine}/edit                manage.machines.edit
+PUT    /admin/machines/{machine}                     manage.machines.update
+POST   /admin/machines/{machine}/archive             manage.machines.archive
+DELETE /admin/machines/{machine}/archive             manage.machines.unarchive
+POST   /admin/machines/bulk/archive                  manage.machines.bulk.archive
+DELETE /admin/machines/bulk/archive                  manage.machines.bulk.unarchive
+POST   /admin/machines/{machine}/login-link          manage.machines.login-link
 
-GET    /manage/printers                               manage.printers.index
-GET    /manage/printers/create                        manage.printers.create
-POST   /manage/printers                               manage.printers.store
-GET    /manage/printers/{printer}/edit                manage.printers.edit
-PUT    /manage/printers/{printer}                     manage.printers.update
-DELETE /manage/printers/{printer}                     manage.printers.destroy
-POST   /manage/printers/{printer}/active              manage.printers.active
-POST   /manage/printers/{printer}/clear-error         manage.printers.clear-error
-DELETE /manage/printers/bulk                          manage.printers.bulk.destroy
+GET    /admin/printers                               manage.printers.index
+GET    /admin/printers/create                        manage.printers.create
+POST   /admin/printers                               manage.printers.store
+GET    /admin/printers/{printer}/edit                manage.printers.edit
+PUT    /admin/printers/{printer}                     manage.printers.update
+DELETE /admin/printers/{printer}                     manage.printers.destroy
+POST   /admin/printers/{printer}/active              manage.printers.active
+POST   /admin/printers/{printer}/clear-error         manage.printers.clear-error
+DELETE /admin/printers/bulk                          manage.printers.bulk.destroy
 
-GET    /manage/print-jobs                             manage.print-jobs.index
-GET    /manage/print-jobs/{job}                       manage.print-jobs.show
-GET    /manage/print-jobs/{job}/edit                  manage.print-jobs.edit
-PUT    /manage/print-jobs/{job}                       manage.print-jobs.update
-POST   /manage/print-jobs/{job}/retry                 manage.print-jobs.retry
-DELETE /manage/print-jobs/{job}                       manage.print-jobs.destroy
-DELETE /manage/print-jobs/bulk                        manage.print-jobs.bulk.destroy
+GET    /admin/print-jobs                             manage.print-jobs.index
+GET    /admin/print-jobs/{job}                       manage.print-jobs.show
+GET    /admin/print-jobs/{job}/edit                  manage.print-jobs.edit
+PUT    /admin/print-jobs/{job}                       manage.print-jobs.update
+POST   /admin/print-jobs/{job}/retry                 manage.print-jobs.retry
+DELETE /admin/print-jobs/{job}                       manage.print-jobs.destroy
+DELETE /admin/print-jobs/bulk                        manage.print-jobs.bulk.destroy
 
-GET    /manage/print-batches                          manage.print-batches.index
-GET    /manage/print-batches/{batch}                  manage.print-batches.show
-POST   /manage/print-batches/{batch}/pause            manage.print-batches.pause
-POST   /manage/print-batches/{batch}/resume           manage.print-batches.resume
-POST   /manage/print-batches/{batch}/cancel           manage.print-batches.cancel
-POST   /manage/print-batches/{batch}/jobs/{job}/verify manage.print-batches.jobs.verify
+GET    /admin/print-batches                          manage.print-batches.index
+GET    /admin/print-batches/{batch}                  manage.print-batches.show
+POST   /admin/print-batches/{batch}/pause            manage.print-batches.pause
+POST   /admin/print-batches/{batch}/resume           manage.print-batches.resume
+POST   /admin/print-batches/{batch}/cancel           manage.print-batches.cancel
+POST   /admin/print-batches/{batch}/jobs/{job}/verify manage.print-batches.jobs.verify
 
-GET    /manage/staff                                  manage.staff.index
-GET    /manage/staff/create                           manage.staff.create
-POST   /manage/staff                                  manage.staff.store
-GET    /manage/staff/{staff}/edit                     manage.staff.edit
-PUT    /manage/staff/{staff}                          manage.staff.update
-DELETE /manage/staff/{staff}                          manage.staff.destroy
-DELETE /manage/staff/bulk                             manage.staff.bulk.destroy
-POST   /manage/staff/{staff}/setup-code               manage.staff.setup-code
-POST   /manage/staff/{staff}/rfid-tags                manage.staff.rfid-tags.store
-PUT    /manage/staff/{staff}/rfid-tags/{tag}          manage.staff.rfid-tags.update
-DELETE /manage/staff/{staff}/rfid-tags/{tag}          manage.staff.rfid-tags.destroy
-DELETE /manage/staff/{staff}/rfid-tags/bulk           manage.staff.rfid-tags.bulk.destroy
+GET    /admin/staff                                  manage.staff.index
+GET    /admin/staff/create                           manage.staff.create
+POST   /admin/staff                                  manage.staff.store
+GET    /admin/staff/{staff}/edit                     manage.staff.edit
+PUT    /admin/staff/{staff}                          manage.staff.update
+DELETE /admin/staff/{staff}                          manage.staff.destroy
+DELETE /admin/staff/bulk                             manage.staff.bulk.destroy
+POST   /admin/staff/{staff}/setup-code               manage.staff.setup-code
+POST   /admin/staff/{staff}/rfid-tags                manage.staff.rfid-tags.store
+PUT    /admin/staff/{staff}/rfid-tags/{tag}          manage.staff.rfid-tags.update
+DELETE /admin/staff/{staff}/rfid-tags/{tag}          manage.staff.rfid-tags.destroy
+DELETE /admin/staff/{staff}/rfid-tags/bulk           manage.staff.rfid-tags.bulk.destroy
 
-GET    /manage/sumup-readers                          manage.sumup-readers.index
-GET    /manage/sumup-readers/create                   manage.sumup-readers.create
-POST   /manage/sumup-readers                          manage.sumup-readers.store
-GET    /manage/sumup-readers/{reader}/edit            manage.sumup-readers.edit
-PUT    /manage/sumup-readers/{reader}                 manage.sumup-readers.update
-POST   /manage/sumup-readers/{reader}/reveal          manage.sumup-readers.reveal
-DELETE /manage/sumup-readers/{reader}                 manage.sumup-readers.destroy
-DELETE /manage/sumup-readers/bulk                     manage.sumup-readers.bulk.destroy
+GET    /admin/sumup-readers                          manage.sumup-readers.index
+GET    /admin/sumup-readers/create                   manage.sumup-readers.create
+POST   /admin/sumup-readers                          manage.sumup-readers.store
+GET    /admin/sumup-readers/{reader}/edit            manage.sumup-readers.edit
+PUT    /admin/sumup-readers/{reader}                 manage.sumup-readers.update
+POST   /admin/sumup-readers/{reader}/reveal          manage.sumup-readers.reveal
+DELETE /admin/sumup-readers/{reader}                 manage.sumup-readers.destroy
+DELETE /admin/sumup-readers/bulk                     manage.sumup-readers.bulk.destroy
 
-GET    /manage/tse-clients                            manage.tse-clients.index
-GET    /manage/tse-clients/{client}/edit              manage.tse-clients.edit
-PUT    /manage/tse-clients/{client}                   manage.tse-clients.update
+GET    /admin/tse-clients                            manage.tse-clients.index
+GET    /admin/tse-clients/{client}/edit              manage.tse-clients.edit
+PUT    /admin/tse-clients/{client}                   manage.tse-clients.update
 
-GET    /manage/users                                  manage.users.index
-GET    /manage/users/create                           manage.users.create
-POST   /manage/users                                  manage.users.store
-GET    /manage/users/{user}/edit                      manage.users.edit
-PUT    /manage/users/{user}                           manage.users.update
-DELETE /manage/users/{user}                           manage.users.destroy
-DELETE /manage/users/bulk                             manage.users.bulk.destroy
+GET    /admin/users                                  manage.users.index
+GET    /admin/users/create                           manage.users.create
+POST   /admin/users                                  manage.users.store
+GET    /admin/users/{user}/edit                      manage.users.edit
+PUT    /admin/users/{user}                           manage.users.update
+DELETE /admin/users/{user}                           manage.users.destroy
+DELETE /admin/users/bulk                             manage.users.bulk.destroy
 
-GET    /manage/tools/pdf                              manage.tools.pdf
-POST   /manage/tools/pdf/badge-list                   manage.tools.pdf.badge-list
-POST   /manage/tools/pdf/box-labels                   manage.tools.pdf.box-labels
-GET    /manage/tools/badge-preview                    manage.tools.badge-preview
-POST   /manage/tools/badge-preview                    manage.tools.badge-preview.lookup
-GET    /manage/tools/badge-preview/{customId}/pdf     manage.tools.badge-preview.pdf.view
-GET    /manage/tools/badge-preview/{customId}/pdf/download  manage.tools.badge-preview.pdf.download
+GET    /admin/tools/pdf                              manage.tools.pdf
+POST   /admin/tools/pdf/badge-list                   manage.tools.pdf.badge-list
+POST   /admin/tools/pdf/box-labels                   manage.tools.pdf.box-labels
+GET    /admin/tools/badge-preview                    manage.tools.badge-preview
+POST   /admin/tools/badge-preview                    manage.tools.badge-preview.lookup
+GET    /admin/tools/badge-preview/{customId}/pdf     manage.tools.badge-preview.pdf.view
+GET    /admin/tools/badge-preview/{customId}/pdf/download  manage.tools.badge-preview.pdf.download
 
-GET    /manage/maintenance/db-service                 manage.maintenance.db-service
-POST   /manage/maintenance/db-service/preview         manage.maintenance.db-service.preview
-POST   /manage/maintenance/db-service/apply           manage.maintenance.db-service.apply
+GET    /admin/maintenance/db-service                 manage.maintenance.db-service
+POST   /admin/maintenance/db-service/preview         manage.maintenance.db-service.preview
+POST   /admin/maintenance/db-service/apply           manage.maintenance.db-service.apply
 ```
 
 Every mutation is a POST/PUT/DELETE that redirects back with a flash. No JSON endpoints and no
@@ -451,7 +458,7 @@ still return a redirect.
 
 Two routes that exist today and change guard rather than shape: `admin.badge-pdf.view` and
 `admin.badge-pdf.download` in `routes/web.php:42-49` are behind `auth` only, so any logged-in
-attendee can pull any badge PDF by custom id (audit landmine 60). Both move under `/manage/tools` and
+attendee can pull any badge PDF by custom id (audit landmine 60). Both move under `/admin/tools` and
 behind `can:access-manage`, and both survive as separate routes: `BadgePreview::viewPdf()` and
 `downloadPdf()` are two distinct actions (audit 5.2), inline versus attachment, and collapsing them
 into one endpoint loses the download.
@@ -498,7 +505,7 @@ under `App\Domain\**` where Laravel auto-discovery looks in directories that do 
 - `FursuitPolicy::create()` stays `false`. It is not a bug to fix during a rewrite (landmine 38);
   the create route simply is not registered.
 
-**No `/manage/login`.** Guests are redirected into the existing Identity SSO flow at
+**No `/admin/login`.** Guests are redirected into the existing Identity SSO flow at
 `/auth/login`, which is what the Filament panel already does since it declares no `->login()`.
 A signed-in user without the gate gets 403.
 
@@ -550,7 +557,7 @@ in Part 4:
   `toggleable(isToggledHiddenByDefault: true)`**: `BadgeResource` 5, `EventResource` 3,
   `PrintBatchResource` 3, `UserResource` 2, `StaffResource` 2, `PrintJobsRelationManager` 2. All 17
   flags are transcribed into the declaration and the user's choice persists in the session keyed by
-  table name, through `POST /manage/tables/{table}/columns`.
+  table name, through `POST /admin/tables/{table}/columns`.
 - `BadgeResource` uses `->selectCurrentPageOnly()` so bulk print can never cross a page. That is a
   deliberate operational cap, not an accident, and it is kept.
 - `->paginated(false)` on Printers, Machines, Staff and checkout items becomes `perPage: 200` with
@@ -663,7 +670,7 @@ display string.
 
 ### 2.7 Uploads to private S3
 
-`POST /manage/uploads` accepts one file plus a `purpose`. Purpose determines disk, directory,
+`POST /admin/uploads` accepts one file plus a `purpose`. Purpose determines disk, directory,
 visibility, accepted mime types and max size. Purposes in phase 1: `fursuit_image` only. The disk is
 **`s3`, visibility private**, matching every read site in the panel.
 
@@ -682,7 +689,7 @@ placeholder in the panel points at it (landmine 50); the rebuild ships the file.
 ### 2.8 Navigation and badge counts
 
 One `App\Support\Manage\Navigation` service returns the rail structure with counts, computed in one
-place and shared as a prop on every `/manage` response, policy-filtered so a reviewer does not see
+place and shared as a prop on every `/admin` response, policy-filtered so a reviewer does not see
 groups they cannot open.
 
 | Group | Items | Badge |
@@ -709,7 +716,7 @@ likely to be got wrong by porting it faithfully.
 
 **What exists today** (audit 2.1 and 7.3): `App\Http\Middleware\FilamentEventSelector`, 32 lines,
 registered only inside the panel's `->middleware([])` array, so it stops running the moment the panel
-goes. It writes `session('filament_selected_event_id')` on every `/admin` request. A blade select in
+goes. It writes `session('filament_selected_event_id')` on every `/admin-legacy` request. A blade select in
 the topbar navigates the whole page with `?selected_event_id=`. `App\Filament\Traits\HasEventFilter`
 reads it. Two resources and three widgets are scoped by it. `App\Filament\Components\EventSelector`
 renders the same view and is referenced by nothing.
@@ -729,7 +736,7 @@ in the same call, unconditionally re-seeds it with the newest event when the key
 **What replaces it.**
 
 `App\Support\Manage\EventScope`, a request-scoped service, plus
-`App\Http\Middleware\ManageEventScope` on the `/manage` group:
+`App\Http\Middleware\ManageEventScope` on the `/admin` group:
 
 ```php
 // session keys
@@ -740,14 +747,14 @@ in the same call, unconditionally re-seeds it with the newest event when the key
 - The middleware seeds a default **only when `manage.event_chosen` is absent**. That single flag is
   the whole fix: forgetting the id and "having chosen all events" are now different states, so the
   forget-then-reseed collision cannot happen.
-- The selection is written by `POST /manage/event` with `event_id` validated
+- The selection is written by `POST /admin/event` with `event_id` validated
   `nullable|integer|exists:events,id`, not by a query-string side effect on an arbitrary GET. An
   unknown id is a validation error, not a poisoned session.
 - `EventScope::id()` returns `?int`, `EventScope::event()` returns `?Event`, and
   `EventScope::apply(Builder $query, ?string $relationship = null)` is the direct successor to
   `applyEventFilter()`, with its "no id" branch now **reachable and meaningful**: it returns the
   query unscoped, which is what "all events" means.
-- The current selection is a **shared Inertia prop** on every `/manage` response:
+- The current selection is a **shared Inertia prop** on every `/admin` response:
   `['id' => …, 'name' => …, 'year' => …, 'orders_open' => bool, 'options' => [{id, name, year, orders_open}]]`.
   The selector renders from the prop, so the "orders open" marker is visible for **every** option,
   not only the already-selected one (landmine 68).
@@ -846,7 +853,7 @@ refer to the audit's landmine table.
     requires that serial to stay traceable [8].
 15. **The machine login link is issued on demand and expires.** `URL::signedRoute` with no expiry,
     rendered as copyable plaintext, is the most sensitive thing in the panel [9]. It becomes
-    `POST /manage/machines/{machine}/login-link` returning a `temporarySignedRoute` valid for 15
+    `POST /admin/machines/{machine}/login-link` returning a `temporarySignedRoute` valid for 15
     minutes, gated on `is_admin`, with an activity-log entry naming who minted it.
 16. **The SumUp `paring_code` is masked by default.** It is a pairing secret rendered as a plain
     column and a plain text input today [10]. It becomes a `reveal` action gated on `is_admin` and
@@ -877,7 +884,7 @@ refer to the audit's landmine table.
 24. **Staff PIN handling stays plaintext and is documented as such.** The admin table masks
     `pin_code` to `Set` / `Not Set`, which reads as if it were hashed; it is not, and POS login does
     a plaintext comparison [11]. Changing that is a POS change, not an admin change, and is out of
-    scope here. The `/manage` field says so in its helper text so nobody assumes otherwise.
+    scope here. The `/admin` field says so in its helper text so nobody assumes otherwise.
 
 **Printing and operations.**
 
@@ -926,7 +933,7 @@ refer to the audit's landmine table.
     column stores Spatie `$name` strings, so it matches zero rows and looks like it works [6].
 36. **The receipt link stops pointing into the POS route group.** `route('pos.checkout.receipt')` is
     behind `pos-auth:machine` plus `pos-auth:machine-user`, so an admin without an active POS session
-    is bounced rather than shown the receipt [13]. `/manage/checkouts/{checkout}/receipt` serves it
+    is bounced rather than shown the receipt [13]. `/admin/checkouts/{checkout}/receipt` serves it
     under the manage guard.
 37. **Receipt printing is queued, not `dispatchSync`.** mPDF renders inside the web request today, so
     an mPDF or Fiskaly failure is a 500 rather than a toast, and the action can be fired repeatedly
@@ -974,7 +981,7 @@ refer to the audit's landmine table.
 
 ## Part 3 - Build order
 
-Each phase is one PR, ends green, and leaves `/admin` fully working. Phases are ordered by
+Each phase is one PR, ends green, and leaves `/admin-legacy` fully working. Phases are ordered by
 operational risk, lowest first. The convention-critical slices, printing, checkouts and TSE, come
 last, so that by the time they are touched the table builder, the action layer, the toast layer and
 the test harness have all been exercised by six earlier modules.
@@ -1128,22 +1135,22 @@ Each module test covers:
    - rejecting writes the reason into the activity properties and sends
      `FursuitRejectedNotification` with the same string
    - a badge cannot be moved to a state `config()` does not allow from its current one
-   - a print job set to Printed from `/manage` promotes the badge and recalculates the batch
+   - a print job set to Printed from `/admin` promotes the badge and recalculates the batch
 6. **Money.** One case per money surface asserting cents in, euro string out, including that the
-   badge total column no longer renders 100x, and that no `/manage` write path can put a euro string
+   badge total column no longer renders 100x, and that no `/admin` write path can put a euro string
    into a cents column.
 7. **Uploads.** `Storage::fake('s3')`, asserting disk, directory, private visibility, that the model
    stores the path and that the accessor returns a signed URL.
 8. **Event scope.** Its own file, and the one place the middleware bug is locked out:
    - with no session state, the newest event is selected
    - selecting `all` persists and **survives the next request**, which is exactly what fails today
-   - `POST /manage/event` with an unknown id is a 422, not a poisoned session
+   - `POST /admin/event` with an unknown id is a 422, not a poisoned session
    - the badge, fursuit, special-code, PDF-generator and dashboard queries all narrow when a specific
      event is selected and all widen when `all` is selected
    - the fursuit moderation queue never returns a fursuit from another event
 
 Existing coverage is preserved rather than replaced: `DbServiceMaintenancePageTest`'s four cases are
-re-expressed against `/manage/maintenance/db-service` in phase 9 and the Filament version is kept
+re-expressed against `/admin/maintenance/db-service` in phase 9 and the Filament version is kept
 until phase 10.
 
 Factories: this repo has factories for badges, fursuits, events and users. `PrintBatch`, `PrintJob`,
@@ -1174,12 +1181,12 @@ Cutover requires all of:
       numbered entry in 2.10.
 - [ ] `php artisan test` green, including `DbServiceMaintenancePageTest` against the old panel.
 - [ ] `./vendor/bin/pint` clean.
-- [ ] A reviewer walkthrough: 20 pending fursuits approved or rejected end to end from `/manage`,
+- [ ] A reviewer walkthrough: 20 pending fursuits approved or rejected end to end from `/admin`,
       with the notifications landing in Mailpit.
 - [ ] An operator walkthrough against a seeded database: select badges, build a batch, watch it
       print, pause on a fault, resume, verify cards, cancel the remainder, confirm the badges
       unlocked and the counters agree.
-- [ ] A fiscal spot check: three checkouts compared field by field between `/admin` and `/manage`,
+- [ ] A fiscal spot check: three checkouts compared field by field between `/admin-legacy` and `/admin`,
       including that the money figures now agree with each other and with the receipt.
 
 Playwright is deliberately out of scope for phase 1. The behaviours it would cover here (polling,
@@ -1192,8 +1199,9 @@ repo has no browser test harness to extend. Revisit after cutover.
 
 Phase 10, one PR, only once the gate above is fully green, and never inside an event window.
 
-1. `Route::redirect('/admin/{path?}', '/manage', 301)->where('path', '.*')`, replacing the panel
-   registration.
+1. Drop the `/admin-legacy` mount. `Route::redirect('/admin-legacy/{path?}', '/admin', 301)
+   ->where('path', '.*')` for one release so bookmarked deep links land somewhere, then remove it.
+   Nothing has to move to free `/admin`: the panel has served it since phase 0.
 2. Delete `app/Providers/Filament/AdminPanelProvider.php` (72 lines) and remove it from the providers
    list.
 3. Delete `app/Filament/` entirely. By the audit's own line counts that is 13 resources
@@ -1239,8 +1247,16 @@ Phase 10, one PR, only once the gate above is fully green, and never inside an e
 13. Fix the stale comment in `routes/web.php:42` (`// Admin badge PDF routes (used by Filament)`) and
     the two stale comments in `resources/css/pos.css` lines 5 and 53 that refer to Filament keeping
     its own look.
-14. Update `CLAUDE.md`: `/admin` becomes a redirect, `/manage` is the admin area, Filament leaves the
-    stack description, and the `App\Support\Manage` layer is named as the place table and action
+14. Rename the route names `manage.*` to `admin.*`. They were held back only because
+    `admin.badge-pdf.view` and `admin.badge-pdf.download` owned the prefix; by the time this step
+    runs the `/admin` group in `routes/web.php` is gone, replaced by
+    `admin.tools.badge-preview.pdf.*` under `can:access-manage` (2.1). Change the `->name('manage.')`
+    prefix in `bootstrap/app.php`, then sweep `route('manage.` and `routeIs('manage.*')` across
+    `app/`, `resources/js/` and `tests/`. The `App\Support\Manage` namespace, the
+    `resources/js/Components/Manage` directory, `manage.css` and the `manage.event_id` session keys
+    are internal names and stay as they are; only route names move.
+15. Update `CLAUDE.md`: `/admin` is the Inertia admin area, `/admin-legacy` is gone, Filament leaves
+    the stack description, and the `App\Support\Manage` layer is named as the place table and action
     behaviour lives.
 
 Rollback during the parallel phase is trivial, because nothing is removed until phase 10. After
@@ -1255,11 +1271,11 @@ behaviour changes, no renames beyond the ones listed, no opportunistic cleanup.
 |---|---|
 | No baseline suite, so a silently dropped column or filter default is invisible | The column and filter list assertions in 4.2 are literal arrays transcribed from the audit; the parity checklist in 4.3 is ticked per phase, not once at the end |
 | Cutover lands near a convention | Phases 7, 8 and 10 are frozen during event windows. The parallel panel means there is never schedule pressure to ship them |
-| A behaviour change in 2.10 turns out to be load-bearing for someone | Each is numbered, each appears in its phase PR description, and `/admin` still works, so the old behaviour is one URL away until phase 10 |
+| A behaviour change in 2.10 turns out to be load-bearing for someone | Each is numbered, each appears in its phase PR description, and `/admin-legacy` still works, so the old behaviour is one URL away until phase 10 |
 | The state-machine changes (8, 9, 10) block an operator who relied on writing a raw status to get out of a stuck record | Ship an explicit admin-only "force state" action alongside them, logged to the activity log, rather than leaving a silent free-text field |
 | The `PrintBatchPolicy` change locks out a reviewer who runs print batches in practice | Confirm with the operators who actually run print batches **before** phase 7 lands, not after. If reviewers do run them, the policy becomes an explicit `print.manage` flag rather than reverting to no check |
 | Tailwind 4 pressure returns mid-project | The decision and its numbers are recorded above. A Tailwind 4 upgrade is its own PR, after the POS rework, with its own visual pass over the 26 701 preset lines |
-| The POS rework on this branch conflicts with `/manage` work in `tailwind.config.js` | No existing token is touched semantically: `/manage` only appends to `theme.extend.colors` under the `mg-` prefix and adds one CSS file. Textually it is not free, though - `tailwind.config.js` is dirty on `printing-rework` right now with a 23-line `pos-*` block, and the `mg-*` block appends at the same closing brace of `theme.extend.colors`. Expect one trivial conflict there, and land the `mg-*` block after the POS block rather than merging into it |
+| The POS rework on this branch conflicts with `/admin` work in `tailwind.config.js` | No existing token is touched semantically: `/admin` only appends to `theme.extend.colors` under the `mg-` prefix and adds one CSS file. Textually it is not free, though - `tailwind.config.js` is dirty on `printing-rework` right now with a 23-line `pos-*` block, and the `mg-*` block appends at the same closing brace of `theme.extend.colors`. Expect one trivial conflict there, and land the `mg-*` block after the POS block rather than merging into it |
 | Money fixes reveal already-corrupted badge totals | Change 3 ships a read-only report in phase 4 before anything is written; the repair, if needed, goes through `FreeBadgeRepairService`'s pattern with a preview and an activity entry |
 | Private-S3 upload or signed-URL regression | `Storage::fake('s3')` per purpose, plus the fursuit image is the only upload in scope, so the surface is one field |
 | Polling load multiplies across 16 tables | `only:` partial reloads, pause on hidden tab and dirty form, cached badge counts, and the widget interval dropped from 5s to 15s |

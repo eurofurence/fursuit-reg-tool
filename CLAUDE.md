@@ -124,7 +124,8 @@ wraps this with its own models, services, and states.
 **Multi-Interface Design**:
 
 - `/` — Public fursuit badge registration interface (Vue/Inertia)
-- `/admin` — Filament admin panel for staff
+- `/admin` — Inertia admin panel for staff (route names `manage.*`, see `docs/admin/rebuild-plan.md`)
+- `/admin-legacy` — the Filament panel it is replacing, still fully working until cutover
 - `/pos` — Point-of-sale system for on-site operations (machine + staff PIN auth)
 - `/catch-em-all` — "Catch-Em-All" game interface (mobile-first, PWA)
 - `/gallery` — Public fursuit gallery

@@ -18,7 +18,8 @@ The system manages the full badge lifecycle and is split into several interfaces
 | Path            | Audience    | Purpose                                                             |
 | --------------- | ----------- | ------------------------------------------------------------------- |
 | `/`             | Attendees   | Public badge registration & customization (Vue/Inertia)             |
-| `/admin`        | Staff       | Filament admin panel (badges, fursuits, events, payments, printing) |
+| `/admin`        | Staff       | Inertia admin panel (badges, fursuits, events, payments, printing)  |
+| `/admin-legacy` | Staff       | The Filament panel it replaces, live until cutover                  |
 | `/pos`          | On-site ops | Point-of-sale: checkout, cashier, printing, machine auth            |
 | `/catch-em-all` | Attendees   | Mobile-first "Catch-Em-All" game (PWA)                              |
 | `/gallery`      | Public      | Fursuit gallery                                                     |

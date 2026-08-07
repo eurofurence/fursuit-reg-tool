@@ -71,6 +71,32 @@ const control =
           />
         </span>
 
+        <!--
+          The switch Filament's Toggle renders. Still a real checkbox underneath, so it
+          keeps the label association, the keyboard behaviour and the form semantics a
+          styled div would throw away; only the box is swapped for the track and knob.
+        -->
+        <span v-else-if="type === 'toggle'" class="flex h-8 items-center">
+          <span class="relative inline-flex">
+            <input
+              type="checkbox"
+              role="switch"
+              class="peer size-0 opacity-0"
+              :checked="Boolean(modelValue)"
+              :disabled="disabled"
+              @change="$emit('update:modelValue', $event.target.checked)"
+            />
+            <span
+              aria-hidden="true"
+              class="h-5 w-9 cursor-pointer rounded-full bg-fg-3/25 transition-colors peer-checked:bg-state-live peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-focus-visible:ring-2 peer-focus-visible:ring-state-live/50"
+            />
+            <span
+              aria-hidden="true"
+              class="pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full bg-mg-surface-0 shadow transition-transform peer-checked:translate-x-4"
+            />
+          </span>
+        </span>
+
         <textarea
           v-else-if="type === 'textarea'"
           :value="modelValue"
