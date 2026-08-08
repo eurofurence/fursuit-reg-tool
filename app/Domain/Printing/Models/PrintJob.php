@@ -26,7 +26,7 @@ class PrintJob extends Model
     protected $fillable = [
         'printer_id', 'print_batch_id', 'sequence', 'printable_type', 'printable_id',
         'type', 'status', 'file', 'priority', 'retry_count', 'retry_of',
-        'processing_machine_id', 'attempt_count', 'lease_expires_at',
+        'processing_machine_id', 'attempt_count', 'lease_expires_at', 'card_may_exist',
         'completion_source', 'verified_print_at', 'verification_source', 'verified_by_id',
         'firmware_job_id', 'firmware_job_uuid', 'error_message',
         'printed_at', 'queued_at', 'started_at', 'failed_at',
@@ -43,6 +43,7 @@ class PrintJob extends Model
         'started_at' => 'datetime',
         'failed_at' => 'datetime',
         'lease_expires_at' => 'datetime',
+        'card_may_exist' => 'boolean',
         'verified_print_at' => 'datetime',
         'type' => PrintJobTypeEnum::class,
         'status' => PrintJobStatusEnum::class,
@@ -451,6 +452,56 @@ class PrintJob extends Model
         $this->batch?->recalculateCounters();
 
         return $updated;
+    }
+
+    /**
+     * Hold a job whose card may physically exist.
+     *
+     * The agent went quiet mid-print: the artwork reached the spooler and a
+     * card may be in the output bin, but nothing confirmed it. Failing the job
+     * pauses the batch so a person looks, and the flag stops Resume quietly
+     * requeueing it -- which is what printed a second copy of a card somebody
+     * already had in their hand.
+     */
+    public function holdForOperator(string $reason): bool
+    {
+        $this->forceFill(['card_may_exist' => true])->saveQuietly();
+
+        return $this->markFailed($reason);
+    }
+
+    /**
+     * The operator looked in the bin and the card is there.
+     *
+     * Recorded as recovered rather than as a fresh confirmation: the evidence
+     * is a person's eyes, after the fact.
+     */
+    public function confirmCardExists(): bool
+    {
+        $this->forceFill(['card_may_exist' => false])->saveQuietly();
+
+        if ($this->status === PrintJobStatusEnum::Failed) {
+            $this->transitionTo(PrintJobStatusEnum::Retrying);
+            $this->transitionTo(PrintJobStatusEnum::Queued);
+            $this->transitionTo(PrintJobStatusEnum::Printing);
+        }
+
+        $done = $this->markPrinted(PrintCompletionSourceEnum::Recovered);
+
+        $this->batch?->recalculateCounters();
+        $this->batch?->completeIfFinished();
+
+        return $done;
+    }
+
+    /**
+     * The operator looked and there is no card. Print it after all.
+     */
+    public function requeueDespiteCard(): bool
+    {
+        $this->forceFill(['card_may_exist' => false])->saveQuietly();
+
+        return $this->requeue();
     }
 
     /**
