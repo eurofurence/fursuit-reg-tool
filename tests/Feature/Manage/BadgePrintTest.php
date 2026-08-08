@@ -306,6 +306,104 @@ test('the print order is the batch\'s own, not a second one layered on top', fun
         ->toBe([$spare->id, $main->id, $later->id]);
 });
 
+/*
+ * "Select all matching": the run is the whole of what the filter matches, resolved on the
+ * server. The browser holds one page of ids and the operator is asking for the thousand
+ * behind them, so anything the client could send is the wrong answer.
+ */
+
+test('select all matching queues every badge the filter matches, not the ids posted', function () {
+    $first = ($this->badge)('0100-1');
+    $second = ($this->badge)('0101-1');
+    $third = ($this->badge)('0102-1');
+
+    actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
+        'all' => true,
+        // Deliberately naming one badge: `all` means the filter, and `ids` is ignored.
+        'ids' => [$first->id],
+        'query' => '',
+        'printer_id' => $this->printer->id,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect(PrintBatch::sole()->printJobs()->pluck('printable_id')->sort()->values()->all())
+        ->toBe(collect([$first->id, $second->id, $third->id])->sort()->values()->all());
+});
+
+test('select all matching narrows by the filters the list was drawn with', function () {
+    $pending = ($this->badge)('0100-1');
+    ($this->badge)('0101-1', ['status_fulfillment' => 'picked_up']);
+
+    actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
+        'all' => true,
+        'query' => http_build_query(['filter' => ['status_fulfillment' => ['pending']]]),
+        'printer_id' => $this->printer->id,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect(PrintBatch::sole()->printJobs()->pluck('printable_id')->all())->toBe([$pending->id]);
+});
+
+test('select all matching stays inside the selected event', function () {
+    $mine = ($this->badge)('0100-1');
+
+    $otherEvent = Event::factory()->create(['name' => 'Eurofurence 28', 'starts_at' => now()->subYear()]);
+    $stranger = User::factory()->create();
+    EventUser::factory()->create([
+        'user_id' => $stranger->id,
+        'event_id' => $otherEvent->id,
+        'attendee_id' => '0900',
+    ]);
+    Badge::factory()->withPrintFile()->create([
+        'custom_id' => '0900-1',
+        'status_fulfillment' => 'pending',
+        'status_payment' => 'paid',
+        'fursuit_id' => Fursuit::factory()->create([
+            'event_id' => $otherEvent->id,
+            'user_id' => $stranger->id,
+            'species_id' => Species::firstOrCreate(['name' => 'Blue Fox'], ['type' => 'canine', 'checked' => true])->id,
+        ])->id,
+    ]);
+
+    // The event scope is session state, not something the forwarded query can widen.
+    actingAs($this->admin)
+        ->withSession([EventScope::SESSION_ID => $this->event->id, EventScope::SESSION_CHOSEN => true])
+        ->post(route('admin.badges.bulk.print'), [
+            'all' => true,
+            'query' => '',
+            'printer_id' => $this->printer->id,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect(PrintBatch::sole()->printJobs()->pluck('printable_id')->all())->toBe([$mine->id]);
+});
+
+test('select all matching needs no ids at all', function () {
+    ($this->badge)('0100-1');
+
+    actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
+        'all' => true,
+        'printer_id' => $this->printer->id,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect(PrintBatch::count())->toBe(1);
+});
+
+test('a bulk print with neither ids nor all is a validation error', function () {
+    actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
+        'printer_id' => $this->printer->id,
+    ])->assertSessionHasErrors('ids');
+
+    expect(PrintBatch::count())->toBe(0);
+});
+
+test('only the print action offers to go past the page', function () {
+    ($this->badge)();
+
+    $props = ($this->scoped)()->get(route('admin.badges.index'))->viewData('page')['props'];
+
+    // The fulfillment write bypasses the state machine, so it stays page-only.
+    expect(collect($props['bulkActions'])->firstWhere('name', 'printBadgeBulk')['selectAll'])->toBeTrue()
+        ->and(collect($props['bulkActions'])->firstWhere('name', 'setFulfillmentStatus')['selectAll'])->toBeFalse();
+});
+
 test('the bulk action requires a printer and queues nothing without one', function () {
     $badge = ($this->badge)();
 

@@ -167,6 +167,72 @@ const someSelected = computed(() => selected.value.length > 0 && !allSelected.va
 
 const toggleAll = () => {
   selected.value = allSelected.value ? [] : props.table.rows.map((row) => row.id);
+  allMatching.value = false;
+};
+
+/**
+ * "Everything the current filter matches", as opposed to the rows that are ticked.
+ *
+ * The browser only ever holds one page of ids, so this is a flag rather than a longer
+ * list: the action posts `all: true` plus the list's own query string, and the server
+ * resolves the set through the same Table that drew the page. Offered only by actions
+ * that declare they understand it - an endpoint reading `ids` and ignoring `all` would
+ * answer "select all 1,204" by acting on the 25 rows on screen.
+ */
+const allMatching = ref(false);
+
+const selectAllActions = computed(() => props.table.bulkActions.filter((action) => action.selectAll));
+
+const matchingTotal = computed(() => props.table.meta?.total ?? 0);
+
+/*
+ * The offer only stands over a fully ticked page with more behind it, and drops the moment
+ * the selection or what the filter matches changes: the flag means "the set I am looking
+ * at", and that set has just become a different one.
+ */
+const canSelectAllMatching = computed(
+  () => selectAllActions.value.length > 0
+    && allSelected.value
+    && matchingTotal.value > props.table.rows.length,
+);
+
+watch(
+  () => [props.table.meta?.total, props.table.search, JSON.stringify(props.table.filters ?? [])],
+  () => {
+    allMatching.value = false;
+  },
+);
+
+watch(selected, (next) => {
+  if (!next.length) {
+    allMatching.value = false;
+  }
+});
+
+/*
+ * While the whole filter is selected, only the actions that can act on it are offered.
+ * Hiding the others is the honest option: leaving them enabled would run them over the
+ * page while the bar says a thousand rows are selected.
+ */
+const offeredActions = computed(() =>
+  allMatching.value ? selectAllActions.value : props.table.bulkActions,
+);
+
+/**
+ * What a bulk action posts: the ticked ids, or the flag plus the list's own query.
+ *
+ * The query string is forwarded verbatim rather than rebuilt as nested data. It is the
+ * exact string that produced the page, so the narrowing cannot drift from what the
+ * operator is looking at, and the server parses it back with the same rules that read it
+ * off a GET. Sort and page ride along and are ignored: a set has no order and no page.
+ */
+const actionData = (action) => (allMatching.value && action.selectAll
+  ? { all: true, query: window.location.search.replace(/^\?/, '') }
+  : { ids: selected.value });
+
+const clearSelection = () => {
+  selected.value = [];
+  allMatching.value = false;
 };
 
 /*
@@ -259,18 +325,40 @@ const open = (row, event) => {
       v-if="selected.length && table.bulkActions.length"
       class="flex h-10 items-center gap-2 border-b border-hairline bg-mg-surface-2 px-3"
     >
-      <span class="text-[12px] text-fg-2">{{ selected.length }} selected</span>
+      <span class="text-[12px] text-fg-2">
+        {{ allMatching ? `all ${matchingTotal} matching selected` : `${selected.length} selected` }}
+      </span>
       <ActionButton
-        v-for="action in table.bulkActions"
+        v-for="action in offeredActions"
         :key="action.name"
         :action="action"
-        :data="{ ids: selected }"
-        @completed="selected = []"
+        :data="actionData(action)"
+        @completed="clearSelection"
       />
+
+      <!-- Past the page. Shown only over a fully ticked page with more behind it, so it
+           never appears while the operator is picking individual rows. -->
+      <button
+        v-if="canSelectAllMatching && !allMatching"
+        type="button"
+        class="text-[12px] font-medium text-state-live underline-offset-2 hover:underline"
+        @click="allMatching = true"
+      >
+        Select all {{ matchingTotal }} matching the filter
+      </button>
+      <button
+        v-else-if="allMatching"
+        type="button"
+        class="text-[12px] text-fg-3 transition-colors hover:text-fg-1"
+        @click="allMatching = false"
+      >
+        Just this page
+      </button>
+
       <button
         type="button"
         class="ml-auto text-[12px] text-fg-3 transition-colors hover:text-fg-1"
-        @click="selected = []"
+        @click="clearSelection"
       >
         Clear
       </button>

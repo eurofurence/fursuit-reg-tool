@@ -306,6 +306,55 @@ class BadgeController extends Controller
      */
     private function table(Request $request, EventScope $scope): array
     {
+        return $this->tableBuilder($scope)->toArray($request);
+    }
+
+    /**
+     * Every badge the given filters, search and event scope match, capped.
+     *
+     * The bulk print's "select all matching" resolves through here rather than through a
+     * list of ids from the browser: the page holds twenty-five rows and the operator
+     * asked for the thousand behind them. Built from the same Table as the list, so the
+     * set queued is by construction the set that was on screen - a second query written
+     * to look like the list's is a second query that can drift from it.
+     *
+     * @return array<int, int|string>
+     */
+    public function matchingIds(Request $request, EventScope $scope, int $limit): array
+    {
+        Gate::authorize('viewAny', Badge::class);
+
+        return $this->tableBuilder($scope)->matchingIds($this->listRequest($request), $limit);
+    }
+
+    /**
+     * The bulk POST's `query` field, read back as the GET the list was drawn by.
+     *
+     * The client forwards the list's own query string verbatim instead of rebuilding
+     * `filter[...]` as nested form data: it is the exact string that produced the page, so
+     * the set queued cannot drift from the set on screen, and it is parsed here by the
+     * same rules that read it off a GET. Only the narrowing keys are read - Table ignores
+     * sort and page when resolving a set - and nothing in it can widen the event scope,
+     * which is session state and not in the query at all.
+     */
+    private function listRequest(Request $request): Request
+    {
+        $query = (string) $request->input('query', '');
+
+        if ($query === '') {
+            return $request;
+        }
+
+        parse_str($query, $params);
+
+        return Request::create('/', 'GET', is_array($params) ? $params : []);
+    }
+
+    /**
+     * The list table, before it is asked for a page or for a set of ids.
+     */
+    private function tableBuilder(EventScope $scope): Table
+    {
         return Table::make($this->query($scope))
             ->name('badges')
             ->columns($this->columns())
@@ -341,18 +390,23 @@ class BadgeController extends Controller
             // deliberately no bulk delete, no export and no dissociate, because
             // the old badge list passes bulkActions() an explicit array.
             //
-            // The selection keeps ->selectCurrentPageOnly() semantics for free: DataTable
-            // derives it from the current page's rows and prunes it on every reload, so it
-            // cannot cross a page. That cap is deliberate, not accidental, and
-            // the bulk print inherits it.
+            // The tick boxes keep ->selectCurrentPageOnly() semantics for free: DataTable
+            // derives the selection from the current page's rows and prunes it on every
+            // reload, so ticking cannot cross a page.
+            //
+            // The bulk print is the one action that may go past it, through
+            // `all: true` rather than through the boxes: a print run is the whole of what
+            // the filter matches - every unprinted badge approved since the last run - and
+            // ticking a thousand cards twenty-five at a time is not a workflow. The
+            // fulfillment write stays page-only; it bypasses the state machine, and doing
+            // that to an unseen thousand rows is a different order of mistake.
             ->bulkActions(array_values(array_filter([
                 BadgePrintController::bulkAction(),
                 self::bulkStatusAction(),
             ])))
             // ListBadges offers a CreateAction labelled `New badge`. It is not ported: the
             // page it opens has never been able to save.
-            ->pageActions([])
-            ->toArray($request);
+            ->pageActions([]);
     }
 
     /**

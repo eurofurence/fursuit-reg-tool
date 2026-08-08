@@ -39,6 +39,8 @@ final class Action implements Arrayable
 
     private bool $newTab = false;
 
+    private bool $selectAll = false;
+
     private function __construct(
         public readonly string $name,
         public readonly string $label,
@@ -139,6 +141,22 @@ final class Action implements Arrayable
     }
 
     /**
+     * This action understands `all: true` - "every record the current filter matches",
+     * resolved server side - as well as a list of ids.
+     *
+     * Opt-in per action, and the client only offers the affordance for actions carrying
+     * this flag. An endpoint that reads `ids` and ignores `all` would otherwise answer a
+     * "select all 1,204" by acting on the 25 rows that happen to be on screen, which is
+     * the one outcome worse than not offering it.
+     */
+    public function selectAll(bool $selectAll = true): self
+    {
+        $this->selectAll = $selectAll;
+
+        return $this;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array
@@ -154,6 +172,7 @@ final class Action implements Arrayable
             'fields' => $this->fields === [] ? null : $this->fields,
             'disabledReason' => $this->disabledReason,
             'newTab' => $this->newTab,
+            'selectAll' => $this->selectAll,
         ];
     }
 }

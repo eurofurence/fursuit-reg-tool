@@ -244,6 +244,36 @@ final class Table
     }
 
     /**
+     * The keys of every record the current tab, filters and search match, ignoring
+     * pagination and sort.
+     *
+     * This is what "select all matching" resolves to. It is deliberately not the client's
+     * job: the browser holds one page of ids, and a selection that means "everything the
+     * filter matches" can only be answered by the same narrowing that produced the page.
+     * Sort is skipped because a set has no order, and the print pipeline imposes its own.
+     *
+     * `$limit` is a real cap, not a guess: the caller is expected to compare what comes
+     * back against it and tell the operator when the run was trimmed, because a silently
+     * truncated "all" reads as "all".
+     *
+     * The request is a POST here, so `rememberReturnUrl()` is not called and the list URL
+     * this action came from stays remembered.
+     *
+     * @return array<int, int|string>
+     */
+    public function matchingIds(Request $request, int $limit): array
+    {
+        $this->resolveTab($request)?->applyTo($this->query);
+        $this->applyFilters($this->resolveFilterValues($request));
+        $this->applySearch(trim((string) $request->input('search', '')));
+
+        return $this->query
+            ->limit($limit)
+            ->pluck($this->query->getModel()->getQualifiedKeyName())
+            ->all();
+    }
+
+    /**
      * Remembers the list URL, query string and all, so a save can come back to it.
      *
      * Tab, filters, search, sort and page live entirely in the URL, so a controller that

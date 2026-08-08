@@ -42,6 +42,18 @@ costs nothing but trouble. See `App\Badges\ImagePreparer`.
 
 ## Starting a run
 
+**What goes into a run.** The badge list's tick boxes cannot cross a page, which is deliberate for
+every bulk action in `/admin`. The print run is the one exception: with the page fully ticked, the
+bulk bar offers **Select all N matching the filter**, and the action then posts `all: true` plus the
+list's own query string instead of a list of ids. `BadgeController::matchingIds()` re-narrows through
+the same `Table` that drew the page, so what is queued is by construction what was on screen. The
+event scope rides in the session and cannot be widened by the forwarded query.
+
+A run started that way is capped at 2000 badges and the toast says so when the cap bites, because a
+run silently trimmed to a cap reports as the whole filter and the remainder is only discovered
+missing at the desk. Only actions declaring `Action::selectAll()` are offered past the page: the bulk
+fulfillment write bypasses the state machine and stays page-only.
+
 Pressing Print does not print, and does not render. The request opens an empty `Draft` batch and
 dispatches `PrepareBadgePrintBatchJob` on the `badge-render` queue; everything expensive happens
 there. The operator gets the batch back immediately and watches it turn from preparing to ready.
