@@ -10,7 +10,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agent import zebra  # noqa: E402
+from agent import vocabulary, zebra  # noqa: E402
 
 
 def reading(**kwargs) -> zebra.Reading:
@@ -300,3 +300,100 @@ class SupplyCounterTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FieldVocabularyTest(unittest.TestCase):
+    """States the real ZXP9 produced that we had no word for.
+
+    Every one of these was journalled as an unrecognised state, which stops the
+    queue. Correct as a default, useless as an answer: two of them mean the
+    printer is working normally.
+    """
+
+    def reading(self, state):
+        return zebra.Reading(reachable=True, printer_state=state, alarms=[],
+                             sensor_fault=None, error_bits=set(), supply_level=None)
+
+    def test_heating_transfer_rollers_is_the_printer_warming_up(self):
+        # WARMING on the front panel. A cold ZXP9 spends around ten minutes on
+        # this and is not ready in that time, so it is not "printing".
+        self.assertEqual(zebra.INITIALIZING,
+                         zebra.classify(self.reading("xfer_rollers_heating")))
+
+    def test_warming_is_waited_out_rather_than_calling_somebody(self):
+        # The distinction that matters: classified as printing it paused the
+        # batch and paged an operator to a printer that needed only patience.
+        condition = zebra.classify(self.reading("xfer_rollers_heating"))
+
+        self.assertTrue(zebra.is_transient(condition))
+
+    def test_no_card_is_sent_to_a_warming_printer(self):
+        self.assertTrue(zebra.is_stop(zebra.classify(self.reading("xfer_rollers_heating"))))
+
+    def test_acknowledging_a_job_is_the_printer_working(self):
+        self.assertEqual(zebra.PRINTING, zebra.classify(self.reading("receive_ok")))
+
+    def test_acknowledging_a_job_does_not_stop_the_queue(self):
+        self.assertFalse(zebra.is_stop(zebra.classify(self.reading("receive_ok"))))
+
+    def test_a_cancel_at_the_panel_is_named_rather_than_unknown(self):
+        self.assertEqual(zebra.CANCELLED_AT_PRINTER,
+                         zebra.classify(self.reading("cancelled_by_user")))
+
+    def test_a_cancel_at_the_panel_stops_the_queue(self):
+        # The card does not exist and only a person knows what happened to it.
+        self.assertTrue(zebra.is_stop(zebra.classify(self.reading("cancelled_by_user"))))
+
+    def test_a_cancel_is_not_waited_out(self):
+        # Waiting would never clear: nobody is coming unless we say so.
+        self.assertFalse(zebra.is_transient(zebra.classify(self.reading("cancelled_by_user"))))
+
+    def test_a_genuinely_new_word_is_still_unknown(self):
+        # The fail-closed default has to survive this change.
+        self.assertEqual(zebra.UNKNOWN, zebra.classify(self.reading("flux_capacitor_warming")))
+
+    def test_the_known_ones_stop_filling_the_journal(self):
+        for state in ("xfer_rollers_heating", "receive_ok", "cancelled_by_user"):
+            found = vocabulary.unknown_strings(self.reading(state))
+            self.assertEqual([], found, state)
+
+
+class TransferFilmTest(unittest.TestCase):
+    """The second supply row is read but never acted on.
+
+    A ZXP9 publishes two supplies, both type 7 and unit 8, and the second has no
+    description -- which looks exactly like the transfer film. It is not usable:
+    walked three times inside a few minutes on an idle printer it gave 626, then
+    2, then 1. Deciding anything on that reports film_low on a healthy printer
+    and then stops the queue.
+    """
+
+    def reading(self, ribbon=None, film=None):
+        return zebra.Reading(reachable=True, printer_state="standby", alarms=[],
+                             sensor_fault=None, error_bits=set(),
+                             supply_level=ribbon, film_level=film)
+
+    def test_a_zero_film_reading_does_not_stop_the_queue(self):
+        # The reading that would have stopped a healthy printer.
+        self.assertEqual(zebra.OK, zebra.classify(self.reading(ribbon=600, film=0)))
+
+    def test_a_low_film_reading_does_not_warn(self):
+        self.assertEqual(zebra.OK, zebra.classify(self.reading(ribbon=600, film=1)))
+
+    def test_the_ribbon_still_decides(self):
+        self.assertEqual(zebra.RIBBON_LOW, zebra.classify(self.reading(ribbon=20, film=1)))
+
+    def test_the_value_is_still_recorded(self):
+        # Kept in the reading so the journal can show what the printer claims,
+        # which is what any future attempt at this will need.
+        poller = zebra.ZebraPoller("printer.test")
+        reading = poller._build({
+            "1.3.6.1.2.1.43.11.1.1.6.1.1": "YMCK",
+            "1.3.6.1.2.1.43.11.1.1.9.1.1": "626",
+            "1.3.6.1.2.1.43.11.1.1.8.1.1": "627",
+            "1.3.6.1.2.1.43.11.1.1.9.1.2": "412",
+        })
+
+        self.assertEqual(626, reading.supply_level)
+        self.assertEqual("YMCK", reading.supply_description)
+        self.assertEqual(412, reading.film_level)

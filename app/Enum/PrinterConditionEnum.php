@@ -32,6 +32,16 @@ enum PrinterConditionEnum: string
     case Offline = 'offline';
 
     /**
+     * Somebody pressed cancel on the printer's own panel.
+     *
+     * The card that was in progress does not exist, and the agent cannot know
+     * whether that was deliberate or a slip, so nothing more is sent until a
+     * person says. Reported as an unknown state before, which stopped the queue
+     * correctly but told whoever was standing there nothing useful.
+     */
+    case CancelledAtPrinter = 'cancelled_at_printer';
+
+    /**
      * The printer waking up on its way into a job. A ZXP9 walks
      * standby -> initializing -> printing_heating, so this is a healthy noise
      * rather than a fault -- but no card may be sent until it passes.
@@ -95,6 +105,7 @@ enum PrinterConditionEnum: string
             self::ServiceRequired => 'Service required',
             self::Offline => 'Printer offline',
             self::Initializing => 'Warming up',
+            self::CancelledAtPrinter => 'Cancelled at the printer',
             self::Unknown => 'Unknown state',
         };
     }
@@ -113,6 +124,8 @@ enum PrinterConditionEnum: string
             self::RejectBinFull => 'Empty the reject bin.',
             self::ServiceRequired => 'Printer needs servicing, check the front panel.',
             self::Offline => 'Check printer power and network cable.',
+            self::CancelledAtPrinter => 'A card was cancelled at the printer. '
+                .'Check whether it came out, then resume the batch.',
             // Nothing for anyone to do; it clears on its own.
             self::Initializing => null,
             self::Unknown => 'Check the printer front panel for a message.',
