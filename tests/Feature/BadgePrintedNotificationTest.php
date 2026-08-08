@@ -191,7 +191,7 @@ test('badge printing during event sets correct status and generates custom_id', 
     // Verify badge was processed correctly
     expect($badge->custom_id)->toBe('99999-1');
     expect($badge->printed_at)->not()->toBeNull();
-    
+
     // Verify notification was sent (since we're during event)
     Notification::assertSentTo($user, BadgePrintedNotification::class);
 });

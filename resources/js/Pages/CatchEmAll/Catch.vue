@@ -2,8 +2,8 @@
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import { useForm } from "@inertiajs/vue3";
 import { Star, Target, User, Zap } from "lucide-vue-next";
-import Button from "primevue/button";
-import Card from "primevue/card";
+import Button from "@/Components/UI/UiButton.vue";
+import Card from "@/Components/UI/UiCard.vue";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import { computed, nextTick, onMounted, ref } from "vue";
@@ -216,7 +216,7 @@ onMounted(() => {
                         <Button
                             type="submit"
                             :loading="form.processing"
-                            class="w-full py-3 text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-lg"
+                            class="w-full py-3 text-lg font-bold bg-blue-600 hover:bg-blue-700 border-0 rounded-lg"
                             :disabled="form.catch_code.length !== 5"
                         >
                             <Zap class="w-5 h-5 mr-2" />

@@ -28,14 +28,12 @@ class SpecialCode extends Model
 
     /**
      * Create an instance of the action class with the stored constructor data.
-     *
-     * @return \App\Domain\CatchEmAll\Interface\SpecialCodeAction
      */
     public function createActionInstance(): SpecialCodeAction
     {
         $className = $this->class_name;
 
-        if (!class_exists($className)) {
+        if (! class_exists($className)) {
             throw new \InvalidArgumentException("Class {$className} does not exist.");
         }
 

@@ -5,6 +5,7 @@ namespace App\Domain\CatchEmAll\Models;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Models\Event;
 use App\Models\EventUser;
+use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 
 /**
@@ -38,7 +39,7 @@ readonly class AchievementUpdateContext
         // Calculate user statistics
         $userTotalCatches = UserCatch::where('event_user_id', $eventUser->id)
             ->count();
-        $totalCatchableFursuits = \App\Models\Fursuit\Fursuit::where('event_id', operator: $currentEvent->id)
+        $totalCatchableFursuits = Fursuit::where('event_id', operator: $currentEvent->id)
             ->where('catch_em_all', true)
             ->count();
         $userUniqueFursuits = UserCatch::where('event_user_id', $eventUser->id)

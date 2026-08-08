@@ -30,9 +30,6 @@ abstract class BadgeBase_V2 implements BadgeInterface_V2
 
     protected bool $text_filter_active = false;
 
-    /**
-     * @return void
-     */
     public function init(): void
     {
         $this->imagine = new Imagine;
@@ -45,11 +42,11 @@ abstract class BadgeBase_V2 implements BadgeInterface_V2
      * This PHP function returns a Font object with a specified size and font path, using a default font path if none is
      * provided.
      *
-     * @param int $size size The `size` parameter in the `getFont` function is an integer that represents the font size to be
-     * used for the Font object. It specifies the size of the font in points.
-     * @param string|null $font_path font_path The `font_path` parameter in the `getFont` function is a string that represents the path to the
-     * font file. It is optional and can be provided when calling the function. If a `font_path` is provided, the function
-     * will create a `Font` object using the specified font file
+     * @param  int  $size  size The `size` parameter in the `getFont` function is an integer that represents the font size to be
+     *                     used for the Font object. It specifies the size of the font in points.
+     * @param  string|null  $font_path  font_path The `font_path` parameter in the `getFont` function is a string that represents the path to the
+     *                                  font file. It is optional and can be provided when calling the function. If a `font_path` is provided, the function
+     *                                  will create a `Font` object using the specified font file
      * @return Font A Font object is being returned. The Font object is created with the specified size, font path (if
      *              provided), and text color.
      */
@@ -95,13 +92,13 @@ abstract class BadgeBase_V2 implements BadgeInterface_V2
     /**
      * The function `addLetterSpacing` in PHP adds spacing between each letter in a given text string.
      *
-     * @param string $text text The `text` parameter is a string that represents the text you want to add letter spacing to.
-     * @param int $spacing spacing The `spacing` parameter in the `addLetterSpacing` function determines how many spaces should be
-     * added between each character in the input text. By default, the spacing is set to 1, meaning there will be one space
-     * between each character.
-     * @param string $spacer spacer The `spacer` parameter in the `addLetterSpacing` function is used to specify the character or
-     * characters that will be inserted between each letter in the input text. By default, a single space character is used
-     * as the spacer. However, you can customize this spacer by providing a different character or string
+     * @param  string  $text  text The `text` parameter is a string that represents the text you want to add letter spacing to.
+     * @param  int  $spacing  spacing The `spacing` parameter in the `addLetterSpacing` function determines how many spaces should be
+     *                        added between each character in the input text. By default, the spacing is set to 1, meaning there will be one space
+     *                        between each character.
+     * @param  string  $spacer  spacer The `spacer` parameter in the `addLetterSpacing` function is used to specify the character or
+     *                          characters that will be inserted between each letter in the input text. By default, a single space character is used
+     *                          as the spacer. However, you can customize this spacer by providing a different character or string
      * @return string The input text with additional spacing between each character.
      */
     public function addLetterSpacing(string $text, int $spacing = 1, string $spacer = ' '): string

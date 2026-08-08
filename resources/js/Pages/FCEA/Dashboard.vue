@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Head, useForm, usePage, router } from '@inertiajs/vue3'
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue"
-import Button from "primevue/button"
-import Message from "primevue/message"
+import Button from "@/Components/UI/UiButton.vue"
+import Message from "@/Components/UI/UiMessage.vue"
 import FlashMessages from "@/Components/FlashMessages.vue"
 import InputText from 'primevue/inputtext'
-import Card from 'primevue/card'
+import Card from '@/Components/UI/UiCard.vue'
 import ProgressBar from 'primevue/progressbar'
 import Badge from 'primevue/badge'
 import Divider from 'primevue/divider'

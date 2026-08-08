@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EventUser>
+ * @extends Factory<EventUser>
  */
 class EventUserFactory extends Factory
 {

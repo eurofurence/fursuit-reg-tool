@@ -30,8 +30,8 @@ export function usePosKeyboard(options = {}) {
         return getCurrentRoute().includes('/pos/attendees/show/');
     }
 
-    function isOnAttendeeLookupPage() {
-        return getCurrentRoute().includes('/pos/attendees/lookup');
+    function isOnDashboard() {
+        return getCurrentRoute() === '/pos';
     }
 
     function isOnPinLoginPage() {
@@ -39,7 +39,24 @@ export function usePosKeyboard(options = {}) {
         return getCurrentRoute().includes('/pos/auth/login');
     }
 
+    // F-key navigation. Handled before the input-field guard on purpose: the
+    // POS keeps a text field focused for the barcode scanner, and F-keys never
+    // collide with typing.
+    const FUNCTION_KEY_ROUTES = {
+        F3: '/pos/badges',
+        F4: '/pos/print-queue',
+        F6: '/pos/statistics',
+        // F5 is the browser reload and stays out of this map; F7 is free.
+        F7: '/pos/my-prints',
+    };
+
     function handleKeydown(event) {
+        if (! disableGlobalShortcuts && FUNCTION_KEY_ROUTES[event.key]) {
+            event.preventDefault();
+            router.visit(FUNCTION_KEY_ROUTES[event.key]);
+            return;
+        }
+
         // Don't handle shortcuts if user is typing in an input field
         if (isInputElement(event.target)) {
             return;
@@ -54,10 +71,10 @@ export function usePosKeyboard(options = {}) {
                 onNumpadDivide(event);
                 return; // Exit early when override is handled
             } else if (!disableGlobalShortcuts) {
-                // Default behavior: Navigate to attendee search 
+                // Default behavior: jump to the dashboard, which is the search screen
                 // (unless on checkout page, lookup page, or PIN login page)
-                if (!isOnCheckoutPage() && !isOnAttendeeLookupPage() && !isOnPinLoginPage()) {
-                    router.visit('/pos/attendees/lookup');
+                if (!isOnCheckoutPage() && !isOnDashboard() && !isOnPinLoginPage()) {
+                    router.visit('/pos');
                 }
             }
         }
@@ -88,7 +105,7 @@ export function usePosKeyboard(options = {}) {
             // Ctrl+K: Search Attendee
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
                 event.preventDefault();
-                router.visit('/pos/attendees/lookup');
+                router.visit('/pos');
             }
             
             // Ctrl+P: Start Payment
@@ -103,9 +120,18 @@ export function usePosKeyboard(options = {}) {
                 window.dispatchEvent(new CustomEvent('pos-shortcut-handout'));
             }
             
-            // Enter: Confirm Dialogs
+            // Enter: Confirm Dialogs.
+            //
+            // The event is cancelable; a page that confirms something calls
+            // preventDefault() on it. We then swallow the keypress so it cannot
+            // also activate whatever button regains focus behind the dialog.
             if (event.key === 'Enter') {
-                window.dispatchEvent(new CustomEvent('pos-shortcut-confirm'));
+                const confirmEvent = new CustomEvent('pos-shortcut-confirm', { cancelable: true });
+                const handled = ! window.dispatchEvent(confirmEvent);
+
+                if (handled) {
+                    event.preventDefault();
+                }
             }
         }
     }
@@ -124,7 +150,7 @@ export function usePosKeyboard(options = {}) {
     return {
         isOnCheckoutPage,
         isOnAttendeeShowPage,
-        isOnAttendeeLookupPage,
+        isOnDashboard,
         getCurrentRoute
     };
 }

@@ -15,10 +15,10 @@ class PosAuthMiddleware extends Authenticate
             auth()->guard('machine')->logout();
             abort(403, 'This machine has been archived and cannot be used.');
         }
-        
+
         return parent::handle($request, $next, ...$guards);
     }
-    
+
     protected function redirectTo(Request $request)
     {
         if ($request->user('machine') === null) {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3'
-import Button from "primevue/button"
-import Card from 'primevue/card'
+import Button from "@/Components/UI/UiButton.vue"
+import Card from '@/Components/UI/UiCard.vue'
 import {
     Target,
     Star,
@@ -146,7 +146,7 @@ const steps = [
             <Button
                 @click="submit"
                 :loading="form.processing"
-                class="w-full py-4 text-lg font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-xl shadow-lg"
+                class="w-full py-4 text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 border-0 rounded-xl shadow-lg"
             >
                 <Play class="w-6 h-6 mr-3" />
                 {{ form.processing ? 'Getting Ready...' : 'Start collecting!' }}

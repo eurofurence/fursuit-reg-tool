@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\Pending;
+use App\Models\Event;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -33,7 +34,7 @@ class BadgePolicy
         }
 
         // Do not allow ordering badges if there is no active event
-        $event = \App\Models\Event::getActiveEvent();
+        $event = Event::getActiveEvent();
         if ($event === null) {
             return false;
         }
@@ -68,15 +69,62 @@ class BadgePolicy
         return true;
     }
 
+    /**
+     * "May this actor open the panel's badge editor for this record."
+     *
+     * This used to read `$user->is_admin && request()->routeIs('filament.*',
+     * 'livewire.*')`, so the override only applied while the admin panel was Filament.
+     * Moving the panel to /admin would have flipped every admin from "can edit any
+     * badge" to "owner rules only" without anything saying so (audit landmine 52), and
+     * /admin/badges/{badge}/edit would 403 on every badge an admin does not own.
+     * Answered on the actor now, with no reference to the current request, so the same
+     * question gets the same answer from a queue worker or a console command. See
+     * rebuild-plan 2.2.
+     *
+     * Dropping the route check made this ability request-independent, which is the whole
+     * point, but it also meant the *public* self-service editor at `PUT /badges/{badge}`
+     * started honouring the operator override: a panel user editing somebody else's badge
+     * through the attendee form walked past the extra-copy, print-lock, event-ended and
+     * "still Pending" guards below, which is exactly what the print-lock comment says the
+     * guard exists to prevent. Those guards are the rules of the attendee write path, not
+     * of the panel one, so they live in `updateAsOwner()` and the public controller asks
+     * that question instead.
+     */
     public function update(User $user, Badge $badge): bool
     {
-        // Admin can override
-        if ($user->is_admin && request()->routeIs('filament.*', 'livewire.*')) {
+        /*
+         * The panel override is `is_admin`, not `access-manage`. A reviewer still reads
+         * the badge - `view` above is the ability the detail page authorizes - but moving
+         * a badge between fulfillment or payment states is desk work rather than review
+         * work, and this ability is what BadgeController::edit hands the page as
+         * `canEdit`. See docs/admin/roles.md.
+         */
+        if ($user->is_admin) {
             return true;
         }
 
+        return $this->updateAsOwner($user, $badge);
+    }
+
+    /**
+     * The owner rules on their own, with no operator override.
+     *
+     * This is what the attendee-facing badge editor authorizes. Before the route check
+     * came out of `update()` it was also what an admin got on those routes, since
+     * `routeIs('filament.*')` is false on `/badges/*`, so this keeps that path answering
+     * exactly as it did.
+     */
+    public function updateAsOwner(User $user, Badge $badge): bool
+    {
         // Copies cannot be edited
         if ($badge->extra_copy_of !== null) {
+            return false;
+        }
+
+        // Committed to a print batch. The artwork was rendered when the batch
+        // was built, so an edit now would produce a card that no longer matches
+        // the order, and nobody would spot it until pickup.
+        if ($badge->isPrintingLocked()) {
             return false;
         }
 
@@ -89,7 +137,7 @@ class BadgePolicy
         // pre-printing period, while free-badge owners keep it. Gating on the order window was
         // the cause of that "some users can't edit" bug. Printed badges are blocked below; this
         // mirrors the delete() policy and the "regardless of event order window" comment there.
-        $event = \App\Models\Event::getActiveEvent();
+        $event = Event::getActiveEvent();
         if ($event === null || $event->ends_at < now()) {
             return false;
         }
@@ -111,13 +159,19 @@ class BadgePolicy
         }
 
         // Cannot delete when no active event
-        $event = \App\Models\Event::getActiveEvent();
+        $event = Event::getActiveEvent();
         if ($event === null) {
             return false;
         }
 
         // Cannot delete a badge that has already been printed
         if (! $badge->status_fulfillment->equals(Pending::class)) {
+            return false;
+        }
+
+        // Deleting a badge that is queued in a batch would leave the print run
+        // pointing at something that no longer exists.
+        if (! $user->is_admin && $badge->isPrintingLocked()) {
             return false;
         }
 

@@ -5,6 +5,7 @@ namespace App\Domain\Checkout\Models\Checkout\States;
 use App\Domain\Checkout\Models\Checkout\Transitions\ToCancelled;
 use App\Domain\Checkout\Models\Checkout\Transitions\ToFinished;
 use Spatie\ModelStates\State;
+use Spatie\ModelStates\StateConfig;
 
 abstract class CheckoutStatusState extends State
 {
@@ -12,7 +13,7 @@ abstract class CheckoutStatusState extends State
 
     abstract public function color(): string;
 
-    public static function config(): \Spatie\ModelStates\StateConfig
+    public static function config(): StateConfig
     {
         return parent::config()
             ->default(Active::class)

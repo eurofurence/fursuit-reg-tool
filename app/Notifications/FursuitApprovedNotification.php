@@ -4,12 +4,27 @@ namespace App\Notifications;
 
 use App\Models\Badge\Badge;
 use App\Models\Fursuit\Fursuit;
+use App\Notifications\Concerns\BuildsBadgeMail;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
+/**
+ * "Your badge is approved."
+ *
+ * Approval says nothing about printing, so neither does this mail. What it can say usefully is when
+ * to walk over, and that has an operational rule behind it: day one hands out badges from the
+ * pre-print run only, because printing on day one would stall the queue. See
+ * BuildsBadgeMail::collectionAnswer().
+ *
+ * Two answers are conditional. The payment question is absent, not answered "no", when nothing is
+ * owed; and there is deliberately no question about the gallery, because an approval changes nothing
+ * about it.
+ */
 class FursuitApprovedNotification extends Notification
 {
-    private Badge $badge;
+    use BuildsBadgeMail;
+
+    private ?Badge $badge;
 
     public function __construct(public Fursuit $fursuit)
     {
@@ -23,17 +38,47 @@ class FursuitApprovedNotification extends Notification
 
     public function toMail($notifiable): MailMessage
     {
-        return (new MailMessage)->salutation('')
-            ->subject('[NO ACTION REQUIRED] Fursuit Badge Approved')
-            ->line('We are happy to inform you that your badge has been approved.')
-            ->line('We will print the badge and have it ready for you at the convention.')
-            ->lineIf($this->badge->total > 0, 'We will ask you to pay the Badge fee when you pickup the Badge.')
-            ->lineIf($this->badge->total > 0, 'Card (EC, Debit and Credit) Payments are highly preferred, we also offer cash payments.')
-            ->line('To make changes or cancel the badge (possible until we print it), please click the button below.')
-            ->action('Edit Badge', route('badges.edit', [
-                'badge' => $this->badge->id,
-            ]))
-            ->line('Please do not reply to this email. If you have any questions, please contact us at fursuit-team@eurofurence.org');
+        $answers = [
+            [
+                'q' => 'When can I collect it?',
+                'a' => $this->collectionAnswer($this->fursuit->event),
+            ],
+            [
+                'q' => 'Where?',
+                'a' => 'The badge desk in the Fursuit Lounge. Opening hours are on the pickup page.',
+            ],
+        ];
+
+        if ($this->hasSomethingToPay($this->badge)) {
+            $answers[] = [
+                'q' => 'Anything to pay?',
+                'a' => 'Yes. Please bring a card, we do not accept cash.',
+            ];
+        }
+
+        if ($this->canStillChange($this->badge)) {
+            $answers[] = [
+                'q' => 'Can I still change it?',
+                'a' => 'Until we print it, yes.',
+            ];
+        }
+
+        return $this->badgeMail(
+            notifiable: $notifiable,
+            subject: $this->subjectFor($this->fursuit, 'badge approved'),
+            band: 'Approved',
+            tone: 'ok',
+            headline: 'Your badge is approved.',
+            answers: $answers,
+            // The badge page, not the pickup page: Ready for Pickup is the only thing that is true
+            // per badge and per minute, and a card can come off the run early or be printed the
+            // moment somebody asks at the desk. Pickup times stay a footer link.
+            action: $this->badge === null ? null : [
+                'label' => 'Check my badge',
+                'url' => route('badges.show', ['badge' => $this->badge->id]),
+            ],
+            fursuit: $this->fursuit,
+        );
     }
 
     public function toArray($notifiable): array

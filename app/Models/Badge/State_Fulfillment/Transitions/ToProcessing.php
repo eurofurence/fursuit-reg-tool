@@ -3,6 +3,7 @@
 namespace App\Models\Badge\State_Fulfillment\Transitions;
 
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Fulfillment\Processing;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Spatie\ModelStates\Transition;
@@ -11,8 +12,7 @@ class ToProcessing extends Transition
 {
     public function __construct(
         private Badge $badge
-    ) {
-    }
+    ) {}
 
     public function handle(): Badge
     {
@@ -21,7 +21,7 @@ class ToProcessing extends Transition
             'current_fulfillment' => $this->badge->status_fulfillment->getValue(),
             'current_payment' => $this->badge->status_payment->getValue(),
         ]);
-        
+
         return DB::transaction(function () {
             $user = $this->badge->fursuit->user;
             $event = $this->badge->fursuit->event;
@@ -62,9 +62,9 @@ class ToProcessing extends Transition
                 // Assign the custom_id
                 $this->badge->custom_id = $customId;
             }
-            
+
             // IMPORTANT: Actually set the state to Processing
-            $this->badge->status_fulfillment = new \App\Models\Badge\State_Fulfillment\Processing($this->badge);
+            $this->badge->status_fulfillment = new Processing($this->badge);
             $this->badge->save();
 
             // Log activity when badge transitions to processing

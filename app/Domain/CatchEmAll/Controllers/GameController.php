@@ -83,6 +83,9 @@ class GameController extends Controller
         $fursuit = Fursuit::where('event_id', $event->id)
             ->where('catch_code', $catchCode)
             ->where('catch_em_all', true)
+            // A fursuit a reviewer barred from the public surfaces cannot be caught, even
+            // if its owner has turned the switch back on since.
+            ->publicationAllowed()
             ->first();
 
         // If neither exists, it's an invalid code

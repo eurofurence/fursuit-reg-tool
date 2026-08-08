@@ -1,0 +1,123 @@
+name: Print Agent
+
+on:
+  push:
+    tags:
+      - 'print-agent-v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # The station runs 3.8.10 exactly. PyInstaller bundles the build machine's
+  # python38.dll into the exe, so the two have to match.
+  PYTHON_VERSION: '3.8.10'
+
+jobs:
+  build:
+    # windows-2022, not windows-latest, on purpose. The target is Windows 7 and
+    # the oldest image GitHub still offers is the closest we can get to it;
+    # windows-2019 was retired on 2025-06-30. This narrows the gap, it does not
+    # close it. See "Can CI target Windows 7?" in print-agent/build.md.
+    runs-on: windows-2022
+
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: print-agent
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # actions/setup-python is deliberately not used here. Its Windows 3.8 is
+      # rebuilt by actions/python-versions with a current MSVC toolchain, and it
+      # is that interpreter's python38.dll that ends up inside the exe. The
+      # official python.org build is the one known to run on Windows 7, and it
+      # is what is installed on the station, so CI installs the same thing.
+      - name: Install Python ${{ env.PYTHON_VERSION }}
+        run: |
+          $version = $env:PYTHON_VERSION
+          $installer = Join-Path $env:RUNNER_TEMP "python-$version-amd64.exe"
+          $target = Join-Path $env:RUNNER_TEMP 'python38'
+
+          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$version/python-$version-amd64.exe" -OutFile $installer
+
+          Start-Process -FilePath $installer -Wait -NoNewWindow -ArgumentList @(
+            '/quiet',
+            'InstallAllUsers=0',
+            "TargetDir=$target",
+            'Include_tcltk=1',
+            'Include_pip=1',
+            'Include_test=0',
+            'Include_launcher=0',
+            'AssociateFiles=0',
+            'Shortcuts=0'
+          )
+
+          $target | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          (Join-Path $target 'Scripts') | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Show interpreter
+        run: python -VV
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check --no-warn-script-location -r requirements.txt
+
+      # Proves the pinned wheels load on the build machine. It does NOT prove
+      # they load on Windows 7. That is step 2 of "First run on the Windows
+      # box" in docs/printing-implementation.md, and it can only be done there.
+      - name: Import smoke test
+        run: |
+          python -c "import pypdfium2; print('pypdfium2', pypdfium2.V_PYPDFIUM2)"
+          python -c "import cv2; print('cv2', cv2.__version__)"
+          python -c "import win32print, win32ui; print('pywin32 ok')"
+          python -c "from pysnmp.hlapi import SnmpEngine; SnmpEngine(); print('pysnmp ok')"
+          python -c "import tkinter; print('tk', tkinter.TkVersion)"
+
+      # First time the suite runs with the real cv2, pypdfium2 and pysnmp
+      # installed rather than absent, so this is worth having in front of a
+      # release build.
+      - name: Run tests
+        run: python -m unittest discover -s tests
+
+      - name: Build single exe
+        run: python -m PyInstaller --clean --noconfirm badge-print-agent.spec
+
+      # Fallback build. If onefile misbehaves on the station (slow start from
+      # unpacking ~130 MB into %TEMP%, or antivirus objecting to it) the one
+      # folder build has the same contents and none of that behaviour.
+      - name: Build one-folder fallback
+        env:
+          BADGE_AGENT_ONEDIR: '1'
+        run: |
+          python -m PyInstaller --clean --noconfirm --distpath dist-onedir badge-print-agent.spec
+          Compress-Archive -Path dist-onedir\BadgePrintAgent\* -DestinationPath dist\BadgePrintAgent-onedir.zip
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: badge-print-agent
+          path: |
+            print-agent/dist/BadgePrintAgent.exe
+            print-agent/dist/BadgePrintAgent-onedir.zip
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            print-agent/dist/BadgePrintAgent.exe
+            print-agent/dist/BadgePrintAgent-onedir.zip
+          body: |
+            Badge print agent for the convention print station.
+
+            Built on windows-2022 with the official python.org
+            ${{ env.PYTHON_VERSION }} amd64 build. **Not verified on Windows 7:**
+            no GitHub-hosted runner runs Windows 7, so the smoke tests in
+            `print-agent/build.md` have to be run on the station before this
+            build is trusted with a print run.
+
+            `tesseract.exe` is not bundled and remains a separate install.

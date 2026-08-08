@@ -75,6 +75,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+    /**
+     * The one public-site container. Header, nav rail, footer and every page body
+     * share it so the chrome lines up with the content underneath it.
+     */
+    .site-container {
+        @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+    }
+}
+
 @layer base {
     /** add century gothic custom import ../assets/fonts/century_gothic.ttf */
     @font-face {

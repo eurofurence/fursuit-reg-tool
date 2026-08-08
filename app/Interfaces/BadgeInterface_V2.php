@@ -15,8 +15,8 @@ interface BadgeInterface_V2
     /**
      * Get the font instance for the badge.
      *
-     * @param int $size The font size in pixels.
-     * @param string|null $font_path Optional path to the font file.
+     * @param  int  $size  The font size in pixels.
+     * @param  string|null  $font_path  Optional path to the font file.
      * @return Font The initialized font instance.
      */
     public function getFont(int $size, ?string $font_path = null): Font;
@@ -45,9 +45,9 @@ interface BadgeInterface_V2
     /**
      * Apply letter spacing to the given text.
      *
-     * @param string $text The text to modify.
-     * @param int $spacing The amount of spacing to apply.
-     * @param string $spacer The character used for spacing.
+     * @param  string  $text  The text to modify.
+     * @param  int  $spacing  The amount of spacing to apply.
+     * @param  string  $spacer  The character used for spacing.
      * @return string The modified text.
      */
     public function addLetterSpacing(string $text, int $spacing = 1, string $spacer = ' '): string;

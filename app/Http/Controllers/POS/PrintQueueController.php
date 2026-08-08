@@ -5,6 +5,7 @@ namespace App\Http\Controllers\POS;
 use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintJobStatusEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use Inertia\Inertia;
 
@@ -29,7 +30,7 @@ class PrintQueueController extends Controller
         ]);
 
         // If this is a badge print job, transition the badge to ReadyForPickup
-        if ($printJob->printable_type === \App\Models\Badge\Badge::class) {
+        if ($printJob->printable_type === Badge::class) {
             $badge = $printJob->printable;
             if ($badge && $badge->status_fulfillment->canTransitionTo(ReadyForPickup::class)) {
                 $badge->status_fulfillment->transitionTo(ReadyForPickup::class);
@@ -53,6 +54,22 @@ class PrintQueueController extends Controller
 
     public function delete(PrintJob $printJob)
     {
+        // A batched job is not the operator's to delete. Removing the row left
+        // the batch behind with nothing in it: recalculateCounters() wrote
+        // total_jobs = 0, cancel() could not unlock the badge because it walks
+        // the jobs and there were none, and the empty batch stayed selectable
+        // for the agent to pick up again and again.
+        //
+        // Cancelling the batch is the supported way out, and it releases the
+        // badges properly.
+        if ($printJob->print_batch_id !== null) {
+            return redirect()->back()->with(
+                'error',
+                'This job belongs to a print batch. Cancel the batch instead, '
+                .'which also hands the badges back to their owners.'
+            );
+        }
+
         $printJob->delete();
 
         return redirect()->back()->with('success', 'Print job deleted');

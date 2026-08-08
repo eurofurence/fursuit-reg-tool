@@ -10,6 +10,22 @@ use App\Models\User;
 class BugBountyAction extends AbstractSpecialCodeAction
 {
     /**
+     * This action reads nothing out of `constructor_data`: `use()` below consumes the code
+     * and returns the enum, and the achievement it triggers takes no parameters either.
+     * Its declared field list is therefore empty (the inherited `constructorFields()`), and
+     * the admin form shows this sentence where the fields would be instead of inviting an
+     * operator to type JSON that nothing will ever read.
+     *
+     * Rows written before the form existed may still carry keys, e.g. `{"amount": 100}`.
+     * They are kept byte for byte on save and shown read-only in the form; see
+     * SpecialCodeActionRegistry::residue().
+     */
+    public static function constructorDescription(): ?string
+    {
+        return 'Bug Hunter Bounty takes no data. Redeeming the code consumes it and grants the Bug Bounty Hunter achievement.';
+    }
+
+    /**
      * Execute the bug bounty special code action for the given user.
      * Returns the BUG_BOUNTY enum and deletes the code from the database.
      *
