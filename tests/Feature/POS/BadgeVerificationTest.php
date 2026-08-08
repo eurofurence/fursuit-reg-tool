@@ -216,6 +216,42 @@ class BadgeVerificationTest extends TestCase
             );
     }
 
+    public function test_a_card_the_print_pipeline_promoted_still_counts(): void
+    {
+        // The print pipeline never goes through ToPrinted: a finished job calls
+        // promoteBadgeToReadyForPickup(), so printed_at stays null on every card
+        // printed by the agent. Counting on that column read zero cards on live
+        // data while the crate was full of them.
+        $badge = $this->printedBadge('1234');
+        $badge->forceFill(['printed_at' => null])->saveQuietly();
+
+        $this->get(route('pos.verification.index'))
+            ->assertInertia(fn ($page) => $page
+                ->where('stats.printed', 1)
+                ->where('stats.missing', 1)
+                ->etc()
+            );
+    }
+
+    public function test_a_checked_off_card_always_shows_in_the_list(): void
+    {
+        // Outside this desk's crate, so the counters ignore it - but it was
+        // typed into this field, so the list has to show it. Answering
+        // "checked off" over an empty list reads as a failed check-off.
+        $this->machine->update(['badge_range_min' => 1000, 'badge_range_max' => 1999]);
+
+        $this->printedBadge('2500');
+
+        $this->post(route('pos.verification.store'), ['badge_id' => '2500']);
+
+        $this->get(route('pos.verification.index'))
+            ->assertInertia(fn ($page) => $page
+                ->where('recent.0.custom_id', '2500-1')
+                ->count('recent', 1)
+                ->etc()
+            );
+    }
+
     public function test_the_counters_follow_the_crate_this_desk_holds(): void
     {
         $this->machine->update(['badge_range_min' => 1000, 'badge_range_max' => 1999]);

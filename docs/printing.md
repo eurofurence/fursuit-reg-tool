@@ -175,6 +175,18 @@ Two rules on that screen, both learned from cards going out twice:
 - The stamp is never cleared by a later reprint. It records that the card was seen once. The undo
   button is the only thing that clears it, for the number typed off the wrong card.
 
+The counters read "printed" off the fulfillment state, never off `badges.printed_at`. Only the
+`ToPrinted` transition stamps that column and the print pipeline does not go through it - a finished
+job calls `promoteBadgeToReadyForPickup()` - so on live data the timestamp is null for every card the
+agent printed. The screen counted zero cards against a full crate until that was fixed. The list
+below the counters is deliberately wider than them: it shows every card checked off at this event,
+including ones outside the desk's crate, because anything the field accepts has to appear there.
+
+The screen is also shaped nothing like the dashboard, which is one keystroke away and is also a
+number field over a keypad. An attendee number typed into the wrong one would check a card off
+without anybody noticing, so this one wears a banner, puts the list where the dashboard puts the
+keypad, and shrinks the keypad to a touchscreen fallback.
+
 The auto-lock is suspended on that route alone. Working a crate is minutes of handling cards with no
 keyboard or mouse in between, and locking there discards the list of what was already checked; the
 page polls the server every minute to hold the session instead. The screen shows no attendee data

@@ -32,6 +32,13 @@ use Inertia\Inertia;
 class BadgeVerificationController extends Controller
 {
     /**
+     * The fulfillment states a physical card exists in.
+     *
+     * @var array<int, string>
+     */
+    private const PRINTED_STATES = ['printed', 'ready_for_pickup', 'picked_up'];
+
+    /**
      * The screen: counters for the crate, and the tail of the check-off list.
      *
      * The list is read back from the database rather than kept in the browser,
@@ -58,7 +65,7 @@ class BadgeVerificationController extends Controller
                 'min' => $machine?->badge_range_min,
                 'max' => $machine?->badge_range_max,
             ],
-            'recent' => $this->recent($event, $machine),
+            'recent' => $this->recent($event),
             // The verdict on the number just typed. It rides the session rather
             // than the shared flash bag, which only carries success/error strings
             // and is read by the toast layer; this one is a small structure the
@@ -258,15 +265,19 @@ class BadgeVerificationController extends Controller
     /**
      * Printed cards of this event, narrowed to the crate this desk holds.
      *
-     * Printed means the card exists: `printed_at` is stamped by the fulfillment
-     * transition that also allocates `custom_id`, so it is the same population
-     * the crate was filled from.
+     * "Printed" is the fulfillment state, not `printed_at`. Only `ToPrinted`
+     * stamps that column, and the print pipeline does not go through it: a job
+     * finishing calls `promoteBadgeToReadyForPickup()`, which transitions
+     * straight to ReadyForPickup. Filtering on the timestamp counted zero cards
+     * on live data while the crate was full of them.
      */
     private function printedBadges(Event $event, ?Machine $machine): Builder
     {
         $query = Badge::whereHas('fursuit', fn (Builder $q) => $q->where('event_id', $event->id))
-            ->whereNotNull('badges.printed_at')
-            ->whereNotNull('badges.custom_id');
+            ->whereNotNull('badges.custom_id')
+            ->where(fn (Builder $q) => $q
+                ->whereIn('badges.status_fulfillment', self::PRINTED_STATES)
+                ->orWhereNotNull('badges.printed_at'));
 
         $this->applyBadgeRange($query, $event, $machine);
 
@@ -298,9 +309,14 @@ class BadgeVerificationController extends Controller
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function recent(Event $event, ?Machine $machine): array
+    private function recent(Event $event): array
     {
-        return $this->printedBadges($event, $machine)
+        // Every checked-off card of this event, not only the ones the counters
+        // count, and not narrowed to this desk's crate. Anything typed into the
+        // field can be checked off, so anything typed into the field has to
+        // appear here - a screen that answers "checked off" and then shows an
+        // empty list reads as the check-off having failed.
+        return Badge::whereHas('fursuit', fn (Builder $q) => $q->where('event_id', $event->id))
             ->whereNotNull('badges.verified_print_at')
             ->with(['fursuit.user'])
             ->orderByDesc('badges.verified_print_at')

@@ -127,26 +127,14 @@ const rangeLabel = computed(() => {
     return "every badge of the event";
 });
 
-const statTiles = computed(() => [
-    {
-        label: "Checked off",
-        value: props.stats?.verified ?? 0,
-        sub: `of ${props.stats?.printed ?? 0} printed`,
-        primary: true,
-        progress: props.stats?.printed
-            ? Math.round((props.stats.verified / props.stats.printed) * 100)
-            : 0,
-    },
-    {
-        label: "Still missing",
-        value: props.stats?.missing ?? 0,
-        sub: "printed, never seen at the desk",
-    },
-    {
-        label: "This desk counts",
-        value: props.stats?.printed ?? 0,
-        sub: rangeLabel.value,
-    },
+// Counters read as one line of text rather than as the dashboard's stat tiles.
+// The two screens are one keystroke apart and both are a number field over a
+// keypad, so this one deliberately does not look like the other: typing an
+// attendee number into the wrong one silently checks a card off.
+const counters = computed(() => [
+    { label: "checked off", value: props.stats?.verified ?? 0 },
+    { label: "still missing", value: props.stats?.missing ?? 0, bad: true },
+    { label: `printed · ${rangeLabel.value}`, value: props.stats?.printed ?? 0 },
 ]);
 
 const resultClass = computed(() => ({
@@ -174,30 +162,71 @@ function verifiedTime(row) {
         <title>POS - Badge Verification</title>
     </Head>
 
+    <!-- Nothing on this screen is shaped like the dashboard: the banner runs the
+         full width, the list is the big half, and the entry column sits on the
+         right with a keypad half the size. The two screens are one keystroke
+         apart and a number typed into the wrong one checks a card off silently. -->
     <div class="w-full flex-1 flex flex-col gap-2">
-        <div class="pos-block pos-block--cols">
-            <div
-                v-for="tile in statTiles"
-                :key="tile.label"
-                class="pos-stat"
-                :class="tile.primary ? 'pos-stat--primary' : ''"
-            >
-                <span class="pos-stat__k">{{ tile.label }}</span>
-                <span class="pos-stat__v">{{ tile.value }}</span>
-                <span class="pos-stat__sub">{{ tile.sub }}</span>
-                <span v-if="tile.progress !== undefined" class="pos-meter" :aria-label="`${tile.progress}% checked off`">
-                    <span class="pos-meter__fill" :style="{ width: `${Math.min(100, tile.progress)}%` }"></span>
-                </span>
+        <div class="rounded-pos border-2 border-pos-warn bg-pos-warn/10 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h1 class="text-base font-bold tracking-wide uppercase text-pos-warn">
+                    Verification mode
+                </h1>
+                <p class="text-xs text-pos-muted">
+                    Reading numbers off the cards in the box. Nothing is handed out and no attendee is looked up here.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div v-for="counter in counters" :key="counter.label" class="text-right">
+                    <span
+                        class="block pos-num text-2xl font-bold leading-none"
+                        :class="counter.bad && counter.value > 0 ? 'text-pos-bad' : ''"
+                    >{{ counter.value }}</span>
+                    <span class="block text-[0.68rem] uppercase tracking-wide text-pos-muted">{{ counter.label }}</span>
+                </div>
             </div>
         </div>
 
-        <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-2">
-            <section class="lg:col-span-2 pos-card flex flex-col">
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-2">
+            <section class="lg:col-span-3 pos-card flex flex-col">
                 <div class="pos-card__head">
-                    <h1>Check the box</h1>
-                    <div class="flex items-center gap-3 text-xs text-pos-muted">
-                        <span><span class="pos-kcap mr-1">0-9</span>badge</span>
-                        <span><span class="pos-kcap mr-1">-</span>copy</span>
+                    <h2>Checked off in this box</h2>
+                    <span class="text-xs text-pos-muted">
+                        {{ recent.length ? `last ${recent.length}` : 'nothing yet' }}
+                    </span>
+                </div>
+
+                <p v-if="!recent.length" class="text-sm text-pos-muted px-1 py-4">
+                    Type the number printed on the first card to start. Every card you check off
+                    lands here, newest first, with an Undo beside it.
+                </p>
+
+                <div v-else class="pos-block pos-block--rows w-full flex-1 max-h-[34rem] overflow-y-auto">
+                    <div v-for="row in recent" :key="row.id" class="pos-row">
+                        <div class="pos-row__body">
+                            <span class="pos-row__title pos-num text-lg">{{ row.custom_id }}</span>
+                            <span class="pos-row__sub">
+                                {{ verifiedTime(row) }}
+                                · {{ row.fursuit_name || 'unknown fursuit' }}
+                                <template v-if="row.owner_name"> · {{ row.owner_name }}</template>
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            class="pos-btn pos-btn--quiet"
+                            @click="revert(row)"
+                        >
+                            Undo
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="lg:col-span-2 pos-card flex flex-col self-start w-full">
+                <div class="pos-card__head">
+                    <h2>Card number</h2>
+                    <div class="flex items-center gap-2 text-xs text-pos-muted">
                         <span><span class="pos-kcap mr-1">Enter</span>check off</span>
                         <span><span class="pos-kcap mr-1">/</span>clear</span>
                     </div>
@@ -211,71 +240,39 @@ function verifiedTime(row) {
                 >
                     {{ result.message }}
                 </p>
-                <p v-else class="mb-2 px-3 py-2 text-sm text-pos-muted">
-                    Type the number on the card and press Enter. A bare number is copy 1,
-                    so 1234 checks off 1234-1; a second copy needs 1234-2 in full.
+                <p v-else class="mb-2 text-xs text-pos-muted">
+                    A bare number is copy 1: 1234 checks off 1234-1. A second copy needs
+                    1234-2 typed in full.
                 </p>
 
-                <form class="flex gap-2" @submit.prevent="submit">
+                <form class="flex flex-col gap-2" @submit.prevent="submit">
                     <input
                         ref="badgeIdInput"
                         v-model="form.badge_id"
-                        class="pos-field"
+                        class="pos-field text-center"
                         type="text"
                         inputmode="numeric"
                         autocomplete="off"
-                        placeholder="Badge number"
+                        placeholder="0000-0"
                         maxlength="12"
                     />
                     <button
                         type="submit"
-                        class="pos-btn pos-btn--primary pos-btn--commit px-8"
+                        class="pos-btn pos-btn--primary pos-btn--commit"
                         :disabled="!form.badge_id || form.processing"
                     >
                         Check off <span class="pos-kcap">Enter</span>
                     </button>
                 </form>
 
-                <div class="flex-1 flex items-center justify-center mt-2">
-                    <div class="pos-keypad w-full max-w-md h-full max-h-[24rem]">
-                        <button v-for="n in ['7','8','9','4','5','6','1','2','3']" :key="n"
-                                type="button" class="pos-key" @click="keyPress(n)">{{ n }}</button>
-                        <button type="button" class="pos-key" @click="keyPress('-')">-</button>
-                        <button type="button" class="pos-key" @click="keyPress('0')">0</button>
-                        <button type="button" class="pos-key pos-key--wide" @click="keyPress('delete')">Delete</button>
-                        <button type="button" class="pos-key pos-key--go col-span-3" @click="keyPress('enter')">Check off</button>
-                    </div>
-                </div>
-            </section>
-
-            <section class="pos-card flex flex-col self-start w-full">
-                <div class="pos-card__head">
-                    <h2>Just checked off</h2>
-                    <span class="text-xs text-pos-muted">{{ recent.length }} shown</span>
-                </div>
-
-                <p v-if="!recent.length" class="text-sm text-pos-muted px-1 py-4">
-                    Nothing checked off yet.
-                </p>
-
-                <div v-else class="pos-block pos-block--rows w-full max-h-[32rem] overflow-y-auto">
-                    <div v-for="row in recent" :key="row.id" class="pos-row">
-                        <div class="pos-row__body">
-                            <span class="pos-row__title">{{ row.custom_id }}</span>
-                            <span class="pos-row__sub">
-                                {{ row.fursuit_name || 'unknown fursuit' }}
-                                <template v-if="row.owner_name"> · {{ row.owner_name }}</template>
-                                · {{ verifiedTime(row) }}
-                            </span>
-                        </div>
-                        <button
-                            type="button"
-                            class="pos-btn pos-btn--quiet"
-                            @click="revert(row)"
-                        >
-                            Undo
-                        </button>
-                    </div>
+                <!-- Half the dashboard keypad's size: the desk numpad does the typing,
+                     and this is the fallback for a touchscreen. -->
+                <div class="pos-keypad w-full max-w-[15rem] mx-auto mt-3">
+                    <button v-for="n in ['7','8','9','4','5','6','1','2','3']" :key="n"
+                            type="button" class="pos-key" @click="keyPress(n)">{{ n }}</button>
+                    <button type="button" class="pos-key" @click="keyPress('-')">-</button>
+                    <button type="button" class="pos-key" @click="keyPress('0')">0</button>
+                    <button type="button" class="pos-key pos-key--wide" @click="keyPress('delete')">Delete</button>
                 </div>
             </section>
         </div>
