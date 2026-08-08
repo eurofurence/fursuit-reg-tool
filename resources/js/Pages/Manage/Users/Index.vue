@@ -7,16 +7,15 @@
  * partials are filtered by top-level key. DataTable still wants one object, so the props
  * are gathered back up here.
  *
- * There is no FilterBar filter set: UserResource declares `->filters([ // ])`. The bar is
- * still rendered for its search box, which is what the three searchable columns need.
+ * There is no filter set: UserResource declares `->filters([ // ])`. DataTable still gets
+ * `searchable`, so its toolbar renders with the search box alone, which is what the three
+ * searchable columns need.
  */
 import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import DataTable from '@/Components/Manage/DataTable.vue';
-import FilterBar from '@/Components/Manage/FilterBar.vue';
 import PageHeader from '@/Components/Manage/PageHeader.vue';
-import Pagination from '@/Components/Manage/Pagination.vue';
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -51,10 +50,6 @@ const table = computed(() => ({
   <ManageLayout>
     <PageHeader title="Users" :actions="pageActions" />
 
-    <FilterBar :filters="filters" :search="search" />
-
-    <DataTable :table="table" />
-
-    <Pagination :meta="meta" />
+    <DataTable :table="table" searchable />
   </ManageLayout>
 </template>

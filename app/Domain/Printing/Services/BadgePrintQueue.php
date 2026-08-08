@@ -4,7 +4,9 @@ namespace App\Domain\Printing\Services;
 
 use App\Domain\Printing\Models\PrintBatch;
 use App\Domain\Printing\Models\Printer;
+use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintBatchStatusEnum;
+use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Badge\Badge;
@@ -42,7 +44,9 @@ class BadgePrintQueue
         ?string $name = null,
         ?int $createdById = null,
     ): ?PrintBatch {
-        $badges = $badges->filter(fn (Badge $badge) => $badge->exists);
+        $badges = self::withoutCardsAlreadyOnTheirWay(
+            $badges->filter(fn (Badge $badge) => $badge->exists)
+        );
 
         if ($badges->isEmpty()) {
             return null;
@@ -80,9 +84,57 @@ class BadgePrintQueue
             'batch_id' => $batch->id,
             'badges' => $badges->count(),
             'printer_id' => $printer?->id,
+            'created_by_id' => $createdById,
         ]);
 
         return $batch->fresh();
+    }
+
+    /**
+     * Drop badges that already have a card on its way out of a printer.
+     *
+     * Queueing is a POST an operator makes, and the same POST is made twice
+     * more often than anyone would like: a browser back and resubmit, two
+     * operators on the same row, a bulk selection that includes a badge a row
+     * action queued a minute ago, or the POS bulk print clicked again because
+     * the first click looked like it did nothing. Nothing downstream refuses
+     * that. build() stamps the lock and creates a second job whatever the badge
+     * already has, so two live batches each hold a card for one order and two
+     * physical cards land in the pickup bin for it.
+     *
+     * Only outstanding jobs count. A printed card is a reprint, a failed one is
+     * a card that never came out, and a cancelled one is a run somebody
+     * stopped; all three are legitimate reasons to queue the badge again.
+     *
+     * @param  Collection<int, Badge>  $badges
+     * @return Collection<int, Badge>
+     */
+    private static function withoutCardsAlreadyOnTheirWay(Collection $badges): Collection
+    {
+        if ($badges->isEmpty()) {
+            return $badges;
+        }
+
+        // Cast both sides: printable_id is a morph column and comes back as a
+        // string on some drivers, which would make a strict comparison miss and
+        // a loose one the kind of thing nobody wants to reason about again.
+        $queued = PrintJob::query()
+            ->where('printable_type', (new Badge)->getMorphClass())
+            ->whereIn('printable_id', $badges->map(fn (Badge $badge) => $badge->getKey())->all())
+            ->whereIn('status', PrintJobStatusEnum::outstanding())
+            ->pluck('printable_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($queued === []) {
+            return $badges;
+        }
+
+        Log::info('badges skipped: a card is already queued for them', [
+            'badge_ids' => $queued,
+        ]);
+
+        return $badges->reject(fn (Badge $badge) => in_array((int) $badge->getKey(), $queued, true))->values();
     }
 
     /**
@@ -91,6 +143,16 @@ class BadgePrintQueue
      * Synchronously, because PrintBatch::build() refuses a stale file and the
      * operator is standing at the printer waiting. Queueing the render would
      * only move the failure to a place nobody is looking at.
+     *
+     * A badge that printed in an earlier run is still locked, and the lock
+     * makes GenerateBadgePrintFileJob skip it. Left at that, a reprint of a
+     * card whose artwork inputs have since moved -- a fursuit re-approved, a
+     * catch code regenerated -- could never be rendered and never be batched:
+     * build() refuses the stale file, the CLI pass skips it for the same lock,
+     * and the badge is unprintable everywhere until somebody clears the column
+     * by hand. So a reprint says so explicitly. It is safe precisely because
+     * withoutCardsAlreadyOnTheirWay() has already dropped every badge that
+     * still has a card queued, which is what the lock protects.
      */
     private static function ensurePrintFiles(Collection $badges): void
     {
@@ -99,7 +161,7 @@ class BadgePrintQueue
                 && $badge->print_file_hash === GenerateBadgePrintFileJob::inputHash($badge);
 
             if (! $current) {
-                GenerateBadgePrintFileJob::dispatchSync($badge);
+                GenerateBadgePrintFileJob::dispatchSync($badge, ignorePrintingLock: true);
                 $badge->refresh();
             }
         }

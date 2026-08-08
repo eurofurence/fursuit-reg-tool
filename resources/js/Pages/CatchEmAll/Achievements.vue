@@ -12,7 +12,7 @@ import {
     Users,
     Zap,
 } from "lucide-vue-next";
-import Card from "primevue/card";
+import Card from "@/Components/UI/UiCard.vue";
 
 const props = defineProps<{
     achievements: Array<any>;

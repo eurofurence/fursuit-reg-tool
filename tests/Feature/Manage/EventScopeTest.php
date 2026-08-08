@@ -16,11 +16,24 @@
  * they would still fail if the split were re-collapsed some other way.
  */
 
+use App\Domain\Checkout\Enums\TseClientStateEnum;
+use App\Domain\Checkout\Models\Checkout\Checkout;
+use App\Domain\Checkout\Models\Checkout\States\Finished;
+use App\Domain\Checkout\Models\TseClient;
+use App\Domain\Printing\Models\PrintBatch;
+use App\Domain\Printing\Models\Printer;
+use App\Domain\Printing\Models\PrintJob;
+use App\Enum\PrintJobStatusEnum;
+use App\Enum\PrintJobTypeEnum;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
+use App\Models\Machine;
+use App\Models\Staff;
+use App\Models\SumUpReader;
 use App\Models\User;
 use App\Support\Manage\EventScope;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -208,4 +221,85 @@ test('apply() narrows through a relationship, which is how badges are scoped', f
 
     $scope->select(null);
     expect($scope->apply(Badge::query(), 'fursuit')->count())->toBe(2);
+});
+
+/*
+ * Which lists the scope must not touch (plan 2.9, parity checklist line 58).
+ *
+ * Each module already asserts its own scoping in its own file where it has one, but the
+ * ten lists below are defined by the absence of a behaviour, and an absence is exactly
+ * what a per-module file forgets to assert. So this walks all ten in one place: a record
+ * that belongs to the event that is NOT selected must still be listed. Print batches are
+ * the one that could plausibly regress by accident, because `print_batches.event_id`
+ * exists and looks scopeable.
+ */
+
+test('the ten unscoped lists ignore the selected event', function () {
+    Storage::fake('s3');
+
+    $machine = Machine::factory()->create(['name' => 'Unscoped Desk']);
+    $printer = Printer::factory()->badge()->create(['name' => 'Unscoped Printer']);
+    $staff = Staff::factory()->create(['name' => 'Unscoped Staffer']);
+    // Built without model events so SumUpReaderObserver does not reach for the SumUp API.
+    $reader = SumUpReader::withoutEvents(fn () => SumUpReader::create([
+        'name' => 'Unscoped Reader',
+        'remote_id' => 'rdr_unscoped',
+        'paring_code' => 'unscoped-code',
+    ]));
+
+    $tseClient = TseClient::create([
+        'remote_id' => 'unscoped-client',
+        'serial_number' => 'TSE-UNSCOPED',
+        'state' => TseClientStateEnum::REGISTERED,
+    ]);
+
+    // Deliberately hung off the OLDER event, which is not the one selected below.
+    $batch = PrintBatch::factory()->create([
+        'name' => 'Unscoped Batch',
+        'printer_id' => $printer->id,
+        'event_id' => $this->older->id,
+    ]);
+
+    $job = PrintJob::factory()->create([
+        'printer_id' => $printer->id,
+        'print_batch_id' => $batch->id,
+        'printable_type' => Badge::class,
+        'printable_id' => Badge::factory()->create([
+            'fursuit_id' => Fursuit::factory()->create(['event_id' => $this->older->id])->id,
+        ])->id,
+        'type' => PrintJobTypeEnum::Badge,
+        'status' => PrintJobStatusEnum::Pending,
+    ]);
+
+    $checkout = Checkout::create([
+        'remote_id' => 'UNSCOPED-CHECKOUT',
+        'status' => Finished::class,
+        'payment_method' => 'cash',
+        'user_id' => User::factory()->create(['name' => 'Unscoped Payer'])->id,
+        'machine_id' => $machine->id,
+        'subtotal' => 100,
+        'tax' => 19,
+        'total' => 119,
+        'fiskaly_data' => [],
+    ]);
+
+    // Scope the panel to the newer event. Nothing above belongs to it.
+    from(route('manage.dashboard'))->post(route('manage.event.select'), ['event_id' => $this->newer->id]);
+
+    $ids = function (string $route) {
+        $props = get(route($route))->viewData('page')['props'];
+
+        return collect($props['rows'])->pluck('id')->map(fn ($id) => (int) $id)->all();
+    };
+
+    expect($ids('manage.checkouts.index'))->toContain($checkout->id)
+        ->and($ids('manage.machines.index'))->toContain($machine->id)
+        ->and($ids('manage.printers.index'))->toContain($printer->id)
+        ->and($ids('manage.print-jobs.index'))->toContain($job->id)
+        ->and($ids('manage.print-batches.index'))->toContain($batch->id)
+        ->and($ids('manage.staff.index'))->toContain($staff->id)
+        ->and($ids('manage.sumup-readers.index'))->toContain($reader->id)
+        ->and($ids('manage.tse-clients.index'))->toContain($tseClient->id)
+        ->and($ids('manage.users.index'))->toContain($this->admin->id)
+        ->and($ids('manage.events.index'))->toContain($this->older->id);
 });

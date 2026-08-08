@@ -7,11 +7,11 @@ import Dialog from 'primevue/dialog';
 import {useForm} from 'laravel-precognition-vue-inertia'
 import InputSwitch from 'primevue/inputswitch';
 import {computed, onMounted, reactive, ref} from "vue";
-import Button from 'primevue/button';
+import Button from '@/Components/UI/UiButton.vue';
 import ImageUpload from "@/Components/BadgeCreator/ImageUpload.vue";
 import Panel from 'primevue/panel';
 import InputError from "@/Components/InputError.vue";
-import Message from 'primevue/message';
+import Message from '@/Components/UI/UiMessage.vue';
 
 const deleteModalOpen = ref(null)
 const consentDialogOpen = ref(false);
@@ -248,7 +248,7 @@ function openImageModal() {
         </div>
     </Dialog>
     <!-- Fursuit Creator -->
-    <div class="pt-8 px-6 xl:px-0 max-w-screen-lg mx-auto">
+    <div class="site-container pt-8">
         <div class="mb-8 lg:flex justify-between">
             <div>
                 <h1 class="text-xl sm:text-2xl md:text-3xl font-semibold font-main">Eurofurence Fursuit Badge Creator</h1>

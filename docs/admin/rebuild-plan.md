@@ -799,7 +799,13 @@ refer to the audit's landmine table.
    read with no inverse on write, so saving an unchanged badge edit form writes `"3.00"` into a cents
    column and silently turns a 300-cent badge into a 3-cent badge [3]. An editable total is not worth
    the trap; badge totals are set by the checkout pipeline. A data check for already-corrupted totals
-   ships with phase 4 as a read-only report on the DB Service page.
+   ships with phase 4 as a read-only report on the DB Service page. **Corrected while building
+   phase 4:** the DB Service page is phase 9, so "phase 4" and "on the DB Service page" cannot both
+   hold. Phase 4 wins, because the report exists to make the read-only `total` field safe to ship
+   and shipping it later leaves the corrupted rows unfindable. It lands as its own read-only page,
+   `GET /admin/badges/corrupted-totals`, reachable from a `Total check` page action on the badge
+   list that only `manage-admin` is offered. Phase 9 links the same page from DB Service rather
+   than growing a second copy of the query.
 
 **Broken surfaces that are not ported as working features.**
 
@@ -1014,6 +1020,221 @@ form did not have, on a column the database or a consumer already required.
     the checklist already specifies as `starts_at desc`, rather than leaving one event list in the
     panel ordered differently from every other.
 
+**Phases 2, 3 and 4.** Found while building Events, Badge Preview, Fursuits and Badges. Same rule as
+the rest of this section: each is a decision, not a parity gap, and each needs a line in the cutover
+PR description.
+
+54. **The Events form's four invisible `Group` labels become real section headings.** `Event Dates`,
+    `Order Management`, `Financial Tracking` and `Gallery Settings` are declared on `Group`
+    components, which render no label at all, so the schema author's grouping intent exists in the
+    file and nowhere on screen (audit 108). Thirteen ungrouped fields read worse than the grouping
+    somebody already wrote down, and the alternative is deleting the only structure the resource
+    records. `name` and `badge_class` sit outside every `Group` and get a fifth heading, `Event`.
+55. **`EventRequest` validates `name` length and `badge_class` membership.** Same shape as changes 48
+    to 51, on a module those entries did not cover. `events.name` is a `varchar(255)`, so an overlong
+    name was an SQL error rather than a field error; `badge_class` is resolved to a renderer class
+    downstream and the Select validated nothing against its own options, exactly the gap change 49
+    closes for special codes.
+56. **Colour is reserved for state.** Design spec 1.3: a coloured chip in the new panel means the row
+    is in a state worth noticing. The badge list's `Species` column carries `->color('gray')` today,
+    which is decoration, and it does not ship. No other column loses a colour.
+57. **Icons resolve through the panel's lucide set.** Design spec 1.5: `ManageIcon` renders lucide,
+    so heroicon names are mapped to their nearest lucide equivalent. One visible substitution in
+    these four modules: the badge list's `Extra Copy` mark is `file-text` rather than
+    `document-plus`. Shape and meaning are unchanged.
+58. **The fursuit list declares `defaultSort('id')`.** `FursuitResource` declares none, so its rows
+    come back in whatever order the driver chooses and a paginated list with no `ORDER BY` can
+    repeat or skip a row between pages. Stating the order the database already tends to return
+    changes nothing an operator sees and makes paging deterministic.
+59. **The fursuit activity log gains a `Logged at` column and an explicit `id desc` sort.** Audit 134:
+    `ActivitiesRelationManager` has no `defaultSort` and no timestamp column at all, so the audit
+    trail renders oldest-first with no way to tell when anything happened. Ordered by key rather than
+    by timestamp because the log is append-only, so the two agree, and several entries routinely land
+    inside the same second. The timestamp column is sortable on request. This rides with change 12,
+    which makes the same list read-only.
+60. **The fursuit view page names who holds the claim, and offers an `Edit` link.** `ViewFursuit`
+    shows no claim indicator, so two reviewers working the same queue find out they collided only
+    when one of them fails to approve. The page reports `Claimed by you` / `Claimed by another
+    reviewer` / `Not claimed`. The `Edit` link is the second half: `EditAction` is commented out on
+    the table and `ViewFursuit` has no edit button, so `/admin/fursuits/{id}/edit` is reachable today
+    only by typing the URL, while plan 2.1 registers the route. `FursuitPolicy::update` still decides
+    who sees it.
+61. **A claim that somebody else already holds says so.** Filament silently redirected to the next
+    fursuit. The reviewer is told `Already claimed` / `Another reviewer is working on this fursuit.`
+    and stays where they are. Same reasoning as change 43, on the third of the three moderation
+    gestures.
+62. **An event that still owns fursuits cannot be deleted.** Events stay hard deletes (audit 7.7),
+    but `fursuits.event_id` and `badges.fursuit_id` are both `ON DELETE CASCADE`, so deleting a past
+    convention removes every fursuit and every badge of it *physically*: `SoftDeletes` never runs,
+    `FursuitObserver` never runs, no `deleted_at` is written, no activity entry is logged, and the
+    paid badges backing DSFinV-K and TSE reconciliation are gone with no restore path, since
+    `EventPolicy` deliberately has no `restore` or `forceDelete` (plan 2.2). Single and bulk delete
+    both refuse such an event with a danger toast naming the reason. An event with no fursuits
+    deletes exactly as before.
+63. **The attendee badge editor authorizes `updateAsOwner`, not `update`.** Change 2.2 makes the
+    panel override on `BadgePolicy::update` request-independent, which is right for the panel and
+    wrong for `Route::resource('badges')`: the same ability guards the public self-service editor,
+    where `routeIs('filament.*')` used to be false and every operator therefore fell through to the
+    owner rules. Without the split, a panel user editing somebody else's badge through the attendee
+    form walks past the extra-copy, print-lock, event-ended and "still Pending" guards, resets the
+    fursuit to pending review and recalculates the total on a card already rendered into a print
+    batch. The owner rules move to `BadgePolicy::updateAsOwner()`; `update()` is the override plus
+    those rules, so the panel is unchanged, and `App\Http\Controllers\BadgeController` asks the
+    owner question directly.
+
+**Phases 5 and 6.** Found while building Machines, Printers, Staff, RFID tags, SumUp readers and
+Print jobs. Same rule as the rest of this section: each is a decision, not a parity gap, and each
+needs a line in the cutover PR description.
+
+64. **The print-job status picker offers operator edges only.** Change 10 made the field a
+    transition; deriving the picker straight from `PrintJobStatusEnum::canTransitionTo()` then
+    handed an operator three edges that belong to the print agent. Reaching `Queued` or `Printing`
+    *is* a machine taking the card: `PrintJob::claim()` writes a `processing_machine_id` and a
+    lease, and a bare `transitionTo()` writes neither, so the job is invisible to
+    `PrintBatch::claimNextJob()` and `PrintJob::claimNextUnbatched()` (both filter
+    `status = Pending`) and to `scopeLeaseExpired()` (it requires a lease). The card never prints
+    and `completeIfFinished()` counts it as outstanding forever. `Retrying` is the same trap one
+    step on: it is unclaimable, and `PrintBatch::requeueFailedJobs()` only picks up `Failed`, so
+    resuming the batch does not rescue it either. The three drop out of the picker. In their place
+    a failed card can be sent back to `Pending`, which runs `PrintJob::requeue()` - the domain
+    method that exists for exactly that and which nothing in admin called - and a claimed card sent
+    back to `Pending` runs `releaseLease()`, so the machine, the lease and the printer's hold all
+    go with it. `Cancelled` is the only edge left on the bare `transitionTo()`, because it owns
+    nothing.
+65. **Deleting a print job settles its batch, releases the badge, and is refused while a machine
+    holds the job.** Change 11 recalculated the counters; that is not enough on the last
+    outstanding job of a run. `completeIfFinished()` has exactly one caller in `app/`,
+    `PrintJob::markPrinted()`, so deleting or cancelling the last failed card leaves every progress
+    badge reading 100% on a batch that never reaches `Completed`. Deletes and the status write both
+    settle the batch now, and `PrintBatchStatusEnum` gains `Paused -> Completed`, which
+    `completeIfFinished()` can only reach with nothing outstanding. Two more holes on the same
+    path: `printing_locked_at` is cleared in exactly one place, `PrintBatch::cancel()`, so deleting
+    a badge's only print job left `BadgePolicy::updateAsOwner()` refusing the owner's own edit on a
+    badge with no card and nothing queued - the lock is released when no job of that badge survives
+    uncancelled. And a job in `Queued` or `Printing` is not deletable at all, because the agent is
+    mid-card and its own `printed` callback is route-model-bound: deleting the row 404s it, so the
+    badge is never promoted and the printer never releases the job. `PrinterController::destroy`
+    already refuses the mirror of this.
+66. **The staff PIN never reaches the edit payload either.** Change 24 keeps the PIN plaintext and
+    says so; the list transformer already computes `Set` / `Not Set` server-side so the credential
+    stays out of that payload. The edit payload is the same payload - kept in the page props, in
+    the DOM and in Inertia's history state for as long as the tab is open - and unlike the SumUp
+    pairing code (change 16) it had no `reveal` gesture and no activity entry in front of it. The
+    form is handed a fixed sentinel, `StaffController::PIN_UNCHANGED`, which `StaffRequest` drops
+    before validation. It is not six digits, so no real PIN can collide with it; an untouched form
+    still saves, and emptying the field still clears the PIN the way the helper text says. The
+    round trip change 21 was about no longer needs the value, because `SecurePinRule` receives the
+    record id.
+67. **The ternary and select filters in these modules carry named placeholders.** Filament's
+    `TernaryFilter` defaults read `-` / `Yes` / `No` and `SelectFilter` defaults to `All`, which
+    say nothing about what is being filtered once several filters sit in one bar. `MachineResource`
+    already overrode its own (`Active machines` / `Archived machines` / `All machines`, kept
+    verbatim); the rest follow that shape: staff `All staff` / `Active` / `Inactive`, RFID tags
+    `All tags` / `Active` / `Inactive`, print jobs `All statuses` / `All types` / `All printers`,
+    and `Printable ID` / `Printable Type` as the input placeholders of the two free-value filters.
+    The filter indicators themselves are unchanged.
+68. **Every form in these modules gains a wrapping section heading.** `Machine`, `Printer`,
+    `Staff` and `Sum Up Reader`. Same reasoning as change 54 and the same idiom plan 2.6 makes the
+    panel default: a server-declared section is how a form is grouped here, and a flat schema with
+    no heading reads as an unfinished page next to every other module.
+69. **The print-job form is grouped into four named sections.** `Destination`, `Printable`,
+    `Status` and `Diagnostics`, each with a description, plus helper texts on `print_batch_id`,
+    `status` and the read-only batch and sequence fields. Audit 4.9 records a flat schema. Fourteen
+    ungrouped fields, three of which move real hardware, is where a heading earns its place.
+70. **Print jobs gain a sixth filter, `verified`.** A ternary: `Verified and not` /
+    `Verified only` / `Unverified only`. The status strip shipped in phase 0 deep-links here with
+    `filter[status]=printed&filter[verified]=0` to reach the cards nobody has vouched for (plan 1.2
+    and 2.8); without the filter that link silently shows every printed card instead.
+71. **Every list in these modules declares `defaultSort('id')`.** Same reasoning as change 58, on
+    the four resources that declare none: a paginated list with no `ORDER BY` can repeat or skip a
+    row between pages. Print jobs keep `PrintJobResource`'s own `id desc`.
+72. **New copy that has no Filament counterpart.** The printer `is_active` helper
+    (`An inactive printer is not offered for new print jobs.`), the two SumUp form helpers
+    (`Set by SumUp. Not editable here.` and
+    `The stored code is never loaded into this form. Use Reveal to read it, or type a new one to replace it.`
+    with the placeholder `Leave blank to keep the current code`), the SumUp reveal confirm and the
+    printer clear-error confirm. The reveal and clear-error actions follow from changes 16 and 27;
+    the strings are new, and they are pinned here so they are not read as parity.
+73. **Four smaller decisions in the same two phases.** `ListPrinters` returns no header actions, so
+    the printer list has no way to add one; a `New printer` page action ships, because the create
+    page and its route already exist and the form's own `TypeError` is fixed by change 7. A printer
+    that still has print jobs cannot be deleted, single or bulk, because `print_jobs.printer_id` is
+    `cascadeOnDelete` and nothing would recalculate the batches (audit landmines 23 and 80). A badge
+    print job requires a `print_batch_id`, and the create form collects the
+    `printable_type` / `printable_id` pair, both NOT NULL and neither asked for by the Filament form
+    (audit 89). And the print-job list gains a toggleable `Batch` column, because `print_batch_id`
+    and `sequence` are surfaced nowhere today.
+
+**Phase 9: the two tools, the repair and the dashboard.**
+
+74. **`pdfs/badge-list-range.blade.php` stops losing and stops throwing.** The one blade phase 9
+    edits, in the two places where the badge-list PDF was not a faithful report of the data. First,
+    the view chunked a range into columns of `rows_per_column` and then `array_slice()`d the chunks
+    down to `columns`, so with the shipped defaults (50 x 12) a 1000-wide range printed its first
+    600 numbers and dropped the other 400 under a header that had already counted all of them.
+    Nothing reported it: the badges were inside a declared range, so change 33's
+    `X-Badges-Out-Of-Range` counted zero. `PdfGeneratorController::paginateSections()` now splits a
+    section into as many pages as it needs before the view sees it, heading the later ones
+    `{range} (continued)` so the count a page prints is the count of what is on it, and the view
+    grows its column count to fit rather than truncating. Second, `4 - strlen($firstPart)` went
+    negative for any attendee id longer than four characters and `str_repeat()` throws on a negative
+    count, so one five-digit id 500'd the whole request and returned no PDF at all. `attendee_id`
+    comes from the registration service and `ToProcessing` concatenates it into `custom_id`
+    verbatim, so any event past 9,999 registrations has them - and change 33 is what first routed
+    them into the view, because before it they fell out of `groupBadges()` and were never rendered.
+    The count is clamped at zero. While there, the id is escaped: only the alignment padding is
+    markup, and the id is external input rendered through `{!! !!}`. `App\Filament\Pages\PdfGenerator`
+    renders the same view and is not edited, so it inherits both fixes until cutover: it has no
+    `paginateSections()` in front of it, so an oversized range comes out as more and narrower
+    columns there rather than as a page of dropped numbers. Cramped and complete beats clean and
+    wrong on a list whose whole job is to say which badges are in which box.
+75. **The free-badge repair never touches a badge that has already been paid.** The deleted
+    `FreeBadgeRepairService` selected the badges to convert on `is_free_badge = false` alone, which
+    admits a badge already in the `Paid` state - money taken at the POS, with a `checkout_items` row
+    against it. It then wrote `total = subtotal = tax = 0`, `status_payment = Paid` and
+    `paid_at = now()`. That was defensible while the service credited the owner's wallet; it is not
+    now. The credit went with `bavix/laravel-wallet` in `fa0554e`, `User::amountDue()` only sums
+    unpaid badges, and so zeroing an already-paid badge returns nothing to anybody: the confirm
+    dialog promises a refund of money that does not move, the checkout still records the original
+    amount, and the original `paid_at` is overwritten by `now()` and is not among the properties the
+    activity entry carries, so it is unrecoverable. `analyseUser()` selects only badges still owing
+    their fee. The entitlement is still honoured where honouring it costs nothing to reverse: an
+    owner holding one paid badge and one unpaid one gets the unpaid one converted.
+76. **The PDF Generator form is one column, like every other form in the panel.** Audit 5.1 puts
+    `title` / `subtitle` in a `Grid::make(2)` and `rows_per_column` / `columns` / `font_size` in a
+    `Grid::make(3)`. Neither grouping ships. This is not a phase-9 decision but the panel-wide one
+    `FormField` and `FormSection` were built on in phase 0: a form is a single column of
+    label/control rows, so an operator's eye reads straight down and each helper sits under the
+    thing it explains. `FormSection`'s `columns` prop exists for blocks of short read-only values
+    (the batch and checkout infolists) and is not used for inputs anywhere. The three layout numbers
+    keep `narrow`, which caps a short control's width, so the visual density the grid was for
+    survives. Recorded here because it is a dropped grouping, the opposite of changes 54, 68 and 69.
+77. **New copy in phase 9 that has no Filament counterpart.** Same reasoning as change 72: the
+    strings are new, so they are pinned here rather than read as parity. The PDF Generator's
+    read-only `Event` field and its helper (`Select an event in the header. A badge list is always
+    one event.`), which follows from change 2.9 wiring the page to `EventScope` but is a field the
+    Filament form did not have. The DB Service page subtitle (`Data repairs, run by hand and
+    logged`) and its idle paragraph (`Nothing has run. The check reads the database and shows what
+    it would change before anything is written.`), on a page whose Filament original had a title and
+    an empty frame. The DB Service zero-row review line, which renders the `Nothing to fix`
+    notification body a second time as page text, so a review reached by reload - the toast is
+    long gone by then - still says why the table is missing. And the dashboard subtitle, which names
+    the scope the page is showing (`{event} ({year})` or `All events`); it follows from 2.9 for the
+    same reason and is the only place the dashboard states which selection its numbers are for.
+78. **Four smaller decisions in phase 9.** The PDF Generator drops Filament's
+    `fursuit.user.eventUsers` eager load: the document is built from `custom_id` alone and nothing
+    downstream reads a user, an event user or even a fursuit, so it loaded three relations per badge
+    for nothing and no rendered byte changes. The box-label path drops
+    `mb_convert_encoding($v, 'UTF-8', 'UTF-8')` on the title and subtitle, which is a no-op, not
+    sanitization (same encoding in and out) and the blade escapes both anyway; the document-level
+    `mb_check_encoding` guard that did do something stays. `PdfGeneratorRequest` caps
+    `badge_ranges` at 1000 characters and `title` / `subtitle` at 255, alongside the three layout
+    ceilings: the range list is parsed comma part by comma part and the two strings are interpolated
+    into a filename, and none of the three had any bound at all. And `DashboardController::previousEvent()`
+    returns null when the current event has no `starts_at`, which the three widgets did not check;
+    `where('starts_at', '<', null)` already matched nothing, so the guard states the intent rather
+    than changing the answer.
+
 ---
 
 ## Part 3 - Build order
@@ -1187,8 +1408,10 @@ Each module test covers:
    - the fursuit moderation queue never returns a fursuit from another event
 
 Existing coverage is preserved rather than replaced: `DbServiceMaintenancePageTest`'s four cases are
-re-expressed against `/admin/maintenance/db-service` in phase 9 and the Filament version is kept
-until phase 10.
+re-expressed against `/admin/maintenance/db-service` in phase 9. There is no Filament version left
+to keep until phase 10: that file, its page and `App\Services\FreeBadgeRepairService` were all
+deleted in `5aa2148`, so `tests/Feature/Manage/DbServiceTest.php` is the only coverage of the repair
+path that exists.
 
 Factories: this repo has factories for badges, fursuits, events and users. `PrintBatch`, `PrintJob`,
 `Printer`, `Machine`, `Staff`, `RfidTag`, `SumUpReader`, `TseClient`, `Checkout` and `SpecialCode`
@@ -1216,7 +1439,8 @@ Cutover requires all of:
 
 - [ ] Every row in `current-filament-features.md` sections 4, 5, 6 and 7 maps to a passing test or a
       numbered entry in 2.10.
-- [ ] `php artisan test` green, including `DbServiceMaintenancePageTest` against the old panel.
+- [ ] `php artisan test` green. `DbServiceMaintenancePageTest` was deleted in `5aa2148` and is no
+      longer part of this gate; its four cases live in `tests/Feature/Manage/DbServiceTest.php`.
 - [ ] `./vendor/bin/pint` clean.
 - [ ] A reviewer walkthrough: 20 pending fursuits approved or rejected end to end from `/admin`,
       with the notifications landing in Mailpit.
@@ -1279,8 +1503,9 @@ Phase 10, one PR, only once the gate above is fully green, and never inside an e
 11. Livewire. Grep before removing: it is pulled in for the admin panel on the web side, but check
     the POS and any published config first. If nothing outside `app/Filament` references it, remove
     it with Filament and delete the published config.
-12. Delete `tests/Feature/DbServiceMaintenancePageTest.php` in this same PR, after confirming its
-    four cases are covered by `tests/Feature/Manage/DbServiceTest.php`.
+12. ~~Delete `tests/Feature/DbServiceMaintenancePageTest.php` in this same PR, after confirming its
+    four cases are covered by `tests/Feature/Manage/DbServiceTest.php`.~~ Already done: the file was
+    deleted in `5aa2148`, ahead of this phase, and `DbServiceTest` carries the four cases.
 13. Fix the stale comment in `routes/web.php:42` (`// Admin badge PDF routes (used by Filament)`) and
     the two stale comments in `resources/css/pos.css` lines 5 and 53 that refer to Filament keeping
     its own look.

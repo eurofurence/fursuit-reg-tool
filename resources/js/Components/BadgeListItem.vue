@@ -1,127 +1,63 @@
 <script setup>
-import Tag from 'primevue/tag';
-import {formatEuroFromCents} from "../helpers.js";
+import { computed } from 'vue';
+import Tag from '@/Components/UI/UiTag.vue';
+import { formatEuroFromCents } from '../helpers.js';
+import { badgeStatusTags } from '../badgeStatus.js';
 
+/*
+ * One badge as a row in the attendee badge list.
+ *
+ * Replaces the DataTable this list used to be: the table forced the image,
+ * status tags and price into fixed columns that collapsed badly on phones,
+ * where most attendees open this page.
+ */
 const props = defineProps({
-    badge: Object
+    badge: { type: Object, required: true },
+    // Archive rows (badges left over from earlier events) are muted and carry
+    // the event name instead of a link affordance.
+    archived: { type: Boolean, default: false },
 });
 
-function getFursuitStatusName(status) {
-    switch (status) {
-        case 'pending':
-            return 'Pending Review';
-        case 'approved':
-            return 'Approved';
-        case 'rejected':
-            return 'Rejected';
-    }
-}
-
-function getFursuitSeverity(status) {
-    switch (status) {
-        case 'pending':
-            return 'warning';
-        case 'approved':
-            return 'success';
-        case 'rejected':
-            return 'danger';
-    }
-}
-
-function getFursuitTooltipText(status) {
-    switch (status) {
-        case 'pending':
-            return 'This badge is pending review. We will notify you once it has been approved or rejected.';
-        case 'approved':
-            return 'This badge has been approved';
-        case 'rejected':
-            return 'This badge has been rejected, we have emailed you the reason.';
-    }
-}
-
-function getBadgeStatusName(status) {
-    switch (status) {
-        case 'pending':
-            return 'Pending';
-        case 'processing':
-            return 'Printing';
-        case 'ready_for_pickup':
-            return 'Ready for Pickup';
-        case 'picked_up':
-            return 'Picked Up';
-    }
-}
-
-function getBadgeSeverity(status) {
-    switch (status) {
-        case 'pending':
-            return 'warning';
-        case 'processing':
-            return 'info'; // Blue for printing
-        case 'ready_for_pickup':
-            return 'warning'; // Orange for action needed
-        case 'picked_up':
-            return 'success'; // Green - only picked up is green
-    }
-}
-
-function getBadgeTooltipText(status) {
-    switch (status) {
-        case 'pending':
-            return 'This badge is waiting to be processed. You can still make changes until printing begins.';
-        case 'processing':
-            return 'This badge is being printed. No further changes can be made.';
-        case 'ready_for_pickup':
-            return 'This badge is ready for pickup at the convention.';
-        case 'picked_up':
-            return 'This badge has been picked up.';
-    }
-}
-
+const statuses = computed(() => badgeStatusTags(props.badge));
 </script>
 
 <template>
-    <div class="py-3 hover:bg-gray-50 duration-200 rounded cursor-pointer">
-        <div class="flex flex-col md:flex-row text-center md:text-left">
-            <div class="flex flex-col justify-center items-center">
-                <img 
-                    :src="badge.fursuit.image_url" 
-                    :alt="`${badge.fursuit.name} badge image`"
-                    class="h-32 object-cover rounded-lg" 
-                    loading="lazy"
+    <div class="flex items-center gap-4 py-4">
+        <img
+            :src="badge.fursuit.image_url"
+            :alt="`${badge.fursuit.name} badge`"
+            :class="[
+                'w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border flex-shrink-0',
+                archived ? 'opacity-75' : '',
+            ]"
+            loading="lazy"
+        />
+
+        <div class="flex-1 min-w-0">
+            <div class="font-semibold truncate">{{ badge.fursuit.name }}</div>
+            <div class="text-sm text-gray-600 truncate">{{ badge.fursuit.species.name }}</div>
+            <div class="mt-0.5 text-xs text-gray-500">
+                <span v-if="badge.custom_id">Badge {{ badge.custom_id }}</span>
+                <span v-if="badge.custom_id && archived"> • </span>
+                <span v-if="archived">{{ badge.fursuit.event.name }}</span>
+            </div>
+
+            <div class="mt-2 flex flex-wrap gap-1">
+                <Tag
+                    v-for="status in statuses"
+                    :key="status.value"
+                    :severity="status.severity"
+                    :value="status.value"
                 />
+                <Tag v-if="badge.extra_copy" severity="secondary" value="Extra Copy" />
             </div>
-            <div class="flex flex-col justify-center p-4 flex-1">
-                <h2 class="text-lg font-semibold font-main">{{ badge.fursuit.name }}</h2>
-                <p>{{ badge.fursuit.species.name }}</p>
-                <div class="py-1">
-                    <Tag v-if="badge.status_fulfillment === 'pending'"
-                        v-tooltip.bottom="getFursuitTooltipText(badge.fursuit.status)"
-                        :severity="getFursuitSeverity(badge.fursuit.status)"
-                        :value="getFursuitStatusName(badge.fursuit.status)" />
-                    <Tag v-if="badge.fursuit.status === 'approved' && badge.status_fulfillment !== 'pending'"
-                        v-tooltip.bottom="getBadgeTooltipText(badge.status_fulfillment)"
-                        :severity="getBadgeSeverity(badge.status_fulfillment)"
-                        :value="getBadgeStatusName(badge.status_fulfillment)" />
-                </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <div class="text-right">
+                <div class="font-semibold">{{ formatEuroFromCents(badge.total) }}</div>
             </div>
-            <div v-if="badge.extra_copy" class="flex flex-col justify-center px-4 pb-1 md:p-4 gap-2">
-                <!-- dual_side_print, extra_copy badges -->
-                <div class="flex justify-center items-center gap-2">
-                    <Tag severity="info" value="Discounted Extra Copy"></Tag>
-                </div>
-            </div>
-            <!-- Total Price -->
-            <div class="flex flex-col justify-center p-4">
-                <Tag v-if="badge.status_payment === 'unpaid'" v-tooltip.bottom="'This badge has not been paid yet.'"
-                    :severity="'danger'" :value="'Not Paid'" />
-                <p class="text-lg font-semibold font-main">{{ formatEuroFromCents(badge.total) }}</p>
-                <span class="text-xs">Price</span>
-            </div>
+            <i v-if="!archived" class="pi pi-chevron-right text-gray-400 text-sm"></i>
         </div>
     </div>
 </template>
-
-<style scoped>
-
-</style>

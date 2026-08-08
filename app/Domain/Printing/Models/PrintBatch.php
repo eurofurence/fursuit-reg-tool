@@ -251,8 +251,14 @@ class PrintBatch extends Model
 
                 // No card was ever produced for this badge, so hand editing back
                 // to the attendee rather than leaving them stuck.
+                //
+                // "No card" is two questions, not one. Nothing printed, and
+                // nothing is still on its way: a badge that also sits in another
+                // live run would otherwise be unlocked here while that run still
+                // holds a card for it, and the attendee could edit the order out
+                // from under artwork that is already frozen into a queued job.
                 $badge = $job->printable;
-                if ($badge instanceof Badge && $badge->printJobs()->where('status', PrintJobStatusEnum::Printed)->doesntExist()) {
+                if ($badge instanceof Badge && $this->hasNoCardLeft($badge)) {
                     $badge->forceFill(['printing_locked_at' => null])->saveQuietly();
                 }
             }
@@ -262,6 +268,20 @@ class PrintBatch extends Model
 
             return $this->transitionTo(PrintBatchStatusEnum::Cancelled);
         });
+    }
+
+    /**
+     * Whether this badge has neither a printed card nor one still on its way.
+     *
+     * The only condition under which the printing lock may come off.
+     */
+    private function hasNoCardLeft(Badge $badge): bool
+    {
+        return $badge->printJobs()
+            ->where(fn ($query) => $query
+                ->where('status', PrintJobStatusEnum::Printed)
+                ->orWhereIn('status', PrintJobStatusEnum::outstanding()))
+            ->doesntExist();
     }
 
     /**

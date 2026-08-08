@@ -1,11 +1,12 @@
 <script setup>
 import { Head, router, usePage } from "@inertiajs/vue3";
 import { computed } from 'vue';
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import Tag from 'primevue/tag';
-import Message from 'primevue/message';
+import Button from '@/Components/UI/UiButton.vue';
+import Card from '@/Components/UI/UiCard.vue';
+import Tag from '@/Components/UI/UiTag.vue';
+import Message from '@/Components/UI/UiMessage.vue';
 import Layout from "@/Layouts/Layout.vue";
+import { badgeStatusTags } from '@/badgeStatus.js';
 import {
     Plus,
     Shield,
@@ -40,62 +41,74 @@ const isDuringEvent = computed(() => {
     return startDate <= now && endDate >= now;
 });
 
-// Progress tracker steps (conditional based on event timing)
+/*
+ * The tracker mirrors the fulfillment state machine one-to-one:
+ * pending -> processing -> ready_for_pickup -> picked_up, with the fursuit
+ * review sitting inside `pending`. Picked Up stays in the list during the event
+ * too - dropping it used to leave the tracker with no final step, so a
+ * collected badge looked unfinished.
+ */
 const progressSteps = computed(() => {
     const steps = [
-        { key: 'pending', label: 'Order Placed', icon: Plus }
+        { key: 'pending', label: 'Ordered', icon: Plus },
+        { key: 'approved', label: 'Reviewed', icon: Shield },
+        { key: 'processing', label: 'Printing', icon: Printer },
+        { key: 'ready_for_pickup', label: props.badge.is_free_badge ? 'Ready for pickup' : 'Pay & pick up', icon: Package },
+        { key: 'picked_up', label: 'Picked up', icon: CheckCircle2 },
     ];
 
-    // Only show review step if not during the event
-    if (!isDuringEvent.value) {
-        steps.push({ key: 'approved', label: 'Review', icon: Shield });
-    }
+    // On site the fursuit is in front of us, so badges skip the review queue.
+    return isDuringEvent.value ? steps.filter((step) => step.key !== 'approved') : steps;
+});
 
-    steps.push({ key: 'processing', label: 'Printing', icon: Printer });
+// Order of the fulfillment states, used to compare "where are we" against a step.
+const FULFILLMENT_ORDER = ['pending', 'processing', 'ready_for_pickup', 'picked_up'];
 
-    // Final step depends on badge type and event timing
-    if (isDuringEvent.value) {
-        const finalLabel = props.badge.is_free_badge ? 'Pickup' : 'Pay & Pickup';
-        steps.push({ key: 'ready_for_pickup', label: finalLabel, icon: Package });
-    } else {
-        steps.push(
-            { key: 'ready_for_pickup', label: 'Ready for Pickup', icon: Package },
-            { key: 'picked_up', label: 'Picked Up', icon: CheckCircle2 }
-        );
-    }
+const fulfillmentIndex = computed(() => {
+    const index = FULFILLMENT_ORDER.indexOf(props.badge.status_fulfillment);
 
-    return steps;
+    return index === -1 ? 0 : index;
 });
 
 function getStepStatus(step) {
     switch (step.key) {
         case 'pending':
-            return 'completed'; // Always completed since badge exists
+            return 'completed'; // The badge exists, so it was ordered.
         case 'approved':
-            // If we've progressed beyond pending fulfillment, fursuit must be approved
-            if (['processing', 'ready_for_pickup', 'picked_up'].includes(props.badge.status_fulfillment)) {
-                return 'completed';
-            }
+            // Past pending means the fursuit cleared review, whatever it says now.
+            if (fulfillmentIndex.value > 0) return 'completed';
+
             return props.badge.fursuit.status === 'approved' ? 'completed' :
                    props.badge.fursuit.status === 'rejected' ? 'failed' : 'current';
         case 'processing':
-            // During event, processing can start immediately after order; otherwise, after approval
-            const prerequisitesMet = isDuringEvent.value
-                ? true
-                : props.badge.fursuit.status === 'approved';
-
             return props.badge.status_fulfillment === 'processing' ? 'current' :
-                   ['ready_for_pickup', 'picked_up'].includes(props.badge.status_fulfillment) ? 'completed' :
-                   prerequisitesMet ? 'pending' : 'pending';
+                   fulfillmentIndex.value > 1 ? 'completed' : 'pending';
         case 'ready_for_pickup':
             return props.badge.status_fulfillment === 'ready_for_pickup' ? 'current' :
-                   props.badge.status_fulfillment === 'picked_up' ? 'completed' : 'pending';
+                   fulfillmentIndex.value > 2 ? 'completed' : 'pending';
         case 'picked_up':
             return props.badge.status_fulfillment === 'picked_up' ? 'completed' : 'pending';
         default:
             return 'pending';
     }
 }
+
+/*
+ * How much of the connector between the first and last step circle is filled,
+ * as a 0..1 scale factor. The circles sit at the ends of that track, so a step's
+ * centre is at index / (count - 1).
+ */
+const progressLineScale = computed(() => {
+    const steps = progressSteps.value;
+    const lastReached = steps.reduce((reached, step, index) => {
+        const status = getStepStatus(step);
+
+        return status === 'completed' || status === 'current' || status === 'failed' ? index : reached;
+    }, 0);
+
+    return lastReached / Math.max(steps.length - 1, 1);
+});
+
 
 function getStepClass(status) {
     switch (status) {
@@ -111,92 +124,55 @@ function getStepClass(status) {
 }
 
 function getActionableStatuses(badge) {
-    const statuses = [];
-
-    // Only show approval status if not during event
-    if (badge.status_fulfillment === 'pending' && badge.fursuit.status === 'pending' && !isDuringEvent.value) {
-        statuses.push({
-            value: 'Pending Approval',
-            severity: 'warning'
-        });
-    }
-
-    // Add fulfillment status
-    if (badge.status_fulfillment === 'processing') {
-        statuses.push({
-            value: 'Printing',
-            severity: 'info' // Blue
-        });
-    } else if (badge.status_fulfillment === 'ready_for_pickup') {
-        const label = isDuringEvent.value
-            ? (badge.is_free_badge ? 'Ready for Pickup' : 'Ready - Pay & Pickup')
-            : 'Ready for Pickup';
-        statuses.push({
-            value: label,
-            severity: 'warning' // Orange - action needed
-        });
-    } else if (badge.status_fulfillment === 'picked_up') {
-        statuses.push({
-            value: 'Picked Up',
-            severity: 'success' // Green - only this is green
-        });
-    }
-
-    return statuses;
+    return badgeStatusTags(badge);
 }
 
 function getNextStepExplanation() {
     const badge = props.badge;
 
-    // If picked up - don't show any message
     if (badge.status_fulfillment === 'picked_up') {
         return null;
     }
 
-    // If ready for pickup
     if (badge.status_fulfillment === 'ready_for_pickup') {
-        if (badge.is_free_badge) {
-            return '<strong>Ready for pickup</strong><br>Please come to our fursuit badge desk during opening hours to pickup your fursuit badge.';
-        } else {
-            return '<strong>Ready for pickup</strong><br>Please come to our fursuit badge desk during opening hours to pay and pickup your fursuit badge. We accept both card (preferred) and cash.';
-        }
+        const payLine = badge.status_payment === 'unpaid'
+            ? '<br>There is still something to pay, so bring a card: we only take card on site (Mastercard, Visa, Amex).'
+            : '';
+
+        return `<strong>Waiting at the desk</strong><br>Collect it at the badge desk in the Fursuit Lounge during opening hours.${payLine}`;
     }
 
-    // If processing/printing
     if (badge.status_fulfillment === 'processing') {
-        return '<strong>Printing</strong><br>Your Badge is currently being printed.';
+        return '<strong>Printing</strong><br>Your badge is on the printer. You cannot change it any more. We email you as soon as it is at the desk.';
     }
 
-    // If rejected (only show during non-event times)
     if (badge.fursuit.status === 'rejected' && !isDuringEvent.value) {
-        return '<strong>For Review Rejected</strong><br>There was an issue with your submission, please check your email for further details.';
+        return '<strong>Rejected in review</strong><br>Something is off with your submission. Check your email for the details, then edit the badge and send it back in.';
     }
 
-    // If pending approval (only show during non-event times)
     if (badge.status_fulfillment === 'pending' && badge.fursuit.status === 'pending' && !isDuringEvent.value) {
-        return '<strong>Under review.</strong><br>Our team is reviewing your fursuit submission. You\'ll receive an email once the review is complete.';
+        return '<strong>In review</strong><br>Our team is checking your fursuit submission. You get an email once that is done, and printing starts after it.';
     }
 
-    // If approved but not yet in production queue
-    if (badge.status_fulfillment === 'pending' && badge.fursuit.status === 'approved') {
+    if (badge.status_fulfillment === 'pending') {
         const event = page.props.event;
         const now = new Date();
-        const massPrintingDone = event?.mass_printed_at && new Date(event.mass_printed_at) <= now;
+        const massPrintedAt = event?.mass_printed_at ? new Date(event.mass_printed_at) : null;
         const eventStarted = event && new Date(event.starts_at) <= now;
 
-        // Hide "Review Accepted" message entirely after event starts
         if (eventStarted) {
-            return '<strong>Approved and queued.</strong><br>Your Badge is now queued for production, this usually takes a few minutes from the point of ordering. We will send you an email once your badge is ready for pickup. Please note that on the first convention day we are not printing any new badges.';
-        } else if (massPrintingDone) {
-            return `<strong>Approved and queued.</strong><br>We are going to print badges on ${new Date(event.mass_printed_at).toLocaleDateString()} after that date you won't be able to make changes to your badge.`;
-        } else {
-            return '<strong>For Review Accepted</strong><br>Your submission has been accepted, we will have your Fursuit Badge ready at Eurofurence!';
+            return '<strong>Queued for printing</strong><br>We print on site, which takes a few minutes once the queue reaches your badge. We email you when it is ready. Badges ordered during the convention can be collected from the second convention day.';
         }
-    }
 
-    // During event, for pending badges
-    if (isDuringEvent.value && badge.status_fulfillment === 'pending') {
-        return '<strong>Approved and queued.</strong><br>Your Badge is now queued for production, this usually takes a few minutes from the point of ordering. We will send you an email once your badge is ready for pickup. Please note that on the first convention day we are not printing any new badges.';
+        if (massPrintedAt && massPrintedAt > now) {
+            return `<strong>Queued for printing</strong><br>We print all badges on ${massPrintedAt.toLocaleDateString()}. Until then you can still edit yours; afterwards it is locked and waiting for you at the desk on the first convention day.`;
+        }
+
+        if (massPrintedAt) {
+            return '<strong>Queued for printing</strong><br>The pre-print run is done, so your badge is printed on site and can be collected from the second convention day.';
+        }
+
+        return '<strong>Accepted</strong><br>Your submission is through. Your badge will be waiting for you at Eurofurence.';
     }
 
     return 'Processing your badge request...';
@@ -239,7 +215,7 @@ function cancelBadge() {
 <template>
     <Head :title="`Badge: ${badge.fursuit.name}`"/>
 
-    <div class="max-w-screen-lg mx-auto py-12">
+    <div class="site-container py-12">
         <!-- Progress Tracker -->
         <Card class="mb-6">
             <template #title>
@@ -253,8 +229,8 @@ function cancelBadge() {
 
                     <!-- Progress Line Filled -->
                     <div
-                        class="absolute top-6 left-6 h-0.5 bg-green-500 transition-all duration-500"
-                        :style="`width: ${(progressSteps.findIndex(step => getStepStatus(step) === 'current' || getStepStatus(step) === 'failed') / (progressSteps.length - 1)) * (100 - (12/16)*100)}%`"
+                        class="absolute top-6 left-6 right-6 h-0.5 origin-left bg-green-500 transition-all duration-500"
+                        :style="{ transform: `scaleX(${progressLineScale})` }"
                     ></div>
 
                     <!-- Steps -->
@@ -404,6 +380,10 @@ function cancelBadge() {
                                         <div class="flex justify-between">
                                             <span class="font-medium">Species:</span>
                                             <span>{{ badge.fursuit.species.name }}</span>
+                                        </div>
+                                        <div v-if="badge.custom_id" class="flex justify-between">
+                                            <span class="font-medium">Badge ID:</span>
+                                            <span>{{ badge.custom_id }}</span>
                                         </div>
                                         <div v-if="badge.extra_copy" class="flex justify-between">
                                             <span class="font-medium">Type:</span>

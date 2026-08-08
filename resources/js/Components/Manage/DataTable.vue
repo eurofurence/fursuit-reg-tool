@@ -1,21 +1,50 @@
 <script setup>
 /**
- * Renders the list envelope produced by App\Support\Manage\Table.
+ * Renders the list envelope produced by App\Support\Manage\Table: toolbar, table, footer.
  *
  * Everything domain-specific (labels, tones, formatting, which actions exist) arrives
  * from the server. This component only knows the cell types documented on
  * App\Support\Manage\Column.
+ *
+ * Why it owns the toolbar and the footer. Each list page used to mount FilterBar above this
+ * component and Pagination below it, while this component drew a strip of its own for the
+ * column toggle. Filters and the column toggle therefore sat on two stacked full-height
+ * bands, which is height that says nothing, and no page could put them on one row without
+ * every page reimplementing the row. Passing one envelope to one component removes the
+ * split rather than negotiating across it: the page hands over `table` and gets a filter
+ * row with the column toggle on its right end, the rows, and the pager.
+ *
+ * The envelope already carries `filters`, `search` and `meta`, so absorbing the two
+ * neighbours cost the pages no new props. `searchable` is the exception and is explained on
+ * the prop.
+ *
+ * FilterBar and Pagination are still standalone components. Staff/Form.vue drives a
+ * hand-rolled table for RFID tags - server-declared row actions could not express its
+ * inline editing - and mounts both directly.
  */
 import { computed, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import ActionButton from './ActionButton.vue';
+import ColumnMenu from './ColumnMenu.vue';
+import FilterBar from './FilterBar.vue';
 import ManageIcon from './ManageIcon.vue';
+import Pagination from './Pagination.vue';
 import StatusBadge from './StatusBadge.vue';
 import { resolve, toneText } from './tones.js';
 import { useTableQuery } from './useTableQuery.js';
 
 const props = defineProps({
   table: { type: Object, required: true },
+  /**
+   * Whether to offer the search box.
+   *
+   * Opt-in, and deliberately not derived from the envelope: `searchable` is a property of
+   * the columns on the server and is not serialised, and a box that silently narrows
+   * nothing is worse than no box. This is the same choice each page was already making by
+   * mounting FilterBar or not, moved onto a prop, so a table with no searchable column
+   * (events, special codes, SumUp readers, TSE clients) keeps showing none.
+   */
+  searchable: { type: Boolean, default: false },
 });
 
 const { toggleSort } = useTableQuery();
@@ -30,7 +59,14 @@ watch(
   },
 );
 
-// A reload can drop rows out from under the selection; keep only what is still visible.
+/*
+ * A reload can drop rows out from under the selection; keep only what is still visible.
+ *
+ * This is not the same thing as deselecting after a bulk action, which the bulk bar does
+ * on the action's own `completed`. Pruning only clears rows that left the page, so a bulk
+ * action whose records stay visible - archiving machines while the archived filter is on
+ * "All machines" - would otherwise finish with the same rows still ticked.
+ */
 watch(
   () => props.table.rows,
   (rows) => {
@@ -42,14 +78,39 @@ watch(
 const visibleColumns = computed(() => props.table.columns.filter((column) => !hidden.value.includes(column.key)));
 const toggleableColumns = computed(() => props.table.columns.filter((column) => column.toggleable));
 
+const filters = computed(() => props.table.filters ?? []);
+
+/*
+ * No controls, no band. A table with nothing to filter, nothing to search and nothing to
+ * hide would otherwise get an empty strip above it, which is the height the merge was
+ * supposed to remove. Four modules are in exactly that position.
+ */
+const showToolbar = computed(
+  () => props.searchable || filters.value.length > 0 || toggleableColumns.value.length > 0,
+);
+
 const allSelected = computed(
   () => props.table.rows.length > 0 && selected.value.length === props.table.rows.length,
 );
+
+/*
+ * Some rows on this page ticked, but not all. The header box has to say that as its own
+ * third state rather than reading as empty: with the box unticked over a part-selected
+ * page, the bulk bar's count is the only thing contradicting it, and the bulk bar is at
+ * the top of a list the operator may have scrolled past.
+ */
+const someSelected = computed(() => selected.value.length > 0 && !allSelected.value);
 
 const toggleAll = () => {
   selected.value = allSelected.value ? [] : props.table.rows.map((row) => row.id);
 };
 
+/*
+ * Unchanged by the toolbar merge, and it has to stay here: ColumnMenu draws the list and
+ * reports the click, but the hidden set and the POST that persists it per user per table
+ * (App\Http\Controllers\Manage\TableColumnController, session-backed, read again by
+ * Table::hiddenColumns) belong to the component that renders the columns.
+ */
 const toggleColumn = (key) => {
   hidden.value = hidden.value.includes(key)
     ? hidden.value.filter((existing) => existing !== key)
@@ -61,8 +122,6 @@ const toggleColumn = (key) => {
     { preserveScroll: true, preserveState: true },
   );
 };
-
-const columnsOpen = ref(false);
 
 const align = {
   left: 'text-left',
@@ -128,6 +187,7 @@ const open = (row, event) => {
         :key="action.name"
         :action="action"
         :data="{ ids: selected }"
+        @completed="selected = []"
       />
       <button
         type="button"
@@ -138,34 +198,36 @@ const open = (row, event) => {
       </button>
     </div>
 
-    <div v-if="toggleableColumns.length" class="relative flex h-9 items-center justify-end px-3">
-      <button
-        type="button"
-        class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3"
-        @click="columnsOpen = !columnsOpen"
-      >
-        <ManageIcon name="columns" />
-        Columns
-      </button>
+    <!--
+      The one toolbar row: search and filter chips on the left, the column toggle hard
+      right, on the same line. py-2 with a min height rather than a fixed height, because
+      the row has to grow by whole chip rows as filters accumulate.
 
-      <div
-        v-if="columnsOpen"
-        class="absolute top-8 right-3 z-20 w-56 rounded border border-hairline bg-mg-surface-2 p-2 shadow-lg"
-      >
-        <label
-          v-for="column in toggleableColumns"
-          :key="column.key"
-          class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] text-fg-1 hover:bg-mg-surface-3"
-        >
-          <input
-            type="checkbox"
-            :checked="!hidden.includes(column.key)"
-            class="accent-state-live"
-            @change="toggleColumn(column.key)"
-          />
-          {{ column.label }}
-        </label>
-      </div>
+      Three things keep it off the horizontal scrollbar at narrow widths. FilterBar is
+      flex-1 and wraps its own chips internally, so it shrinks before anything overflows.
+      Its 12rem floor means that once the window cannot seat that floor alongside the
+      toggle, flex-wrap on this row drops the toggle onto a line of its own rather than
+      squeezing the search box to nothing. And ml-auto keeps the toggle at the right edge on
+      either line, so it is in the same place whether or not the row wrapped.
+    -->
+    <div
+      v-if="showToolbar"
+      class="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-hairline bg-mg-surface-1 px-3 py-2"
+    >
+      <FilterBar
+        v-if="searchable || filters.length"
+        :filters="filters"
+        :search="table.search ?? ''"
+        :searchable="searchable"
+      />
+
+      <ColumnMenu
+        v-if="toggleableColumns.length"
+        class="ml-auto"
+        :columns="toggleableColumns"
+        :hidden="hidden"
+        @toggle="toggleColumn"
+      />
     </div>
 
     <div class="overflow-x-auto">
@@ -173,11 +235,19 @@ const open = (row, event) => {
         <thead>
           <tr class="border-y border-hairline bg-mg-surface-2">
             <th v-if="table.bulkActions.length" class="w-8 px-3">
+              <!--
+                `indeterminate` is a DOM property with no matching attribute, so it can only
+                be bound, never written in the markup. Setting it is also what makes a
+                native checkbox report "mixed" to the accessibility tree, so no aria-checked
+                is needed alongside it. The label says what the click will do, which is the
+                one thing the mixed state does not already announce.
+              -->
               <input
                 type="checkbox"
+                class="cursor-pointer"
                 :checked="allSelected"
-                class="accent-state-live"
-                aria-label="Select all rows"
+                :indeterminate="someSelected"
+                :aria-label="allSelected ? 'Deselect all rows' : 'Select all rows'"
                 @change="toggleAll"
               />
             </th>
@@ -220,7 +290,7 @@ const open = (row, event) => {
                 v-model="selected"
                 type="checkbox"
                 :value="row.id"
-                class="accent-state-live"
+                class="cursor-pointer"
                 :aria-label="`Select row ${row.id}`"
               />
             </td>
@@ -232,7 +302,30 @@ const open = (row, event) => {
               :class="[align[column.align] ?? align.left, numeric(column.type) ? 'tabular-nums' : '']"
             >
               <template v-if="column.type === 'badge'">
-                <StatusBadge :status="cell(row, column.key)" />
+                <!--
+                  A cell that carries a `url` renders as a link. Filament put a URL on
+                  several plain columns (the badge list's Fursuit, Owner and Print Jobs
+                  cells); the type stays what it was and the link is an extra key on the
+                  cell, so nothing that sends a bare value changes.
+                -->
+                <a
+                  v-if="cell(row, column.key)?.url"
+                  :href="cell(row, column.key).url"
+                  class="inline-flex"
+                  @click.stop
+                >
+                  <StatusBadge :status="cell(row, column.key)" />
+                </a>
+                <StatusBadge v-else :status="cell(row, column.key)" />
+                <!--
+                  Filament's TextColumn->badge()->description(). The batch list's Progress
+                  column is the one cell that needs a second line under the chip; every
+                  other badge cell sends no description and renders exactly as before.
+                -->
+                <span
+                  v-if="cell(row, column.key)?.description"
+                  class="block text-[11px] text-fg-3"
+                >{{ cell(row, column.key).description }}</span>
               </template>
 
               <template v-else-if="column.type === 'number'">
@@ -257,12 +350,21 @@ const open = (row, event) => {
                 <span v-else class="text-fg-3">{{ column.fallback ?? '—' }}</span>
               </template>
 
+              <!--
+                Two shapes, both fixed here: a rounded rectangle for thumbnails of
+                things (badge artwork) and a round avatar for thumbnails of someone
+                (the fursuit list's image, the badge list's fursuit.image), which is
+                what Filament's ImageColumn->circular() drew. The column declares which
+                with Column::image(...)->circular(); the client picks no geometry of its
+                own, so every image cell in the panel is one of these two.
+              -->
               <template v-else-if="column.type === 'image'">
                 <img
                   v-if="!isEmpty(cell(row, column.key))"
                   :src="cell(row, column.key)"
                   alt=""
-                  class="h-6 w-10 rounded-sm border border-hairline object-cover"
+                  class="border border-hairline object-cover"
+                  :class="column.circular ? 'size-7 rounded-full' : 'h-6 w-10 rounded-sm'"
                 />
                 <span v-else class="text-fg-3">—</span>
               </template>
@@ -312,7 +414,7 @@ const open = (row, event) => {
               <template v-else-if="column.type === 'toggle'">
                 <input
                   type="checkbox"
-                  class="accent-state-live"
+                  class="cursor-pointer"
                   :checked="cell(row, column.key)?.value"
                   :aria-label="column.label"
                   @click.stop
@@ -321,16 +423,29 @@ const open = (row, event) => {
               </template>
 
               <template v-else-if="column.type === 'datetime'">
-                <span
-                  v-if="!isEmpty(cell(row, column.key))"
-                  class="tabular-nums"
-                  :title="cell(row, column.key)?.title"
-                >{{ cell(row, column.key)?.display ?? cell(row, column.key) }}</span>
+                <span v-if="!isEmpty(cell(row, column.key))" :title="cell(row, column.key)?.title">
+                  <span class="tabular-nums">{{ cell(row, column.key)?.display ?? cell(row, column.key) }}</span>
+                  <span
+                    v-if="cell(row, column.key)?.description"
+                    class="block text-[11px] text-fg-3"
+                  >{{ cell(row, column.key).description }}</span>
+                </span>
                 <span v-else class="text-fg-3">{{ column.fallback ?? '—' }}</span>
               </template>
 
               <template v-else>
-                <span v-if="!isEmpty(cell(row, column.key))">{{ cell(row, column.key) }}</span>
+                <a
+                  v-if="cell(row, column.key)?.url"
+                  :href="cell(row, column.key).url"
+                  class="underline decoration-hairline underline-offset-2 transition-colors hover:text-state-live"
+                  :title="cell(row, column.key)?.title"
+                  @click.stop
+                >
+                  {{ cell(row, column.key).display }}
+                </a>
+                <span v-else-if="!isEmpty(cell(row, column.key))" :title="cell(row, column.key)?.title">
+                  {{ cell(row, column.key)?.display ?? cell(row, column.key) }}
+                </span>
                 <span v-else class="text-fg-3">{{ column.fallback ?? '—' }}</span>
               </template>
             </td>
@@ -355,5 +470,19 @@ const open = (row, event) => {
         </tbody>
       </table>
     </div>
+
+    <!--
+      Between the rows and the pager, which is the only place a running total belongs: under
+      the column it totals, above the control that changes which rows were counted. The
+      checkout list is the one caller, for Filament's Sum summariser.
+    -->
+    <slot name="summary" />
+
+    <!--
+      `meta` is part of the envelope every manage list sends, so the footer comes with the
+      table and a page passes nothing extra. The guard is for a caller that hands over a
+      table object it assembled without one; nothing in the panel does today.
+    -->
+    <Pagination v-if="table.meta" :meta="table.meta" />
   </div>
 </template>

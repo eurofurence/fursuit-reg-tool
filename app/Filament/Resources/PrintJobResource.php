@@ -7,9 +7,12 @@ use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Filament\Resources\PrintJobResource\Pages;
 use Filament\Forms;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -51,11 +54,11 @@ class PrintJobResource extends Resource
                     ])
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('priority')
+                TextInput::make('priority')
                     ->numeric()
                     ->default(0)
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('retry_count')
+                TextInput::make('retry_count')
                     ->numeric()
                     ->default(0)
                     ->columnSpanFull(),
@@ -64,11 +67,11 @@ class PrintJobResource extends Resource
                     ->rows(3),
                 // Reported by the printer firmware over SNMP, which is what the
                 // agent matches a finished card against.
-                Forms\Components\TextInput::make('firmware_job_id')
+                TextInput::make('firmware_job_id')
                     ->label('Printer job id')
                     ->maxLength(64)
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('firmware_job_uuid')
+                TextInput::make('firmware_job_uuid')
                     ->label('Printer job UUID')
                     ->maxLength(64)
                     ->columnSpanFull(),
@@ -164,9 +167,9 @@ class PrintJobResource extends Resource
                     ]),
                 SelectFilter::make('printer')
                     ->relationship('printer', 'name'),
-                \Filament\Tables\Filters\Filter::make('printable_id')
+                Filter::make('printable_id')
                     ->form([
-                        \Filament\Forms\Components\TextInput::make('value')
+                        TextInput::make('value')
                             ->label('Printable ID')
                             ->numeric(),
                     ])
@@ -183,9 +186,9 @@ class PrintJobResource extends Resource
 
                         return 'Printable ID: '.$data['value'];
                     }),
-                \Filament\Tables\Filters\Filter::make('printable_type')
+                Filter::make('printable_type')
                     ->form([
-                        \Filament\Forms\Components\TextInput::make('value')
+                        TextInput::make('value')
                             ->label('Printable Type'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -211,7 +214,7 @@ class PrintJobResource extends Resource
                     ->visible(fn (PrintJob $record): bool => $record->canRetry())
                     ->action(function (PrintJob $record) {
                         $retryJob = $record->createRetryJob(reassignPrinter: true);
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->success()
                             ->title("Created retry job #{$retryJob->id}")
                             ->send();

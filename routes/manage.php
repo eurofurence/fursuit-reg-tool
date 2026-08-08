@@ -1,10 +1,8 @@
 <?php
 
 use App\Http\Controllers\Manage\DashboardController;
-use App\Http\Controllers\Manage\SpecialCodeController;
 use App\Http\Controllers\Manage\TableColumnController;
 use App\Http\Controllers\Manage\UploadController;
-use App\Http\Controllers\Manage\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,9 +14,11 @@ use Illuminate\Support\Facades\Route;
 | /admin-legacy and keeps running there until the parity suite is green; see
 | docs/admin/rebuild-plan.md. The route names stay manage.* until part 5
 | removes Filament, because admin.* still belongs to admin.badge-pdf.* in
-| routes/web.php. Phase 0 registers the dashboard and the two session-state
-| endpoints only. The module routes land phase by phase, in the order of
-| plan part 3.
+| routes/web.php. This file holds the panel shell only: the dashboard, the
+| session-state endpoints and the shared table endpoint. Every module lives
+| in its own file under routes/manage/ and is picked up automatically, so
+| the modules of plan part 3 can land phase by phase without ever touching
+| this file.
 |
 | Guests are pushed into the existing Identity SSO flow by `auth`, which is
 | what the Filament panel already does since it declares no ->login(). There
@@ -45,35 +45,19 @@ Route::post('tables/{table}/columns', [TableColumnController::class, 'update'])
     ->name('tables.columns');
 
 /*
- * Users (phase 1). Create, edit and delete were Filament modals on a ManageRecords page,
- * so the resource had no create or edit URL at all; they are real pages here (plan 1.2).
+ * Module routes. A new module is added by dropping routes/manage/{module}.php in;
+ * nothing here changes. Each file registers inside this group, so it inherits the
+ * /admin prefix, the manage.* name prefix and the middleware stack from the group
+ * in bootstrap/app.php.
  *
- * The bulk route is declared before {user}, or DELETE /admin/users/bulk would bind "bulk"
- * as a route model and 404 before the controller ever sees it.
+ * Sorted so registration order is the same on every machine, because route
+ * matching is order-sensitive: glob() follows the filesystem, which is not.
+ * Ordering across modules does not matter today since each owns a distinct URI
+ * prefix, but a module that ever needs to match before another can rely on this.
  */
-Route::prefix('users')->name('users.')->group(function () {
-    Route::get('/', [UserController::class, 'index'])->name('index');
-    Route::get('create', [UserController::class, 'create'])->name('create');
-    Route::post('/', [UserController::class, 'store'])->name('store');
-    Route::delete('bulk', [UserController::class, 'bulkDestroy'])->name('bulk.destroy');
-    Route::get('{user}/edit', [UserController::class, 'edit'])->whereNumber('user')->name('edit');
-    Route::put('{user}', [UserController::class, 'update'])->whereNumber('user')->name('update');
-    Route::delete('{user}', [UserController::class, 'destroy'])->whereNumber('user')->name('destroy');
-});
+$modules = glob(__DIR__.'/manage/*.php');
+sort($modules);
 
-/*
- * Special codes (phase 1). Same shape and the same reason: ManageSpecialCodes was an
- * index page with create and edit in modals, so neither had a URL (plan 1.2).
- *
- * `bulk` is declared before `{code}` for the same reason as above, and the parameter is
- * constrained to digits so a stray word cannot reach the binder at all.
- */
-Route::prefix('special-codes')->name('special-codes.')->group(function () {
-    Route::get('/', [SpecialCodeController::class, 'index'])->name('index');
-    Route::get('create', [SpecialCodeController::class, 'create'])->name('create');
-    Route::post('/', [SpecialCodeController::class, 'store'])->name('store');
-    Route::delete('bulk', [SpecialCodeController::class, 'bulkDestroy'])->name('bulk.destroy');
-    Route::get('{code}/edit', [SpecialCodeController::class, 'edit'])->whereNumber('code')->name('edit');
-    Route::put('{code}', [SpecialCodeController::class, 'update'])->whereNumber('code')->name('update');
-    Route::delete('{code}', [SpecialCodeController::class, 'destroy'])->whereNumber('code')->name('destroy');
-});
+foreach ($modules as $module) {
+    require $module;
+}

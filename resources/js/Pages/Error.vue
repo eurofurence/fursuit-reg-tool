@@ -1,7 +1,7 @@
 <script setup>
 import { Head } from "@inertiajs/vue3";
-import Button from 'primevue/button';
-import Card from 'primevue/card';
+import Button from '@/Components/UI/UiButton.vue';
+import Card from '@/Components/UI/UiCard.vue';
 import { Link } from "@inertiajs/vue3";
 import Layout from "@/Layouts/Layout.vue";
 
@@ -90,7 +90,7 @@ const currentError = errorInfo[props.status] || {
                         <Link :href="route('welcome')" class="flex-1">
                             <Button 
                                 icon="pi pi-home"
-                                class="w-full text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 text-white"
+                                class="w-full text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-blue-600 hover:bg-blue-700 border-0 text-white"
                                 size="large"
                                 label="Go Home"
                             />
@@ -109,7 +109,7 @@ const currentError = errorInfo[props.status] || {
     </div>
 
     <div>
-        <div class="px-6 xl:px-0 max-w-6xl mx-auto pt-3">
+        <div class="site-container pt-3">
             <!-- Error Details Card -->
             <div class="flex justify-center mb-8">
                 <Card class="w-full max-w-2xl">

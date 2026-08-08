@@ -130,6 +130,30 @@ it('hands editing back to attendees whose card never printed', function () {
         ->and($untouched->fresh()->isPrintingLocked())->toBeFalse();
 });
 
+it('keeps a badge locked when another run still holds a card for it', function () {
+    // "No card was ever printed" is not the same question as "no card is coming".
+    // A badge sitting in two live runs -- which BadgePrintQueue now refuses to
+    // create, and which a direct build() can still produce -- would otherwise be
+    // handed back to the attendee by cancelling one of them, while the other
+    // still holds a job pointing at the frozen artwork.
+    $badge = badgesFor(1)->first();
+    $printer = Printer::factory()->badge()->create();
+
+    $first = PrintBatch::build('Friday 14:00', collect([$badge]), $printer);
+    $second = PrintBatch::build('Friday 14:30', collect([$badge->fresh()]), $printer);
+
+    $first->fresh()->cancel('Ribbon ran out');
+
+    expect($badge->fresh()->isPrintingLocked())->toBeTrue()
+        ->and($second->fresh()->printJobs()->first()->status)->toBe(PrintJobStatusEnum::Pending);
+
+    // Once the run that still held a card is cancelled too, nothing is coming
+    // and the attendee gets the badge back.
+    $second->fresh()->cancel('Both runs abandoned');
+
+    expect($badge->fresh()->isPrintingLocked())->toBeFalse();
+});
+
 it('will not hand out more work from a cancelled batch', function () {
     $batch = PrintBatch::build('Friday 14:00', badgesFor(2), Printer::factory()->badge()->create());
     $batch->transitionTo(PrintBatchStatusEnum::Ready);

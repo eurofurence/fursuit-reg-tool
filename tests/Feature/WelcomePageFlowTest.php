@@ -1,8 +1,10 @@
 <?php
 
 use App\Enum\EventStateEnum;
+use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\EventUser;
+use App\Models\Species;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -183,7 +185,7 @@ describe('Welcome Page User Interface States', function () {
 
     test('shows badges count for user with existing badges', function () {
         // Create some badges for the user
-        \App\Models\Badge\Badge::factory()
+        Badge::factory()
             ->count(2)
             ->recycle($this->event)
             ->recycle($this->user)
@@ -219,7 +221,7 @@ describe('Welcome Page create-button permission (bugfix-01)', function () {
         ]);
 
         // User has already ordered their (free) first badge for this event.
-        $species = \App\Models\Species::factory()->create();
+        $species = Species::factory()->create();
         $this->user->fursuits()->create([
             'event_id' => $event->id,
             'species_id' => $species->id,

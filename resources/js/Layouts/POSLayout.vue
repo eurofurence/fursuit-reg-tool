@@ -1,5 +1,5 @@
 <script setup>
-import Button from "primevue/button";
+import Button from "@/Components/UI/UiButton.vue";
 import Menu from "primevue/menu";
 import { posMenuPt } from "@/Components/POS/posDialog.js";
 import { Link, router } from "@inertiajs/vue3";

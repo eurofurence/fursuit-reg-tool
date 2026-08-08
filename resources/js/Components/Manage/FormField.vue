@@ -32,6 +32,13 @@ defineProps({
 
 defineEmits(['update:modelValue']);
 
+/*
+ * No vertical padding and no line-height on purpose, for the select in particular:
+ * @tailwindcss/forms leaves .5rem of padding-block and a 1.5rem line on every select in
+ * the app, which is what used to push the label below the middle of the box. Both are
+ * reset panel-wide in resources/css/manage.css, so setting either here would only put
+ * the fight back at the call site.
+ */
 const control =
   'h-8 w-full rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-none transition-colors focus:border-state-live/50 disabled:cursor-not-allowed disabled:opacity-50';
 </script>
@@ -61,10 +68,17 @@ const control =
           </option>
         </select>
 
+        <!--
+          No colour class. @tailwindcss/forms puts `appearance: none` on every checkbox in
+          the app, which makes `accent-color` inert, so the `accent-state-live` that used to
+          sit here was doing nothing and hid where the colour actually comes from: the box,
+          its tick, its hover and its focus ring are all drawn by the native-control rules
+          in resources/css/manage.css, panel-wide.
+        -->
         <span v-else-if="type === 'checkbox'" class="flex h-8 items-center">
           <input
             type="checkbox"
-            class="size-4 accent-state-live"
+            class="size-4 cursor-pointer"
             :checked="Boolean(modelValue)"
             :disabled="disabled"
             @change="$emit('update:modelValue', $event.target.checked)"
@@ -75,6 +89,11 @@ const control =
           The switch Filament's Toggle renders. Still a real checkbox underneath, so it
           keeps the label association, the keyboard behaviour and the form semantics a
           styled div would throw away; only the box is swapped for the track and knob.
+
+          The input keeps `opacity-0` rather than `sr-only` because opacity also suppresses
+          the panel-wide focus outline the native-control rules draw on every checkbox.
+          Without that this would grow a second ring, a teal dot at the left edge of the
+          track, on top of the peer-focus-visible ring the track already shows.
         -->
         <span v-else-if="type === 'toggle'" class="flex h-8 items-center">
           <span class="relative inline-flex">

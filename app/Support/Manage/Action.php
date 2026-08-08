@@ -113,7 +113,7 @@ final class Action implements Arrayable
      * the printer select on "Print Selected Badges".
      *
      * Shape per field: ['key', 'label', 'type', 'options'?, 'default'?, 'required'?,
-     * 'maxLength'?, 'help'?]
+     * 'maxLength'?, 'helper'?]
      *
      * @param  array<int, array<string, mixed>>  $fields
      */

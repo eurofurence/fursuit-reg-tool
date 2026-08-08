@@ -3,15 +3,12 @@
 import {Head, router} from "@inertiajs/vue3";
 import Layout from "@/Layouts/Layout.vue";
 import BadgeListItem from "@/Components/BadgeListItem.vue";
-import Button from "primevue/button"
-import Message from "primevue/message"
+import Button from "@/Components/UI/UiButton.vue"
+import Message from "@/Components/UI/UiMessage.vue"
 import PaymentInfoWidget from "@/Components/PaymentInfoWidget.vue";
-import Card from "primevue/card";
-import DataTable from "primevue/datatable";
-import Column from "primevue/column";
-import Tag from "primevue/tag";
-import { formatEuroFromCents } from "@/helpers.js";
-import { ref } from "vue";
+import BadgePickupInfo from "@/Components/BadgePickupInfo.vue";
+import Card from "@/Components/UI/UiCard.vue";
+import { computed, ref } from "vue";
 import axios from "axios";
 
 defineOptions({
@@ -24,6 +21,9 @@ const props = defineProps({
     canCreate: Boolean,
     prepaidBadges: Number,
     prepaidBadgesLeft: Number,
+    attendeeId: [String, Number],
+    pickupBooths: Array,
+    deskOpeningHours: { type: Array, default: () => [] },
     event: Object
 });
 
@@ -45,94 +45,22 @@ async function refreshPrepaidBadges() {
     }
 }
 
-function getBadgeStatusName(status) {
-    switch (status) {
-        case 'pending':
-            return 'Pending';
-        case 'processing':
-            return 'Printing';
-        case 'ready_for_pickup':
-            return 'Ready for Pickup';
-        case 'picked_up':
-            return 'Picked Up';
-    }
-}
+// The pickup panel is only useful once something is actually collectable: a
+// badge of this event that is printing or waiting at the desk, or a leftover
+// from an earlier event.
+const showPickupInfo = computed(() =>
+    props.badges.some((badge) => ['processing', 'ready_for_pickup'].includes(badge.status_fulfillment))
+    || (props.unpickedBadges?.length ?? 0) > 0
+);
 
-function getBadgeSeverity(status) {
-    switch (status) {
-        case 'pending':
-            return 'warning';
-        case 'processing':
-            return 'info'; // Blue for printing
-        case 'ready_for_pickup':
-            return 'warning'; // Orange for action needed
-        case 'picked_up':
-            return 'success'; // Green - only picked up is green
-    }
-}
-
-
-function getActionableStatuses(badge) {
-    const statuses = [];
-
-    // Add payment status if unpaid (actionable)
-    if (badge.status_payment === 'unpaid') {
-        statuses.push({
-            value: 'Unpaid',
-            severity: 'danger'
-        });
-    }
-
-    const fursuitStatus = badge.fursuit?.status;
-
-    // While the badge is still pending fulfillment, its status depends on the
-    // fursuit approval outcome. Each branch must emit a tag so the badge never
-    // renders with an empty Status column (e.g. approved + queued for print).
-    if (badge.status_fulfillment === 'pending') {
-        if (fursuitStatus === 'rejected') {
-            statuses.push({
-                value: 'Rejected',
-                severity: 'danger'
-            });
-        } else if (fursuitStatus === 'approved') {
-            statuses.push({
-                value: 'Approved',
-                severity: 'success'
-            });
-        } else {
-            // Pending review (or unknown/missing fursuit status)
-            statuses.push({
-                value: 'Pending Approval',
-                severity: 'warning'
-            });
-        }
-    }
-
-    // Add fulfillment status
-    if (badge.status_fulfillment === 'processing') {
-        statuses.push({
-            value: 'Printing',
-            severity: 'info' // Blue
-        });
-    } else if (badge.status_fulfillment === 'ready_for_pickup') {
-        statuses.push({
-            value: 'Ready for Pickup',
-            severity: 'warning' // Orange - action needed
-        });
-    } else if (badge.status_fulfillment === 'picked_up') {
-        statuses.push({
-            value: 'Picked Up',
-            severity: 'success' // Green - only this is green
-        });
-    }
-
-    return statuses;
-}
+const hasUnpaidBadges = computed(() =>
+    props.badges.some((badge) => badge.status_payment === 'unpaid')
+);
 </script>
 
 <template>
     <Head title="Manage your Fursuit Badges"/>
-    <div class="pt-8 px-6 xl:px-0 max-w-screen-lg mx-auto">
+    <div class="site-container pt-8">
         <!-- Header Section -->
         <div class="mb-8">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -186,77 +114,19 @@ function getActionableStatuses(badge) {
 
         <PaymentInfoWidget />
 
-        <!-- Badges Table -->
+        <!-- Badge List -->
         <Card v-if="badges.length > 0" class="mt-6">
             <template #content>
-                <DataTable
-                    :value="badges"
-                    stripedRows
-                    class="p-datatable-sm"
-                    :rowHover="true"
-                    @row-click="(event) => router.visit(route('badges.show', {badge: event.data.id}))"
-                    selectionMode="single"
-                >
-                    <!-- Image Column -->
-                    <Column header="Image" style="width: 120px;">
-                        <template #body="slotProps">
-                            <img
-                                :src="slotProps.data.fursuit.image_url"
-                                :alt="`${slotProps.data.fursuit.name} badge`"
-                                class="w-16 h-16 object-cover rounded-lg border"
-                                loading="lazy"
-                            />
-                        </template>
-                    </Column>
-
-                    <!-- Name & Species Column -->
-                    <Column header="Fursuit Details">
-                        <template #body="slotProps">
-                            <div>
-                                <div class="font-semibold">{{ slotProps.data.fursuit.name }}</div>
-                                <div class="text-sm text-gray-600">{{ slotProps.data.fursuit.species.name }}</div>
-                                <div v-if="slotProps.data.extra_copy" class="mt-1">
-                                    <Tag severity="info" value="Extra Copy" size="small" />
-                                </div>
-                            </div>
-                        </template>
-                    </Column>
-
-                    <!-- Status Column -->
-                    <Column header="Status">
-                        <template #body="slotProps">
-                            <div class="flex flex-col gap-1">
-                                <!-- Show only actionable statuses -->
-                                <Tag
-                                    v-for="status in getActionableStatuses(slotProps.data)"
-                                    :key="status.value"
-                                    :severity="status.severity"
-                                    :value="status.value"
-                                    size="small"
-                                />
-                            </div>
-                        </template>
-                    </Column>
-
-                    <!-- Price Column -->
-                    <Column header="Price" style="width: 100px;">
-                        <template #body="slotProps">
-                            <div class="text-right">
-                                <div class="font-semibold">{{ formatEuroFromCents(slotProps.data.total) }}</div>
-                            </div>
-                        </template>
-                    </Column>
-
-                    <!-- Click to View Column -->
-                    <Column header="" style="width: 100px;">
-                        <template #body="slotProps">
-                            <div class="text-center">
-                                <i class="pi pi-arrow-right text-gray-400 text-sm"></i>
-                                <div class="text-xs text-gray-500 mt-1">View</div>
-                            </div>
-                        </template>
-                    </Column>
-                </DataTable>
+                <div class="divide-y divide-gray-200">
+                    <div
+                        v-for="badge in badges"
+                        :key="badge.id"
+                        @click="router.visit(route('badges.show', {badge: badge.id}))"
+                        class="cursor-pointer rounded-lg px-2 -mx-2 hover:bg-gray-50 transition-colors duration-150"
+                    >
+                        <BadgeListItem :badge="badge" />
+                    </div>
+                </div>
             </template>
         </Card>
 
@@ -273,7 +143,7 @@ function getActionableStatuses(badge) {
                         v-if="canCreate && event && event.allowsOrders"
                         @click="router.visit(route('badges.create'))"
                         icon="pi pi-plus"
-                        :label="prepaidBadgesLeft > 0 ? 'Customize Prepaid Badge' : 'Purchase Badge (3€)'"
+                        :label="prepaidBadgesLeft > 0 ? 'Customize Prepaid Badge' : 'Purchase Badge (5€)'"
                         :severity="prepaidBadgesLeft > 0 ? 'success' : 'primary'"
                     />
                     <Button
@@ -286,6 +156,20 @@ function getActionableStatuses(badge) {
                 </div>
             </template>
         </Card>
+
+        <!-- Pickup Info -->
+        <div v-if="showPickupInfo" class="mt-6 space-y-6">
+            <BadgePickupInfo
+                :attendee-id="attendeeId"
+                :booths="pickupBooths"
+                :opening-hours="deskOpeningHours"
+            />
+
+            <Message v-if="hasUnpaidBadges" severity="warn" :closable="false">
+                <strong>Open payment:</strong> pay at the desk when you collect your badge.
+                We only take <strong>card</strong> on site (Mastercard, Visa, Amex) through SumUp.
+            </Message>
+        </div>
 
         <!-- Refresh Prepaid Badges Section -->
         <div v-if="event && !prepaidBadgesLeft" class="text-center mt-6">
@@ -312,71 +196,17 @@ function getActionableStatuses(badge) {
             <template #content>
                 <Message severity="warn" :closable="false" class="mb-4">
                     <strong>Important:</strong> You have badges from previous years that have not been picked up yet.
-                    Please come to our desk in the fursuit lounge after the 2nd con day to collect them.
+                    Collect them at the badge desk in the Fursuit Lounge.
                 </Message>
 
-                <DataTable
-                    :value="unpickedBadges"
-                    stripedRows
-                    class="p-datatable-sm"
-                    :rowHover="false"
-                >
-                    <!-- Image Column -->
-                    <Column header="Image" style="width: 120px;">
-                        <template #body="slotProps">
-                            <img
-                                :src="slotProps.data.fursuit.image_url"
-                                :alt="`${slotProps.data.fursuit.name} badge`"
-                                class="w-16 h-16 object-cover rounded-lg border opacity-75"
-                                loading="lazy"
-                            />
-                        </template>
-                    </Column>
-
-                    <!-- Name & Species Column -->
-                    <Column header="Fursuit Details">
-                        <template #body="slotProps">
-                            <div>
-                                <div class="font-semibold">{{ slotProps.data.fursuit.name }}</div>
-                                <div class="text-sm text-gray-600">{{ slotProps.data.fursuit.species.name }}</div>
-                                <div class="text-sm text-gray-500 mt-1">
-                                    {{ slotProps.data.fursuit.event.name }}
-                                </div>
-                            </div>
-                        </template>
-                    </Column>
-
-                    <!-- Status Column -->
-                    <Column header="Status">
-                        <template #body="slotProps">
-                            <Tag
-                                :severity="getBadgeSeverity(slotProps.data.status_fulfillment)"
-                                :value="getBadgeStatusName(slotProps.data.status_fulfillment)"
-                                size="small"
-                            />
-                        </template>
-                    </Column>
-
-                    <!-- Price Column -->
-                    <Column header="Price" style="width: 100px;">
-                        <template #body="slotProps">
-                            <div class="text-right">
-                                <div class="font-semibold">{{ formatEuroFromCents(slotProps.data.total) }}</div>
-                            </div>
-                        </template>
-                    </Column>
-
-                    <!-- Actions Column -->
-                    <Column header="" style="width: 100px;">
-                        <template #body="slotProps">
-                            <Tag
-                                severity="secondary"
-                                value="Awaiting Pickup"
-                                size="small"
-                            />
-                        </template>
-                    </Column>
-                </DataTable>
+                <div class="divide-y divide-gray-200">
+                    <BadgeListItem
+                        v-for="badge in unpickedBadges"
+                        :key="badge.id"
+                        :badge="badge"
+                        archived
+                    />
+                </div>
             </template>
         </Card>
     </div>

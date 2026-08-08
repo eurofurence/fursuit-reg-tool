@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Checkout\Models\Checkout\Checkout;
+use App\Domain\Printing\Models\Printer;
 use App\Enum\PrintJobStatusEnum;
 use App\Jobs\CreateReceiptFromCheckoutJob;
 use App\Notifications\SendReceiptNotification;
@@ -51,7 +52,7 @@ class ReceiptController extends Controller
         $this->ensureReceiptExists($checkout);
 
         // Find active receipt printer
-        $receiptPrinter = \App\Domain\Printing\Models\Printer::where('is_active', true)
+        $receiptPrinter = Printer::where('is_active', true)
             ->where('type', 'receipt')
             ->first();
 

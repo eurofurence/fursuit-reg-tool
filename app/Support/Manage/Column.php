@@ -12,14 +12,16 @@ use Illuminate\Database\Eloquent\Builder;
  * The `type` decides how the client renders the cell value produced by the table's
  * row transformer:
  *
- *  text      string|null
+ *  text      string|null, or ['display' => string, 'title' => ?string] when the cell is
+ *            truncated and the full value belongs in a tooltip
  *  number    int|float, or ['display' => string, 'description' => ?string]
  *  money     integer cents, or ['value' => int cents, 'description' => ?string].
  *            Never a preformatted string: see below
  *  badge     Status::make() triple
- *  image     url string|null
+ *  image     url string|null. `circular()` makes the thumbnail a round avatar rather
+ *            than the default rounded rectangle
  *  bool      boolean
- *  datetime  string, or ['display' => string, 'title' => ?string]
+ *  datetime  string, or ['display' => string, 'title' => ?string, 'description' => ?string]
  *  duration  preformatted string
  *  color     hex string
  *  copyable  string
@@ -57,6 +59,8 @@ final class Column implements Arrayable
     private ?string $fallback = null;
 
     private ?string $width = null;
+
+    private bool $circular = false;
 
     private function __construct(
         public readonly string $key,
@@ -96,6 +100,22 @@ final class Column implements Arrayable
     public static function image(string $key, ?string $label = null): self
     {
         return self::make($key, $label, 'image');
+    }
+
+    /**
+     * Filament's `ImageColumn->circular()`. The two image columns in the panel - the
+     * fursuit list's own image and the badge list's `fursuit.image` - are both circular
+     * avatars there, and both read as one when the thumbnail is a head shot.
+     *
+     * A shape flag rather than a free geometry: `circular()` is the only ImageColumn
+     * modifier either column uses, and one flag keeps every image cell in the panel to
+     * two known shapes instead of an open set of sizes.
+     */
+    public function circular(bool $circular = true): self
+    {
+        $this->circular = $circular;
+
+        return $this;
     }
 
     public static function bool(string $key, ?string $label = null): self
@@ -280,6 +300,7 @@ final class Column implements Arrayable
             'hiddenByDefault' => $this->hiddenByDefault,
             'fallback' => $this->fallback,
             'width' => $this->width,
+            'circular' => $this->circular,
         ];
     }
 }

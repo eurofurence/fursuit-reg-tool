@@ -90,6 +90,22 @@ final class Navigation
                 $this->item('PDF Generator', 'file-text', 'manage.tools.pdf'),
                 $this->item('Badge Preview', 'eye', 'manage.tools.badge-preview'),
             ]],
+            /*
+             * One entry, not four. Settings carries its own vertical submenu inside the
+             * page body (SettingsLayout.vue), so the three panes beside General are
+             * reached from there rather than from the rail; putting all four here would
+             * mean the same list twice, two columns apart, with two active markers.
+             *
+             * `manage.settings.general` is the pane /admin/settings renders, so the rail
+             * item and the first pane are one URL.
+             *
+             * No `permits()` argument: reading how the convention is configured is open to
+             * the whole panel, like Pickup Booths and the other tools, and each pane gates
+             * its own writes on `manage-admin`.
+             */
+            ['label' => 'Configuration', 'items' => [
+                $this->item('Settings', 'cog', 'manage.settings.general'),
+            ]],
             ['label' => 'Maintenance', 'items' => [
                 $this->item('DB Service', 'wrench', 'manage.maintenance.db-service', null, $this->permits('manage-admin')),
             ]],

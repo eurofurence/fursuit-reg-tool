@@ -316,8 +316,20 @@ final class Table
                 $key = $column->resolvedSearchKey();
 
                 if (str_contains($key, '.')) {
-                    [$relation, $attribute] = explode('.', $key, 2);
-                    $query->orWhereHas($relation, fn (Builder $q) => $q->where($attribute, $operator, $term));
+                    // Split at the last dot, not the first: `fursuit.user.name` is the
+                    // nested relation `fursuit.user` and the attribute `name`, and
+                    // whereHas takes a dotted relation path directly. Splitting at the
+                    // first dot handed `user.name` to where() as a column name and the
+                    // badge list's Owner search 500'd on it. Single-dot keys are
+                    // unaffected. The attribute is qualified because these tables are
+                    // routinely joined into the outer query as well.
+                    $relation = str($key)->beforeLast('.')->toString();
+                    $attribute = str($key)->afterLast('.')->toString();
+
+                    $query->orWhereHas(
+                        $relation,
+                        fn (Builder $q) => $q->where($q->qualifyColumn($attribute), $operator, $term)
+                    );
 
                     continue;
                 }
@@ -341,7 +353,21 @@ final class Table
 
         if (! $column) {
             if ($this->defaultSortKey) {
-                $this->query->orderBy($this->defaultSortKey, $this->defaultSortDir);
+                // The default sort goes through the declared column's own sort callback
+                // when it has one, so the first page load is ordered exactly the way
+                // clicking that header orders it. The badge list defaults to
+                // `sort_attendee_id`, whose sort is a numeric comparison on a string
+                // column; without this the opening page was sorted as text and only the
+                // first click made it right.
+                $default = collect($this->columns)->first(
+                    fn (Column $candidate) => $candidate->key === $this->defaultSortKey
+                );
+
+                if ($default && $callback = $default->sortCallback()) {
+                    $callback($this->query, $this->defaultSortDir);
+                } else {
+                    $this->query->orderBy($this->defaultSortKey, $this->defaultSortDir);
+                }
             }
 
             return ['key' => $this->defaultSortKey, 'dir' => $this->defaultSortDir];

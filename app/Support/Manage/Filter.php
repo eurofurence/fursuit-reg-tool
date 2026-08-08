@@ -14,6 +14,16 @@ use Illuminate\Database\Eloquent\Builder;
  *  ternary  three-state; value is '' (all), '1' or '0'
  *  boolean  checkbox; value is a bool, and `default` can make it on by default
  *  range    two numeric bounds; value is ['min' => string, 'max' => string]
+ *  text     one free string; value is a string
+ *  number   one free number, kept as a string so an empty bound stays distinguishable
+ *  date     one ISO date; value is a string
+ *
+ * text, number and date exist because three modules were declaring an optionless
+ * `select` and then rendering the control themselves on the page - the checkout list's
+ * created_from / created_until, the print-job list's printable_id / printable_type. An
+ * optionless select is a native dropdown with nothing in it, so the page had no choice.
+ * Naming the shape here is what lets the filter bar render every declared filter and
+ * keeps "add a filter" a declaration rather than a page rewrite.
  *
  * A filter with no `apply()` callback falls back to `where(key, value)`, or for a
  * boolean filter to nothing at all - a plain boolean filter must declare how it
@@ -50,6 +60,10 @@ final class Filter implements Arrayable
 
     private ?string $falseLabel = null;
 
+    private ?string $chipLabel = null;
+
+    private bool $pinned = false;
+
     private mixed $default = null;
 
     private ?Closure $apply = null;
@@ -82,6 +96,21 @@ final class Filter implements Arrayable
     public static function range(string $key, ?string $label = null): self
     {
         return new self($key, $label ?? str($key)->headline()->toString(), 'range');
+    }
+
+    public static function text(string $key, ?string $label = null): self
+    {
+        return new self($key, $label ?? str($key)->headline()->toString(), 'text');
+    }
+
+    public static function number(string $key, ?string $label = null): self
+    {
+        return new self($key, $label ?? str($key)->headline()->toString(), 'number');
+    }
+
+    public static function date(string $key, ?string $label = null): self
+    {
+        return new self($key, $label ?? str($key)->headline()->toString(), 'date');
     }
 
     /**
@@ -118,6 +147,36 @@ final class Filter implements Arrayable
     public function falseLabel(string $label): self
     {
         $this->falseLabel = $label;
+
+        return $this;
+    }
+
+    /**
+     * The short form the chip wears once the filter is applied, when the full label is
+     * too long for a pill that already carries its value. `Attendee id range` reads
+     * `Attendee 1-600` with a chip label of `Attendee`; unset, the chip uses `label` and
+     * nothing changes for the modules that never set it.
+     */
+    public function chipLabel(string $label): self
+    {
+        $this->chipLabel = $label;
+
+        return $this;
+    }
+
+    /**
+     * Whether the filter is on the bar from the start rather than waiting behind the
+     * `Filter` button.
+     *
+     * Default false, which is the Shopify model the panel now follows: nothing is on the
+     * bar until it is either chosen or carrying a value. A filter with a declared
+     * `default` is already carrying one on first load, so it appears without needing
+     * this. Pinning is for a filter an operator is expected to reach for on every visit
+     * to that list, and a pinned chip is cleared rather than removed.
+     */
+    public function pinned(bool $pinned = true): self
+    {
+        $this->pinned = $pinned;
 
         return $this;
     }
@@ -186,6 +245,11 @@ final class Filter implements Arrayable
                 default => '',
             },
             'select' => $this->multiple ? array_values(array_filter((array) $value, fn ($v) => $v !== '' && $v !== null)) : (string) $value,
+            // Guarded, unlike the select above: these three take whatever the operator
+            // typed, and `filter[printable_type][]=x` would otherwise be an array cast
+            // to string. A non-scalar is not a value anyone can have meant, so it is the
+            // same as not setting the filter.
+            'text', 'number', 'date' => is_scalar($value) ? (string) $value : '',
             'range' => [
                 'min' => is_numeric($value['min'] ?? null) ? (string) $value['min'] : '',
                 'max' => is_numeric($value['max'] ?? null) ? (string) $value['max'] : '',
@@ -208,6 +272,7 @@ final class Filter implements Arrayable
                 : $query->where($this->key, $value),
             'ternary' => $query->where($this->key, $value === '1'),
             'range' => $this->applyRange($query, $value),
+            'text', 'number', 'date' => $query->where($this->key, $value),
             default => null,
         };
     }
@@ -243,6 +308,11 @@ final class Filter implements Arrayable
             'placeholder' => $this->placeholder,
             'trueLabel' => $this->trueLabel,
             'falseLabel' => $this->falseLabel,
+            'chipLabel' => $this->chipLabel ?? $this->label,
+            'pinned' => $this->pinned,
+            // The client needs the declared default as well as the resolved value: it is
+            // the only way to tell a filter that must be removed with Filter::CLEARED
+            // from one that is removed by dropping the key. See useTableQuery.
             'default' => $this->defaultValue(),
         ];
     }

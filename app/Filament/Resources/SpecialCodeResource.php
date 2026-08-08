@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Filament\Resources\SpecialCodeResource\Pages;
+use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -29,7 +30,7 @@ class SpecialCodeResource extends Resource
                     ->label('Event')
                     ->helperText('Event in which the code can be used')
                     ->options(
-                        \App\Models\Event::all()->pluck('name', 'id')
+                        Event::all()->pluck('name', 'id')
                     )
                     ->required()
                     ->columnSpanFull(),
@@ -97,7 +98,7 @@ class SpecialCodeResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('event_id')
                     ->label('Event')
-                    ->formatStateUsing(fn (string $state): string => \App\Models\Event::where('id', $state)->pluck('name')->first())
+                    ->formatStateUsing(fn (string $state): string => Event::where('id', $state)->pluck('name')->first())
                     ->sortable(),
             ])
             ->filters([

@@ -15,6 +15,7 @@
  */
 
 use App\Domain\CatchEmAll\Models\SpecialCode;
+use App\Domain\CatchEmAll\SpecialActions\SpecialCodeActionRegistry;
 use App\Http\Controllers\Manage\SpecialCodeController;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Event;
@@ -26,6 +27,7 @@ use App\Support\Manage\EventScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Fixtures\ConfiguredCodeAction;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\delete;
@@ -34,6 +36,14 @@ use function Pest\Laravel\post;
 use function Pest\Laravel\put;
 
 const BUG_BOUNTY = 'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction';
+
+/*
+ * The registry is static, so a class registered by one test would still be on offer in the
+ * next one and would change the options every later assertion counts.
+ */
+afterEach(function () {
+    SpecialCodeActionRegistry::flushRegistered();
+});
 
 beforeEach(function () {
     $this->event = Event::factory()->create(['name' => 'Eurofurence 29', 'starts_at' => now()->addDays(30)]);
@@ -261,6 +271,7 @@ test('the create form ships its options and the live catch-url base', function (
             ->component('Manage/SpecialCodes/Form')
             ->where('specialCode', null)
             ->where('classOptions', [['value' => BUG_BOUNTY, 'label' => 'Bug Hunter Bounty']])
+            ->has('actionSchemas')
             ->count('events', 2)
             // The unchanging half of {scheme}://{fcea.domain}/?code={code}&auto, so the
             // preview can be rebuilt on every keystroke instead of once at render (audit 33).
@@ -273,7 +284,7 @@ test('the create form ships its options and the live catch-url base', function (
         ->toBe('http://'.config('fcea.domain').'/');
 });
 
-test('the edit form prefills the record, with constructor_data as text', function () {
+test('the edit form prefills the record and its action data', function () {
     $code = ($this->code)(['constructor_data' => ['amount' => 100]]);
 
     actingAs($this->admin)
@@ -284,7 +295,13 @@ test('the edit form prefills the record, with constructor_data as text', functio
             ->where('specialCode.code', 'ABC45')
             ->where('specialCode.class_name', BUG_BOUNTY)
             ->where('specialCode.event_id', $this->event->id)
-            ->where('specialCode.constructor_data', '{"amount":100}')
+            // No JSON to type into any more. `data` is the declared keys of the selected
+            // class, and Bug Hunter Bounty declares none, so `amount` is a key nothing
+            // describes: shown read-only rather than edited or dropped.
+            ->where('specialCode.data', [])
+            ->where('specialCode.storedData', '{"amount":100}')
+            ->where('specialCode.unmanagedData', '{"amount":100}')
+            ->missing('specialCode.constructor_data')
         );
 });
 
@@ -293,7 +310,6 @@ test('storing a code writes it and flashes the stock Created toast', function ()
         ->post(route('manage.special-codes.store'), [
             'event_id' => $this->event->id,
             'class_name' => BUG_BOUNTY,
-            'constructor_data' => '{"amount": 100, "reason": "An Example"}',
             'code' => 'ABC45',
         ])
         ->assertRedirect(route('manage.special-codes.index'))
@@ -303,37 +319,123 @@ test('storing a code writes it and flashes the stock Created toast', function ()
 
     expect($code->code)->toBe('ABC45')
         ->and($code->class_name)->toBe(BUG_BOUNTY)
-        // Decoded, not the raw string: the model casts this to object and hands it
-        // straight to the action constructor, which is typed `?object`.
-        ->and($code->constructor_data)->toBeObject()
-        ->and($code->constructor_data->amount)->toBe(100);
+        // Bug Hunter Bounty declares no fields, so there is nothing to store and the
+        // column keeps holding null, exactly as every row created without data does.
+        ->and($code->constructor_data)->toBeNull();
 });
 
-test('constructor_data is editable and must be valid JSON', function () {
-    // Change 39: the field was permanently disabled because its matcher compared the
-    // selected class against a literal 'EXAMPLE' that is not one of the options.
-    $code = ($this->code)();
+test('the action data is a form, and each field is validated on its own path', function () {
+    // Change 39 finished: the field was permanently disabled because its matcher compared
+    // the selected class against a literal 'EXAMPLE' that is not one of the options, then
+    // became a JSON textarea. It is now one input per key the class declares, and a bad
+    // value is an error on that key rather than a parse failure on the whole document.
+    SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
 
-    actingAs($this->admin)
-        ->put(route('manage.special-codes.update', $code), [
-            'event_id' => $this->event->id,
-            'class_name' => BUG_BOUNTY,
-            'constructor_data' => 'not json',
-            'code' => 'ABC45',
+    $payload = [
+        'event_id' => $this->event->id,
+        'class_name' => ConfiguredCodeAction::class,
+        'code' => 'CFG01',
+    ];
+
+    // Required, typed, and the field's own extra rules all report on data.<field>.
+    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload)
+        ->assertSessionHasErrors(['data.amount' => 'The Amount field is required.'])
+        ->assertSessionDoesntHaveErrors('constructor_data');
+
+    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + [
+        'data' => ['amount' => 'lots'],
+    ])->assertSessionHasErrors(['data.amount' => 'The Amount field must be an integer.']);
+
+    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + [
+        'data' => ['amount' => 0],
+    ])->assertSessionHasErrors('data.amount');
+
+    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + [
+        'data' => ['amount' => 5, 'tier' => 'platinum'],
+    ])->assertSessionHasErrors('data.tier')->assertSessionDoesntHaveErrors('data.amount');
+
+    expect(SpecialCode::count())->toBe(0);
+
+    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + [
+        'data' => ['amount' => '250', 'reason' => 'Found a crash', 'tier' => 'gold', 'single_use' => true],
+    ])->assertRedirect(route('manage.special-codes.index'));
+
+    $stored = SpecialCode::sole()->constructor_data;
+
+    // Assembled server-side and cast to what each field declares: the integer arrives as
+    // a string from a number input and is stored as an integer.
+    expect($stored)->toBeObject()
+        ->and($stored->amount)->toBe(250)
+        ->and($stored->reason)->toBe('Found a crash')
+        ->and($stored->tier)->toBe('gold')
+        ->and($stored->single_use)->toBeTrue();
+});
+
+test('an omitted field is stored as its declared default, not as a missing key', function () {
+    SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
+
+    actingAs($this->admin)->post(route('manage.special-codes.store'), [
+        'event_id' => $this->event->id,
+        'class_name' => ConfiguredCodeAction::class,
+        'code' => 'DEF01',
+        'data' => ['amount' => 1],
+    ])->assertRedirect(route('manage.special-codes.index'));
+
+    $stored = SpecialCode::sole()->constructor_data;
+
+    expect($stored->reason)->toBe('Because')
+        ->and($stored->tier)->toBe('bronze')
+        // A toggle defaults to false rather than null: an unticked box is a decision.
+        ->and($stored->single_use)->toBeFalse();
+});
+
+test('a key the request invents is not stored, whatever the class declares', function () {
+    SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
+
+    actingAs($this->admin)->post(route('manage.special-codes.store'), [
+        'event_id' => $this->event->id,
+        'class_name' => ConfiguredCodeAction::class,
+        'code' => 'EXT01',
+        'data' => ['amount' => 1, 'is_admin' => true],
+    ])->assertRedirect(route('manage.special-codes.index'));
+
+    expect((array) SpecialCode::sole()->constructor_data)->not->toHaveKey('is_admin');
+});
+
+test('the class the form offers decides which fields exist, so the schemas ship with the page', function () {
+    // The client renders whichever declaration the server ships for the selected class,
+    // the same way the tables render server-declared columns: swapping the Select must
+    // not need another request, and the Vue file must not hold a second copy of the shape.
+    SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
+
+    $schemas = actingAs($this->admin)->get(route('manage.special-codes.create'))
+        ->assertSuccessful()
+        ->viewData('page')['props']['actionSchemas'];
+
+    // The empty class is a real stored value, so it carries a schema too.
+    expect($schemas[''])->toMatchArray(['label' => null, 'fields' => []])
+        ->and($schemas[BUG_BOUNTY]['label'])->toBe('Bug Hunter Bounty')
+        ->and($schemas[BUG_BOUNTY]['fields'])->toBe([])
+        ->and($schemas[BUG_BOUNTY]['description'])->toContain('takes no data')
+        ->and(collect($schemas[ConfiguredCodeAction::class]['fields'])->pluck('name')->all())
+        ->toBe(['amount', 'reason', 'tier', 'single_use']);
+
+    $fields = collect($schemas[ConfiguredCodeAction::class]['fields'])->keyBy('name');
+
+    expect($fields['amount'])->toMatchArray([
+        'label' => 'Amount',
+        'type' => 'integer',
+        'control' => 'number',
+        'step' => '1',
+        'required' => true,
+        'default' => null,
+        'help' => 'Points awarded on redeem',
+    ])
+        ->and($fields['tier']['options'])->toBe([
+            ['value' => 'bronze', 'label' => 'Bronze'],
+            ['value' => 'gold', 'label' => 'Gold'],
         ])
-        ->assertSessionHasErrors('constructor_data');
-
-    actingAs($this->admin)
-        ->put(route('manage.special-codes.update', $code), [
-            'event_id' => $this->event->id,
-            'class_name' => BUG_BOUNTY,
-            'constructor_data' => '{"amount": 250}',
-            'code' => 'ABC45',
-        ])
-        ->assertRedirect(route('manage.special-codes.index'))
-        ->assertInertiaFlash('toast', ['tone' => 'success', 'title' => 'Saved', 'body' => null]);
-
-    expect($code->fresh()->constructor_data->amount)->toBe(250);
+        ->and($fields['single_use'])->toMatchArray(['control' => 'toggle', 'default' => false]);
 });
 
 test('class_name must be one of the offered options', function () {
@@ -360,52 +462,220 @@ test('class_name must be one of the offered options', function () {
     expect(SpecialCode::sole()->class_name)->toBe(BUG_BOUNTY);
 });
 
-test('constructor_data must be a JSON object, not just valid JSON', function () {
-    // `json` accepts any JSON document. The stored value reaches
-    // AbstractSpecialCodeAction::__construct, typed `?object`, so an array or a scalar
-    // raises a TypeError there. GameController catches \Exception only, and a TypeError
-    // is an \Error, so it escapes the handler and 500s the attendee's scan instead of
-    // showing 'Error processing special code'. The write path is where that has to stop.
-    foreach (['[1,2,3]', '5', '"a string"', 'true', 'null'] as $notAnObject) {
+test('constructor_data cannot be anything but an object, because the request never carries it', function () {
+    // The rule used to be `json`, which accepts any JSON document, so `[1,2,3]` or `5`
+    // stored happily. The stored value reaches AbstractSpecialCodeAction::__construct,
+    // typed `?object`, so an array or a scalar raises a TypeError there. GameController
+    // catches \Exception only, and a TypeError is an \Error, so it escapes the handler and
+    // 500s the attendee's scan instead of showing 'Error processing special code'.
+    //
+    // There is no rule to get past any more: the request has no constructor_data input at
+    // all, and payload() builds an object out of the declared fields or writes null.
+    SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
+
+    $blobs = ['[1,2,3]', '5', '"a string"', 'true', 'null', ['not', 'an', 'object']];
+
+    foreach ($blobs as $index => $notAnObject) {
         actingAs($this->admin)
             ->post(route('manage.special-codes.store'), [
                 'event_id' => $this->event->id,
-                'class_name' => BUG_BOUNTY,
+                'class_name' => ConfiguredCodeAction::class,
                 'constructor_data' => $notAnObject,
-                'code' => 'ARR01',
+                'data' => ['amount' => 1],
+                'code' => 'ARR0'.$index,
             ])
-            ->assertSessionHasErrors('constructor_data');
+            ->assertRedirect(route('manage.special-codes.index'));
     }
 
-    expect(SpecialCode::count())->toBe(0);
+    // Every write is an object built from the fields, and the smuggled input reached
+    // neither the column nor the model, which is `$guarded = []`.
+    foreach (SpecialCode::all() as $stored) {
+        expect($stored->constructor_data)->toBeObject()
+            ->and($stored->constructor_data->amount)->toBe(1)
+            ->and($stored->getAttributes())->not->toHaveKey('constructor_data_raw');
+    }
 
-    // The shape the action class is actually typed for still goes through.
+    // `data` itself is not a way in either: it is an array of declared keys, nothing else.
     actingAs($this->admin)
         ->post(route('manage.special-codes.store'), [
             'event_id' => $this->event->id,
-            'class_name' => BUG_BOUNTY,
-            'constructor_data' => '{"amount": 100}',
-            'code' => 'OBJ01',
+            'class_name' => ConfiguredCodeAction::class,
+            'data' => 'a string',
+            'code' => 'STR01',
         ])
-        ->assertRedirect(route('manage.special-codes.index'));
-
-    expect(SpecialCode::sole()->constructor_data)->toBeObject();
+        ->assertSessionHasErrors('data');
 });
 
 test('a stored constructor_data never trips the action constructor type hint', function () {
-    // The reason the rule above exists, asserted against the constructor itself rather
-    // than restating the rule: whatever survives validation has to be something
+    // The reason the rule above existed, asserted against the constructor itself rather
+    // than restating the rule: whatever the form writes has to be something
     // createActionInstance() can hand over without raising a TypeError.
+    SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
+
     actingAs($this->admin)
         ->post(route('manage.special-codes.store'), [
             'event_id' => $this->event->id,
-            'class_name' => BUG_BOUNTY,
-            'constructor_data' => '{"amount": 100, "reason": "An Example"}',
+            'class_name' => ConfiguredCodeAction::class,
+            'data' => ['amount' => 100, 'reason' => 'An Example'],
             'code' => 'OBJ02',
         ])
         ->assertRedirect(route('manage.special-codes.index'));
 
-    expect(SpecialCode::sole()->createActionInstance())->toBeInstanceOf(BUG_BOUNTY);
+    expect(SpecialCode::sole()->createActionInstance())->toBeInstanceOf(ConfiguredCodeAction::class);
+});
+
+test('an existing row round-trips through the form unchanged', function () {
+    /*
+     * The stored column shape does not change with the form. A row written before it
+     * existed carries keys no class declares, and opening it and saving it has to leave
+     * the database byte for byte as it was: the operator did not touch those keys, so the
+     * form does not either. This is the contract that lets the catch action keep receiving
+     * what it receives today.
+     */
+    $code = ($this->code)(['constructor_data' => ['amount' => 100, 'reason' => 'An Example']]);
+    $before = $code->getRawOriginal('constructor_data');
+
+    $props = actingAs($this->admin)
+        ->get(route('manage.special-codes.edit', $code))
+        ->viewData('page')['props']['specialCode'];
+
+    // Exactly what the form submits: the record's own values, with the data half being
+    // the declared fields of its class (Bug Hunter Bounty declares none).
+    actingAs($this->admin)
+        ->put(route('manage.special-codes.update', $code), [
+            'event_id' => $props['event_id'],
+            'class_name' => $props['class_name'],
+            'data' => $props['data'],
+            'code' => $props['code'],
+        ])
+        ->assertRedirect(route('manage.special-codes.index'))
+        ->assertSessionHasNoErrors();
+
+    expect($code->fresh()->getRawOriginal('constructor_data'))->toBe($before)
+        ->and($before)->toBe('{"amount":100,"reason":"An Example"}')
+        ->and($code->fresh()->createActionInstance())->toBeInstanceOf(BUG_BOUNTY);
+});
+
+test('an undeclared key survives an edit, and is dropped when the class changes', function () {
+    SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
+
+    $code = ($this->code)([
+        'class_name' => ConfiguredCodeAction::class,
+        'constructor_data' => ['amount' => 100, 'legacy_note' => 'from 2024'],
+    ]);
+
+    $save = fn (array $attributes) => actingAs($this->admin)
+        ->put(route('manage.special-codes.update', $code), [
+            'event_id' => $this->event->id,
+            'class_name' => ConfiguredCodeAction::class,
+            'code' => 'ABC45',
+            ...$attributes,
+        ])
+        ->assertSessionHasNoErrors();
+
+    // Same class: the key nobody declares is the operator's data and is written back.
+    $save(['data' => ['amount' => 250]]);
+
+    expect($code->fresh()->constructor_data->legacy_note)->toBe('from 2024')
+        ->and($code->fresh()->constructor_data->amount)->toBe(250);
+
+    // A different class: the keys described the previous action, so they go with it.
+    actingAs($this->admin)
+        ->put(route('manage.special-codes.update', $code), [
+            'event_id' => $this->event->id,
+            'class_name' => BUG_BOUNTY,
+            'code' => 'ABC45',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($code->fresh()->constructor_data)->toBeNull();
+});
+
+test('a stored value that does not fit the schema does not break the edit page', function () {
+    /*
+     * Three shapes the column can hold that the current schema cannot describe. The page
+     * has to render all three, and the operator has to be able to see what is stored,
+     * which is what `storedData` is for.
+     */
+    SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
+
+    // A declared key holding the wrong type, plus a declared key that is simply absent.
+    $wrongType = ($this->code)([
+        'code' => 'WRO01',
+        'class_name' => ConfiguredCodeAction::class,
+        'constructor_data' => ['amount' => ['not', 'a', 'number']],
+    ]);
+
+    $props = actingAs($this->admin)->get(route('manage.special-codes.edit', $wrongType))
+        ->assertSuccessful()
+        ->viewData('page')['props']['specialCode'];
+
+    // The field falls back to its declared default, and the raw document is shown next to
+    // it so the difference is visible before saving.
+    expect($props['data'])->toBe([
+        'amount' => null,
+        'reason' => 'Because',
+        'tier' => 'bronze',
+        'single_use' => false,
+    ])
+        ->and($props['storedData'])->toBe('{"amount":["not","a","number"]}')
+        ->and($props['unmanagedData'])->toBeNull();
+
+    // A document that is not an object at all: what the pre-fix `json` rule allowed in.
+    $notAnObject = ($this->code)(['code' => 'LST01', 'constructor_data' => [1, 2, 3]]);
+
+    $props = actingAs($this->admin)->get(route('manage.special-codes.edit', $notAnObject))
+        ->assertSuccessful()
+        ->viewData('page')['props']['specialCode'];
+
+    expect($props['data'])->toBe([])
+        ->and($props['unmanagedData'])->toBe('[1,2,3]');
+
+    // Saving it replaces it with a real object rather than writing the list back, because
+    // the list is the shape that raises a TypeError in the redeem path.
+    actingAs($this->admin)
+        ->put(route('manage.special-codes.update', $notAnObject), [
+            'event_id' => $this->event->id,
+            'class_name' => BUG_BOUNTY,
+            'code' => 'LST01',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($notAnObject->fresh()->constructor_data)->toBeObject();
+});
+
+test('a class the panel no longer offers is shown, not silently swapped', function () {
+    /*
+     * A row can name a class that has since been removed. The Select would otherwise show
+     * the first option instead, so an operator opening the page to fix a typo in the code
+     * would rewire the action without noticing. The stored class is offered back, labelled
+     * unavailable, and Rule::in still refuses it: a class the redeem path cannot
+     * instantiate may not be written (change 49).
+     */
+    $code = ($this->code)(['class_name' => 'App\\Something\\Gone', 'constructor_data' => ['amount' => 1]]);
+
+    $props = actingAs($this->admin)->get(route('manage.special-codes.edit', $code))
+        ->assertSuccessful()
+        ->viewData('page')['props'];
+
+    expect($props['classOptions'])->toBe([
+        ['value' => BUG_BOUNTY, 'label' => 'Bug Hunter Bounty'],
+        ['value' => 'App\\Something\\Gone', 'label' => 'App\\Something\\Gone (unavailable)'],
+    ])
+        ->and($props['specialCode']['data'])->toBe([])
+        ->and($props['specialCode']['unmanagedData'])->toBe('{"amount":1}');
+
+    actingAs($this->admin)
+        ->put(route('manage.special-codes.update', $code), [
+            'event_id' => $this->event->id,
+            'class_name' => 'App\\Something\\Gone',
+            'code' => 'ABC45',
+        ])
+        ->assertSessionHasErrors('class_name');
+
+    // Nothing was touched, so the row is still exactly what it was.
+    expect($code->fresh()->class_name)->toBe('App\\Something\\Gone')
+        ->and($code->fresh()->constructor_data->amount)->toBe(1);
 });
 
 test('a code without a class saves rather than failing at the database', function () {

@@ -3,6 +3,7 @@
 namespace App\Domain\Checkout\Models;
 
 use App\Domain\Checkout\Enums\TseClientStateEnum;
+use App\Models\Machine;
 use Illuminate\Database\Eloquent\Model;
 
 class TseClient extends Model
@@ -15,6 +16,6 @@ class TseClient extends Model
 
     public function machine()
     {
-        return $this->hasOne(\App\Models\Machine::class);
+        return $this->hasOne(Machine::class);
     }
 }

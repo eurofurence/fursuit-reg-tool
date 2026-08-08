@@ -12,6 +12,8 @@ use App\Domain\Checkout\Services\FiskalyService;
 use App\Http\Controllers\Controller;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Payment\Unpaid;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -192,7 +194,7 @@ class CheckoutController extends Controller
             $checkout->payment_method_remote_id = $uuid;
             $checkout->save();
 
-        } catch (\Illuminate\Http\Client\RequestException|\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (RequestException|ConnectionException $e) {
             return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id])
                 ->with('error', 'Card payment failed: Unable to connect to payment system.');
         }
@@ -221,7 +223,7 @@ class CheckoutController extends Controller
     /**
      * @return array|mixed
      *
-     * @throws \Illuminate\Http\Client\ConnectionException
+     * @throws ConnectionException
      */
     public function getTransactionData(Checkout $checkout): mixed
     {

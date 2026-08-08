@@ -7,9 +7,11 @@ use App\Domain\Printing\Services\BadgePrintQueue;
 use App\Enum\PrintBatchStatusEnum;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
+use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Badge\Badge;
 use App\Models\EventUser;
 use App\Models\Machine;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -124,6 +126,89 @@ it('locks the badges it queues', function () {
 
 it('returns null rather than an empty batch when there is nothing to print', function () {
     expect(BadgePrintQueue::queue(collect()))->toBeNull();
+});
+
+/**
+ * Idempotency. Queueing is a POST somebody makes, and the same POST arrives
+ * twice more often than anyone would like: a browser back and resubmit, two
+ * operators on the same row, a bulk selection that includes a badge a row
+ * action queued a minute ago, the POS bulk print clicked again because nothing
+ * visibly happened. Nothing downstream refused it, so the attendee got two
+ * cards for one order.
+ */
+it('refuses to queue a badge that already has a card on its way', function () {
+    $badge = queueableBadges()->first();
+    $printer = Printer::factory()->badge()->create();
+
+    $first = BadgePrintQueue::queue(collect([$badge]), $printer);
+    $second = BadgePrintQueue::queue(collect([$badge->fresh()]), $printer);
+
+    expect($first)->not->toBeNull()
+        ->and($second)->toBeNull()
+        ->and(PrintBatch::count())->toBe(1)
+        ->and(PrintJob::where('printable_id', $badge->id)->count())->toBe(1);
+});
+
+it('queues the rest of a selection when one badge is already on its way', function () {
+    $badges = queueableBadges(3);
+    $printer = Printer::factory()->badge()->create();
+
+    BadgePrintQueue::queue(collect([$badges->first()]), $printer);
+
+    $batch = BadgePrintQueue::queue($badges->map->fresh(), $printer);
+
+    expect($batch->total_jobs)->toBe(2)
+        ->and($batch->printJobs()->pluck('printable_id')->sort()->values()->all())
+        ->toBe($badges->slice(1)->pluck('id')->sort()->values()->all());
+});
+
+it('queues a badge again once its card has come out', function () {
+    // A reprint of a collected card is the whole reason the row action exists.
+    // The guard is about cards still on their way, not about cards that printed.
+    $badge = queueableBadges()->first();
+    $printer = Printer::factory()->badge()->create();
+
+    $first = BadgePrintQueue::queue(collect([$badge]), $printer);
+    $first->printJobs()->first()->update(['status' => PrintJobStatusEnum::Printed]);
+
+    expect(BadgePrintQueue::queue(collect([$badge->fresh()]), $printer))->not->toBeNull()
+        ->and(PrintBatch::count())->toBe(2);
+});
+
+it('re-renders a locked badge on a reprint rather than leaving it unprintable', function () {
+    /*
+     * The lock outlives the run that set it. Anything that moves the artwork
+     * inputs afterwards -- a fursuit re-approved through the manage module, a
+     * catch code regenerated -- left the badge carrying a file that no longer
+     * matched: GenerateBadgePrintFileJob skipped it for the lock, build()
+     * refused the stale file, and `badges:generate-print-files` skipped it for
+     * the same lock, `--force` included. The card was unprintable from every
+     * entry point until somebody cleared the column by hand.
+     */
+    Storage::fake();
+
+    $badge = queueableBadges()->first();
+    $badge->fursuit->update(['image' => 'fursuits/reprint.png']);
+    Storage::put('fursuits/reprint.png', UploadedFile::fake()->image('reprint.png', 600, 600)->get());
+
+    $printer = Printer::factory()->badge()->create();
+
+    $first = BadgePrintQueue::queue(collect([$badge->fresh()]), $printer);
+    $first->printJobs()->first()->update(['status' => PrintJobStatusEnum::Printed]);
+
+    // The card is printed and the badge is still locked. Now something that
+    // appears on it changes.
+    $badge->fursuit->update(['name' => 'A Brand New Name']);
+
+    expect($badge->fresh()->isPrintingLocked())->toBeTrue();
+
+    $reprint = BadgePrintQueue::queue(collect([$badge->fresh()]), $printer);
+
+    $regenerated = $badge->fresh(['fursuit.species', 'fursuit.event']);
+
+    expect($reprint)->not->toBeNull()
+        ->and($reprint->printJobs()->first()->file)->toBe($regenerated->print_file_path)
+        ->and($regenerated->print_file_hash)->toBe(GenerateBadgePrintFileJob::inputHash($regenerated));
 });
 
 /**

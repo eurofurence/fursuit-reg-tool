@@ -7,14 +7,20 @@
  * reason: `class_name` was never `->live()`, so nothing downstream of it ever
  * re-evaluated while the modal was open (audit 33).
  *
- *  - `constructor_data` is editable. Its `disabled()` matcher compared the selected
- *    class against the literal 'EXAMPLE', which is not one of the options, so the only
+ *  - the action's data is editable. Its `disabled()` matcher compared the selected class
+ *    against the literal 'EXAMPLE', which is not one of the options, so the only
  *    configurable knob on the action class was permanently locked (audit 32).
- *  - the example placeholder that matched the same dead literal is now reachable.
+ *  - the fields swap when the class changes, instead of a dead placeholder.
  *  - `catch_url` is computed as you type instead of once at render, which is why a
  *    create modal used to show the link for an empty code.
+ *
+ * There is no JSON textarea. `constructor_data` is assembled on the server from one input
+ * per key the selected action class declares (`actionSchemas`, built from the class
+ * itself), so this file holds no knowledge of what any action takes: it renders whichever
+ * declaration the server ships for the selected class, exactly as the tables render
+ * server-declared columns. Errors come back on `data.<field>` and land on that field.
  */
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import FormActions from '@/Components/Manage/FormActions.vue';
@@ -27,26 +33,63 @@ const props = defineProps({
   specialCode: { type: Object, default: null },
   events: { type: Array, required: true },
   classOptions: { type: Array, required: true },
+  /** class name => { label, description, fields[] }, including '' for no class. */
+  actionSchemas: { type: Object, required: true },
   /** `{scheme}://{fcea.domain}/`, the unchanging half of the catch link. */
   catchUrlBase: { type: String, required: true },
 });
 
 const editing = computed(() => Boolean(props.specialCode));
 
+/** The class and the values the record was loaded with, so switching away and back restores them. */
+const storedClass = props.specialCode?.class_name ?? '';
+const storedValues = { ...(props.specialCode?.data ?? {}) };
+
+const schemaFor = (className) =>
+  props.actionSchemas[className] ?? { label: null, description: null, fields: [] };
+
 const form = useForm({
   event_id: props.specialCode?.event_id ?? '',
-  class_name: props.specialCode?.class_name ?? '',
-  constructor_data: props.specialCode?.constructor_data ?? '',
+  class_name: storedClass,
+  data: { ...storedValues },
   code: props.specialCode?.code ?? '',
 });
+
+const schema = computed(() => schemaFor(form.class_name));
+
+/*
+ * The fields are what the selected class declares, so the values follow it. A key the new
+ * class also declares keeps what is typed; returning to the record's own class restores
+ * what was stored; anything else starts at the declared default. Keys of the class being
+ * left are dropped here and on the server, because they described the previous action.
+ */
+watch(
+  () => form.class_name,
+  (className) => {
+    const source = className === storedClass ? storedValues : {};
+
+    form.data = Object.fromEntries(
+      schemaFor(className).fields.map((field) => {
+        if (field.name in source) {
+          return [field.name, source[field.name]];
+        }
+
+        return [field.name, field.name in form.data ? form.data[field.name] : field.default];
+      }),
+    );
+  },
+);
 
 // Filament renders an empty option until one is picked; a required select keeps it too.
 const eventOptions = computed(() => [{ value: '', label: 'Select an option' }, ...props.events]);
 const classSelectOptions = computed(() => [{ value: '', label: 'Select an option' }, ...props.classOptions]);
 
-const dataPlaceholder = computed(() =>
-  form.class_name ? '{"amount": 100, "reason": "An Example"}' : '',
+/** True while the record names a class the panel no longer offers, which cannot be saved as is. */
+const classUnavailable = computed(
+  () => form.class_name !== '' && !(form.class_name in props.actionSchemas),
 );
+
+const showStoredData = ref(false);
 
 const catchUrl = computed(
   () => `${props.catchUrlBase}?code=${encodeURIComponent(form.code ?? '')}&auto`,
@@ -91,15 +134,6 @@ const submit = () => {
         />
 
         <FormField
-          v-model="form.constructor_data"
-          label="Constructor Data"
-          type="textarea"
-          helper="Data to be passed to the constructor of the action class"
-          :placeholder="dataPlaceholder"
-          :error="form.errors.constructor_data"
-        />
-
-        <FormField
           v-model="form.code"
           label="Code"
           helper="E.g. ABC45"
@@ -120,6 +154,80 @@ const submit = () => {
             readonly
             class="h-8 w-full rounded border border-hairline bg-mg-surface-2 px-2 font-mono text-[13px] text-fg-2 outline-none"
           />
+        </FormField>
+      </FormSection>
+
+<<<<<<< worktree
+      <FormSection title="Action data" :description="schema.description">
+        <p v-if="classUnavailable" class="py-2 text-[12px] text-state-danger">
+=======
+      <FormSection
+        title="Action data"
+        :description="schema.description"
+      >
+        <p
+          v-if="classUnavailable"
+          class="py-2 text-[12px] text-state-danger"
+        >
+>>>>>>> stash
+          This code names {{ form.class_name }}, which the panel no longer offers. Its stored data is
+          shown below and kept as it is; pick a class from the list before saving.
+        </p>
+
+        <FormField
+          v-for="field in schema.fields"
+          :key="field.name"
+          v-model="form.data[field.name]"
+          :label="field.label"
+          :type="field.control"
+          :options="field.options"
+          :step="field.step"
+          :helper="field.help"
+          :required="field.required"
+          :error="form.errors[`data.${field.name}`]"
+        />
+
+<<<<<<< worktree
+        <p v-if="!schema.fields.length && !classUnavailable" class="py-2 text-[12px] text-fg-3">
+=======
+        <p
+          v-if="!schema.fields.length && !classUnavailable"
+          class="py-2 text-[12px] text-fg-3"
+        >
+>>>>>>> stash
+          Nothing to fill in for this class.
+        </p>
+
+        <!--
+          The stored document, read-only. It is the only place an operator sees a key the
+          current schema does not declare, e.g. a row written before this form existed.
+          Those keys are written back unchanged as long as the class is not changed.
+        -->
+        <FormField
+          v-if="specialCode?.unmanagedData"
+          label="Unrecognised data"
+          helper="Keys the selected class does not declare. They are kept on save unless you change the class."
+        >
+          <pre class="overflow-x-auto rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 font-mono text-[12px] text-fg-2">{{ specialCode.unmanagedData }}</pre>
+        </FormField>
+
+        <FormField
+          v-if="editing && specialCode?.storedData"
+          label="Stored JSON"
+          helper="What the database holds right now, before this form is saved."
+        >
+          <button
+            v-if="!showStoredData"
+            type="button"
+            class="h-8 text-[12px] text-fg-3 underline underline-offset-2 hover:text-fg-1"
+            @click="showStoredData = true"
+          >
+            Show
+          </button>
+          <pre
+            v-else
+            class="overflow-x-auto rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 font-mono text-[12px] text-fg-2"
+          >{{ specialCode.storedData }}</pre>
         </FormField>
       </FormSection>
 

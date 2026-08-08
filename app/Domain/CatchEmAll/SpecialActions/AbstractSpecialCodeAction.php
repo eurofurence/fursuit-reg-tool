@@ -2,9 +2,10 @@
 
 namespace App\Domain\CatchEmAll\SpecialActions;
 
+use App\Domain\CatchEmAll\Interface\ConfigurableSpecialCodeAction;
 use App\Domain\CatchEmAll\Interface\SpecialCodeAction;
 
-abstract class AbstractSpecialCodeAction implements SpecialCodeAction
+abstract class AbstractSpecialCodeAction implements ConfigurableSpecialCodeAction, SpecialCodeAction
 {
     protected int $eventId;
 
@@ -24,5 +25,24 @@ abstract class AbstractSpecialCodeAction implements SpecialCodeAction
         $this->eventId = $eventId;
         $this->code = $code;
         $this->constructorData = $constructorData;
+    }
+
+    /**
+     * No configurable keys unless the action overrides this.
+     *
+     * The admin form is built from this list, so an action that reads nothing out of
+     * `$constructorData` shows no data fields rather than a JSON box nobody can fill in
+     * correctly.
+     *
+     * @return array<int, ActionField>
+     */
+    public static function constructorFields(): array
+    {
+        return [];
+    }
+
+    public static function constructorDescription(): ?string
+    {
+        return null;
     }
 }

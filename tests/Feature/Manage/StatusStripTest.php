@@ -120,9 +120,22 @@ test('a reviewer sees the segments their policies allow and no others', function
         );
 });
 
-test('a segment whose module has not been built yet carries no dead link', function () {
-    // Phase 0 registers the dashboard only, so neither list route exists. The segment
-    // still shows its number; it just is not a link.
+test('each segment links at the list its number was counted from', function () {
+    // Both modules exist now: phase 3 registered manage.fursuits.index and phase 6
+    // registered manage.print-jobs.index, so both segments link for real. A segment whose
+    // module a phase has not built yet still shows its number and simply carries no url,
+    // which is Navigation::urlFor()'s Route::has() branch.
+    actingAs($this->admin);
+
     get(route('manage.dashboard'))
-        ->assertInertia(fn (Assert $page) => $page->where('manageStrip.segments.0.url', null));
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('manageStrip.segments.0.key', 'pending_fursuits')
+            ->where('manageStrip.segments.0.url', route('manage.fursuits.index'))
+            ->where('manageStrip.segments.1.key', 'unverified_cards')
+            // The unverified cards the print-job list can actually show: printed, and
+            // vouched for by nobody.
+            ->where('manageStrip.segments.1.url', route('manage.print-jobs.index', [
+                'filter' => ['status' => 'printed', 'verified' => '0'],
+            ]))
+        );
 });

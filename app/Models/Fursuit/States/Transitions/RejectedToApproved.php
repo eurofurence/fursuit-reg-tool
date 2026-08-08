@@ -11,7 +11,8 @@ use Spatie\ModelStates\Transition;
 
 class RejectedToApproved extends Transition
 {
-    public function __construct(public Fursuit $fursuit, public User $reviewer) {}
+    /** `$notify` is off when a review decision owns the mail; see PendingToApproved. */
+    public function __construct(public Fursuit $fursuit, public User $reviewer, public bool $notify = true) {}
 
     public function handle()
     {
@@ -25,8 +26,11 @@ class RejectedToApproved extends Transition
                 ->causedBy($this->reviewer)
                 ->log('Fursuit approved (was previously rejected)');
 
-            // Always notify when reversing a rejection - this is important for user experience
-            $this->fursuit->user->notify(new FursuitRejectionReversedNotification($this->fursuit));
+            // Always notify when reversing a rejection - this is important for user
+            // experience - unless a review decision has taken the mail over.
+            if ($this->notify) {
+                $this->fursuit->user->notify(new FursuitRejectionReversedNotification($this->fursuit));
+            }
 
             return $this->fursuit;
         });

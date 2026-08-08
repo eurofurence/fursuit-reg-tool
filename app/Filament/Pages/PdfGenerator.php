@@ -18,6 +18,7 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
+use Mpdf\HTMLParserMode;
 use Mpdf\Mpdf;
 
 class PdfGenerator extends Page implements HasForms
@@ -247,14 +248,14 @@ class PdfGenerator extends Page implements HasForms
         // Write CSS first
         $css = view('pdfs.badge-list-css')->render();
         $css = mb_convert_encoding($css, 'UTF-8', 'auto');
-        $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
+        $mpdf->WriteHTML($css, HTMLParserMode::HEADER_CSS);
 
         // Write header
         $header = view('pdfs.badge-list-header', [
             'event' => $selectedEvent,
         ])->render();
         $header = mb_convert_encoding($header, 'UTF-8', 'auto');
-        $mpdf->WriteHTML($header, \Mpdf\HTMLParserMode::HTML_BODY);
+        $mpdf->WriteHTML($header, HTMLParserMode::HTML_BODY);
 
         // Sort ranges by their numeric start value
         $sortedRanges = [];
@@ -294,7 +295,7 @@ class PdfGenerator extends Page implements HasForms
             ])->render();
             $rangeHtml = mb_convert_encoding($rangeHtml, 'UTF-8', 'auto');
 
-            $mpdf->WriteHTML($rangeHtml, \Mpdf\HTMLParserMode::HTML_BODY);
+            $mpdf->WriteHTML($rangeHtml, HTMLParserMode::HTML_BODY);
         }
 
         $paymentStatusSuffix = match ($paymentStatus) {

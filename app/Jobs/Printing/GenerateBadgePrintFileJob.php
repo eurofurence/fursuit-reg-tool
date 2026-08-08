@@ -35,9 +35,17 @@ class GenerateBadgePrintFileJob implements ShouldQueue
 
     public $tries = 3;
 
+    /**
+     * `$force` re-renders artwork whose inputs have not moved. `$ignorePrintingLock` is a
+     * different question and deliberately a separate flag: it renders a badge that is
+     * committed to a run. Only a caller that has established the badge has no card queued
+     * may pass it, which today is BadgePrintQueue on a reprint. A blanket `--force` pass
+     * must never carry it, or it would overwrite the PDF under a card waiting to print.
+     */
     public function __construct(
         public readonly Badge $badge,
         public readonly bool $force = false,
+        public readonly bool $ignorePrintingLock = false,
     ) {
         $this->onQueue('badge-render');
     }
@@ -57,7 +65,13 @@ class GenerateBadgePrintFileJob implements ShouldQueue
         // A badge committed to a batch is frozen. Re-rendering it now would
         // change the artwork under a card that is queued to print, or has
         // already printed, and the stack would stop matching the orders.
-        if ($badge->isPrintingLocked()) {
+        //
+        // A reprint is the one exception, and it has to be: the lock outlives
+        // the run that set it, so without this a badge whose artwork inputs
+        // moved after it printed could never be re-rendered, and build()
+        // refuses the stale file it still carries. The caller says so
+        // explicitly and only after establishing that no card is queued.
+        if ($badge->isPrintingLocked() && ! $this->ignorePrintingLock) {
             Log::info('Skipped print file regeneration for a locked badge', [
                 'badge_id' => $badge->id,
                 'locked_at' => $badge->printing_locked_at?->toIso8601String(),

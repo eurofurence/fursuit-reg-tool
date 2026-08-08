@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Manage;
 
 use App\Domain\CatchEmAll\Models\SpecialCode;
+use App\Domain\CatchEmAll\SpecialActions\SpecialCodeActionRegistry;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\SpecialCodeRequest;
 use App\Models\Event;
@@ -31,15 +32,6 @@ use Inertia\Response;
  */
 class SpecialCodeController extends Controller
 {
-    /**
-     * The only action class the panel offers, and the label it reads as. One hardcoded
-     * entry today, in two places that had to agree; one place here, read by the form
-     * options and by the Class column.
-     */
-    public const CLASS_OPTIONS = [
-        'App\\Domain\\CatchEmAll\\SpecialActions\\BugBountyAction' => 'Bug Hunter Bounty',
-    ];
-
     /**
      * Filament's model label for this resource, as its delete modals render it.
      */
@@ -154,11 +146,7 @@ class SpecialCodeController extends Controller
      */
     public static function classLabel(?string $className): ?string
     {
-        if ($className === null || $className === '') {
-            return null;
-        }
-
-        return self::CLASS_OPTIONS[$className] ?? $className;
+        return SpecialCodeActionRegistry::labelFor($className);
     }
 
     /**
@@ -270,27 +258,69 @@ class SpecialCodeController extends Controller
     /**
      * Shared by create and edit: one page component, one set of fields.
      *
+     * `constructor_data` no longer ships as a JSON string to be typed into. The record
+     * carries `data`, the declared keys of the selected class with their stored values,
+     * and `actionSchemas` carries the declaration for every class, so the client can swap
+     * the fields when the Select changes without another request. The stored document is
+     * still shipped, as `storedData`, but read-only: it is the only way an operator can
+     * see a key the current schema does not declare.
+     *
      * @return array<string, mixed>
      */
     private function formProps(?SpecialCode $specialCode): array
     {
+        $className = $specialCode?->class_name ?? '';
+        $residue = $specialCode
+            ? SpecialCodeActionRegistry::residue($className, $specialCode->constructor_data)
+            : null;
+
         return [
             'specialCode' => $specialCode ? [
                 'id' => $specialCode->id,
                 'event_id' => $specialCode->event_id,
                 'class_name' => $specialCode->class_name,
-                'constructor_data' => self::dataPreview($specialCode->constructor_data),
+                'data' => SpecialCodeActionRegistry::declaredValues($className, $specialCode->constructor_data),
+                'storedData' => self::dataPreview($specialCode->constructor_data),
+                // Non-null exactly when the stored document holds something the fields do
+                // not cover, which is what the form warns about.
+                'unmanagedData' => self::dataPreview($residue),
                 'code' => $specialCode->code,
             ] : null,
             'events' => Event::orderByDesc('starts_at')
                 ->get()
                 ->map(fn (Event $event) => ['value' => $event->id, 'label' => $event->name])
                 ->all(),
-            'classOptions' => collect(self::CLASS_OPTIONS)
-                ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
-                ->values()
-                ->all(),
+            'classOptions' => $this->classOptions($specialCode),
+            'actionSchemas' => SpecialCodeActionRegistry::schemas(),
             'catchUrlBase' => self::catchUrlBase(),
         ];
+    }
+
+    /**
+     * The Select options, plus the record's own class when that class is no longer one of
+     * them.
+     *
+     * A row can name a class that has since been removed, and the Select would otherwise
+     * silently show the first option instead, so an operator opening the page to change
+     * the code would rewire the action without noticing. The stored class is shown,
+     * labelled unavailable, and `Rule::in` still refuses it on save: the operator has to
+     * pick a class the redeem path can instantiate before the record can be written.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function classOptions(?SpecialCode $specialCode): array
+    {
+        $options = collect(SpecialCodeActionRegistry::options())
+            ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+            ->values()
+            ->all();
+
+        $className = $specialCode?->class_name;
+
+        if ($className !== null && $className !== '' && ! SpecialCodeActionRegistry::has($className)) {
+            $options[] = ['value' => $className, 'label' => $className.' (unavailable)'];
+        }
+
+        return $options;
     }
 }

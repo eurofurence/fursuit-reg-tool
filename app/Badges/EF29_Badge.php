@@ -13,6 +13,7 @@ use Imagine\Image\Palette\Color\ColorInterface;
 use Imagine\Image\Palette\RGB;
 use Imagine\Image\Point;
 use Mpdf\Mpdf;
+use Mpdf\Output\Destination;
 
 // Documentation: https://imagine.readthedocs.io/en/stable/
 
@@ -77,7 +78,7 @@ class EF29_Badge extends BadgeBase_V1 implements BadgeInterface
             $mpdf->Image('var:badgeImageBack', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
         }
 
-        return $mpdf->Output($badge->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN);
+        return $mpdf->Output($badge->id.'.pdf', Destination::STRING_RETURN);
     }
 
     private function addFirstLayer(Box $size)

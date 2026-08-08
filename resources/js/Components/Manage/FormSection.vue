@@ -25,6 +25,8 @@ const gridClass = {
   1: 'md:grid-cols-1',
   2: 'md:grid-cols-2',
   3: 'md:grid-cols-3',
+  // The batch infolist's Progress section is four across (audit 4.8).
+  4: 'md:grid-cols-4',
 };
 </script>
 
@@ -39,10 +41,21 @@ const gridClass = {
         <h2 class="text-[12px] font-semibold uppercase tracking-wide text-fg-1">{{ title }}</h2>
         <p v-if="description" class="text-[11px] text-fg-3">{{ description }}</p>
       </div>
+
+      <!--
+        Header actions: buttons that belong to the section rather than to a field in it,
+        e.g. opening a read-only breakdown of what the section edits. `click.stop` so a
+        button in a collapsible header does not also toggle the section it sits in.
+      -->
+      <div v-if="$slots.actions" class="ml-auto flex shrink-0 items-center gap-2" @click.stop>
+        <slot name="actions" />
+      </div>
+
       <ManageIcon
         v-if="collapsible"
         :name="open ? 'chevron-up' : 'chevron-down'"
-        class="ml-auto text-fg-3"
+        class="text-fg-3"
+        :class="$slots.actions ? '' : 'ml-auto'"
       />
     </header>
 

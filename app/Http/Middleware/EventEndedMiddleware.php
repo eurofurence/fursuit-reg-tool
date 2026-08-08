@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Event;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,7 @@ class EventEndedMiddleware
     public function handle(Request $request, Closure $next)
     {
         // Check if there is an active event
-        $event = \App\Models\Event::getActiveEvent();
+        $event = Event::getActiveEvent();
         if (! $event) {
             // Allow all badge routes to proceed - let the controllers handle authorization
             if (str_starts_with($request->route()->getName(), 'badges.')) {

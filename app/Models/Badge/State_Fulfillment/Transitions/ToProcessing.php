@@ -3,6 +3,7 @@
 namespace App\Models\Badge\State_Fulfillment\Transitions;
 
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Fulfillment\Processing;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Spatie\ModelStates\Transition;
@@ -63,7 +64,7 @@ class ToProcessing extends Transition
             }
 
             // IMPORTANT: Actually set the state to Processing
-            $this->badge->status_fulfillment = new \App\Models\Badge\State_Fulfillment\Processing($this->badge);
+            $this->badge->status_fulfillment = new Processing($this->badge);
             $this->badge->save();
 
             // Log activity when badge transitions to processing

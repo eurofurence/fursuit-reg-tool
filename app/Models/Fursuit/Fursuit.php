@@ -2,6 +2,7 @@
 
 namespace App\Models\Fursuit;
 
+use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\FCEA\UserCatchLog;
@@ -15,8 +16,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Drivers\Gd\Driver;
-use Intervention\Image\ImageManager;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\ModelStates\HasStates;
@@ -37,9 +36,10 @@ class Fursuit extends Model
         'status' => FursuitStatusState::class,
         'published' => 'boolean',
         'catch_em_all' => 'boolean',
+        'publication_blocked_at' => 'datetime',
     ];
 
-    protected $appends = ['image_url', 'image_webp_url'];
+    protected $appends = ['image_url', 'image_webp_url', 'image_thumb_url'];
 
     public function user(): BelongsTo
     {
@@ -64,86 +64,104 @@ class Fursuit extends Model
     public function imageUrl(): Attribute
     {
         return Attribute::make(
-            get: function ($value) {
-                if (! $this->image) {
-                    return null;
-                }
-
-                try {
-                    return Storage::temporaryUrl($this->image, now()->addMinutes(5));
-                } catch (\Exception $e) {
-                    // Fallback for when temporary URLs aren't supported (e.g., testing)
-                    return Storage::url($this->image);
-                }
-            },
+            get: fn () => self::signedStorageUrl($this->image),
         );
     }
 
+    /**
+     * The gallery variant, or the original when no webp has been rendered yet.
+     *
+     * Rendering is the write side's job (FursuitObserver -> GenerateFursuitWebpJob): this
+     * accessor used to encode a missing webp inline, which put an s3 download plus a GD
+     * encode plus a model write into every gallery request that happened to hit a fursuit
+     * without one - and, because it keyed off "column empty" rather than "photo changed",
+     * it served the old picture forever once the attendee replaced their photo.
+     */
     public function imageWebpUrl(): Attribute
     {
         return Attribute::make(
-            get: function ($value) {
-                // If webp version doesn't exist, try to generate it
-                if (! $this->image_webp && $this->image) {
-                    try {
-                        $originalImage = Storage::get($this->image);
-                        $manager = new ImageManager(new Driver);
-                        $path = 'gallery/fursuits/'.pathinfo($this->image, PATHINFO_FILENAME).'.webp';
-
-                        $webp = $manager->read($originalImage)->toWebp();
-                        Storage::put($path, $webp);
-                        $this->update(['image_webp' => $path]);
-
-                        try {
-                            return Storage::temporaryUrl($path, now()->addMinutes(5));
-                        } catch (\Exception $e2) {
-                            return Storage::url($path);
-                        }
-                    } catch (\Exception $e) {
-                        // Log the error for debugging
-                        \Log::warning('Failed to generate WebP for fursuit '.$this->id.': '.$e->getMessage());
-
-                        // Fallback to original image if WebP generation fails
-                        try {
-                            return Storage::temporaryUrl($this->image, now()->addMinutes(5));
-                        } catch (\Exception $e2) {
-                            return Storage::url($this->image);
-                        }
-                    }
-                }
-
-                // Return existing webp image if available
-                if ($this->image_webp) {
-                    try {
-                        return Storage::temporaryUrl($this->image_webp, now()->addMinutes(5));
-                    } catch (\Exception $e) {
-                        // If webp URL generation fails, fall back to original
-                        \Log::warning('Failed to generate WebP URL for fursuit '.$this->id.': '.$e->getMessage());
-                        try {
-                            return Storage::url($this->image_webp);
-                        } catch (\Exception $e2) {
-                            // Fall back to regular image
-                        }
-                    }
-                }
-
-                // Fallback to original image
-                if ($this->image) {
-                    try {
-                        return Storage::temporaryUrl($this->image, now()->addMinutes(5));
-                    } catch (\Exception $e) {
-                        \Log::error('Failed to generate image URL for fursuit '.$this->id.': '.$e->getMessage());
-                        try {
-                            return Storage::url($this->image);
-                        } catch (\Exception $e2) {
-                            return null;
-                        }
-                    }
-                }
-
-                return null;
-            },
+            get: fn () => self::variantUrl($this->image_webp),
         );
+    }
+
+    /**
+     * The grid thumbnail, or the bigger variant while only that one is rendered.
+     *
+     * Never the master. The originals are print-quality - 2040x2720 and well over a
+     * megabyte is normal - so falling back to one put a full-size photo inside a 375px
+     * card. A fursuit without variants is simply not shown; the gallery query filters
+     * those rows out rather than serving something that heavy.
+     */
+    public function imageThumbUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => self::variantUrl($this->image_thumb) ?? self::variantUrl($this->image_webp),
+        );
+    }
+
+    /**
+     * A link to a rendered gallery variant.
+     *
+     * With `gallery.public_variants` on, this is a plain unsigned URL: stable forever,
+     * so the browser and any CDN in front of the bucket can actually keep the file.
+     * That is the whole point - a presigned URL is a new string on every mint, which
+     * turns the same picture into a cache miss on every page load.
+     *
+     * The switch only applies to the variant prefix. A fursuit whose render has not
+     * landed yet falls back to its master photo, and that stays signed whatever the
+     * setting says.
+     */
+    public static function variantUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        if (config('gallery.public_variants') && str_starts_with($path, config('gallery.variant_prefix'))) {
+            return Storage::url($path);
+        }
+
+        return self::signedStorageUrl($path);
+    }
+
+    /** How long a handed-out signature stays valid. */
+    public const SIGNED_URL_LIFETIME_DAYS = 7;
+
+    /** How long we keep reusing the same signature. Shorter, so a served link never expires. */
+    public const SIGNED_URL_CACHE_DAYS = 6;
+
+    /**
+     * A signed link to a private object, reusing one signature for days.
+     *
+     * The bucket refuses public objects, so every image is a presigned URL - and a
+     * presigned URL is a *different URL* each time it is minted. That made the browser
+     * cache useless: same picture, new cache key on every page load, so a gallery page
+     * re-downloaded every thumbnail it had already seen. Handing out the identical
+     * string for days lets `Cache-Control` on the object (see GenerateFursuitWebpJob)
+     * actually do its job.
+     *
+     * The cache window is deliberately shorter than the signature, so nobody is ever
+     * handed a link that is about to expire. Signing is also not free and the gallery
+     * asks for twenty per page.
+     */
+    public static function signedStorageUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        return Cache::remember('storage:signed-url:'.md5($path), now()->addDays(self::SIGNED_URL_CACHE_DAYS), function () use ($path) {
+            try {
+                return Storage::temporaryUrl($path, now()->addDays(self::SIGNED_URL_LIFETIME_DAYS));
+            } catch (\Throwable $e) {
+                // Disks that cannot sign (the fake used in tests, a local dev disk).
+                try {
+                    return Storage::url($path);
+                } catch (\Throwable $e2) {
+                    return null;
+                }
+            }
+        });
     }
 
     private function getClaimCacheKey(): string
@@ -201,7 +219,7 @@ class Fursuit extends Model
 
     public function catchedByUsers()
     {
-        return $this->hasMany(\App\Domain\CatchEmAll\Models\UserCatch::class);
+        return $this->hasMany(UserCatch::class);
     }
 
     /**

@@ -37,6 +37,33 @@ enum PrintJobStatusEnum: string
     }
 
     /**
+     * Whether a card is still expected to come out of a printer for this job.
+     *
+     * Wider than isActive() by one state: a Pending job has not been claimed yet, but it
+     * is queued and it will print. This is the question "does this badge already have a
+     * card on its way", which is what stops the same badge being queued into two runs and
+     * what decides whether cancelling one run may hand editing back to the attendee.
+     *
+     * Failed is deliberately not in the list. No card came out, the operator is the one
+     * who decides whether to requeue it or print the badge again, and neither of those is
+     * blocked by the failure.
+     */
+    public function isOutstanding(): bool
+    {
+        return in_array($this, [self::Pending, self::Queued, self::Printing, self::Retrying], true);
+    }
+
+    /**
+     * The statuses isOutstanding() answers true for, for use in a whereIn.
+     *
+     * @return array<int, self>
+     */
+    public static function outstanding(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $case) => $case->isOutstanding()));
+    }
+
+    /**
      * Whether an agent currently holds a lease on this job. Such a job is
      * reclaimable once that lease expires.
      */

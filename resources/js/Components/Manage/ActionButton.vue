@@ -9,7 +9,7 @@
  */
 import { computed, reactive, ref, watch } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
-import Dialog from 'primevue/dialog';
+import ManageDialog from './ManageDialog.vue';
 import ManageIcon from './ManageIcon.vue';
 import { resolve, toneButton } from './tones.js';
 
@@ -19,6 +19,14 @@ const props = defineProps({
   data: { type: Object, default: () => ({}) },
   iconOnly: { type: Boolean, default: false },
 });
+
+/**
+ * Fired once the action's request came back successfully. The bulk bar listens for it to
+ * drop the selection, which is Filament's deselectRecordsAfterCompletion. Only success:
+ * a validation error or a refused action leaves the selection alone, so the operator can
+ * read the toast and try again against the same rows.
+ */
+const emit = defineEmits(['completed']);
 
 const open = ref(false);
 const processing = ref(false);
@@ -53,6 +61,7 @@ const submit = () => {
     method: props.action.method,
     data: { ...props.data, ...form },
     preserveScroll: true,
+    onSuccess: () => emit('completed'),
     onFinish: () => {
       processing.value = false;
       open.value = false;
@@ -76,32 +85,6 @@ const activate = () => {
 
 const base =
   'inline-flex h-7 items-center gap-1.5 rounded border px-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40';
-
-/*
- * PrimeVue runs unstyled with the local Lara preset, so a <Dialog> carries the preset's
- * Tailwind utilities rather than p-* hooks. A component-level `pt` replaces the preset's
- * classes for the sections named here (mergeProps is off by default). `manage-surface` on
- * the mask re-points the token block for the overlay, which is teleported to <body> and so
- * sits outside the .manage subtree. Same arrangement as posDialog.js.
- */
-const dialogPt = {
-  mask: { class: ['manage-surface', 'p-5', 'bg-black/50'] },
-  root: {
-    class: [
-      'flex flex-col',
-      'm-0 max-h-[90vh] w-[28rem] max-w-full',
-      'rounded-md border border-hairline bg-mg-surface-1 text-fg-1 shadow-xl',
-    ],
-  },
-  header: { class: ['flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-4 py-3'] },
-  title: { class: ['text-base font-medium text-fg-1'] },
-  content: { class: ['flex flex-col gap-3 overflow-y-auto px-4 py-3'] },
-  footer: { class: ['flex shrink-0 items-center justify-end gap-2 border-t border-hairline px-4 py-3'] },
-  closeButton: {
-    class: ['inline-flex size-6 items-center justify-center rounded text-fg-3 transition-colors hover:bg-mg-surface-3 hover:text-fg-1'],
-  },
-  closeButtonIcon: { class: ['inline-block', 'w-4', 'h-4'] },
-};
 </script>
 
 <template>
@@ -139,13 +122,9 @@ const dialogPt = {
     <span v-if="!iconOnly">{{ action.label }}</span>
   </button>
 
-  <Dialog
+  <ManageDialog
     v-model:visible="open"
-    modal
-    dismissable-mask
-    :draggable="false"
     :header="action.confirm?.heading ?? action.label"
-    :pt="dialogPt"
   >
     <p v-if="action.confirm?.description" class="text-[13px] text-fg-2">
       {{ action.confirm.description }}
@@ -166,12 +145,17 @@ const dialogPt = {
           </option>
         </select>
 
+        <!-- maxlength, not just the server rule: Filament's ->maxLength() stopped typing
+             at the cap, so an over-long pause reason was never written in the first place.
+             Without it the box takes the text and the refusal arrives as a 422 after the
+             operator has hit Confirm, at a jammed printer. -->
         <textarea
           v-else-if="field.type === 'textarea'"
           v-model="form[field.key]"
           rows="3"
           class="rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[13px] text-fg-1"
           :required="field.required"
+          :maxlength="field.maxLength"
         />
 
         <input
@@ -180,6 +164,7 @@ const dialogPt = {
           :type="field.type === 'number' ? 'number' : 'text'"
           class="h-8 rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1"
           :required="field.required"
+          :maxlength="field.maxLength"
         />
 
         <span v-if="field.helper" class="text-[11px] text-fg-3">{{ field.helper }}</span>
@@ -204,5 +189,5 @@ const dialogPt = {
         {{ action.confirm?.submit ?? action.label }}
       </button>
     </template>
-  </Dialog>
+  </ManageDialog>
 </template>

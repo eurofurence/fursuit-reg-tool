@@ -7,6 +7,10 @@ const props = defineProps({
     hideCount: Boolean
 });
 
+// The grid gets the 500px thumbnail; callers that do not carry one (the
+// Catch-Em-All collection) fall back to the full gallery variant.
+const thumbSrc = computed(() => props.fursuit.thumb || props.fursuit.image);
+
 const rarityConfig = computed(() => {
     const level = props.rarity?.level || 'common';
     
@@ -69,7 +73,7 @@ const rarityConfig = computed(() => {
          :class="[rarityConfig.cardGlow, rarityConfig.cardRing]">
         <div class="overflow-hidden">
             <img
-                :src="fursuit.image"
+                :src="thumbSrc"
                 :alt="fursuit.name"
                 class="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-110"
                 loading="lazy"

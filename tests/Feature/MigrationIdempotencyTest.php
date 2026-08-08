@@ -2,10 +2,11 @@
 
 use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 /**
  * Locks in the behaviour of App\Support\Migrations\SchemaGuard, the helper that

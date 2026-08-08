@@ -3,7 +3,8 @@
 namespace App\Http\Requests\Manage;
 
 use App\Domain\CatchEmAll\Models\SpecialCode;
-use App\Http\Controllers\Manage\SpecialCodeController;
+use App\Domain\CatchEmAll\SpecialActions\ActionField;
+use App\Domain\CatchEmAll\SpecialActions\SpecialCodeActionRegistry;
 use App\Models\Fursuit\Fursuit;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
@@ -19,6 +20,13 @@ use Illuminate\Validation\Rule;
  * `catch_url` is deliberately absent. It is a preview built from `code`, never stored
  * (`dehydrated(false)` in the Filament form), so it must not reach the model, which has
  * `$guarded = []`.
+ *
+ * `constructor_data` is absent for the same reason, and this is the change that removed
+ * the last editable JSON from the panel. The request takes `data[<field>]`, one input per
+ * key the selected action class declares, validates each on its own path so a bad value is
+ * an error on that field, and payload() assembles the object. The old textarea is not
+ * accepted under any name: a request that still sends `constructor_data` is ignored, not
+ * merged, because nothing outside a declared field may decide the stored shape.
  */
 class SpecialCodeRequest extends FormRequest
 {
@@ -38,41 +46,12 @@ class SpecialCodeRequest extends FormRequest
     {
         $specialCode = $this->route('code');
 
-        return [
+        $rules = [
             'event_id' => ['required', 'integer', 'exists:events,id'],
             // Not required, matching the form today. The list renders a missing class
             // as an empty cell rather than crashing on it (audit 30).
-            'class_name' => ['nullable', 'string', Rule::in(array_keys(SpecialCodeController::CLASS_OPTIONS))],
-            'constructor_data' => [
-                'nullable',
-                'json',
-                /*
-                 * `json` alone accepts any JSON document, so `[1,2,3]` or `5` passes it.
-                 * The stored value is handed straight to
-                 * AbstractSpecialCodeAction::__construct, whose third argument is typed
-                 * `?object`, and the redeem path catches \Exception only, so a TypeError
-                 * (an \Error) escapes GameController's handler and 500s an attendee's
-                 * scan instead of degrading to its error message. The field only became
-                 * editable with plan 2.10 #39, so this is the first time anything could
-                 * write a non-object here.
-                 */
-                function (string $attribute, mixed $value, callable $fail) {
-                    if (! is_string($value)) {
-                        return;
-                    }
-
-                    $decoded = json_decode($value);
-
-                    // Malformed JSON is the `json` rule's message to give, not this one's.
-                    if (json_last_error() !== JSON_ERROR_NONE) {
-                        return;
-                    }
-
-                    if (! is_object($decoded)) {
-                        $fail('The :attribute must be a JSON object.');
-                    }
-                },
-            ],
+            'class_name' => ['nullable', 'string', Rule::in(array_keys(SpecialCodeActionRegistry::options()))],
+            'data' => ['nullable', 'array'],
             'code' => [
                 'required',
                 'string',
@@ -89,6 +68,17 @@ class SpecialCodeRequest extends FormRequest
                 },
             ],
         ];
+
+        /*
+         * The rules for the data half come from the class the request is naming. An
+         * unregistered class fails the Rule::in above and declares no fields here, so
+         * nothing is validated against a schema that does not exist.
+         */
+        foreach ($this->fields() as $field) {
+            $rules['data.'.$field->name] = $field->validationRules();
+        }
+
+        return $rules;
     }
 
     /**
@@ -96,23 +86,31 @@ class SpecialCodeRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return [
+        $attributes = [
             'event_id' => 'Event',
             'class_name' => 'Class',
-            'constructor_data' => 'Constructor Data',
+            'data' => 'Action data',
             'code' => 'Code',
         ];
+
+        // So a field error reads "The Amount field must be an integer" rather than naming
+        // the data.amount path.
+        foreach ($this->fields() as $field) {
+            $attributes['data.'.$field->name] = $field->label;
+        }
+
+        return $attributes;
     }
 
     /**
-     * The attributes to write, with `constructor_data` decoded.
+     * The attributes to write, with `constructor_data` assembled from the validated fields.
      *
-     * The model casts `constructor_data` to `object`, so assigning the textarea's raw
-     * JSON string would json_encode the string itself and store a quoted blob that
-     * `createActionInstance()` then hands the action class as a string, not the object
-     * its constructor is typed for. The field is disabled today so nothing has ever been
-     * written through it; it becomes editable with plan 2.10 #39, which is exactly when
-     * this has to be right.
+     * Always an object or null, never anything else. `AbstractSpecialCodeAction::__construct`
+     * types its third argument `?object` and GameController catches `\Exception` only, so a
+     * stored list or scalar raises a TypeError that escapes the handler and 500s an
+     * attendee's scan instead of degrading to its error message. The old rule allowed that
+     * because `json` accepts any JSON document; there is no longer a path that lets the
+     * request choose the shape at all.
      *
      * @return array<string, mixed>
      */
@@ -128,11 +126,74 @@ class SpecialCodeRequest extends FormRequest
              * renders as an empty cell exactly like the null rows already in the
              * database; writing null would make saving the form a database error.
              */
-            'class_name' => $validated['class_name'] ?? '',
-            'constructor_data' => isset($validated['constructor_data'])
-                ? json_decode($validated['constructor_data'])
-                : null,
+            'class_name' => $this->className(),
+            'constructor_data' => $this->constructorData($validated['data'] ?? []),
             'code' => $validated['code'],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $submitted
+     */
+    private function constructorData(array $submitted): ?object
+    {
+        $stored = $this->route('code') instanceof SpecialCode
+            ? $this->route('code')->constructor_data
+            : null;
+
+        /*
+         * Keys the current schema does not declare are the operator's data, not ours, so
+         * an edit that does not touch them writes them back unchanged: that is what makes
+         * a row written before this form existed survive a round trip through it.
+         *
+         * They are dropped when the class changes, because they described the previous
+<<<<<<< worktree
+         * action, and when the stored value was not an object, because there are no keys
+         * to keep there and writing the value back would restore the shape that raises a
+=======
+         * action, and when the stored value was not an object, because residue() returns
+         * the raw value there and writing it back would restore the shape that raises a
+>>>>>>> stash
+         * TypeError in the redeem path.
+         */
+        $sameClass = $this->className() === (string) ($this->route('code')?->class_name ?? '');
+        $data = [];
+
+        if ($sameClass) {
+            $data = SpecialCodeActionRegistry::undeclaredKeys($this->className(), $stored);
+        }
+
+        foreach ($this->fields() as $field) {
+            $data[$field->name] = $field->cast($submitted[$field->name] ?? $field->defaultValue());
+        }
+
+        /*
+         * Nothing to store. A code created without data keeps holding null, which is what
+         * every such row holds today, and a class change that dropped the previous
+         * action's keys clears the column rather than leaving an empty object behind. A
+         * row that already held an object under the same class keeps holding one.
+         */
+        if ($data === []) {
+            return $sameClass && $stored !== null ? (object) [] : null;
+        }
+
+        return (object) $data;
+    }
+
+    private function className(): string
+    {
+        $className = $this->input('class_name');
+
+        return is_string($className) ? $className : '';
+    }
+
+    /**
+     * The declared fields of the class this request names.
+     *
+     * @return array<int, ActionField>
+     */
+    private function fields(): array
+    {
+        return SpecialCodeActionRegistry::fieldsFor($this->className());
     }
 }

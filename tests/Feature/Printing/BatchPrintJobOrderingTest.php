@@ -293,7 +293,7 @@ test('mass print uses single laravel batch with proper ordering', function () {
 
     // Create PrintBadgeJob instances
     $printJobs = $sortedBadges->map(function ($badge) use ($printerId) {
-        return new \App\Jobs\Printing\PrintBadgeJob($badge, $printerId, priority: 1);
+        return new PrintBadgeJob($badge, $printerId, priority: 1);
     })->toArray();
 
     // Dispatch as single batch
@@ -311,7 +311,7 @@ test('mass print uses single laravel batch with proper ordering', function () {
 
         // All should be PrintBadgeJob instances
         foreach ($jobs as $job) {
-            expect($job)->toBeInstanceOf(\App\Jobs\Printing\PrintBadgeJob::class);
+            expect($job)->toBeInstanceOf(PrintBadgeJob::class);
         }
 
         return true;

@@ -2523,7 +2523,16 @@ No colour mapping anywhere; the column is plain text.
 | `RejectBinFull` | `reject_bin_full` | `Reject bin full` | `Empty the reject bin.` | **yes** | no |
 | `ServiceRequired` | `service_required` | `Service required` | `Printer needs servicing, check the front panel.` | **yes** | no |
 | `Offline` | `offline` | `Printer offline` | `Check printer power and network cable.` | **yes** | no |
+| `Initializing` | `initializing` | `Warming up` | - | **yes** | no |
 | `Unknown` | `unknown` | `Unknown state` | `Check the printer front panel for a message.` | **yes** | no |
+
+Fifteen cases, not fourteen: `Initializing` was missing from this table on the first pass.
+It matters twice over. `Status::printerCondition()` already handles it, and the rail's
+"stopped printers" chip counts `isStop()`, so a printer that is merely warming up is
+counted as stopped there - correct for "cannot print right now", surprising if the chip is
+read as "broken". `severity()` is the one place it is separated out: it returns `info`
+rather than `danger`, because red would send somebody to a machine that needs nothing
+doing to it.
 
 No colour mapping is defined on this enum. Remedies are shown in the POS alert, never in admin.
 

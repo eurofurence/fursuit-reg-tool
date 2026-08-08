@@ -7,8 +7,8 @@ use App\Domain\Printing\Services\BadgePrintQueue;
 use App\Http\Controllers\Controller;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\PickedUp;
-use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
+use App\Models\Event;
 use Illuminate\Http\Request;
 
 class BadgeController extends Controller
@@ -20,7 +20,7 @@ class BadgeController extends Controller
 
         // If no specific badge IDs provided, get the first 50 unprinted badges with lowest attendee_id
         if (empty($badgeIds)) {
-            $currentEvent = \App\Models\Event::latest('starts_at')->first();
+            $currentEvent = Event::latest('starts_at')->first();
 
             if (! $currentEvent) {
                 return back()->with('error', 'No current event found');

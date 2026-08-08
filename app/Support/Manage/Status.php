@@ -132,12 +132,23 @@ final class Status
         return match (self::value($status)) {
             'ACTIVE' => self::make('Active', self::WARN, 'circle-dot'),
             'FINISHED' => self::make('Finished', self::OK, 'circle-check'),
-            'CANCELLED' => self::make('Cancelled', self::IDLE, 'circle-x'),
+            // danger, as CheckoutResource's column had it. A cancelled fiscal record is
+            // not a neutral one, and idle is what an unknown status renders as.
+            'CANCELLED' => self::make('Cancelled', self::DANGER, 'circle-x'),
             default => self::unknown($status),
         };
     }
 
     /**
+     * A card's own status.
+     *
+     * The two Filament maps disagreed about Queued (`info` on the print-job list, `primary`
+     * alongside Printing on the batch card list) and this keeps the finer of the two: a
+     * claimed card reads `info` and a card actually in the printer reads `live`. Both stay
+     * apart from the `warn` that Pending and Retrying share, which is the distinction the
+     * column is read for - collapsing them put a card in the printer on the same tone as
+     * one waiting behind a retry.
+     *
      * @return array{label: string, tone: string, icon: string|null}
      */
     public static function printJob(PrintJobStatusEnum|string|null $status): array
@@ -152,6 +163,8 @@ final class Status
             PrintJobStatusEnum::Printed => self::OK,
             PrintJobStatusEnum::Failed => self::DANGER,
             PrintJobStatusEnum::Cancelled => self::IDLE,
+            PrintJobStatusEnum::Queued => self::INFO,
+            PrintJobStatusEnum::Printing => self::LIVE,
             default => self::WARN,
         };
 
@@ -183,6 +196,13 @@ final class Status
     }
 
     /**
+     * A run's own status.
+     *
+     * Six states, six distinguishable tones, because this is the screen an operator reads
+     * while a printer is jammed. `primary` becomes `live` (a run that is moving) and stays
+     * apart from Paused's `warn`; Cancelled keeps the resource's `danger` rather than
+     * sharing Draft's neutral tone, so a killed run cannot read as one that never started.
+     *
      * @return array{label: string, tone: string, icon: string|null}
      */
     public static function printBatch(PrintBatchStatusEnum|string|null $status): array
@@ -196,10 +216,10 @@ final class Status
         [$tone, $icon] = match ($case) {
             PrintBatchStatusEnum::Draft => [self::IDLE, 'circle'],
             PrintBatchStatusEnum::Ready => [self::INFO, 'circle-dot'],
-            PrintBatchStatusEnum::Printing => [self::WARN, 'printer'],
+            PrintBatchStatusEnum::Printing => [self::LIVE, 'printer'],
             PrintBatchStatusEnum::Paused => [self::WARN, 'circle-pause'],
             PrintBatchStatusEnum::Completed => [self::OK, 'circle-check'],
-            PrintBatchStatusEnum::Cancelled => [self::IDLE, 'circle-x'],
+            PrintBatchStatusEnum::Cancelled => [self::DANGER, 'circle-x'],
         };
 
         return self::make($case->label(), $tone, $icon);

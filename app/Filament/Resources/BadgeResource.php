@@ -2,8 +2,12 @@
 
 namespace App\Filament\Resources;
 
+use App\Badges\EF28_Badge;
+use App\Badges\EF29_Badge;
+use App\Badges\EF30_Badge;
 use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Services\BadgePrintQueue;
+use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Filament\Resources\BadgeResource\Pages;
 use App\Filament\Traits\HasEventFilter;
@@ -17,6 +21,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class BadgeResource extends Resource
 {
@@ -533,10 +538,10 @@ class BadgeResource extends Resource
         $badgeClass = $badge->fursuit->event->badge_class ?? 'EF30_Badge';
 
         $printer = match ($badgeClass) {
-            'EF30_Badge' => new \App\Badges\EF30_Badge,
-            'EF29_Badge' => new \App\Badges\EF29_Badge,
-            'EF28_Badge' => new \App\Badges\EF28_Badge,
-            default => new \App\Badges\EF30_Badge,
+            'EF30_Badge' => new EF30_Badge,
+            'EF29_Badge' => new EF29_Badge,
+            'EF28_Badge' => new EF28_Badge,
+            default => new EF30_Badge,
         };
 
         // Generate PDF content
@@ -544,13 +549,13 @@ class BadgeResource extends Resource
 
         // Store PDF Content in PrintJobs Storage
         $filePath = 'badges/'.$badge->id.'.pdf';
-        \Illuminate\Support\Facades\Storage::put($filePath, $pdfContent);
+        Storage::put($filePath, $pdfContent);
 
         // Create PrintJob with the specified printer and file
         $badge->printJobs()->create([
             'printer_id' => $printerId,
             'type' => PrintJobTypeEnum::Badge,
-            'status' => \App\Enum\PrintJobStatusEnum::Pending,
+            'status' => PrintJobStatusEnum::Pending,
             'file' => $filePath,
             'queued_at' => now(),
             'priority' => 1,

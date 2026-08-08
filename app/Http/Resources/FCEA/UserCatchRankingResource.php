@@ -3,10 +3,11 @@
 namespace App\Http\Resources\FCEA;
 
 use App\Http\Resources\FursuitResource;
+use App\Models\FCEA\UserCatchRanking;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\FCEA\UserCatchRanking */
+/** @mixin UserCatchRanking */
 class UserCatchRankingResource extends JsonResource
 {
     public function toArray(Request $request): array

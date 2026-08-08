@@ -8,15 +8,15 @@
  * are gathered back up here.
  *
  * No filters and no search: the Filament table declared neither, and the only narrowing
- * that exists is the global event scope, which the strip already owns. So there is no
- * FilterBar here at all rather than an empty one.
+ * that exists is the global event scope, which the strip already owns. So DataTable is
+ * mounted without `searchable`. No column is toggleable either, so DataTable draws no
+ * toolbar at all here and the rows start straight under the header.
  */
 import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import DataTable from '@/Components/Manage/DataTable.vue';
 import PageHeader from '@/Components/Manage/PageHeader.vue';
-import Pagination from '@/Components/Manage/Pagination.vue';
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -52,7 +52,5 @@ const table = computed(() => ({
     <PageHeader title="Special Codes" :actions="pageActions" />
 
     <DataTable :table="table" />
-
-    <Pagination :meta="meta" />
   </ManageLayout>
 </template>

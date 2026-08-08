@@ -2,7 +2,7 @@
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import { router } from "@inertiajs/vue3";
 import { Award, Crown, Star, TrendingUp, Trophy } from "lucide-vue-next";
-import Card from "primevue/card";
+import Card from "@/Components/UI/UiCard.vue";
 import { computed, ref } from "vue";
 
 const props = defineProps<{

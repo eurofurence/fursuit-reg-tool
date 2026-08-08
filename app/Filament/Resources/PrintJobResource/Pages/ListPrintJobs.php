@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PrintJobResource\Pages;
 
+use App\Domain\Printing\Models\Printer;
 use App\Filament\Resources\PrintJobResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
@@ -21,7 +22,7 @@ class ListPrintJobs extends ListRecords
     {
         // Check if we're filtering by printer
         if (request()->has('printer')) {
-            $printerName = \App\Domain\Printing\Models\Printer::find(request('printer'))?->name ?? 'Unknown';
+            $printerName = Printer::find(request('printer'))?->name ?? 'Unknown';
 
             return "Print Jobs - {$printerName}";
         }

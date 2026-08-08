@@ -3,8 +3,12 @@
 namespace App\Filament\Resources\CheckoutResource\Pages;
 
 use App\Domain\Checkout\Models\Checkout\Checkout;
+use App\Domain\Printing\Models\Printer;
+use App\Enum\PrintJobStatusEnum;
 use App\Filament\Resources\CheckoutResource;
+use App\Jobs\CreateReceiptFromCheckoutJob;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewCheckout extends ViewRecord
@@ -27,15 +31,15 @@ class ViewCheckout extends ViewRecord
                 ->color('info')
                 ->action(function (Checkout $record) {
                     // Generate receipt PDF
-                    \App\Jobs\CreateReceiptFromCheckoutJob::dispatchSync($record);
+                    CreateReceiptFromCheckoutJob::dispatchSync($record);
 
                     // Find active receipt printer
-                    $receiptPrinter = \App\Domain\Printing\Models\Printer::where('is_active', true)
+                    $receiptPrinter = Printer::where('is_active', true)
                         ->where('type', 'receipt')
                         ->first();
 
                     if (! $receiptPrinter) {
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('No receipt printer found')
                             ->body('Please configure an active receipt printer first.')
                             ->danger()
@@ -49,10 +53,10 @@ class ViewCheckout extends ViewRecord
                         'printer_id' => $receiptPrinter->id,
                         'type' => 'receipt',
                         'file' => 'checkouts/'.$record->id.'.pdf',
-                        'status' => \App\Enum\PrintJobStatusEnum::Pending,
+                        'status' => PrintJobStatusEnum::Pending,
                     ]);
 
-                    \Filament\Notifications\Notification::make()
+                    Notification::make()
                         ->title('Receipt added to print queue')
                         ->body("Receipt for checkout #{$record->id} has been queued for printing.")
                         ->success()

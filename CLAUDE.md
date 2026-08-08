@@ -174,6 +174,53 @@ the available transitions rather than mutating state properties directly.
 - PDF generation uses `mpdf/mpdf`; images are processed with Intervention/Imagine and stored on S3
 - QR codes are generated for the Catch-Em-All game integration
 
+### Public site navigation
+
+- The public chrome is thumb-first: a 56px header that carries brand and account only, a
+  pill rail under it on `md+`, and a **fixed bottom tab bar below `md`**. All of it lives in
+  `resources/js/Components/SiteNav/`, wired up by `Layouts/Layout.vue`.
+- **Destinations are declared once**, in `SiteNav/navItems.js`, and rendered three times
+  (rail, tab bar, footer) through `useSiteNav()`. Add a link there, not in a component - the
+  old header and footer each had their own list and disagreed about what the site contained.
+- The tab bar has four slots plus "More", filled by `primary.slice(0, TAB_SLOTS)`. A hidden
+  entry promotes the next one instead of leaving a gap, so never hard-code which four.
+- **Active state must be derived from `page.url`, never from `window.location`.** Ziggy's
+  `route().current()` is still the matcher, but it reads `window.location`, which Vue cannot
+  track - and Inertia reuses the same `Layout` instance across visits, so a template calling
+  a `current()` helper never re-renders and the highlight sticks on whatever page was loaded
+  from the server (it only looks right on a full reload). `useSiteNav()` therefore builds a
+  Ziggy router with `location` set from Inertia's reactive `page.url`. Test nav changes by
+  **clicking**, not by loading each URL. Ziggy's `current()` also takes one pattern and reads
+  its second argument as route params, so `match` patterns are tested one at a time.
+- `/faq`, `/pickup` and `/catch-em-all` are `InfoController` (`info.*`). `/catch-em-all` is an
+  info page with a button into the game subdomain; `/fcea` stays a bare redirect for QR codes
+  and print. The Catch-Em-All nav entry is gated on the `catchEmAllActive` shared prop, which
+  `HandleInertiaRequests::share()` computes from the event it already loaded
+  (`Event::isCatchEmAllActive()`) - do not add a second query for it.
+- Pages under the layout need no bottom padding of their own; the layout spacer clears the
+  tab bar.
+
+### Gallery
+
+- `/gallery` is a folder overview (one card per event, plus an "all fursuits" card);
+  the grid lives at `/gallery/all` and `/gallery/event/{event}` (`gallery.all`,
+  `gallery.event`). Old `?event=` links redirect into the matching folder. Folder counts
+  and covers are cached under `GalleryController::FOLDER_CACHE_KEY`, which `FursuitObserver`
+  drops whenever a fursuit changes what a card shows.
+- **The gallery webp is derived data, generated on write, never on read.** `FursuitObserver`
+  clears `image_webp` the moment `image` changes and queues `GenerateFursuitWebpJob`, which
+  encodes to the deterministic path `gallery/fursuits/{original-filename}.webp` and deletes
+  the orphan. `Fursuit::imageWebpUrl()` only reads, falling back to the original when no
+  variant exists yet.
+  Do not restore on-read generation: it put an S3 download plus a GD encode plus a model
+  write inside gallery requests, and because it keyed off "column empty" rather than
+  "photo changed", a fursuit whose photo was replaced after approval kept serving the
+  previous picture forever.
+- Backfill / repair: `php artisan fursuits:generate-webp --stale` (add `--sync` to encode in
+  process, `--all` to re-render everything).
+- Signed storage URLs are cached for 30 minutes by `Fursuit::signedStorageUrl()`; a gallery
+  page otherwise signs 20 objects per load.
+
 ### Printing System
 
 - On-site printing is driven through **QZ Tray** (browser-to-printer bridge); the POS exposes
@@ -241,8 +288,11 @@ A user with `getPrepaidBadgesLeft() == 0` can still order an additional **paid**
 order window is open. The public Welcome page (`Welcome.vue`) therefore gates its create/customize
 button on the authoritative `canCreate` (`Gate::allows('create', Badge::class)`) passed by
 `WelcomeController`, not on `prepaidBadgesLeft`. `PrepaidBadgePriceConsistencyTest` locks in the
-pricing; `FreeBadgeRepairService` (admin → Maintenance → DB Service) repairs already-wrongly-charged
-badges. See `docs/bugfix-01-result.md`, `docs/bugfix-03-fix.md`, and `docs/handoff.md`.
+pricing; `DbServiceController` (admin → Maintenance → DB Service) repairs already-wrongly-charged
+badges. It replaces `App\Services\FreeBadgeRepairService`, which was deleted in `5aa2148` together
+with the Filament page it served; the repair now lives in the controller that owns the screen, and
+zeroing the badge total *is* the correction since the wallet credit went with the wallet package
+(`fa0554e`). See `docs/bugfix-01-result.md`, `docs/bugfix-03-fix.md`, and `docs/handoff.md`.
 
 ### Migrations must be idempotent
 

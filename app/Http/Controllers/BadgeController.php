@@ -14,7 +14,10 @@ use App\Models\Species;
 use App\Models\User;
 use App\Notifications\BadgeCreatedNotification;
 use App\Services\BadgeCalculationService;
+use App\Services\FursuitImageService;
 use App\Services\TokenRefreshService;
+use App\Support\DeskOpeningHours;
+use App\Support\PickupBooths;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -34,8 +37,10 @@ class BadgeController extends Controller
         // Load relationships
         $badge->load(['fursuit.species', 'fursuit.event', 'fursuit.user']);
 
-        // Add edit permission
-        $badge->canEdit = Gate::allows('update', $badge);
+        // Add edit permission. `updateAsOwner` and not `update`: this is the attendee
+        // editor, and the panel override on `update` would offer an operator an edit
+        // button that skips the print-lock and event-ended rules.
+        $badge->canEdit = Gate::allows('updateAsOwner', $badge);
 
         return Inertia::render('Badges/BadgeShow', [
             'badge' => $badge,
@@ -84,6 +89,13 @@ class BadgeController extends Controller
             'canCreate' => Gate::allows('create', Badge::class),
             'prepaidBadges' => $prepaidBadges,
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
+            // Drives the pickup booth hint: the desk splits its day-1 queue by
+            // attendee id, which is also the prefix of every custom_id.
+            'attendeeId' => $eventUser?->attendee_id,
+            'pickupBooths' => PickupBooths::forEvent($activeEvent),
+            // Same source as the public pickup page: Settings > On-Site Desk. Empty until
+            // the desk team publishes hours, and the card drops the block when it is.
+            'deskOpeningHours' => DeskOpeningHours::forEvent($activeEvent),
             'event' => $activeEvent ? [
                 'id' => $activeEvent->id,
                 'name' => $activeEvent->name,
@@ -91,6 +103,8 @@ class BadgeController extends Controller
                 'allowsOrders' => $activeEvent->allowsOrders(),
                 'orderStartsAt' => $activeEvent->order_starts_at,
                 'orderEndsAt' => $activeEvent->order_ends_at,
+                'startsAt' => $activeEvent->starts_at,
+                'massPrintedAt' => $activeEvent->mass_printed_at,
             ] : null,
         ]);
     }
@@ -135,7 +149,10 @@ class BadgeController extends Controller
                     'checked' => false,
                 ])->id,
                 'name' => $validated['name'],
-                'image' => $request->file('image')->store('fursuits'),
+                'image' => app(FursuitImageService::class)->store(
+                    $request->file('image'),
+                    $validated['crop'] ?? null,
+                ),
                 'published' => $validated['publish'],
                 'catch_em_all' => $validated['catchEmAll'] ?? false,
             ]);
@@ -195,10 +212,10 @@ class BadgeController extends Controller
 
     public function edit(Badge $badge, Request $request)
     {
-        Gate::authorize('update', $badge);
+        Gate::authorize('updateAsOwner', $badge);
 
         return Inertia::render('Badges/BadgeForm', [
-            'canEdit' => $request->user()->can('update', $badge),
+            'canEdit' => $request->user()->can('updateAsOwner', $badge),
             'canDelete' => $request->user()->can('delete', $badge),
             'badge' => $badge->load('fursuit.species'),
             'species' => Species::has('fursuits', count: 5)->orWhere('checked', true)->get('name'),
@@ -208,9 +225,12 @@ class BadgeController extends Controller
 
     public function update(BadgeUpdateRequest $request, Badge $badge)
     {
-        Gate::authorize('update', $badge);
+        // `updateAsOwner`, not `update`: the panel override on `update` is request
+        // independent since rebuild-plan 2.2, and this write path resets the fursuit to
+        // pending review and recalculates the total, so it has to keep answering to the
+        // extra-copy, print-lock, event-ended and "still Pending" rules.
+        Gate::authorize('updateAsOwner', $badge);
         $badge = DB::transaction(function () use ($request, $badge) {
-            $request->user()->can('update', $badge);
             // Lock Badge
             $badge->where('id', $badge->id)->orWhere('extra_copy_of', $badge->id)->lockForUpdate()->get();
             // Update Badge
@@ -229,7 +249,10 @@ class BadgeController extends Controller
             ]);
             if ($request->hasFile('image')) {
                 Storage::delete($fursuit->image);
-                $fursuit->image = $request->file('image')->store('fursuits');
+                $fursuit->image = app(FursuitImageService::class)->store(
+                    $request->file('image'),
+                    $validated['crop'] ?? null,
+                );
             }
             // if species_id, name or image changed, status goes back to pending review
             if ($fursuit->isDirty(['species_id', 'name', 'image', 'catch_em_all', 'published'])) {

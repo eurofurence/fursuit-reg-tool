@@ -7,13 +7,13 @@ import Dialog from 'primevue/dialog';
 import { useForm } from 'laravel-precognition-vue-inertia'
 import InputSwitch from 'primevue/inputswitch';
 import { computed, onMounted, reactive, ref } from "vue";
-import Button from 'primevue/button';
+import Button from '@/Components/UI/UiButton.vue';
 import ImageUpload from "@/Components/BadgeCreator/ImageUpload.vue";
 import InputError from "@/Components/InputError.vue";
-import Message from 'primevue/message';
-import Card from 'primevue/card';
+import Message from '@/Components/UI/UiMessage.vue';
+import Card from '@/Components/UI/UiCard.vue';
 import Divider from 'primevue/divider';
-import Tag from 'primevue/tag';
+import Tag from '@/Components/UI/UiTag.vue';
 import { usePage } from '@inertiajs/vue3';
 
 defineOptions({
@@ -41,6 +41,9 @@ const pageTitle = computed(() => isEditMode.value ? 'Edit your Fursuit Badge' : 
 // Dialog states
 const imageModalOpen = ref(false)
 const previewImage = ref(null);
+// Set while the preview shows an uncropped original: {x, y, width, height, naturalWidth}.
+// Null means the src is already the stored, cropped image.
+const previewCrop = ref(null);
 const imageSource = reactive({});
 const consentDialogOpen = ref(false);
 const consentType = ref(''); // 'catchEmAll' or 'gallery'
@@ -56,6 +59,7 @@ const form = useForm(
         species: props.badge.fursuit.species.name,
         name: props.badge.fursuit.name,
         image: null,
+        crop: null,
         catchEmAll: props.badge.fursuit.catch_em_all,
         publish: props.badge.fursuit.published,
         tos: false,
@@ -66,6 +70,7 @@ const form = useForm(
         species: null,
         name: null,
         image: null,
+        crop: null,
         catchEmAll: false,
         publish: false,
         tos: false,
@@ -128,10 +133,14 @@ function showDataUsageInfo() {
 }
 
 function imageUpdatedEvent(image) {
-    previewImage.value = image.croppedImage;
-    form.image = new File([image.blob], 'fursuit.' + image.type, {
-        type: image.type
-    });
+    // The original file goes up untouched and the server crops it. The preview
+    // fakes the crop with CSS so we never have to rasterise anything here.
+    previewImage.value = image.src;
+    previewCrop.value = image.naturalSize
+        ? {...image.crop, naturalWidth: image.naturalSize.width}
+        : null;
+    form.image = image.file;
+    form.crop = image.crop;
     imageModalOpen.value = false;
 }
 
@@ -146,6 +155,23 @@ function deleteBadge() {
         preserveScroll: true
     });
 }
+
+// Position the original image inside the 3:4 preview box so it shows exactly the
+// selected rectangle. Percentages resolve against the box, so it stays correct
+// at any container size.
+const previewCropStyle = computed(() => {
+    const crop = previewCrop.value;
+    if (!crop || !crop.naturalWidth || !crop.width || !crop.height) {
+        return null;
+    }
+    return {
+        position: 'absolute',
+        maxWidth: 'none',
+        width: (crop.naturalWidth / crop.width) * 100 + '%',
+        left: (-crop.x / crop.width) * 100 + '%',
+        top: (-crop.y / crop.height) * 100 + '%',
+    };
+});
 
 // Pricing calculations (for create mode)
 const basePrice = computed(() => {
@@ -311,7 +337,7 @@ const canEditFields = computed(() => {
 
     <!-- Main Content -->
     <div class="min-h-screen py-8">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="site-container">
             
             <!-- Header Section -->
             <div class="text-center mb-8">
@@ -383,8 +409,11 @@ const canEditFields = computed(() => {
                                         </div>
                                         
                                         <div v-else class="relative">
-                                            <img :src="previewImage" alt="Fursuit preview"
-                                                 class="w-48 h-64 object-cover rounded-xl shadow-lg">
+                                            <div class="w-48 h-64 relative overflow-hidden rounded-xl shadow-lg bg-gray-100">
+                                                <img :src="previewImage" alt="Fursuit preview"
+                                                     :style="previewCropStyle"
+                                                     :class="previewCropStyle ? '' : 'w-full h-full object-cover'">
+                                            </div>
                                             <div v-if="canEditFields" @click="openImageModal"
                                                  class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
                                                 <div class="text-white text-center">
@@ -637,10 +666,10 @@ const canEditFields = computed(() => {
                         <template #content>
                             <div class="space-y-3 text-sm text-gray-600">
                                 <p>
-                                    Some older devices or browsers may not support image uploads. This is because your image is cropped directly in your browser. If you have trouble, try using a different device or browser.
+                                    Your photo is uploaded as you picked it and cropped on our servers, so the result does not depend on your browser. If the upload fails, check that the file is a JPG or PNG under 8 MB.
                                 </p>
                                 <p>
-                                    Please avoid uploading very large files. Large images are cropped in your browser and may cause problems when printing your badge.
+                                    Very large photos take longer to upload on convention WiFi. If an upload stalls, try again on a better connection or use a smaller file.
                                 </p>
                             </div>
                         </template>

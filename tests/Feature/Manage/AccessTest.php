@@ -64,6 +64,31 @@ test('the admin.badge-pdf routes still resolve under /admin', function () {
         ->toBe('manage.dashboard');
 });
 
+test('the admin.badge-pdf routes refuse a signed-in attendee', function () {
+    // They sat behind `auth` alone (audit landmine 60), and `custom_id` is
+    // `{attendee_id}-{n}`, so the whole namespace was enumerable from any attendee
+    // number: every logged-in user could pull any other attendee's badge PDF, image,
+    // name, species and Catch-Em-All QR code included. Now `can:access-manage`, per
+    // rebuild-plan 2.10 change 20. Asserted before the record exists, because the guard
+    // has to run ahead of the lookup that would otherwise 404 and hide the hole.
+    actingAs($this->attendee);
+
+    get(route('admin.badge-pdf.view', ['customId' => 'EF29-1']))->assertForbidden();
+    get(route('admin.badge-pdf.download', ['customId' => 'EF29-1']))->assertForbidden();
+});
+
+test('the admin.badge-pdf routes stay open to the panel users that link to them', function () {
+    // `can:access-manage` is `is_admin || is_reviewer`, the same set
+    // `User::canAccessPanel()` lets into the Filament panel that renders these links, so
+    // nobody who can reach them today loses them. A missing badge is a 404 from the
+    // controller's own `firstOrFail`, which is the guard letting the request through.
+    foreach ([$this->admin, $this->reviewer] as $operator) {
+        actingAs($operator);
+
+        get(route('admin.badge-pdf.view', ['customId' => 'NOPE']))->assertNotFound();
+    }
+});
+
 test('a signed-in user who is neither admin nor reviewer gets 403', function () {
     actingAs($this->attendee);
 

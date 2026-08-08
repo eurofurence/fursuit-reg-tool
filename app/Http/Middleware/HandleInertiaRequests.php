@@ -36,6 +36,9 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        // Get event that did not end yet and is the next one
+        $event = Event::latest('starts_at')->first();
+
         return [
             ...parent::share($request),
             'auth' => $this->getAuthContent($request),
@@ -44,8 +47,11 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
-            // Get event that did not end yet and is the next one
-            'event' => Event::latest('starts_at')->first(),
+            'event' => $event,
+            // The site navigation hides the Catch-Em-All entry outside the game window
+            // rather than linking to a game nobody can play. Computed off the event we
+            // already loaded, so the nav costs no extra query. See Event::isCatchEmAllActive().
+            'catchEmAllActive' => (bool) $event?->isCatchEmAllActive(),
             // Lazy load printer status - only needed for POS header display
             'printerStatus' => fn () => $this->getPrinterStatus($request),
             ...$this->getManageContent($request),

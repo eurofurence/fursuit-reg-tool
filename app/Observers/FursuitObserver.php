@@ -2,12 +2,41 @@
 
 namespace App\Observers;
 
+use App\Http\Controllers\GALLERY\GalleryController;
+use App\Jobs\GenerateFursuitWebpJob;
 use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Fursuit\Fursuit;
 use App\Services\FursuitCatchCode;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class FursuitObserver
 {
+    /**
+     * Webp paths that a photo replacement orphaned, captured in `updating` (where the old
+     * value is still readable) and consumed in `updated`, keyed by fursuit id.
+     *
+     * @var array<int, string|null>
+     */
+    private static array $replacedWebp = [];
+
+    /**
+     * Same, for the grid thumbnail rendered next to it.
+     *
+     * @var array<int, string|null>
+     */
+    private static array $replacedThumb = [];
+
+    /**
+     * The photo a fursuit had before the update, so `updated` can delete the variants
+     * that were derived from it. The columns alone are not enough: a model instance that
+     * was loaded before the render job wrote them back reports null originals, which
+     * would leak both files into the bucket.
+     *
+     * @var array<int, string|null>
+     */
+    private static array $replacedImage = [];
+
     /**
      * Cascade a fursuit soft-delete to its badges so they aren't left orphaned with a NULL
      * deleted_at. See docs/bugfix-04-fix.md.
@@ -42,6 +71,37 @@ class FursuitObserver
             $fursuit->catch_code = $this->generateCatchCode();
             $fursuit->save();
         }
+
+        if ($fursuit->image && ! $fursuit->image_webp) {
+            GenerateFursuitWebpJob::dispatch($fursuit->id);
+        }
+
+        Cache::forget(self::GALLERY_FOLDER_CACHE);
+    }
+
+    /** The gallery landing page caches its per-event counts and cover photos under this key. */
+    private const GALLERY_FOLDER_CACHE = GalleryController::FOLDER_CACHE_KEY;
+
+    /** Fursuit fields the folder overview counts or illustrates. */
+    private const GALLERY_FOLDER_INPUTS = ['image', 'published', 'status', 'event_id', 'user_id'];
+
+    /**
+     * A replaced photo makes the derived gallery webp wrong, not missing - which is why
+     * the old accessor (generate only when the column is empty) kept serving the previous
+     * picture after an approved fursuit was edited. Drop the reference here, whatever
+     * write path made the change, so nothing can serve it while the re-render is queued.
+     */
+    public function updating(Fursuit $fursuit): void
+    {
+        if (! $fursuit->isDirty('image')) {
+            return;
+        }
+
+        self::$replacedWebp[$fursuit->id] = $fursuit->getOriginal('image_webp');
+        self::$replacedThumb[$fursuit->id] = $fursuit->getOriginal('image_thumb');
+        self::$replacedImage[$fursuit->id] = $fursuit->getOriginal('image');
+        $fursuit->image_webp = null;
+        $fursuit->image_thumb = null;
     }
 
     /**
@@ -52,6 +112,39 @@ class FursuitObserver
 
     public function updated(Fursuit $fursuit): void
     {
+        $replacedImage = self::$replacedImage[$fursuit->id] ?? null;
+        $orphans = [
+            self::$replacedWebp[$fursuit->id] ?? null,
+            self::$replacedThumb[$fursuit->id] ?? null,
+            // Derived from the previous photo's name, so this catches the variants even
+            // when the columns on this instance are out of date.
+            $replacedImage ? GenerateFursuitWebpJob::pathFor($replacedImage) : null,
+            $replacedImage ? GenerateFursuitWebpJob::thumbPathFor($replacedImage) : null,
+        ];
+        unset(
+            self::$replacedWebp[$fursuit->id],
+            self::$replacedThumb[$fursuit->id],
+            self::$replacedImage[$fursuit->id],
+        );
+
+        if ($fursuit->wasChanged('image')) {
+            $current = [$fursuit->image_webp, $fursuit->image_thumb];
+
+            foreach (array_filter($orphans) as $orphan) {
+                if (! in_array($orphan, $current, true)) {
+                    Storage::delete($orphan);
+                }
+            }
+
+            if ($fursuit->image) {
+                GenerateFursuitWebpJob::dispatch($fursuit->id);
+            }
+        }
+
+        if ($fursuit->wasChanged(self::GALLERY_FOLDER_INPUTS)) {
+            Cache::forget(self::GALLERY_FOLDER_CACHE);
+        }
+
         if ($fursuit->catch_em_all === true && $fursuit->catch_code === null) {
             $fursuit->catch_code = $this->generateCatchCode();
             $fursuit->save();
@@ -65,6 +158,11 @@ class FursuitObserver
                 fn ($badge) => GenerateBadgePrintFileJob::invalidateFor($badge)
             );
         }
+    }
+
+    public function deleted(Fursuit $fursuit): void
+    {
+        Cache::forget(self::GALLERY_FOLDER_CACHE);
     }
 
     private function generateCatchCode(): string

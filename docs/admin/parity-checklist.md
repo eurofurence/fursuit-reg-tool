@@ -36,7 +36,7 @@ description, and submit `Confirm`.
 - [~] Nav groups render in a **declared** order: Events & Registration / Sales / POS / Printing / User Management / Tools / Maintenance — fixed, see rebuild-plan 1.2 (today there is no `->navigationGroups()` and three `navigationSort` collisions make the order accidental)
 - [~] Printing is its own nav group, split out of POS — fixed, see rebuild-plan 1.2
 - [~] Special Codes and Users get real create/edit URLs instead of Filament `ManageRecords` modals — fixed, see rebuild-plan 1.2 — `SpecialCodesTest`, `UsersTest`: the create and edit pages render and save
-- [ ] Events gets real create/edit URLs instead of Filament `ManageRecords` modals — phase 2; `routes/manage.php` registers no events routes yet
+- [~] Events gets real create/edit URLs instead of Filament `ManageRecords` modals — fixed, see rebuild-plan 1.2 — `EventsTest`: `/admin/events/create` and `/admin/events/{event}/edit` render `Manage/Events/Form` and save
 - [~] `Filament\Widgets\StatsOverviewWidget` (framework base class, renders an empty stats strip) is not reproduced — dropped, see rebuild-plan 2.10 #44 (audit 44)
 
 ## 2. Global event selector (audit 2.1, 7.3)
@@ -49,265 +49,293 @@ description, and submit `Confirm`.
 - [ ] With no session state, the newest event by `starts_at` is selected
 - [ ] Selection lives in the session, not the URL (known limitation, recorded in rebuild-plan 2.9)
 - [ ] Badges list scoped through `fursuit.event_id`
-- [ ] Fursuits list scoped through `event_id`
-- [ ] Dashboard widgets scoped
-- [~] Fursuit moderation queue (`next`, and the auto-advance after approve/reject) is event-scoped — fixed, see rebuild-plan 2.9 (today it is `Fursuit::where('status','pending')->first()`, unordered and unscoped)
+- [x] Fursuits list scoped through `event_id` — `FursuitsTest`: the list is scoped by the global event selector
+- [x] Dashboard widgets scoped — `DashboardTest`: the stats narrow on the selected event and widen on all events, and the two charts follow the same selection (`App\Support\Manage\EventScope`, resolved once for all six surfaces)
+- [x] Fursuit moderation queue (`next`, and the auto-advance after approve/reject) is event-scoped — fixed, see rebuild-plan 2.9 (today it is `Fursuit::where('status','pending')->first()`, unordered and unscoped) — `FursuitsTest`: Next Fursuit walks the queue in order, event-scoped, skipping claimed records
 - [~] Special Codes list is event-scoped — fixed, see rebuild-plan 2.9
-- [~] PDF Generator obeys the same selection — fixed, see rebuild-plan 2.9 (audit 63: it reads `filament.admin.selected_event_id`, which nothing writes)
-- [ ] DB Service is **not** selector-scoped; it uses `Event::getActiveEvent()` and says so on screen
-- [ ] Checkouts, Machines, Printers, Print Jobs, Print Batches, Staff, SumUp Readers, TSE Clients, Users and Events stay unscoped
+- [~] PDF Generator obeys the same selection — fixed, see rebuild-plan 2.9 (audit 63: it reads `filament.admin.selected_event_id`, which nothing writes) — `PdfGeneratorTest`: the badge list covers the selected event and nothing else (the selected event is the *older* one in that test, which is what the old page would never have used), and all events selected reports that no event is selected, rather than guessing one
+- [x] DB Service is **not** selector-scoped; it uses `Event::getActiveEvent()` and says so on screen — `DbServiceTest`: the page ignores the header event selection (a wrongly charged badge on the *selected* older event is not reported), and the page names the active event above the repair
+- [x] Checkouts, Machines, Printers, Print Jobs, Print Batches, Staff, SumUp Readers, TSE Clients, Users and Events stay unscoped — `EventScopeTest`: the ten unscoped lists ignore the selected event (one record per module hung off the event that is *not* selected; print batches are the interesting one, since `print_batches.event_id` exists and looks scopeable)
 
 ## 3. Authorization (audit 3)
 
 - [ ] Users: every ability `is_admin`
-- [ ] Staff: every ability `is_admin`; the nav entry is hidden from reviewers
-- [ ] Events: `viewAny`/`view`/`create`/`update`/`delete` = `is_admin`
-- [ ] Machines: every ability `is_admin`
-- [ ] Printers: all seven abilities `is_admin`
+- [x] Staff: every ability `is_admin`; the nav entry is hidden from reviewers — `StaffPolicy` is left exactly as it was and only read. `StaffTest`: a reviewer holds access-manage but is refused every staff ability (all nine endpoints, both setup-code routes included)
+- [x] Events: `viewAny`/`view`/`create`/`update`/`delete` = `is_admin`
+- [x] Machines: every ability `is_admin`, and the new `loginLink` ability is its own rather than a widened `update` — `MachinesTest`: a reviewer holds access-manage but is refused every machine ability (all ten endpoints, login link included)
+- [x] Printers: all seven abilities `is_admin` — `PrinterPolicy` was already registered and is left exactly as it was; the two new endpoints (`active`, `clear-error`) authorize the existing `update` rather than widening anything. `PrintersTest`: a reviewer holds access-manage but is refused all nine printer endpoints
 - [ ] Print Jobs: all seven abilities `is_admin`
-- [ ] SumUp Readers: every ability `is_admin`
-- [ ] TSE Clients: every ability `is_admin`
+- [x] SumUp Readers: every ability `is_admin`, and the new `reveal` ability is its own rather than a widened `view` - `SumUpReadersTest`: a reviewer holds `access-manage` and is refused all eight endpoints, including `reveal`
+- [x] TSE Clients: every ability `is_admin` — `TseClientPolicy` keeps all seven answers; only its docblocks are new, because the class is shared with Filament and /admin-legacy still has the create page and the row EditAction the plan classifies as defects (2.10 #13/#14). The panel asks `viewAny` and `view` only, and registers no write route, so the module's lock is the routing table rather than a policy the other panel depends on. `TseClientsTest`: an attendee cannot reach the client list at all, a reviewer holds access-manage but is refused both client abilities, and the write abilities still answer `is_admin` for an admin and false for a reviewer; `NoSideEffectsTest` pins the same pair
 - [ ] Badges: `viewAny`/`view` = `is_admin || is_reviewer`
 - [~] `BadgePolicy::update` no longer keys on `request()->routeIs('filament.*','livewire.*')` — fixed, see rebuild-plan 2.2 (audit 52)
-- [ ] Fursuits: `viewAny`/`view` = `is_admin || is_reviewer`; `update`/`delete`/`restore`/`forceDelete` = `is_admin`
-- [ ] `FursuitPolicy::create()` stays `false` and no create route is registered — see rebuild-plan 2.2 (audit 38)
-- [~] Checkouts gain `CheckoutPolicy`: read = `access-manage`, `printReceipt` = `is_admin`, create/update/delete false — fixed, see rebuild-plan 2.10 #19 (audit 51)
+- [x] Fursuits: `viewAny`/`view` = `is_admin || is_reviewer`; `update`/`delete`/`restore`/`forceDelete` = `is_admin` — `FursuitsTest`: a reviewer works the queue but cannot edit or delete a record
+- [x] `FursuitPolicy::create()` stays `false` and no create route is registered — see rebuild-plan 2.2 (audit 38) — `FursuitsTest`: no create route exists and the policy still refuses creation
+- [~] Checkouts gain `CheckoutPolicy`: read = `access-manage`, `printReceipt` = `is_admin`, create/update/delete false — fixed, see rebuild-plan 2.10 #19 (audit 51) - shipped and registered explicitly in `AuthServiceProvider`, because auto-discovery would look under `App\Domain\Checkout\Models\Policies`, which does not exist. `restore` and `forceDelete` are false too. `CheckoutsTest`: a reviewer reads but is refused the print endpoint, and create, update and delete are refused for an admin as well
 - [~] Print batches gain `PrintBatchPolicy`: read = `access-manage`, pause/resume/cancel/verify = `is_admin` — fixed, see rebuild-plan 2.10 #18 (audit 51)
 - [~] Special codes gain `SpecialCodePolicy`, every ability `is_admin` — fixed, see rebuild-plan 2.10 #19 (audit 51)
-- [~] RFID tags gain `RfidTagPolicy`, every ability `is_admin` — fixed, see rebuild-plan 2.2 (audit 54)
+- [~] RFID tags gain `RfidTagPolicy`, every ability `is_admin` — fixed, see rebuild-plan 2.2 (audit 54). Registered explicitly in `AuthServiceProvider`; read is gated as tightly as write, since a tag's `content` is the whole POS credential. `StaffTest`: a reviewer is refused every rfid tag endpoint
 - [~] Activity entries gain `ActivityPolicy`: read = `access-manage`, create/update/delete false — fixed, see rebuild-plan 2.10 #12 (audit 56)
-- [ ] DB Service is admin-only via `manage-admin` (successor to `DbService::canAccess()`)
-- [~] `admin.badge-pdf.view` / `admin.badge-pdf.download` move behind `can:access-manage` — fixed, see rebuild-plan 2.10 #20 (audit 60)
+- [x] DB Service is admin-only via `manage-admin` (successor to `DbService::canAccess()`) — authorized in the controller on all three endpoints, not only the GET, because the two POSTs are the write. `DbServiceTest`: a reviewer is refused the page, the preview and the apply, and a refused apply writes nothing
+- [~] `admin.badge-pdf.view` / `admin.badge-pdf.download` move behind `can:access-manage` — fixed, see rebuild-plan 2.10 #20 (audit 60) — the guarded successors `manage.tools.badge-preview.pdf.view` / `.download` ship (`BadgePreviewTest`: the PDF routes are behind access-manage, unlike the routes they replace). The two originals in `routes/web.php` stay until phase 10 retires Filament, which is the only thing still linking them
 - [~] `EventPolicy` deliberately gains no `restore` / `forceDelete` — dropped, see rebuild-plan 2.2 (audit 53)
 - [~] `is_reviewer` is cast to `bool` on `User` — fixed, see rebuild-plan 2.10 #47 (audit 58)
-- [ ] PDF Generator and Badge Preview remain reachable by reviewers (no extra gate beyond `access-manage`)
+- [x] PDF Generator and Badge Preview remain reachable by reviewers (no extra gate beyond `access-manage`) — `BadgePreviewTest` and `PdfGeneratorTest`, both: a reviewer reaches the page, because access-manage is the whole guard
 
 ## 4. Events (audit 4.1)
 
 ### Columns
 
-- [ ] 1 `name`, label `Name`, text, sortable
-- [ ] 2 `badge_class`, label `Badge Class`, text, sortable, toggleable, **hidden by default**, placeholder `Not set`
-- [ ] 3 `starts_at`, label `Starts at`, date `M j, Y`, sortable, description = `diffForHumans()`
-- [ ] 4 `ends_at`, label `Ends at`, date `M j, Y`, sortable, description = `diffForHumans()`
-- [ ] 5 `mass_printed_at`, label `Mass printed at`, `d.m.Y H:i`, sortable, description = `diffForHumans()`
-- [ ] 6 `order_starts_at`, label `Order Start`, `d.m.Y H:i`, sortable, description = `diffForHumans()`
-- [ ] 7 `order_ends_at`, label `Order End`, `d.m.Y H:i`, sortable, description = `diffForHumans()`
-- [ ] 8 `catch_em_all_enabled`, label `Catch-Em-All`, boolean icon, toggleable, **hidden by default**
-- [ ] 9 `archival_notice`, label `Archival Notice`, limit 50, tooltip = full value, placeholder `None`, toggleable, **hidden by default**
+- [x] 1 `name`, label `Name`, text, sortable
+- [x] 2 `badge_class`, label `Badge Class`, text, sortable, toggleable, **hidden by default**, placeholder `Not set`
+- [x] 3 `starts_at`, label `Starts at`, date `M j, Y`, sortable, description = `diffForHumans()`
+- [x] 4 `ends_at`, label `Ends at`, date `M j, Y`, sortable, description = `diffForHumans()`
+- [x] 5 `mass_printed_at`, label `Mass printed at`, `d.m.Y H:i`, sortable, description = `diffForHumans()`
+- [x] 6 `order_starts_at`, label `Order Start`, `d.m.Y H:i`, sortable, description = `diffForHumans()`
+- [x] 7 `order_ends_at`, label `Order End`, `d.m.Y H:i`, sortable, description = `diffForHumans()`
+- [x] 8 `catch_em_all_enabled`, label `Catch-Em-All`, boolean icon, toggleable, **hidden by default**
+- [x] 9 `archival_notice`, label `Archival Notice`, limit 50, tooltip = full value, placeholder `None`, toggleable, **hidden by default**
 
 ### Filters
 
-- [ ] No filters on this table
+- [x] No filters on this table
 
 ### Actions
 
-- [ ] Edit (row)
-- [ ] Delete (row), Filament default delete copy, **hard delete**
-- [ ] Delete selected (bulk), Filament default bulk delete copy
-- [ ] Create (header), label `New event`
+- [x] Edit (row)
+- [x] Delete (row), Filament default delete copy, **hard delete**
+- [x] Delete selected (bulk), Filament default bulk delete copy
+- [x] Create (header), label `New event`
 
 ### Form
 
-- [ ] `name` TextInput, required, full width
-- [ ] `badge_class` Select, label `Badge Class`, helper `PHP class used for badge generation`, options `EF28 Badge` / `EF29 Badge` / `EF30 Badge`, not required
-- [ ] `starts_at` DatePicker, **date only**, required
-- [ ] `ends_at` DatePicker, **date only**, required
-- [ ] `order_starts_at` DateTimePicker, label `Order Window Start`, required, helper `When badge orders can start`
-- [ ] `order_ends_at` DateTimePicker, label `Order Window End`, required, helper `When badge orders must end`
-- [ ] `mass_printed_at` DateTimePicker, label `Mass Print Date`, **required**, helper `When the badges were mass printed, if applicable`
-- [ ] `cost` TextInput, label `Printing Cost (€)`, numeric, step 0.01, suffix `€`, placeholder `1914.95`, helper `Total printing cost in euros that we need to cover for this event`, **in euros not cents**
-- [ ] `catch_em_all_enabled` Toggle, label `Catch-Em-All Enabled`, default true, helper `Enable catch-em-all functionality for this event`
-- [ ] `catch_em_all_start` DateTimePicker, nullable, helper `When the catch-em-all game should start (leave empty to start with event)`
-- [ ] `catch_em_all_end` DateTimePicker, nullable, helper `When the catch-em-all game should end (leave empty to end with event)`
-- [ ] `archival_notice` Textarea, 3 rows, helper `Notice to display for archival/historical events`
-- [ ] `archival_notice` actually persists (it is absent from `Event::$fillable` today, audit 107)
-- [ ] Decide explicitly on the four invisible `Group` labels `Event Dates`, `Order Management`, `Financial Tracking`, `Gallery Settings` (they render nowhere in Filament, audit 108)
+- [x] `name` TextInput, required, full width
+- [x] `badge_class` Select, label `Badge Class`, helper `PHP class used for badge generation`, options `EF28 Badge` / `EF29 Badge` / `EF30 Badge`, not required
+- [x] `starts_at` DatePicker, **date only**, required
+- [x] `ends_at` DatePicker, **date only**, required
+- [x] `order_starts_at` DateTimePicker, label `Order Window Start`, required, helper `When badge orders can start`
+- [x] `order_ends_at` DateTimePicker, label `Order Window End`, required, helper `When badge orders must end`
+- [x] `mass_printed_at` DateTimePicker, label `Mass Print Date`, **required**, helper `When the badges were mass printed, if applicable`
+- [x] `cost` TextInput, label `Printing Cost (€)`, numeric, step 0.01, suffix `€`, placeholder `1914.95`, helper `Total printing cost in euros that we need to cover for this event`, **in euros not cents**
+- [x] `catch_em_all_enabled` Toggle, label `Catch-Em-All Enabled`, default true, helper `Enable catch-em-all functionality for this event`
+- [x] `catch_em_all_start` DateTimePicker, nullable, helper `When the catch-em-all game should start (leave empty to start with event)`
+- [x] `catch_em_all_end` DateTimePicker, nullable, helper `When the catch-em-all game should end (leave empty to end with event)`
+- [x] `archival_notice` Textarea, 3 rows, helper `Notice to display for archival/historical events`
+- [x] `archival_notice` actually persists (it is absent from `Event::$fillable` today, audit 107)
+- [~] Decide explicitly on the four invisible `Group` labels `Event Dates`, `Order Management`, `Financial Tracking`, `Gallery Settings` (they render nowhere in Filament, audit 108) — decided, see rebuild-plan 2.10 #54: shipped as real `FormSection` headings, so this is a deliberate UI change. Thirteen fields with no structure read worse than the grouping the schema author wrote down, and the alternative is to delete the only grouping intent the resource records. `name` and `badge_class` sit outside every `Group` today and get a fifth heading, `Event`
+
+- [~] `EventRequest` adds `max:255` on `name` and validates `badge_class` against the options the form offers — new, see rebuild-plan 2.10 #55 — `EventsTest`: the form validates every field the Filament schema required
+- [~] An event that still owns fursuits is refused, single and bulk, rather than cascading — new, see rebuild-plan 2.10 #62 (`fursuits.event_id` and `badges.fursuit_id` are both `ON DELETE CASCADE`, so a hard delete removes them physically, past `SoftDeletes` and past `FursuitObserver`) — `EventsTest`: deleting an event that still owns fursuits is refused, single and bulk
 
 ### Table config
 
-- [ ] Default sort `starts_at` desc
-- [ ] No poll
-- [ ] No custom notifications; stock save/delete toasts only
+- [x] Default sort `starts_at` desc
+- [x] No poll
+- [x] No custom notifications; stock save/delete toasts only
 
 ## 5. Badges (audit 4.2)
 
 ### Columns
 
-- [ ] 1 `fursuit.image`, label `Image`, s3 private, circular, size 40, `defaultImageUrl(/images/placeholder.png)`, no file-existence check
-- [ ] 2 `fursuit.name`, label `Fursuit`, sortable, searchable, links to the fursuit view page
-- [ ] 3 `fursuit.species.name`, label `Species`, grey, toggleable
-- [ ] 4 `fursuit.user.name`, label `Owner`, searchable, toggleable, links to the users list pre-filtered by that name
-- [ ] 5 `custom_id`, label `Badge ID`, searchable, copyable, toggleable, visible by default
-- [ ] 6 `sort_attendee_id`, label `Attendee ID`, sortable (numeric cast), toggleable, `N/A` when null
-- [ ] 7 `print_jobs_count`, label `Print Jobs`, badge, centre-aligned, links to print jobs filtered by this badge
-- [ ] 7a state string: `0` / `{total}` / `{total} ({failed} failed)` / `{total} ({pending} pending)`
-- [ ] 7b colour: `gray` at zero, `warning` with failures, `info` with pending, else `success`
-- [ ] 8 `status_fulfillment`, label `Fulfillment`, badge, labels `Pending` / `Processing` / `Ready for Pickup` / `Picked Up`
-- [ ] 9 `status_payment`, label `Payment`, badge, `ucfirst` labels
-- [ ] 10 `extra_copy`, label `Extra Copy`, boolean icon, trueIcon `heroicon-o-document-plus`, no false icon, toggleable, **hidden by default**
-- [~] 11 `total`, label `Total`, money **divided by 100**, right-aligned, toggleable, hidden by default — fixed, see rebuild-plan 2.10 #1 (audit 1: renders 100x too high today)
-- [ ] 12 `created_at`, label `Created`, `M j, Y`, toggleable, **hidden by default**
-- [ ] 13 `printed_at`, label `Printed At`, `M j, Y H:i`, placeholder `Not printed`, toggleable, **hidden by default**
-- [ ] 14 `picked_up_at`, label `Picked Up`, `M j, Y H:i`, placeholder `Not picked up`, toggleable, **hidden by default**
-- [ ] Columns 2 and 4 survive a badge whose fursuit or user is soft-deleted (audit 113: they take the whole table down today)
+- [x] 1 `fursuit.image`, label `Image`, s3 private, `defaultImageUrl(/images/placeholder.png)`, no file-existence check — `BadgesTest`: the Owner cell links at the users list pre-filtered by that name (asserts the cell resolves to a URL on the faked s3 disk); `ListEnvelopeTest`: both image columns declare the circular avatar shape, and the placeholder file exists. `Column::image()->circular()` and the two shapes `DataTable` renders were added at integration, since neither module could add them alone
+- [x] 2 `fursuit.name`, label `Fursuit`, sortable, searchable, links to the fursuit view page — `BadgesTest`: the list renders the fourteen columns in order; search matches exactly the three fields the audit marks searchable; the Owner cell links at the users list (asserts the Fursuit cell's link shape)
+- [~] 3 `fursuit.species.name`, label `Species`, toggleable — the column and its toggle ship; `->color('gray')` does not, because colour is reserved for state in the new panel, see rebuild-plan 2.10 #56 (design spec 1.3) — `BadgesTest`: the list renders the fourteen columns in order
+- [x] 4 `fursuit.user.name`, label `Owner`, searchable, toggleable, links to the users list pre-filtered by that name — `BadgesTest`: the Owner cell links at the users list pre-filtered by that name; search matches exactly the three fields the audit marks searchable
+- [x] 5 `custom_id`, label `Badge ID`, searchable, copyable, toggleable, visible by default — `BadgesTest`: the list renders the fourteen columns in order
+- [x] 6 `sort_attendee_id`, label `Attendee ID`, sortable (numeric cast), toggleable, `N/A` when null — `BadgesTest`: the list opens sorted by attendee id numerically, on SQLite; a badge with no attendee id renders N/A rather than an empty cell
+- [~] 7 `print_jobs_count`, label `Print Jobs`, badge, centre-aligned, links to print jobs filtered by this badge — the chip ships; the link is registered the moment phase 6 registers `manage.print-jobs.index` and is absent until then, see rebuild-plan part 3 — `BadgesTest`: the list renders the fourteen columns in order
+- [x] 7a state string: `0` / `{total}` / `{total} ({failed} failed)` / `{total} ({pending} pending)` — `BadgesTest`: the Print Jobs cell carries the audit state string and the colour ladder
+- [x] 7b colour: `gray` at zero, `warning` with failures, `info` with pending, else `success` — mapped to the panel's tones idle / warn / info / ok — `BadgesTest`: the Print Jobs cell carries the audit state string and the colour ladder
+- [x] 8 `status_fulfillment`, label `Fulfillment`, badge, labels `Pending` / `Processing` / `Ready for Pickup` / `Picked Up` — `BadgesTest`: the two status cells carry the audit labels
+- [x] 9 `status_payment`, label `Payment`, badge, `ucfirst` labels — `BadgesTest`: the two status cells carry the audit labels
+- [~] 10 `extra_copy`, label `Extra Copy`, boolean icon, no false icon, toggleable, **hidden by default** — the mark, the absent false icon and the hidden-by-default flag ship; the glyph is lucide `file-text` rather than heroicon `document-plus`, because the panel resolves icons through `ManageIcon`, see rebuild-plan 2.10 #57 (design spec 1.5) — `BadgesTest`: the list renders the fourteen columns in order
+- [~] 11 `total`, label `Total`, money **divided by 100**, right-aligned, toggleable, hidden by default — fixed, see rebuild-plan 2.10 #1 (audit 1: renders 100x too high today) — `BadgesTest`: the Total column renders euros from cents instead of a hundredfold
+- [x] 12 `created_at`, label `Created`, `M j, Y`, toggleable, **hidden by default** — `BadgesTest`: the list renders the fourteen columns in order
+- [x] 13 `printed_at`, label `Printed At`, `M j, Y H:i`, placeholder `Not printed`, toggleable, **hidden by default** — `BadgesTest`: the list renders the fourteen columns in order
+- [x] 14 `picked_up_at`, label `Picked Up`, `M j, Y H:i`, placeholder `Not picked up`, toggleable, **hidden by default** — `BadgesTest`: the list renders the fourteen columns in order
+- [x] Columns 2 and 4 survive a badge whose fursuit or user is soft-deleted (audit 113: they take the whole table down today) — `BadgesTest`: a badge whose fursuit is soft-deleted still renders its row
 
 ### Filters
 
-- [ ] 1 `status_fulfillment`, label `Fulfillment Status`, multi-select, placeholder `All Statuses`, options Pending / Processing / Ready for Pickup / Picked Up
-- [ ] 2 `status_payment`, label `Payment Status`, multi-select, placeholder `All Payments`, options Unpaid / Paid
-- [ ] 3 `is_free_badge`, ternary, label `Free Badge`, placeholder `All Badges`, true `Free Badges Only`, false `Paid Badges Only`
-- [ ] 4 attendee range: `from_attendee_id` (`From Attendee ID`, numeric, placeholder `e.g., 1`) and `to_attendee_id` (`To Attendee ID`, numeric, placeholder `e.g., 1000`), scoped to the selected event
-- [ ] 4a indicators `From attendee #{n}` and `To attendee #{n}`
-- [~] The attendee-id sort and the attendee-range filter work on SQLite — fixed, see rebuild-plan 2.10 #30 (audit 16, 17: `CAST(x AS UNSIGNED)` and interpolated `$direction`)
+- [x] 1 `status_fulfillment`, label `Fulfillment Status`, multi-select, placeholder `All Statuses`, options Pending / Processing / Ready for Pickup / Picked Up — `BadgesTest`: the list declares the four filters with their labels, placeholders and option sets; the fulfillment and payment filters narrow the row set
+- [x] 2 `status_payment`, label `Payment Status`, multi-select, placeholder `All Payments`, options Unpaid / Paid — `BadgesTest`: the list declares the four filters...; the fulfillment and payment filters narrow the row set
+- [x] 3 `is_free_badge`, ternary, label `Free Badge`, placeholder `All Badges`, true `Free Badges Only`, false `Paid Badges Only` — `BadgesTest`: the list declares the four filters...; the free-badge ternary separates free from paid, and blank means all
+- [x] 4 attendee range: `from_attendee_id` (`From Attendee ID`, numeric, placeholder `e.g., 1`) and `to_attendee_id` (`To Attendee ID`, numeric, placeholder `e.g., 1000`), scoped to the selected event — one `Filter::range` server-side, the two labelled inputs in `Pages/Manage/Badges/Index.vue` — `BadgesTest`: the attendee range filters numerically, on SQLite, and only within the selected event
+- [x] 4a indicators `From attendee #{n}` and `To attendee #{n}` — rendered verbatim beside the two inputs in `Pages/Manage/Badges/Index.vue`, each clearing its own bound
+- [~] The attendee-id sort and the attendee-range filter work on SQLite — fixed, see rebuild-plan 2.10 #30 (audit 16, 17: `CAST(x AS UNSIGNED)` and interpolated `$direction`) — `BadgesTest`: the list opens sorted by attendee id numerically, on SQLite; the attendee range filters numerically, on SQLite
 
 ### Actions
 
-- [ ] Edit (row)
-- [ ] `printBadge` / `Print Badge` (row), icon printer, colour warning, always visible
-- [ ] `printBadge` confirm: heading `Print Badge`, description `Are you sure you would like to do this?`, submit `Confirm`
-- [ ] `printBadgeBulk` / `Print Badges` (bulk), icon printer, colour warning
-- [ ] `printBadgeBulk` confirm: heading `Print Selected Badges`, description `This will print all selected badges to the specified printer.`, submit `Confirm`
-- [ ] `printBadgeBulk` form: `printer_id` Select, label `Select Printer`, required, helper `Select a specific printer for all selected badges.`, options = active badge printers
-- [~] Printer options are resolved per modal open, not frozen at table build — fixed, see rebuild-plan 2.10 (audit 100)
-- [ ] Badges are sorted by attendee id and queued through `BadgePrintQueue::queue(badges, printer, createdById)`
-- [ ] Delete (edit page), Filament default delete copy
-- [ ] No bulk delete, no export, no dissociate on this table
-- [~] The badge **Create** page is not ported — dropped, see rebuild-plan 2.10 #6 (audit 25: `fursuit_id` is disabled, so create has always thrown an integrity error)
-- [~] `printBadgeWithPrinter()` is deleted, not ported — dropped, see rebuild-plan 2.10 #25 (audit 41: zero callers, second incompatible print path)
-- [~] `printBadge()` loses its unused `$mass` parameter — dropped, see rebuild-plan 2.10 #25
+- [x] Edit (row) — `BadgesTest`: the table offers Edit and Print Badge and nothing else, and no create action at all
+- [x] `printBadge` / `Print Badge` (row), icon printer, colour warning, always visible — declared by `BadgePrintController::rowAction()`, offered to the same audience the Filament resource gate admitted (`viewAny` on Badge, i.e. admin or reviewer) — `BadgePrintTest`: the list declares the print row action with its confirm copy; a reviewer can print, which is the audience the Filament actions had
+- [x] `printBadge` confirm: heading `Print Badge`, description `Are you sure you would like to do this?`, submit `Confirm` — `BadgePrintTest`: the list declares the print row action with its confirm copy
+- [~] `printBadge` confirm chrome: Filament's bare `requiresConfirmation()` also renders `heroicon-o-exclamation-triangle`, centred, at medium width — the copy is verbatim, the chrome is not carried across. `Components/Manage/ManageDialog.vue` is the panel's one dialog: a single left-aligned skin at one width, shared by the confirms, the two moderation dialogs and the login link, which is the whole reason the file exists. Framework chrome, not app copy, and not worth four skins — no test; the copy above is what is asserted
+- [x] `printBadge` logs `printBadge called` (`badge_id`, `before_fulfillment`, `before_payment`, `can_transition`) and `printBadge after transition` (`badge_id`, `after_fulfillment`, `after_payment`) — carried over verbatim into `BadgePrintController::store()`, keys included; it is the only record of who put a single card through a printer, since `BadgePrintQueue` logs the batch rather than the badge and a reprint that cannot reach `Processing` writes no activity entry either
+- [x] `printBadgeBulk` / `Print Badges` (bulk), icon printer, colour warning — `BadgePrintTest`: the list declares the bulk print action with its modal copy and printer select
+- [x] `printBadgeBulk` confirm: heading `Print Selected Badges`, description `This will print all selected badges to the specified printer.`, submit `Confirm` — `BadgePrintTest`: the list declares the bulk print action with its modal copy and printer select
+- [x] `printBadgeBulk` form: `printer_id` Select, label `Select Printer`, required, helper `Select a specific printer for all selected badges.`, options = active badge printers — rendered by `ActionButton` inside `Components/Manage/ManageDialog.vue`, the panel's one dialog, from the field the server declares; `BadgePrintRequest` validates against the same option list — `BadgePrintTest`: the list declares the bulk print action with its modal copy and printer select; the bulk action requires a printer and queues nothing without one; the bulk action refuses a printer that is not an active badge printer
+- [~] Printer options are resolved per modal open, not frozen at table build — fixed, see rebuild-plan 2.10 (audit 100): the options are rebuilt on every request that builds the list, and `Pages/Manage/Badges/Index.vue` reloads `bulkActions` on the same five-second poll as the rows, so the picker follows the hardware rather than the page load — `BadgePrintTest`: the printer options follow the hardware rather than freezing at table build
+- [x] Badges are sorted by attendee id and queued through `BadgePrintQueue::queue(badges, printer, createdById)` — the sort is `PrintBatch::sortBadgesForPrinting()` inside `build()`, the one definition every caller shares and the one frozen into `PrintJob::sequence`; the Filament body pre-sorted its selection and says in its own comment that the batch orders anyway, so no second ordering is layered on — `BadgePrintTest`: the print order is the batch's own, not a second one layered on top; the row action gives a single badge its own batch, through BadgePrintQueue
+- [x] The print path never runs as a side effect of a render or a poll — every card is an explicit `POST /admin/badges/{badge}/print` or `POST /admin/badges/bulk/print` — `BadgePrintTest`: rendering the badge list queues nothing; the five-second poll queues nothing; opening the edit page queues nothing
+- [~] The same print, posted twice, queues one card and not two — new, and not in the plan: nothing on the old path was idempotent, so a browser resubmit, two operators on one row or a bulk selection containing an already-queued badge each produced a second live batch holding a second card for the same order. `BadgePrintQueue::queue()` now drops badges with an outstanding job (Pending / Claimed / Printing / Retrying); printed, failed and cancelled jobs are all legitimate reasons to queue again. Applies to the POS entry points as well, which share the service — `BadgePrintTest`: the same print, posted twice, produces one batch and one card; a bulk selection that includes an already queued badge queues only the rest; `BadgePrintQueueTest`: it refuses to queue a badge that already has a card on its way
+- [~] A reprint re-renders artwork that moved after the badge was locked — new, and not in the plan: `printing_locked_at` outlives the run that set it, so `GenerateBadgePrintFileJob` skipped the badge, `build()` refused the stale file and `badges:generate-print-files --force` skipped it for the same lock, leaving the card unprintable from the panel, the POS and the CLI. The queue now renders a reprint with an explicit `ignorePrintingLock`, which is only safe because the guard above has already dropped every badge that still has a card queued — `BadgePrintQueueTest`: it re-renders a locked badge on a reprint rather than leaving it unprintable
+- [x] The row action transitions to `Processing` through the state machine, and prints a badge that cannot make that move — `BadgePrintTest`: the row action transitions the badge to Processing through the state machine; the row action still prints a badge that cannot reach Processing
+- [x] Delete (edit page), Filament default delete copy — `BadgesTest`: the edit form ships the five sections, all read-only but the two statuses (asserts the confirm copy); a badge is soft deleted from the edit page with Filament default copy
+- [x] No bulk delete, no export, no dissociate on this table — `BadgesTest`: the table offers Edit and Print Badge and nothing else, and no create action at all
+- [~] The badge **Create** page is not ported — dropped, see rebuild-plan 2.10 #6 (audit 25: `fursuit_id` is disabled, so create has always thrown an integrity error) — `BadgesTest`: the table offers Edit and Print Badge and nothing else, and no create action at all (asserts no create page action); `routes/manage/badges.php` registers no create or store route
+- [ ] `printBadgeWithPrinter()` is deleted, not ported — decided (rebuild-plan 2.10 #25, audit 41: zero callers, second incompatible print path), not yet done: the method is still live at `BadgeResource.php:526` and cannot go until phase 10 retires Filament
+- [ ] `printBadge()` loses its unused `$mass` parameter — decided (rebuild-plan 2.10 #25), not yet done: `printBadge()` is not ported at all until phase 7 and the original still declares `$mass` at `BadgeResource.php:493`
 
 ### Form
 
-- [ ] Section `Badge Information`, description `Basic badge details and associated fursuit`, icon identification
-- [ ] `fursuit_id`, label `Fursuit`, Select, **disabled**, helper `The fursuit this badge belongs to (cannot be changed)`
-- [ ] `custom_id`, label `Badge ID`, **disabled**, helper `Unique badge identifier (auto-generated)`
-- [ ] `species_name`, label `Species`, **disabled**, not dehydrated, helper `The fursuit species`
-- [ ] `owner_name`, label `Owner`, **disabled**, not dehydrated, helper `The fursuit owner`
-- [ ] Section `Status Management`, description `Current fulfillment and payment status of the badge`, icon flag
-- [~] `status_fulfillment`, label `Fulfillment Status`, offers only transitions `BadgeFulfillmentStatusState::config()` allows and calls `transitionTo()` — fixed, see rebuild-plan 2.10 #8 (audit 20)
-- [~] `status_payment`, label `Payment Status`, same transition treatment — fixed, see rebuild-plan 2.10 #8
-- [~] The POS error correction `PickedUp -> ReadyForPickup` is offered — fixed, see rebuild-plan 2.10 #8
-- [ ] Section `Pricing Details`, description `Badge pricing breakdown and financial information`, icon banknotes
-- [~] `total`, label `Total (€)`, becomes **read-only** — fixed, see rebuild-plan 2.10 #3 (audit 3: saving unchanged turns 300 cents into 3 cents)
-- [ ] `subtotal`, label `Subtotal (€)`, disabled, helper `Amount before tax`, euros from cents
-- [ ] `tax`, label `Tax (€)`, disabled, helper `Tax amount`, euros from cents
-- [ ] `is_free_badge`, label `Free Badge`, Toggle, disabled, helper `Whether this badge was provided for free`
-- [ ] `extra_copy`, label `Extra Copy`, Toggle, disabled, helper `Whether this is an additional copy of another badge`
-- [ ] Section `Badge Features & Upgrades`, description `Special features and upgrade options applied to this badge`, icon star, **collapsed**
-- [ ] `dual_side_print`, label `Double-Sided Print`, Toggle, disabled, helper `Whether the badge is printed on both sides`
-- [ ] `apply_late_fee`, label `Late Fee Applied`, Toggle, disabled, helper `Whether a late fee was applied to this badge`
-- [ ] Section `Timeline & Processing`, description `Key dates and processing timestamps`, icon clock, **collapsed**
-- [ ] `created_at`, label `Created At`, disabled, helper `When the badge was initially created`
-- [ ] `printed_at`, label `Printed At`, disabled, helper `When the badge was printed`
-- [ ] `picked_up_at`, label `Picked Up At`, disabled, helper `When the badge was collected by the owner`
+- [~] Section `Badge Information`, description `Basic badge details and associated fursuit` — the title and description ship; the section icon does not, because the ported `FormSection` renders title and description only, see rebuild-plan 1.5 — `BadgesTest`: the edit form ships the five sections, all read-only but the two statuses
+- [x] `fursuit_id`, label `Fursuit`, **disabled**, helper `The fursuit this badge belongs to (cannot be changed)` — read-only text rather than a disabled Select, per rebuild-plan's FormField — `BadgesTest`: the edit form ships the five sections...; no write path can put a euro string into a cents column (asserts `fursuit_id` cannot be written)
+- [x] `custom_id`, label `Badge ID`, **disabled**, helper `Unique badge identifier (auto-generated)` — `BadgesTest`: the edit form ships the five sections...; no write path can put a euro string into a cents column
+- [x] `species_name`, label `Species`, **disabled**, not dehydrated, helper `The fursuit species` — `BadgesTest`: the edit form ships the five sections, all read-only but the two statuses
+- [x] `owner_name`, label `Owner`, **disabled**, not dehydrated, helper `The fursuit owner` — `BadgesTest`: the edit form ships the five sections, all read-only but the two statuses
+- [~] Section `Status Management`, description `Current fulfillment and payment status of the badge` — title and description ship, section icon does not, see rebuild-plan 1.5 — `BadgesTest`: the edit form ships the five sections, all read-only but the two statuses
+- [~] `status_fulfillment`, label `Fulfillment Status`, offers only transitions `BadgeFulfillmentStatusState::config()` allows and calls `transitionTo()` — fixed, see rebuild-plan 2.10 #8 (audit 20) — `BadgesTest`: the status pickers offer only the transitions the state machine allows; saving a status runs the transition rather than writing the string; a badge cannot be moved to a state config() does not allow from its current one
+- [~] `status_payment`, label `Payment Status`, same transition treatment — fixed, see rebuild-plan 2.10 #8 — `BadgesTest`: the status pickers offer only the transitions the state machine allows; the payment transition stamps paid_at and logs, and runs before fulfillment
+- [~] The POS error correction `PickedUp -> ReadyForPickup` is offered — fixed, see rebuild-plan 2.10 #8 — `BadgesTest`: the status pickers offer only the transitions the state machine allows; the fulfillment states this app can reach are exactly the ones the machine declares
+- [~] Section `Pricing Details`, description `Badge pricing breakdown and financial information` — title and description ship, section icon does not, see rebuild-plan 1.5 — `BadgesTest`: the edit form ships the five sections, all read-only but the two statuses
+- [~] `total`, label `Total (€)`, becomes **read-only**, and the corrupted-total report that change asks phase 4 to ship with it (`GET /admin/badges/corrupted-totals`, read-only, admin only, reached from a `Total check` page action rather than from DB Service, which is phase 9; see the correction on rebuild-plan 2.10 #3) — fixed, see rebuild-plan 2.10 #3 (audit 3: saving unchanged turns 300 cents into 3 cents) — `BadgesTest`: the edit form ships the five sections... (asserts €3.00 from 300 cents); no write path can put a euro string into a cents column; the corrupted-total report lists exactly the badges whose total is out of step; the report is offered to an admin only, and only as a link
+- [x] `subtotal`, label `Subtotal (€)`, disabled, helper `Amount before tax`, euros from cents — `BadgesTest`: the edit form ships the five sections, all read-only but the two statuses
+- [x] `tax`, label `Tax (€)`, disabled, helper `Tax amount`, euros from cents — `BadgesTest`: the edit form ships the five sections, all read-only but the two statuses
+- [x] `is_free_badge`, label `Free Badge`, Toggle, disabled, helper `Whether this badge was provided for free` — `BadgesTest`: the edit form ships the five sections...; no write path can put a euro string into a cents column (asserts it cannot be written)
+- [x] `extra_copy`, label `Extra Copy`, Toggle, disabled, helper `Whether this is an additional copy of another badge` — `BadgesTest`: the edit form ships the five sections, all read-only but the two statuses
+- [~] Section `Badge Features & Upgrades`, description `Special features and upgrade options applied to this badge`, **collapsed** — title, description and the collapsed state ship, section icon does not, see rebuild-plan 1.5 — `Pages/Manage/Badges/Form.vue`
+- [x] `dual_side_print`, label `Double-Sided Print`, Toggle, disabled, helper `Whether the badge is printed on both sides` — `Pages/Manage/Badges/Form.vue`; the field is absent from `BadgeRequest`, so it cannot be written
+- [x] `apply_late_fee`, label `Late Fee Applied`, Toggle, disabled, helper `Whether a late fee was applied to this badge` — `Pages/Manage/Badges/Form.vue`; absent from `BadgeRequest`
+- [~] Section `Timeline & Processing`, description `Key dates and processing timestamps`, **collapsed** — title, description and the collapsed state ship, section icon does not, see rebuild-plan 1.5 — `Pages/Manage/Badges/Form.vue`
+- [x] `created_at`, label `Created At`, disabled, helper `When the badge was initially created` — `Pages/Manage/Badges/Form.vue`; absent from `BadgeRequest`
+- [x] `printed_at`, label `Printed At`, disabled, helper `When the badge was printed` — `Pages/Manage/Badges/Form.vue`; absent from `BadgeRequest`
+- [x] `picked_up_at`, label `Picked Up At`, disabled, helper `When the badge was collected by the owner` — `Pages/Manage/Badges/Form.vue`; absent from `BadgeRequest`
 
 ### Table config
 
-- [ ] `selectCurrentPageOnly` semantics: bulk selection never crosses a page (deliberate operational cap)
-- [ ] Pagination options 10 / 25 / 50 / 100, no "all"
-- [ ] Default sort `sort_attendee_id` asc
-- [ ] Poll 5s
-- [~] Print and bulk print flash toasts (both are silent today) — new, see rebuild-plan 2.10 #45 (audit 7.2)
-- [~] The `print_jobs_count` N+1 (two `printJobs()->get()` per row, every 5s) is gone — fixed, see rebuild-plan 2.3/2.4 (audit 95)
+- [x] `selectCurrentPageOnly` semantics: bulk selection never crosses a page (deliberate operational cap) — structural in `Components/Manage/DataTable.vue`: the selection is built from the current page's rows and pruned against them on every reload, so it cannot cross a page; the bulk print inherits it — `BadgesTest`: the table offers Edit and Print Badge and nothing else, and no create action at all
+- [x] Pagination options 10 / 25 / 50 / 100, no "all" — `BadgesTest`: the pager offers 10 / 25 / 50 / 100 and no all
+- [x] Default sort `sort_attendee_id` asc — `BadgesTest`: the list opens sorted by attendee id numerically, on SQLite
+- [x] Poll 5s — `usePoll(5000, { only: ['rows', 'meta', 'bulkActions'] })` in `Pages/Manage/Badges/Index.vue`, reloading the data props and the bulk actions and nothing else; `bulkActions` rides along because that is what carries the printer options, per the `[~]` below — `BadgePrintTest`: the poll, sent exactly as those three props, queues nothing
+- [~] Print and bulk print flash toasts (both are silent today) — new, see rebuild-plan 2.10 #45 (audit 7.2): a success toast naming the batch that is ready to print, and a `Nothing was queued` danger toast when the selection produced no batch or its artwork was stale — `BadgePrintTest`: the row action flashes a toast, which the Filament action never did; the bulk action says so when the selection queued nothing
+- [~] The `print_jobs_count` N+1 (two `printJobs()->get()` per row, every 5s) is gone — fixed, see rebuild-plan 2.3/2.4 (audit 95) — `BadgesTest`: the Print Jobs counts cost the same number of queries however many rows there are
 
 ## 6. Fursuits (audit 4.3)
 
+Shipped by phase 3. Every line below names the test in `tests/Feature/Manage/FursuitsTest.php`
+that covers it, except where the note says the behaviour is client state in a `.vue` file.
+
+Two internal renames, neither of them user-visible: the `user.name` and `species.name` cells are
+keyed `user_name` and `species_name`, and the activity `causer.name` cell is keyed `causer_name`.
+Labels are unchanged. A dot in a cell key is read as a path by `data_get`, which is what Inertia's
+own assertions and any future prop reader use.
+
 ### Columns
 
-- [ ] 1 `user.name`, label `By`, sortable
-- [ ] 2 `species.name`, label `Species.name`, sortable
-- [ ] 3 `status`, badge, searchable, colours Pending `warning` / Approved `success` / Rejected `danger`, `ucfirst` label
-- [ ] 4 `name`, label `Name`, searchable
-- [ ] 5 `image`, s3 private, circular, no file-existence check
-- [ ] 6 `published`, boolean icon
-- [ ] 7 `catch_em_all`, label `Catch em all`, boolean icon
+- [x] 1 `user.name`, label `By`, sortable — `FursuitsTest`: the list renders the seven columns in order; sorting proven through the partial visit, ordered by a correlated subquery so an ownerless row still sorts
+- [x] 2 `species.name`, label `Species.name`, sortable — same two tests
+- [x] 3 `status`, badge, searchable, colours Pending `warning` / Approved `success` / Rejected `danger`, `ucfirst` label — `FursuitsTest`: the cells carry the owner, species, state badge and a signed image url (tone `warn`/`ok`/`danger` through `Status::fursuit`); search matches the name and the stored state name
+- [x] 4 `name`, label `Name`, searchable — `FursuitsTest`: search matches the name and the stored state name
+- [x] 5 `image`, s3 private, circular, no file-existence check — `FursuitsTest`: the cells carry … a signed image url; `FursuitController::imageUrl()` signs against the `s3` disk and never stats the object. `ListEnvelopeTest`: both image columns declare the circular avatar shape (`Column::image()->circular()` plus the two shapes `DataTable` renders, added at integration)
+- [x] 6 `published`, boolean icon — `FursuitsTest`: the list renders the seven columns in order; the cells carry …
+- [x] 7 `catch_em_all`, label `Catch em all`, boolean icon — same two tests
 
 ### Filters
 
-- [ ] 1 `status` select, options Pending / Approved / Rejected, **default `pending`** — the list never shows the full set on first load (audit 135)
+- [x] 1 `status` select, options Pending / Approved / Rejected, **default `pending`** — the list never shows the full set on first load (audit 135) — `FursuitsTest`: the status filter opens on Pending and hides everything else until it is cleared, which also covers clearing through `Filter::CLEARED`
 
 ### Actions
 
-- [ ] View (row)
-- [ ] Create (header), hidden because `FursuitPolicy::create()` is false
-- [~] `Claim` is explicit; opening a pending fursuit no longer claims it — fixed, see rebuild-plan 2.10 #41 (audit 69: `$defaultAction = 'Claim'`)
-- [ ] `Claim` visible only when the record can transition to Approved and is not already claimed by you
-- [~] `Unclaim` performs an ownership check — fixed, see rebuild-plan 2.10 #41 (audit 71: `unclaim()` takes no parameter and checks nothing)
-- [ ] `Approve`, icon check-circle, colour success, visible only while claimed by you
-- [ ] `Approve` confirm: heading `Approve`, description `Are you sure you would like to do this?`, submit `Confirm`
-- [ ] `Approve` runs `PendingToApproved`, then advances to the next pending fursuit or back to the list
-- [ ] `Reject`, icon x-circle, colour danger, visible only while claimed by you
-- [ ] `Reject` confirm: heading `Reject`, description `Are you sure you would like to do this?`, submit `Confirm`
-- [ ] `Reject` form: `reason` Select prefilling `custom_reason`; `custom_reason` Textarea, label `Reason Sent to the User!`, required; only `custom_reason` is persisted and sent
-- [~] The eight reject reasons become a **keyed** list, not a positional one — fixed, see rebuild-plan 2.10 #40 (audit 37)
-- [ ] Reject reason 1 `The submission shows a human. We can only accept badges created for fursuits.`
-- [ ] Reject reason 2 `The submission is explicit and does not follow our guidelines.`
-- [ ] Reject reason 3 `The submission is of low quality and does not meet our guidelines.`
-- [ ] Reject reason 4 `The submission is a not a photo. We only accept photos, we do not accept illustrations or other digital art as fursuit images.`
-- [ ] Reject reason 5 `The submission shows an animal. We do not allow images of real animals, only fursuits.`
-- [ ] Reject reason 6 `The submission is AI generated and does not show a real fursuit.`
-- [ ] Reject reason 7 `The name of the fursuit is not appropriate.`
-- [ ] Reject reason 8 `The species of the fursuit is not appropriate.`
-- [~] Approve and Reject flash a danger toast instead of failing silently when the record is not claimed — fixed, see rebuild-plan 2.10 #43 (audit 72)
-- [ ] `Approve Rejected` / label `Approve (Rejected)`, icon check-circle, colour success, visible only when the state is Rejected, requires no claim
-- [ ] `Approve Rejected` confirm heading `Approve Rejected Fursuit`
-- [ ] `Approve Rejected` confirm description `This will send an apology email to the user and approve the fursuit.`
-- [ ] `Approve Rejected` submit label `Yes, approve it`
-- [ ] `Send Notification`, icon envelope, colour info, always visible
-- [ ] `Send Notification` form: `notification_type` Select (required, `Approval Notification` / `Rejection Notification`) and `rejection_reason` Textarea, label `Rejection Reason (Required for Rejection)`, visible and required only for rejection
-- [ ] `Send Notification` rejection fallback reason string `No reason provided`
-- [ ] `notification_type` is live, so `rejection_reason` reacts immediately (audit 73)
-- [ ] `Next Fursuit`, icon arrow-right, colour primary, always visible
-- [~] The next-record walk is deterministic, ordered, event-scoped, skips claimed records and has an explicit empty state — fixed, see rebuild-plan 2.10 #42 (audit 76)
-- [ ] View (edit page header)
-- [ ] Delete (edit page), Filament default delete copy, **soft delete**, cascades to the fursuit's badges via `FursuitObserver` (audit 78)
-- [ ] No bulk actions on this table
+- [x] View (row) — `FursuitsTest`: the only row action is View, and there are no bulk or page actions
+- [x] Create (header), hidden because `FursuitPolicy::create()` is false — `FursuitsTest`: no create route exists and the policy still refuses creation; the same test asserts `pageActions` is empty
+- [~] `Claim` is explicit; opening a pending fursuit no longer claims it — fixed, see rebuild-plan 2.10 #41 (audit 69: `$defaultAction = 'Claim'`) — `FursuitsTest`: opening a pending fursuit does not claim it
+- [x] `Claim` visible only when the record can transition to Approved and is not already claimed by you — `FursuitsTest`: Claim and Unclaim are offered on the state they belong to
+- [~] `Unclaim` performs an ownership check — fixed, see rebuild-plan 2.10 #41 (audit 71: `unclaim()` takes no parameter and checks nothing) — `FursuitsTest`: unclaim refuses to drop somebody else's claim. The check lives in `FursuitModerationController`, not in `Fursuit::unclaim()`, which the POS also calls
+- [x] `Approve`, icon check-circle, colour success, visible only while claimed by you — `FursuitsTest`: Claim and Unclaim are offered on the state they belong to (icon `circle-check`, tone `ok`, the lucide and token equivalents)
+- [x] `Approve` confirm: heading `Approve`, description `Are you sure you would like to do this?`, submit `Confirm` — `FursuitsTest`: Approve and Reject carry the framework default confirm copy
+- [x] `Approve` runs `PendingToApproved`, then advances to the next pending fursuit or back to the list — `FursuitsTest`: Approve runs PendingToApproved and advances to the next pending fursuit; an empty queue lands on the list and says so
+- [x] `Reject`, icon x-circle, colour danger, visible only while claimed by you — `FursuitsTest`: Claim and Unclaim are offered on the state they belong to
+- [x] `Reject` confirm: heading `Reject`, description `Are you sure you would like to do this?`, submit `Confirm` — `FursuitsTest`: Approve and Reject carry the framework default confirm copy
+- [x] `Reject` form: `reason` Select prefilling `custom_reason`; `custom_reason` Textarea, label `Reason Sent to the User!`, required; only `custom_reason` is persisted and sent — `FursuitsTest`: the eight rejection reasons ship verbatim, as a keyed list (field declaration, label, required) and Reject stores and mails only the custom reason, then advances (only `custom_reason` reaches the activity entry and the mail). The prefill itself is client state in `Show.vue`, fed by the `rejectReasons` prop, so no server test covers it
+- [~] The eight reject reasons become a **keyed** list, not a positional one — fixed, see rebuild-plan 2.10 #40 (audit 37) — `FursuitsTest`: the eight rejection reasons ship verbatim, as a keyed list, which also asserts no key is numeric
+- [x] Reject reason 1 `The submission shows a human. We can only accept badges created for fursuits.` — `FursuitsTest`: the eight rejection reasons ship verbatim, as a keyed list
+- [x] Reject reason 2 `The submission is explicit and does not follow our guidelines.` — same test
+- [x] Reject reason 3 `The submission is of low quality and does not meet our guidelines.` — same test
+- [x] Reject reason 4 `The submission is a not a photo. We only accept photos, we do not accept illustrations or other digital art as fursuit images.` — same test
+- [x] Reject reason 5 `The submission shows an animal. We do not allow images of real animals, only fursuits.` — same test
+- [x] Reject reason 6 `The submission is AI generated and does not show a real fursuit.` — same test
+- [x] Reject reason 7 `The name of the fursuit is not appropriate.` — same test
+- [x] Reject reason 8 `The species of the fursuit is not appropriate.` — same test
+- [~] Approve and Reject flash a danger toast instead of failing silently when the record is not claimed — fixed, see rebuild-plan 2.10 #43 (audit 72) — `FursuitsTest`: Approve refuses, and says so, when the record is not claimed by you; Reject requires a reason to send and refuses an unclaimed record. The check is `isClaimedBySelf`, matching the visibility rule, rather than Filament's weaker `isClaimed`
+- [x] `Approve Rejected` / label `Approve (Rejected)`, icon check-circle, colour success, visible only when the state is Rejected, requires no claim — `FursuitsTest`: Approve Rejected needs no claim, keeps its custom copy and always notifies; Approve Rejected is not offered, and refuses, on a record that is not rejected
+- [x] `Approve Rejected` confirm heading `Approve Rejected Fursuit` — same test
+- [x] `Approve Rejected` confirm description `This will send an apology email to the user and approve the fursuit.` — same test
+- [x] `Approve Rejected` submit label `Yes, approve it` — same test
+- [x] `Send Notification`, icon envelope, colour info, always visible — `FursuitsTest`: Send Notification is always offered and mails without touching the state (icon `mail`, tone `info`, no confirm, offered on an already-approved record)
+- [x] `Send Notification` form: `notification_type` Select (required, `Approval Notification` / `Rejection Notification`) and `rejection_reason` Textarea, label `Rejection Reason (Required for Rejection)`, visible and required only for rejection — same test, plus a rejection notification needs its reason and keeps the fallback string
+- [x] `Send Notification` rejection fallback reason string `No reason provided` — `FursuitsTest`: a rejection notification needs its reason and keeps the fallback string, asserted on `FursuitNotificationController::NO_REASON`. Unreachable while the reason is required, exactly as today
+- [x] `notification_type` is live, so `rejection_reason` reacts immediately (audit 73) — client state in `Show.vue`, which renders this form itself rather than through `ActionButton` for that reason; no server test covers it
+- [x] `Next Fursuit`, icon arrow-right, colour primary, always visible — `FursuitsTest`: the Next Fursuit action is always offered (asserted on an approved record, where every other moderation action is gone)
+- [~] The next-record walk is deterministic, ordered, event-scoped, skips claimed records and has an explicit empty state — fixed, see rebuild-plan 2.10 #42 and 2.9 (audit 76) — `FursuitsTest`: Next Fursuit walks the queue in order, event-scoped, skipping claimed records; an empty queue lands on the list and says so
+- [x] View (edit page header) — `FursuitsTest`: the edit form prefills the record and offers only the allowed transitions
+- [x] Delete (edit page), Filament default delete copy, **soft delete**, cascades to the fursuit's badges via `FursuitObserver` (audit 78) — `FursuitsTest`: the edit form prefills … (confirm copy) and a fursuit is soft deleted and disappears from the list (soft delete plus the badge cascade)
+- [x] No bulk actions on this table — `FursuitsTest`: the only row action is View, and there are no bulk or page actions
+- [~] The list declares `defaultSort('id')` where `FursuitResource` declares none — new, see rebuild-plan 2.10 #58 (a paginated list with no `ORDER BY` can repeat or skip a row between pages)
+- [~] A claim somebody else already holds flashes `Already claimed` / `Another reviewer is working on this fursuit.` instead of silently walking to the next record — new, see rebuild-plan 2.10 #61 — `FursuitsTest`: a claim is not silently inherited by a second reviewer
+- [~] The view page offers an `Edit` link — new, see rebuild-plan 2.10 #60 (`EditAction` is commented out and `ViewFursuit` has no edit button, so the route plan 2.1 registers is otherwise reachable only by typing the URL)
 
 ### Notifications
 
-- [ ] `Approve Rejected` success title `Rejected fursuit approved successfully`
-- [ ] `Send Notification` (approved) success title `Approval notification sent successfully`
-- [ ] `Send Notification` (rejected) success title `Rejection notification sent successfully`
+- [x] `Approve Rejected` success title `Rejected fursuit approved successfully` — `FursuitsTest`: Approve Rejected needs no claim, keeps its custom copy and always notifies
+- [x] `Send Notification` (approved) success title `Approval notification sent successfully` — `FursuitsTest`: Send Notification is always offered and mails without touching the state
+- [x] `Send Notification` (rejected) success title `Rejection notification sent successfully` — `FursuitsTest`: a rejection notification needs its reason and keeps the fallback string
 
 ### Infolist (view page)
 
-- [ ] `image` ImageEntry, s3 private, full width/height, centred, left column span 3
-- [ ] `name`, hint `Name of the fursuit on the Badge`, helper `Should not contain profanities.`, large, bold
-- [ ] `species.name` label `Species`, hint `Name of the species on the Badge`, helper `Should not contain profanities.`, large, bold
-- [ ] `published` IconEntry, boolean, large, hint `Publish your fursuit in our online gallery for everyone to see.`
-- [ ] `catch_em_all` IconEntry, boolean, large, hint `Participate in the convention game to be catchable by other attendees.`
-- [ ] `status` badge entry, hint `Current status of the fursuit.`, state colour, `ucfirst`
+The values are server props, asserted by `FursuitsTest`: the view page ships the infolist content.
+The hints and helper texts are rendered copy and live verbatim in `Pages/Manage/Fursuits/Show.vue`;
+no server test covers a string that never leaves the client.
+
+- [x] `image` ImageEntry, s3 private, full width/height, centred, left column span 3 — prop asserted; the twelve-column grid with `md:col-span-3` is in `Show.vue`
+- [x] `name`, hint `Name of the fursuit on the Badge`, helper `Should not contain profanities.`, large, bold — copy in `Show.vue`
+- [x] `species.name` label `Species`, hint `Name of the species on the Badge`, helper `Should not contain profanities.`, large, bold — copy in `Show.vue`
+- [x] `published` IconEntry, boolean, large, hint `Publish your fursuit in our online gallery for everyone to see.` — copy in `Show.vue`
+- [x] `catch_em_all` IconEntry, boolean, large, hint `Participate in the convention game to be catchable by other attendees.` — copy in `Show.vue`
+- [x] `status` badge entry, hint `Current status of the fursuit.`, state colour, `ucfirst` — prop asserted; hint in `Show.vue`
+
+The view page additionally names who holds the claim, which the Filament page never showed
+(`fursuit.claim`, asserted in the same test). New, see rebuild-plan 2.10 #60, and listed here so it
+is not read as parity.
 
 ### Form
 
-- [ ] `user_id` Select relationship `user.name`, required
-- [ ] `species_id` Select relationship `species.name`, required
-- [~] `event_id` becomes a relation select instead of a numeric TextInput — fixed, see rebuild-plan 2.6
-- [~] `status` becomes a transition picker instead of a free `TextInput` — fixed, see rebuild-plan 2.10 #9 (audit 21)
-- [~] `approved_at` / `rejected_at` stop being hand-editable and can no longer contradict `status` — fixed, see rebuild-plan 2.10 #9
-- [ ] `name` TextInput, required, max 255
-- [~] `image` FileUpload targets **s3, private** — fixed, see rebuild-plan 2.10 #5 (audit 7.4: no `->disk()` today)
-- [ ] `published` Toggle, required
-- [ ] `catch_em_all` Toggle, required
+- [x] `user_id` Select relationship `user.name`, required — `FursuitsTest`: the form validates the fields the Filament schema required; saving the form writes the plain attributes and leaves an unchanged status alone
+- [x] `species_id` Select relationship `species.name`, required — same two tests
+- [~] `event_id` becomes a relation select instead of a numeric TextInput — fixed, see rebuild-plan 2.6 — `FursuitsTest`: the edit form prefills the record … (the `events` option list) and the form validates the fields the Filament schema required (`exists:events,id`)
+- [~] `status` becomes a transition picker instead of a free `TextInput`, which brings its own copy: section description `Status changes run through the state machine, so timestamps, the activity log and the owner's notification all follow.`, fields `Current` and `Change to` with helper `Only the transitions this fursuit's current status allows are offered.`, and the reason field reusing the moderation modal's label `Reason Sent to the User!` so one value does not carry two names — fixed, see rebuild-plan 2.10 #9 (audit 21) — `FursuitsTest`: the edit form prefills the record and offers only the allowed transitions; the form changes status through the state machine, never by writing the column; the form refuses a status the machine has no edge for, and rejection needs a reason
+- [~] `approved_at` / `rejected_at` stop being hand-editable and can no longer contradict `status` — fixed, see rebuild-plan 2.10 #9 — `FursuitsTest`: approved_at and rejected_at cannot be written by hand any more
+- [x] `name` TextInput, required, max 255 — `FursuitsTest`: the form validates the fields the Filament schema required
+- [~] `image` FileUpload targets **s3, private** — fixed, see rebuild-plan 2.10 #5 (audit 7.4: no `->disk()` today) — the form uploads through `POST /admin/uploads` with purpose `fursuit_image`, which `UploadController` stores on the `s3` disk with private visibility (phase 1). `FursuitsTest`: the edit form prefills the record … asserts the `uploadPurpose` prop; the disk itself is covered by the phase 1 upload tests
+- [x] `published` Toggle, required — `FursuitsTest`: the form validates the fields the Filament schema required; saving the form writes the plain attributes and leaves an unchanged status alone
+- [x] `catch_em_all` Toggle, required — same two tests
 
 ### State machine and side effects
 
-- [ ] `PendingToApproved`: sets Approved, stamps `approved_at`, nulls `rejected_at`, logs `Fursuit approved`, notifies `FursuitApprovedNotification` only when `event->ends_at` is in the future
-- [ ] `PendingToRejected`: sets Rejected, stamps `rejected_at`, nulls `approved_at`, logs `Fursuit rejected` with property `reason`, notifies `FursuitRejectedNotification($reason)` under the same guard
-- [ ] `RejectedToApproved`: logs `Fursuit approved (was previously rejected)` and **always** notifies `FursuitRejectionReversedNotification`
-- [~] `RejectedToPending` is not ported — dropped, see rebuild-plan 2.10 #44 (audit 42: never wired into `config()`)
-- [ ] Claim TTL and behaviour: a claim is not silently inherited by a second reviewer (audit 70 — record the chosen mechanism)
+- [x] `PendingToApproved`: sets Approved, stamps `approved_at`, nulls `rejected_at`, logs `Fursuit approved`, notifies `FursuitApprovedNotification` only when `event->ends_at` is in the future — `FursuitsTest`: Approve runs PendingToApproved and advances to the next pending fursuit
+- [x] `PendingToRejected`: sets Rejected, stamps `rejected_at`, nulls `approved_at`, logs `Fursuit rejected` with property `reason`, notifies `FursuitRejectedNotification($reason)` under the same guard — `FursuitsTest`: Reject stores and mails only the custom reason, then advances
+- [x] `RejectedToApproved`: logs `Fursuit approved (was previously rejected)` and **always** notifies `FursuitRejectionReversedNotification` — `FursuitsTest`: Approve Rejected needs no claim, keeps its custom copy and always notifies
+- [~] `RejectedToPending` is not ported — dropped, see rebuild-plan 2.10 #44 (audit 42: never wired into `config()`) — the Rejected -> Pending edge the form's picker offers goes through `transitionTo(Pending::class)` with no arguments, which is the machine's default transition, not that class. `FursuitsTest`: the edit form prefills the record and offers only the allowed transitions
+- [x] Claim TTL and behaviour: a claim is not silently inherited by a second reviewer (audit 70 — record the chosen mechanism) — **mechanism**: unchanged from today, one cache key `fursuit:{id}:claim` holding the reviewer's id with a five minute TTL. What changes around it is that both gestures are explicit and both are checked server-side: claiming never happens on a page load, unclaiming requires ownership, and approve and reject require the claim to be yours. `FursuitsTest`: a claim is not silently inherited by a second reviewer; unclaim refuses to drop somebody else's claim
 
 ## 7. Fursuit activity log (audit 4.3.5)
 
-- [ ] Column 1 `description`
-- [ ] Column 2 `causer.name`, label `By`, sortable, searchable
-- [ ] No filters
-- [~] The list is **read-only**: no create, edit, delete or bulk delete — dropped, see rebuild-plan 2.10 #12 (audit 56)
-- [~] The activity create form (`event`, `description`, `properties`, `created_at`) is not ported — dropped, see rebuild-plan 2.10 #12
-- [ ] Newest-first ordering and a visible timestamp (audit 134: no `defaultSort`, no timestamp column today)
-- [ ] Logged attributes stay `name`, `image`, `species_id` plus the three manual transition entries
+- [x] Column 1 `description` — `FursuitsTest`: the activity list renders newest first with a By column and a timestamp
+- [x] Column 2 `causer.name`, label `By`, sortable, searchable — same test for the column and the sort; `FursuitsTest`: the activity list searches by causer and offers no way to change anything for the search. Sorting is a correlated subquery on `users.name`; the search is applied in `FursuitController::activityTable()` with `whereHasMorph`, because `causer` is a MorphTo and `Table`'s generic relation search calls `whereHas`, which refuses one outright
+- [x] No filters — `FursuitsTest`: the activity list renders newest first with a By column and a timestamp
+- [~] The list is **read-only**: no create, edit, delete or bulk delete — dropped, see rebuild-plan 2.10 #12 (audit 56) — `FursuitsTest`: the activity list searches by causer and offers no way to change anything, which asserts the empty action sets and that `ActivityPolicy` refuses create, update and delete
+- [~] The activity create form (`event`, `description`, `properties`, `created_at`) is not ported — dropped, see rebuild-plan 2.10 #12 — no route, no page, and `ActivityPolicy::create()` is false (same test)
+- [~] Newest-first ordering and a visible timestamp (audit 134: no `defaultSort`, no timestamp column today) — new, see rebuild-plan 2.10 #59 — `FursuitsTest`: the activity list renders newest first with a By column and a timestamp. Ordered by key rather than by timestamp: the log is append-only so the two agree, and several entries routinely land inside the same second, which would leave a timestamp sort tied. The timestamp is its own sortable column
+- [x] Logged attributes stay `name`, `image`, `species_id` plus the three manual transition entries — `FursuitsTest`: the logged attributes and the three transition entries are unchanged
 
 ## 8. Special Codes (audit 4.4)
 
@@ -339,8 +367,9 @@ description, and submit `Confirm`.
 - [x] `event_id` Select, label `Event`, required, helper `Event in which the code can be used` — `SpecialCodesTest`: the create form ships its options and the live catch-url base; event_id is required and must exist. Helper text in `Pages/Manage/SpecialCodes/Form.vue`
 - [~] `class_name` is validated against the options the Select offers — changed, see rebuild-plan 2.10 #49 — `SpecialCodesTest`: class_name must be one of the offered options
 - [~] `class_name` Select, label `Class`, helper `PHP class used for code handling`, becomes `live()` — fixed, see rebuild-plan 2.10 #39 (audit 33) — options asserted by `SpecialCodesTest`: the create form ships its options and the live catch-url base. The liveness is client state in `Form.vue` (`v-model` drives the placeholder), not server behaviour, so no server test covers it
-- [~] `constructor_data` Textarea, label `Constructor Data`, 3 rows, `nullable|json`, helper `Data to be passed to the constructor of the action class`, becomes **editable** — fixed, see rebuild-plan 2.10 #39 (audit 32: the `disabled()` matcher compares against a literal `'EXAMPLE'` that is not an option) — `SpecialCodesTest`: constructor_data is editable and must be valid JSON
-- [~] `constructor_data` must be a JSON **object**, not merely valid JSON — changed, see rebuild-plan 2.10 #51 — `SpecialCodesTest`: constructor_data must be a JSON object, not just valid JSON; a stored constructor_data never trips the action constructor type hint
+- [~] `constructor_data` Textarea, label `Constructor Data`, 3 rows, `nullable|json`, helper `Data to be passed to the constructor of the action class`, becomes **editable** and stops being JSON — fixed, see rebuild-plan 2.10 #39 (audit 32: the `disabled()` matcher compares against a literal `'EXAMPLE'` that is not an option). There is no JSON input in the panel: the section is `Action data`, one field per key the selected action class declares (`ConfigurableSpecialCodeAction::constructorFields()`, shipped as the `actionSchemas` prop), each validated on its own `data.<field>` path and assembled into the stored object server-side. `BugBountyAction`, the one class on offer, reads nothing out of the data and therefore declares no fields, so the section states that instead — `SpecialCodesTest`: the action data is a form, and each field is validated on its own path; an omitted field is stored as its declared default, not as a missing key; the class the form offers decides which fields exist, so the schemas ship with the page
+- [~] `constructor_data` must be a JSON **object**, not merely valid JSON — changed, see rebuild-plan 2.10 #51. Now unconditional rather than a rule: the request has no `constructor_data` input, so only an assembled object or null is ever written — `SpecialCodesTest`: constructor_data cannot be anything but an object, because the request never carries it; a stored constructor_data never trips the action constructor type hint
+- [~] a stored document the current schema does not describe is preserved, not rewritten — new. An undeclared key (an old key, or one belonging to another action) is shown read-only and written back unchanged while the class is unchanged, and dropped when the class changes; a declared key that is missing or holds the wrong type falls back to the field default; a stored value that is not an object is displayed and replaced by an object on save; a `class_name` the panel no longer offers is shown in the Select labelled unavailable and still refused by `Rule::in` — `SpecialCodesTest`: an existing row round-trips through the form unchanged; an undeclared key survives an edit, and is dropped when the class changes; a stored value that does not fit the schema does not break the edit page; a class the panel no longer offers is shown, not silently swapped
 - [~] a code saved with no class writes `''`, since `special_codes.class_name` is NOT NULL — changed, see rebuild-plan 2.10 #50 — `SpecialCodesTest`: a code without a class saves rather than failing at the database
 - [x] `code` TextInput, label `Code`, required, exactly 5 chars, unique on `special_codes.code` ignoring self, helper `E.g. ABC45` — `SpecialCodesTest`: code is required and must be exactly five characters; code is unique among special codes, ignoring the record being edited
 - [x] `code` cross-check against `fursuits.catch_code` fails with `This code is already used in Fursuits.` — `SpecialCodesTest`: code is cross-checked against fursuit catch codes, with the message verbatim
@@ -357,408 +386,435 @@ description, and submit `Confirm`.
 
 ### Columns
 
-- [ ] 1 `id`, label `ID`, sortable, searchable
-- [ ] 2 `user.name`, label `Customer`, sortable, searchable, links to the users list pre-filtered by that name
-- [ ] 3 `cashier.name`, label `Cashier`, sortable, searchable, `-` when null
-- [ ] 4 `machine.name`, label `Machine`, sortable, searchable, toggleable, visible by default
-- [ ] 5 `status`, badge, labels `Active` / `Finished` / `Cancelled`, colours warning / success / danger
-- [ ] 6 `payment_method`, badge, `cash` success / `card` info / else gray
-- [ ] 7 `total`, sortable, money divided by 100
-- [ ] 7a Sum summariser on `total`, label `Total`, money divided by 100
-- [ ] 8 `items_count`, label `Items`, counts the `items` relation
-- [ ] 9 `created_at`, label `Created At`, sortable, toggleable, app default datetime format
+- [x] 1 `id`, label `ID`, sortable, searchable - `CheckoutsTest`: the nine columns are asserted in order with their labels and types, and the search case covers the id
+- [x] 2 `user.name`, label `Customer`, sortable, searchable, links to the users list pre-filtered by that name - keyed `user_name`, because a dot in a cell key is read as a path by every `data_get` consumer; the label is unchanged and the cell carries `route('manage.users.index', ['search' => name])`
+- [x] 3 `cashier.name`, label `Cashier`, sortable, searchable, `-` when null - keyed `cashier_name`; `-` is the column fallback, asserted with a null cashier
+- [x] 4 `machine.name`, label `Machine`, sortable, searchable, toggleable, visible by default - keyed `machine_name`; `toggleable` true and `hiddenByDefault` false are both asserted
+- [x] 5 `status`, badge, labels `Active` / `Finished` / `Cancelled`, colours warning / success / danger - `Status::checkout` maps the three stored state names, Cancelled included, so a voided fiscal record does not share the neutral tone an unrecognised status falls back to; `CheckoutsTest` asserts label and tone for each
+- [~] 6 `payment_method`, badge, `cash` success / `card` info / else gray - the tones are verbatim; the wording changes, and is counted here as a deviation rather than hidden inside a tick. The cell prints the resource's own filter labels (`Cash` / `Card`) instead of the raw column value the badge printed, which is the same normalisation phase 6 made for the print-job enums (audit 7.9); an unknown method still renders as itself. See rebuild-plan 2.10 #35's neighbourhood - the vocabulary rule, not a new write - `CheckoutsTest`: the payment method badge is Cash/Card with the audit's tones
+- [x] 7 `total`, sortable, money divided by 100 - `Column::money`, which is the only money renderer and has no undivided variant
+- [x] 7a Sum summariser on `total`, label `Total`, money divided by 100 - carried inside `meta` so a partial visit reloads it with the rows it totals; `CheckoutsTest` asserts it follows a filter and ignores the page
+- [x] 8 `items_count`, label `Items`, counts the `items` relation - `withCount('items')`, not sortable, as declared; right-aligned, because `Column::number()` aligns every numeric column panel-wide, where the resource aligned only the money columns
+- [x] 9 `created_at`, label `Created At`, sortable, toggleable, app default datetime format - `M j, Y H:i:s`, the same constant the print-job list uses
 
 ### Filters
 
-- [~] 1 `status` multi-select, options Active / Finished / Cancelled, matching on the persisted state **names** — fixed, see rebuild-plan 2.10 #35 (audit 6: FQCN keys match zero rows today)
-- [ ] 2 `payment_method` select, options Cash / Card
-- [ ] 3 `machine_id` select from the `machine` relation
-- [ ] 4 `created_at` range: `created_from` and `created_until` date pickers, inclusive `whereDate`
+- [~] 1 `status` multi-select, options Active / Finished / Cancelled, matching on the persisted state **names** — fixed, see rebuild-plan 2.10 #35 (audit 6: FQCN keys match zero rows today) - shipped: the option values are read off the state classes' own `$name`, and `CheckoutsTest` asserts both that a name matches and that the old FQCN keying matches nothing
+- [x] 2 `payment_method` select, options Cash / Card - `CheckoutsTest` asserts the two option labels and that the filter narrows the list
+- [x] 3 `machine_id` select from the `machine` relation - options are every machine by name; asserted against a second desk
+- [x] 4 `created_at` range: `created_from` and `created_until` date pickers, inclusive `whereDate` - two filter keys rather than one custom form, which is the shape `Filter` offers for a single free value; the Index page renders them as date inputs with clearable indicators, the same arrangement the print-job list uses. `CheckoutsTest` asserts both ends are inclusive
 
 ### Actions
 
-- [ ] View (row)
-- [~] `Receipt` (row), icon document-text, colour gray, opens in a new tab, served under the manage guard instead of `pos.checkout.receipt` — fixed, see rebuild-plan 2.10 #36 (audit 13)
-- [ ] `Print` (row), icon printer, colour info
-- [ ] `Print` confirm heading `Print Receipt`
-- [ ] `Print` confirm description `This will add the receipt to the print queue.`
-- [ ] `Download Receipt` (detail page header), icon arrow-down-tray, colour gray, new tab
-- [ ] `Print Receipt` (detail page header), icon printer, colour info, same confirm copy
-- [~] The two byte-identical print bodies collapse into one controller method — fixed, see rebuild-plan 2.10 #37 (audit 4)
-- [~] Receipt rendering is queued and idempotent per checkout, with an activity entry, instead of `dispatchSync` — fixed, see rebuild-plan 2.10 #37 (audit 14)
-- [~] The print job is created with `PrintJobTypeEnum::Receipt`, not the raw string `'receipt'` — fixed, see rebuild-plan 2.10 #37 (audit 4)
-- [ ] No bulk actions
-- [ ] No create action; checkouts come from POS only
-- [ ] Create, edit and delete stay impossible
+- [x] View (row) - offered where `view` allows it, linking to `manage.checkouts.show`
+- [~] `Receipt` (row), icon document-text, colour gray, opens in a new tab, served under the manage guard instead of `pos.checkout.receipt` — fixed, see rebuild-plan 2.10 #36 (audit 13) - shipped as `GET /admin/checkouts/{checkout}/receipt`, icon `file-text`, tone idle, `newTab`; `CheckoutsTest` asserts the PDF comes back under the manage guard
+- [x] `Print` (row), icon printer, colour info - offered only where `printReceipt` allows it, which a reviewer does not
+- [x] `Print` confirm heading `Print Receipt` - asserted verbatim
+- [x] `Print` confirm description `This will add the receipt to the print queue.` - asserted verbatim
+- [x] `Download Receipt` (detail page header), icon arrow-down-tray, colour gray, new tab - icon `download`, tone idle, `newTab`
+- [x] `Print Receipt` (detail page header), icon printer, colour info, same confirm copy - same endpoint the row action posts to, same confirm strings, both asserted
+- [~] The two byte-identical print bodies collapse into one controller method — fixed, see rebuild-plan 2.10 #37 (audit 4) - shipped: `CheckoutReceiptPrintController::store` is the only copy, and both actions point at it
+- [~] Receipt rendering is queued and idempotent per checkout, with an activity entry, instead of `dispatchSync` — fixed, see rebuild-plan 2.10 #37 (audit 14) - shipped: the render is dispatched only when the PDF is missing, a checkout with an outstanding receipt job does not get a second one, and every ask writes an activity entry against the checkout with the operator as causer. The one remaining `dispatchSync` is the download endpoint, which exists to hand back a PDF and catches its own failure into a toast
+- [~] The print job is created with `PrintJobTypeEnum::Receipt`, not the raw string `'receipt'` — fixed, see rebuild-plan 2.10 #37 (audit 4) - shipped, and the printer lookup asks with the enum too; `CheckoutsTest` asserts an active badge printer is not mistaken for a receipt printer
+- [x] No bulk actions - `bulkActions` is asserted empty
+- [x] No create action; checkouts come from POS only - `pageActions` is asserted empty and no create route exists
+- [x] Create, edit and delete stay impossible - `CheckoutPolicy` refuses all three (plus restore and forceDelete) for an admin, no route is registered for any of them, and the three URLs answer 405; `CheckoutsTest` asserts the row is byte-identical afterwards
 
 ### Notifications
 
-- [ ] Danger title `No receipt printer found`, body `Please configure an active receipt printer first.`
-- [ ] Success title `Receipt added to print queue`, body `Receipt for checkout #{id} has been queued for printing.`
+- [x] Danger title `No receipt printer found`, body `Please configure an active receipt printer first.` - asserted verbatim on the flashed toast
+- [x] Success title `Receipt added to print queue`, body `Receipt for checkout #{id} has been queued for printing.` - asserted verbatim, `#` included
 
 ### Detail page (read-only)
 
-- [ ] Section `Checkout Information`, 2 columns
-- [ ] `remote_id`, label `Remote ID`
-- [ ] `user_id`, label `Customer`
-- [ ] `cashier_id`, label `Cashier`
-- [ ] `machine_id`, label `Machine`
-- [ ] `status`
-- [ ] `payment_method`
-- [ ] Section `Financial Details`, 3 columns
-- [~] `subtotal`, `tax`, `total` render as euros from cents, agreeing with the table column — fixed, see rebuild-plan 2.10 #1 (audit 2: raw cents today)
-- [ ] Section `TSE Information`, 2 columns, **collapsed**
-- [ ] `tse_start_timestamp`, label `TSE Start`
-- [ ] `tse_end_timestamp`, label `TSE End`
-- [~] `tse_signature` is replaced by `tse_start_signature`, `tse_end_signature`, `tse_serial_number` and `tse_transaction_number` — fixed, see rebuild-plan 2.10 #38 (audit 5: the column does not exist, the field is permanently blank)
-- [ ] Section `Timestamps`, 2 columns, **collapsed**, `created_at` and `updated_at`
+- [x] Section `Checkout Information`, 2 columns
+- [x] `remote_id`, label `Remote ID`
+- [x] `user_id`, label `Customer` - the customer's name, read-only text rather than a disabled searchable Select over every user
+- [x] `cashier_id`, label `Cashier` - the cashier's name, same treatment
+- [x] `machine_id`, label `Machine` - the machine's name, same treatment
+- [x] `status` - the same badge the list column renders, from `Status::checkout`, rather than the stringified state object the disabled TextInput showed
+- [x] `payment_method` - the same badge the list column renders
+- [x] Section `Financial Details`, 3 columns
+- [~] `subtotal`, `tax`, `total` render as euros from cents, agreeing with the table column — fixed, see rebuild-plan 2.10 #1 (audit 2: raw cents today) - shipped through `Column::euros`, the same formatter the money column uses; `CheckoutsTest` asserts the detail `total` string equals the list cell
+- [x] Section `TSE Information`, 2 columns, **collapsed**
+- [x] `tse_start_timestamp`, label `TSE Start`
+- [x] `tse_end_timestamp`, label `TSE End`
+- [~] `tse_signature` is replaced by `tse_start_signature`, `tse_end_signature`, `tse_serial_number` and `tse_transaction_number` — fixed, see rebuild-plan 2.10 #38 (audit 5: the column does not exist, the field is permanently blank) - shipped: all four are on the page and `CheckoutsTest` asserts the payload carries no `tse_signature` key at all
+- [x] Section `Timestamps`, 2 columns, **collapsed**, `created_at` and `updated_at`
 
 ### Table config
 
-- [ ] Default sort `created_at` desc
-- [ ] No poll
+- [x] Default sort `created_at` desc - asserted through the returned `sort` key and the row order
+- [x] No poll - `Checkouts/Index.vue` imports no `usePoll`; nothing on this module refreshes itself
 
 ## 10. Checkout items (audit 4.5.1)
 
-- [ ] Title `Checkout Items`
-- [ ] Column 1 `name`, label `Item`, searchable
-- [ ] Column 2 `description`, label `Features`, wrapped, array joined with `, `, `-` when empty
-- [ ] Column 3 `payable`, label `Badge`, renders `{fursuit name} (#{custom_id})` for badges, `-` otherwise, links to the badge edit page in a new tab
-- [ ] Column 3a survives a soft-deleted fursuit (audit 113)
-- [ ] Column 4 `subtotal`, money divided by 100, right-aligned
-- [ ] Column 5 `tax`, money divided by 100, right-aligned
-- [ ] Column 6 `total`, money divided by 100, right-aligned, bold
-- [ ] No filters, no row actions, no bulk actions, no header actions — read-only
-- [~] Unpaginated today; becomes `perPage: 200` with pagination visible — fixed, see rebuild-plan 2.3
+- [x] Title `Checkout Items` - the heading on the second half of `Checkouts/Show.vue`
+- [x] Column 1 `name`, label `Item`, searchable - the one searchable column, exercised by `ListEnvelopeTest`'s partial visit against the detail page
+- [~] Column 2 `description`, label `Features`, wrapped, array joined with `, `, `-` when empty - the join and the `-` fallback ship verbatim; **not wrapped**, because `DataTable` renders every text cell `whitespace-nowrap` and a per-cell wrap flag would be a change to the shared renderer, which this phase does not own
+- [~] Column 3 `payable`, label `Badge`, renders `{fursuit name} (#{custom_id})` for badges, `-` otherwise, links to the badge edit page in a new tab - the text, the `-` branch and the link all ship, and the badge test goes through the model's morph class as well as the literal so a morph map cannot silently blank the column; **the link opens in the same tab**, because `DataTable`'s text-cell link has one shape and no per-cell new-tab flag
+- [x] Column 3a survives a soft-deleted fursuit (audit 113) - `CheckoutsTest` deletes the fursuit, restores the badge the observer cascaded, and asserts the cell falls back to `#{custom_id}` instead of 500ing
+- [x] Column 4 `subtotal`, money divided by 100, right-aligned - `Column::money`, which right-aligns
+- [x] Column 5 `tax`, money divided by 100, right-aligned - `Column::money`
+- [~] Column 6 `total`, money divided by 100, right-aligned, bold - money and alignment ship; **not bold**, because `Column` carries no weight modifier and adding one is a change to the shared renderer
+- [x] No filters, no row actions, no bulk actions, no header actions — read-only - all four asserted empty; the relation manager's own create, edit and delete were already false and there is no endpoint here that could reach them
+- [~] Unpaginated today; becomes `perPage: 200` with pagination visible — fixed, see rebuild-plan 2.3 - shipped with options `[25, 50, 100, 200]`; `ListEnvelopeTest` asserts an unsupported `per_page` falls back to 200 rather than silently paging
 
 ## 11. Machines (audit 4.6)
 
 ### Columns
 
-- [ ] 1 `name`
-- [ ] 2 `tseClient.remote_id`, label `TSE Client`, placeholder `None assigned`
-- [ ] 3 `sumupReader.name`, label `SumUp Reader`, placeholder `None assigned`
-- [ ] 4 `should_discover_printers`, label `Auto-discover Printers`, boolean icon
+- [x] 1 `name` — `MachinesTest`: the column list is the audit table; the columns carry the audit labels, types and placeholders
+- [x] 2 `tseClient.remote_id`, label `TSE Client`, placeholder `None assigned` — `MachinesTest`: the columns carry the audit labels, types and placeholders; the relation columns render the assigned client and reader
+- [x] 3 `sumupReader.name`, label `SumUp Reader`, placeholder `None assigned` — `MachinesTest`: the columns carry the audit labels, types and placeholders; the relation columns render the assigned client and reader
+- [x] 4 `should_discover_printers`, label `Auto-discover Printers`, boolean icon — `MachinesTest`: the columns carry the audit labels, types and placeholders; the relation columns render the assigned client and reader
 
 ### Filters
 
-- [ ] 1 `archived` ternary, label `Archived`, **blank = `Active machines` = `notArchived()`**, true `Archived machines`, false `All machines` (audit 43: nothing scopes archived machines at query level)
+- [x] 1 `archived` ternary, label `Archived`, **blank = `Active machines` = `notArchived()`**, true `Archived machines`, false `All machines` (audit 43: nothing scopes archived machines at query level) — the blank branch is applied by `MachineController::baseQuery()`, because `Filter` treats a blank ternary as inactive by design, so an unset *and* an explicitly cleared filter both land on `notArchived()` — `MachinesTest`: the archived filter is declared with the audit labels and opens blank; the default list hides archived machines; clearing the filter still hides archived machines, because blank means active; the true branch shows only archived machines and the false branch shows all
 
 ### Actions
 
-- [ ] Edit (row)
-- [ ] `Archive` (row), icon archive-box, colour warning, visible when not archived
-- [ ] `Archive` confirm heading `Archive Machine`
-- [ ] `Archive` confirm description `Are you sure you want to archive this machine? It will be hidden from normal view.`
-- [ ] `Archive` submit label `Yes, archive it`
-- [ ] `Restore` (row), icon arrow-uturn-left, colour success, visible when archived
-- [ ] `Restore` confirm heading `Restore Machine`
-- [ ] `Restore` confirm description `Are you sure you want to restore this machine? It will be visible again.`
-- [ ] `Restore` submit label `Yes, restore it`
-- [ ] `Archive selected` (bulk), icon archive-box, colour warning, deselects after completion
-- [ ] `Archive selected` confirm heading `Archive Machines`
-- [ ] `Archive selected` confirm description `Are you sure you want to archive the selected machines? They will be hidden from normal view and unable to log in to the POS system.`
-- [ ] `Archive selected` submit label `Yes, archive them`
-- [ ] `Restore selected` (bulk), icon arrow-uturn-left, colour success, deselects after completion
-- [ ] `Restore selected` confirm heading `Restore Machines`
-- [ ] `Restore selected` confirm description `Are you sure you want to restore the selected machines? They will be visible again and able to log in to the POS system.`
-- [ ] `Restore selected` submit label `Yes, restore them`
-- [ ] Create (header)
-- [~] `Login Link` becomes `POST /manage/machines/{machine}/login-link`, returns a **temporary** signed URL valid 15 minutes, gated on `is_admin`, with an activity entry naming who minted it — fixed, see rebuild-plan 2.10 #15 (audit 9)
-- [ ] No delete action anywhere in this module (audit 131)
-- [~] Archive, restore and login link flash toasts (all silent today) — new, see rebuild-plan 2.10 #45
+- [x] Edit (row) — `MachinesTest`: an active machine offers Edit and Archive with the audit copy; an archived machine offers Edit and Restore with the audit copy
+- [~] `Archive` (row), icon archive-box, colour warning, visible when not archived — the action, its `warn` tone and its visibility predicate ship; the glyph is lucide `archive` rather than heroicon `archive-box`, because the panel resolves icons through `ManageIcon`, see rebuild-plan 1.5 — `MachinesTest`: an active machine offers Edit and Archive with the audit copy; an archived machine offers Edit and Restore with the audit copy (asserts the visibility flip)
+- [x] `Archive` confirm heading `Archive Machine` — `MachinesTest`: an active machine offers Edit and Archive with the audit copy
+- [x] `Archive` confirm description `Are you sure you want to archive this machine? It will be hidden from normal view.` — `MachinesTest`: an active machine offers Edit and Archive with the audit copy
+- [x] `Archive` submit label `Yes, archive it` — `MachinesTest`: an active machine offers Edit and Archive with the audit copy
+- [~] `Restore` (row), icon arrow-uturn-left, colour success, visible when archived — the action, its `ok` tone and its visibility predicate ship; the glyph is lucide `rotate-ccw` rather than heroicon `arrow-uturn-left`, see rebuild-plan 1.5 — `MachinesTest`: an archived machine offers Edit and Restore with the audit copy; an active machine offers Edit and Archive with the audit copy (asserts the visibility flip)
+- [x] `Restore` confirm heading `Restore Machine` — `MachinesTest`: an archived machine offers Edit and Restore with the audit copy
+- [x] `Restore` confirm description `Are you sure you want to restore this machine? It will be visible again.` — `MachinesTest`: an archived machine offers Edit and Restore with the audit copy
+- [x] `Restore` submit label `Yes, restore it` — `MachinesTest`: an archived machine offers Edit and Restore with the audit copy
+- [~] `Archive selected` (bulk), icon archive-box, colour warning, deselects after completion — the action, its `warn` tone and its copy ship; the glyph is lucide `archive`, and the ported `DataTable` prunes the selection to the rows that come back rather than clearing it outright, see rebuild-plan 1.5 — `MachinesTest`: both bulk actions ship with the audit copy; bulk archive and bulk restore move every selected machine
+- [x] `Archive selected` confirm heading `Archive Machines` — `MachinesTest`: both bulk actions ship with the audit copy
+- [x] `Archive selected` confirm description `Are you sure you want to archive the selected machines? They will be hidden from normal view and unable to log in to the POS system.` — `MachinesTest`: both bulk actions ship with the audit copy
+- [x] `Archive selected` submit label `Yes, archive them` — `MachinesTest`: both bulk actions ship with the audit copy
+- [~] `Restore selected` (bulk), icon arrow-uturn-left, colour success, deselects after completion — the action, its `ok` tone and its copy ship; the glyph is lucide `rotate-ccw`, and the ported `DataTable` prunes the selection rather than clearing it, see rebuild-plan 1.5 — `MachinesTest`: both bulk actions ship with the audit copy; bulk archive and bulk restore move every selected machine
+- [x] `Restore selected` confirm heading `Restore Machines` — `MachinesTest`: both bulk actions ship with the audit copy
+- [x] `Restore selected` confirm description `Are you sure you want to restore the selected machines? They will be visible again and able to log in to the POS system.` — `MachinesTest`: both bulk actions ship with the audit copy
+- [x] `Restore selected` submit label `Yes, restore them` — `MachinesTest`: both bulk actions ship with the audit copy
+- [x] Create (header) — `MachinesTest`: the page offers Create
+- [~] `Login Link` becomes `POST /admin/machines/{machine}/login-link`, returns a **temporary** signed URL valid 15 minutes, gated on `is_admin`, with an activity entry naming who minted it — fixed, see rebuild-plan 2.10 #15 (audit 9) — `MachineLoginLinkController` behind its own `MachinePolicy::loginLink` ability, the URL returned in Inertia's flash bag rather than in a prop, and still an edit-page header action as it is today — `MachinesTest`: the edit page declares the Login Link action but mints nothing; the list payload never carries a login link for any machine; minting a login link returns a signed URL that logs the machine in; the link stops working once its fifteen minutes are up; minting is logged against the machine and names the operator
+- [x] No delete action anywhere in this module (audit 131) — `MachinesTest`: nothing in the module offers a delete, single, bulk or on the page (asserts no `manage.machines.destroy` route exists either)
+- [~] Archive, restore and login link flash toasts (all silent today) — new, see rebuild-plan 2.10 #45 — `MachinesTest`: archiving stamps archived_at and says so; restoring clears archived_at and says so; bulk archive and bulk restore move every selected machine; minting a login link returns a signed URL that logs the machine in
 
 ### Form
 
-- [ ] `name` TextInput, required, max 255
-- [ ] `tse_client_id` Select, label `TSE Client`, from the `tseClient` relation on `remote_id`, fallback label `Unknown TSE Client`, not required
-- [ ] `sumup_reader_id` Select, label `SumUp Reader`, from the `sumupReader` relation on `name`, fallback label `Unknown SumUp Reader`, not required
-- [ ] `should_discover_printers` Checkbox, label `Should discover printers`
+- [x] `name` TextInput, required, max 255 — `MachinesTest`: creating and saving a machine both work; the form validates the audit rules and refuses an unknown relation id
+- [x] `tse_client_id` Select, label `TSE Client`, from the `tseClient` relation on `remote_id`, fallback label `Unknown TSE Client`, not required — the id is also validated against `tse_clients`, which the Filament Select could only enforce by construction — `MachinesTest`: the create page carries both relation option lists; the edit page prefills the record; the form validates the audit rules and refuses an unknown relation id
+- [x] `sumup_reader_id` Select, label `SumUp Reader`, from the `sumupReader` relation on `name`, fallback label `Unknown SumUp Reader`, not required — same added existence rule — `MachinesTest`: the create page carries both relation option lists; the edit page prefills the record; the form validates the audit rules and refuses an unknown relation id
+- [x] `should_discover_printers` Checkbox, label `Should discover printers` — unticked on create, matching the Filament Checkbox that set no default even though the column defaults to true — `MachinesTest`: creating and saving a machine both work; the edit page prefills the record
+- [x] `archived_at` is not a form field, and cannot be written through one despite `Machine::$guarded = []` — `MachinesTest`: archived_at cannot be written through the form, even though the model guards nothing
+- [~] The form is wrapped in a `Machine` section heading where the audit records a flat schema — new, see rebuild-plan 2.10 #68
 
 ### Table config
 
-- [~] Unpaginated with search disabled today; becomes `perPage: 200` with a working search box — fixed, see rebuild-plan 2.3
+- [~] Unpaginated with search disabled today; becomes `perPage: 200` with a working search box — fixed, see rebuild-plan 2.3 — `MachinesTest`: the list is paginated at 200 rather than unbounded; the search box narrows on name, which the Filament table made unreachable
+- [~] `defaultSort('id')` is stated where `MachineResource` declares none — new, see rebuild-plan 2.10 #71
 
 ## 12. Printers (audit 4.7)
 
 ### Columns
 
-- [ ] 1 `name`, searchable
-- [ ] 2 `type`, raw `badge` / `receipt`
-- [ ] 3 `machine.name`, label `Machine`
-- [ ] 4 `status`, badge, colours idle `success` / working `warning` / paused `danger` / offline / processing `info` / unknown `gray`
-- [~] 4a A null `status` no longer 500s the table — fixed, see rebuild-plan 2.10 #7 (audit 28)
-- [ ] 5 `pending_jobs`, label `Pending Jobs`, badge warning, links to that printer's jobs
-- [ ] 6 `active_jobs`, label `Active Jobs`, badge info (queued / printing / retrying), same link
-- [ ] 7 `failed_jobs`, label `Failed Jobs`, badge danger, same link
-- [ ] 8 `is_active`, label `Active`, inline write toggle
-- [~] 8a The toggle goes through a real endpoint with feedback (and consider broadcasting `PrinterStatusUpdated`) — fixed, see rebuild-plan phase 6 (audit 92: one click, no confirm, no toast, no audit, no broadcast)
-- [ ] 9 `last_state_update`, label `Last Update`, relative (`since`)
-- [~] `condition`, `condition_message`, `cards_remaining`, `cards_capacity`, `condition_reported_at` are surfaced with `PrinterConditionEnum::remedy()` — new, see rebuild-plan 2.10 #27
+- [x] 1 `name`, searchable
+- [x] 2 `type`, raw `badge` / `receipt`
+- [x] 3 `machine.name`, label `Machine`
+- [~] 4 `status`, badge, colours idle `success` / working `warning` / paused `danger` / offline / processing `info` / unknown `gray` — the six-entry colour map is replaced by `Status::printer()`, one tone set across all twelve `PrinterStatusEnum` cases, see rebuild-plan 1.3 (audit 7.10: two badge-colour APIs, `secondary` is not a valid v3 colour, six cases unmapped)
+- [~] 4a A null `status` no longer 500s the table — fixed, see rebuild-plan 2.10 #7 (audit 28); shipped in phase 6 via `Status::printer()`, asserted for a null and for an undeclared value. `printers.status` is NOT NULL with default `idle` since `2025_08_23_135218`, so the row itself is not writable through this schema
+- [x] 5 `pending_jobs`, label `Pending Jobs`, badge warning, links to that printer's jobs
+- [x] 6 `active_jobs`, label `Active Jobs`, badge info (queued / printing / retrying), same link
+- [x] 7 `failed_jobs`, label `Failed Jobs`, badge danger, same link
+- [~] 5-7a The three counts run as one `withCount` and compare against `PrintJobStatusEnum` cases, not hardcoded lowercase strings, and a zero tones idle rather than staying coloured — fixed, see rebuild-plan phase 6 (audit 96). The link is attached only once `manage.print-jobs.index` is registered
+- [x] 8 `is_active`, label `Active`, inline write toggle
+- [~] 8a The toggle goes through a real endpoint with feedback (and consider broadcasting `PrinterStatusUpdated`) — fixed, see rebuild-plan phase 6 (audit 92: one click, no confirm, no toast, no audit, no broadcast). `POST /admin/printers/{printer}/active` carries the state it wants, is policy-gated, toasts, and no-ops when the state already matches. Considered and declined: the event carries a `PrinterStatusEnum` or `PrinterConditionEnum`, and availability is neither, so a broadcast would either repeat the current status or claim a fault that does not exist
+- [x] 9 `last_state_update`, label `Last Update`, relative (`since`)
+- [~] `condition`, `condition_message`, `cards_remaining`, `cards_capacity`, `condition_reported_at` are surfaced with `PrinterConditionEnum::remedy()` — new, see rebuild-plan 2.10 #27; shipped as four columns (`condition` badge, `condition_message` detail carrying the remedy, `cards` as remaining / capacity, `condition_reported_at`) plus the read-only panel on the record
 
 ### Filters
 
-- [ ] No filters on this table
+- [x] No filters on this table
 
 ### Actions
 
-- [ ] Edit (row)
-- [ ] Delete selected (bulk), Filament default bulk delete copy, **hard delete**
-- [ ] Delete (edit page), Filament default delete copy
-- [ ] The list has **no** create button today even though the create page exists (audit 39 — decide explicitly)
-- [~] A `clear-error` action is added on top of the existing `Printer::clearPrinterError()` — new, see rebuild-plan 2.10 #27 (audit 94)
-- [~] The create form no longer `TypeError`s on `default_paper_size` — fixed, see rebuild-plan 2.10 #7 (audit 27)
+- [x] Edit (row)
+- [x] Delete selected (bulk), Filament default bulk delete copy, **hard delete**
+- [x] Delete (edit page), Filament default delete copy
+- [~] The list has **no** create button today even though the create page exists (audit 39 — decide explicitly) — decided in phase 6: the button is surfaced as the `New printer` page action. The create page is real and policy-gated, and an orphaned route is worse than a button
+- [~] Deleting a printer is refused while any print job still points at it — new, see rebuild-plan phase 6 (`print_jobs.printer_id` is `cascadeOnDelete` and nothing calls `PrintBatch::recalculateCounters()` afterwards; audit 23 and 80). Single and bulk, and the bulk is all-or-nothing
+- [~] A `clear-error` action is added on top of the existing `Printer::clearPrinterError()` — new, see rebuild-plan 2.10 #27 (audit 94); offered on every row, disabled with a reason unless the printer is active and paused or offline, confirmed before it fires, and refused when a second active printer shares the name the model method looks up by
+- [~] The create form no longer `TypeError`s on `default_paper_size` — fixed, see rebuild-plan 2.10 #7 (audit 27); the options come from the record's reported sizes and are empty with a helper text on create, and `PrinterRequest` enforces the same set server-side
 
 ### Form
 
-- [ ] `name` TextInput, required, max 255
-- [ ] `type` Select, required, options `Receipt` / `Badge`
-- [ ] `machine_id` Select from the `machine` relation, required
-- [ ] `default_paper_size` Select from the record's `paper_sizes`, not required
-- [ ] `paper_sizes` Textarea, 10 rows, **disabled**, pretty-printed JSON, default `{}`
-- [ ] `is_active` Checkbox
+- [x] `name` TextInput, required, max 255
+- [x] `type` Select, required, options `Receipt` / `Badge`
+- [x] `machine_id` Select from the `machine` relation, required
+- [x] `default_paper_size` Select from the record's `paper_sizes`, not required
+- [x] `paper_sizes` Textarea, 10 rows, **disabled**, pretty-printed JSON, default `{}` — the field is not accepted by `PrinterRequest` either, and a create writes `[]` because the column is a non-nullable json, which `PrinterController::formData()` renders back as `{}` so the two pages of the form agree — `PrintersTest`: creating a printer writes an empty paper size list for the agent to fill in
+- [x] `is_active` Checkbox
+- [~] `is_active` gains a helper, `An inactive printer is not offered for new print jobs.` — new, see rebuild-plan 2.10 #72; the audit records no helper on this field
+- [~] The form is wrapped in a `Printer` section heading where the audit records a flat schema — new, see rebuild-plan 2.10 #68
 
 ### Table config
 
-- [~] The list polls at 15s (no poll today on the one screen that reports a jam) — new, see rebuild-plan 2.10 #26 (audit 7.1)
-- [~] Unpaginated with search disabled today; becomes `perPage: 200` with a working search box — fixed, see rebuild-plan 2.3
+- [~] The list polls at 15s (no poll today on the one screen that reports a jam) — new, see rebuild-plan 2.10 #26 (audit 7.1); shipped as `usePoll(15000, { only: ['rows', 'meta'] })`, and the poll is asserted to write nothing and broadcast nothing
+- [~] Unpaginated with search disabled today; becomes `perPage: 200` with a working search box — fixed, see rebuild-plan 2.3; shipped for printers in phase 6
 - [~] The three count columns stop firing a `COUNT(*)` each per row and stop comparing against hardcoded lowercase strings — fixed, see rebuild-plan 2.3 (audit 96)
+- [~] `defaultSort('id')` is stated where `PrinterResource` declares none — new, see rebuild-plan 2.10 #71
 
 ## 13. Print Batches (audit 4.8)
 
 ### Columns
 
-- [ ] 1 `id`, label `ID`, sortable
-- [ ] 2 `name`, sortable, searchable
-- [ ] 3 `status`, badge, `PrintBatchStatusEnum::label()`, colours Draft `gray` / Ready to print `info` / Printing `primary` / Paused `warning` / Completed `success` / Cancelled `danger`
-- [ ] 4 `printer.name`, label `Printer`, sortable, searchable, placeholder `Unassigned`
-- [ ] 5 `event.name`, label `Event`, placeholder `None`, toggleable, **hidden by default**
-- [ ] 6 `progress`, badge, state `{printed_count} / {total_jobs}`, description `{verified_count} verified, {failed_count} failed`, colour danger on failures / success when complete / else info
-- [ ] 7 `unverified`, label `Needs check`, badge, centred, `printed_count - verified_count`, warning above zero else gray
-- [ ] 8 `pause_reason`, label `Reason`, limit 40, tooltip = full value, placeholder `None`
-- [ ] 9 `createdBy.name`, label `Built by`, placeholder `System`, toggleable, **hidden by default**
-- [ ] 10 `started_at`, label `Started`, `M j, H:i`, sortable, placeholder `Not started`
-- [ ] 11 `completed_at`, label `Completed`, `M j, H:i`, placeholder `Not finished`, toggleable, **hidden by default**
+- [x] 1 `id`, label `ID`, sortable — `PrintBatchesTest`: the list renders the eleven columns in order
+- [x] 2 `name`, sortable, searchable — `PrintBatchesTest`: the list searches the name and the printer
+- [x] 3 `status`, badge, `PrintBatchStatusEnum::label()`, colours Draft `gray` / Ready to print `info` / Printing `primary` / Paused `warning` / Completed `success` / Cancelled `danger` — through `Status::printBatch`, so the tones are the panel's own token set (`gray` -> `idle`, `primary` -> `live`) and all six stay distinguishable, which is the point on the screen an operator reads while a printer is jammed — `PrintBatchesTest`: the status column speaks the enum vocabulary, and all six states carry a tone of their own
+- [x] 4 `printer.name`, label `Printer`, sortable, searchable, placeholder `Unassigned` — keyed `printer_name`, label unchanged; sorts through a correlated subquery — `ListEnvelopeTest`: the print batches list sorts, searches, filters and paginates under a partial visit
+- [x] 5 `event.name`, label `Event`, placeholder `None`, toggleable, **hidden by default** — keyed `event_name` — `PrintBatchesTest`: the three toggleable columns open hidden
+- [x] 6 `progress`, badge, state `{printed_count} / {total_jobs}`, description `{verified_count} verified, {failed_count} failed`, colour danger on failures / success when complete / else info — `PrintBatchesTest`: the progress badge carries the counts, the verified and failed line, and the colour ladder
+- [x] 7 `unverified`, label `Needs check`, badge, centred, `printed_count - verified_count`, warning above zero else gray — including that it can read negative (audit 80), which is shown rather than clamped — `PrintBatchesTest`: the needs-check badge is printed minus verified, warning above zero
+- [x] 8 `pause_reason`, label `Reason`, limit 40, tooltip = full value, placeholder `None` — `PrintBatchesTest`: the reason column truncates at forty characters and keeps the full text as the tooltip
+- [x] 9 `createdBy.name`, label `Built by`, placeholder `System`, toggleable, **hidden by default** — keyed `created_by_name` — `PrintBatchesTest`: the three toggleable columns open hidden
+- [x] 10 `started_at`, label `Started`, `M j, H:i`, sortable, placeholder `Not started` — `PrintBatchesTest`: the two timestamps render in the M j, H:i format the resource declares
+- [x] 11 `completed_at`, label `Completed`, `M j, H:i`, placeholder `Not finished`, toggleable, **hidden by default** — `PrintBatchesTest`: the three toggleable columns open hidden
 
 ### Filters
 
-- [ ] 1 `status` multi-select from `PrintBatchStatusEnum`, labelled via `label()`
-- [ ] 2 `printer` select from the `printer` relation
-- [ ] 3 `needs_verification` toggle, label `Has unverified cards`, matches batches with a printed job whose `verified_print_at` is null
+- [x] 1 `status` multi-select from `PrintBatchStatusEnum`, labelled via `label()` — `PrintBatchesTest`: the status filter takes several values at once
+- [x] 2 `printer` select from the `printer` relation — `PrintBatchesTest`: the printer filter narrows to one printer
+- [x] 3 `needs_verification` toggle, label `Has unverified cards`, matches batches with a printed job whose `verified_print_at` is null — `PrintBatchesTest`: the needs-verification toggle finds the batches holding a printed but unverified card
 
 ### Actions
 
-- [ ] View (row)
-- [ ] `Pause` (row), icon pause, colour warning, visible only while `printing`
-- [ ] `Pause` form: `reason` TextInput, label `Why is it being paused?`, required, max 1000, helper `Shown to whoever is standing at the printer.`
-- [ ] `Resume` (row), icon play, colour success, visible only while `paused`
-- [ ] `Resume` confirm: heading `Resume` (the action label), description `Only resume once the fault at the printer has actually been dealt with.`, submit `Confirm`
-- [ ] `Cancel` (row), icon x-circle, colour danger, visible while not terminal
-- [ ] `Cancel` confirm heading `Cancel this batch`
-- [ ] `Cancel` confirm description `Cards already printed stay printed. Everything still queued is cancelled, and attendees whose card never printed get their badge back to edit.`
-- [ ] `Cancel` form: `reason` TextInput, label `Reason`, not required, max 1000, default `Cancelled from the admin panel`
-- [ ] `Cancel` unlocks exactly the badges with no printed job (`printing_locked_at = null`) and recalculates counters
-- [ ] No bulk actions, no create, no edit, no delete on batches
-- [~] Pause / resume / cancel are reachable from the batch detail page, not only the list row — fixed, see rebuild-plan phase 7 (audit 84)
-- [~] All four controls require `is_admin` — fixed, see rebuild-plan 2.10 #18
-- [ ] No admin action starts or advances a batch (Draft -> Ready -> Printing stays with the agent, audit 83)
+- [x] View (row) — `PrintBatchesTest`: a control that cannot fire is offered disabled with the reason rather than hidden
+- [~] `Pause` (row), icon pause, colour warning, visible only while `printing` — icon, colour and the `printing` predicate ship; the predicate becomes `disabledReason` rather than visibility, see rebuild-plan 2.5 ("used for the batch controls"), matching `PrinterController`'s `clear-error` — `PrintBatchesTest`: a control that cannot fire is offered disabled with the reason rather than hidden
+- [x] `Pause` form: `reason` TextInput, label `Why is it being paused?`, required, max 1000, helper `Shown to whoever is standing at the printer.` — the cap reaches the input as `maxlength` (`Components/Manage/ActionButton.vue`) as well as being a server rule, so typing stops at 1000 rather than the refusal arriving as a 422 after Confirm — `PrintBatchesTest`: pause carries its form field, its helper text and its confirm copy verbatim
+- [~] `Resume` (row), icon play, colour success, visible only while `paused` — same `disabledReason` treatment as Pause, see rebuild-plan 2.5 — `PrintBatchesTest`: a control that cannot fire is offered disabled with the reason rather than hidden
+- [x] `Resume` confirm: heading `Resume` (the action label), description `Only resume once the fault at the printer has actually been dealt with.`, submit `Confirm` — `PrintBatchesTest`: resume carries the confirm description verbatim, under the default heading
+- [~] `Cancel` (row), icon x-circle, colour danger, visible while not terminal — same `disabledReason` treatment, see rebuild-plan 2.5 — `PrintBatchesTest`: a terminal batch offers no live control at all
+- [x] `Cancel` confirm heading `Cancel this batch` — `PrintBatchesTest`: cancel carries its heading, its description and its default reason verbatim
+- [x] `Cancel` confirm description `Cards already printed stay printed. Everything still queued is cancelled, and attendees whose card never printed get their badge back to edit.` — `PrintBatchesTest`: cancel carries its heading, its description and its default reason verbatim
+- [x] `Cancel` form: `reason` TextInput, label `Reason`, not required, max 1000, default `Cancelled from the admin panel` — the cap reaches the input as `maxlength` and is a server-side rule as well, and an empty box falls back to the same default — `PrintBatchesTest`: an empty cancel reason falls back to the admin-panel default
+- [~] `Cancel` unlocks exactly the badges with no printed job (`printing_locked_at = null`) and recalculates counters — the unlock test gains a second half: a badge is released only when nothing printed for it **and** nothing is still on its way, so cancelling one run cannot hand editing back while another run still holds a queued card for the same badge (a state `BadgePrintQueue` now refuses to create, and a direct `PrintBatch::build()` can still produce). Recorded here rather than in the plan because it is a correctness fix to an existing write, not a new one — `PrintBatchesTest`: cancelling stops the run, unlocks exactly the badges with no printed card and recalculates the counters; `PrintBatchLifecycleTest`: it keeps a badge locked when another run still holds a card for it
+- [x] No bulk actions, no create, no edit, no delete on batches — no route exists for any of them either — `PrintBatchesTest`: no create, store, edit, update or destroy route exists for a batch
+- [~] The resource's one form Placeholder, `Batches are immutable. Build one from the badge list instead.`, has no counterpart — dropped deliberately: the string exists only because Filament requires a form, and it is unreachable there too (no create page, no edit page). This panel has no batch form at all to hang it on, and the sentence's own advice is the badge list's `Print Badges` bulk action, which ships. Recorded so the string has a disposition rather than going missing — no test; the absence of the routes above is what is asserted
+- [x] Pause / resume / cancel are reachable from the batch detail page, not only the list row — fixed, see rebuild-plan phase 7 (audit 84) — `PrintBatchesTest`: the run controls are reachable from the detail page, not only from the row
+- [x] All four controls require `is_admin` — fixed, see rebuild-plan 2.10 #18 — `PrintBatchPolicy`; `PrintBatchesTest`: a reviewer is refused pause, resume, cancel and verify
+- [x] No admin action starts or advances a batch (Draft -> Ready -> Printing stays with the agent, audit 83) — `PrintBatchesTest`: a control that cannot fire is offered disabled with the reason rather than hidden (a Draft batch offers pause, resume and cancel only)
 
 ### Notifications
 
-- [ ] `Pause` success title `Batch paused`
-- [ ] `Resume` success title `Batch resumed`
-- [ ] `Cancel` success title `Batch cancelled`
-- [ ] `Cancel` failure danger title `Cannot cancel a batch that is {label}`
+- [x] `Pause` success title `Batch paused` — `PrintBatchesTest`: pausing a printing batch stores the reason and flashes Batch paused
+- [x] `Resume` success title `Batch resumed` — `PrintBatchesTest`: resuming a paused batch restarts it and puts its failed cards back in the queue
+- [x] `Cancel` success title `Batch cancelled` — `PrintBatchesTest`: cancelling stops the run, unlocks exactly the badges with no printed card and recalculates the counters
+- [x] `Cancel` failure danger title `Cannot cancel a batch that is {label}` — `PrintBatchesTest`: cancelling a terminal batch cancels nothing and carries the resource copy verbatim
+- [~] Pause and resume report a refusal the same way, `Cannot pause / resume a batch that is {label}` — new, see rebuild-plan 2.10 #45 (silent actions get feedback): the resource reports success for a pause or resume that silently did nothing — `PrintBatchesTest`: pausing a batch that is not printing changes nothing and says so
 
 ### Detail page
 
-- [ ] Section `Batch`, 3 columns: `name`, `status` badge, `printer.name` (placeholder `Unassigned`), `event.name` (placeholder `None`), `createdBy.name` label `Built by` (placeholder `System`), `pause_reason` label `Pause reason` (placeholder `None`)
-- [ ] Section `Progress`, 4 columns: `total_jobs` label `Cards`, `printed_count` label `Printed` (success), `verified_count` label `Verified` (success), `failed_count` label `Failed` (danger)
-- [ ] Section `Timing`, 3 columns, **collapsed**: `created_at`, `started_at` (placeholder `Not started`), `completed_at` (placeholder `Not finished`)
+- [x] Section `Batch`, 3 columns: `name`, `status` badge, `printer.name` (placeholder `Unassigned`), `event.name` (placeholder `None`), `createdBy.name` label `Built by` (placeholder `System`), `pause_reason` label `Pause reason` (placeholder `None`) — `PrintBatchesTest`: the detail page carries the three infolist sections
+- [x] Section `Progress`, 4 columns: `total_jobs` label `Cards`, `printed_count` label `Printed` (success), `verified_count` label `Verified` (success), `failed_count` label `Failed` (danger) — `PrintBatchesTest`: the detail page carries the three infolist sections
+- [x] Section `Timing`, 3 columns, **collapsed**: `created_at`, `started_at` (placeholder `Not started`), `completed_at` (placeholder `Not finished`) — `PrintBatchesTest`: the detail page carries the three infolist sections
 
 ### Table config
 
-- [ ] Default sort `id` desc
-- [ ] Poll 10s on the list
-- [~] The batch detail card list polls at 10s (frozen until reload today) — new, see rebuild-plan 2.10 #26
-- [ ] Nav badge counts **batches** with a printed-but-unverified job, colour warning, hidden at zero (matching the code, not its docblock, audit 79)
+- [x] Default sort `id` desc — `PrintBatchesTest`: the list opens newest first
+- [x] Poll 10s on the list — `usePoll(10000, { only: ['rows', 'meta'] })` in `Pages/Manage/PrintBatches/Index.vue`, so a poll can never pause, resume or cancel a run — `PrintBatchesTest`: reading the list or a batch moves nothing
+- [x] The batch detail card list polls at 10s (frozen until reload today) — new, see rebuild-plan 2.10 #26 — `usePoll(10000, { only: ['batch', 'actions', 'rows', 'meta'] })` in `Pages/Manage/PrintBatches/Show.vue`: `batch` and `actions` ride with the cards, or a run paused by a failed card would repaint the card while the header still read Printing and Resume stayed disabled with a reason computed at page load — `PrintBatchesTest`: the detail poll follows the run, so a batch paused by a jam can be resumed from it; `NoSideEffectsTest` sends the same four props twice and nothing writes
+- [x] The batch detail page's own polled props are reads only — `PrintBatchController::show()` authorizes `view`, loads three relations and derives the same props a full visit derives — `NoSideEffectsTest`: reading a page writes nothing anywhere in the panel (print batch detail, full visit and poll)
+- [x] Nav badge counts **batches** with a printed-but-unverified job, colour warning, hidden at zero (matching the code, not its docblock, audit 79) — `Support\Manage\Navigation` (shipped phase 0, the rail item goes live with these routes); the strip's `unverified` segment is the *card* count, so both units exist under their own names — `ListEnvelopeTest`: the sidebar carries every module registered so far
 
 ## 14. Batch cards (audit 4.8.1)
 
-- [ ] Tab title `Cards`
-- [ ] Column 1 `sequence`, label `#`, sortable, the frozen print order
-- [ ] Column 2 `printable.custom_id`, label `Badge`, searchable, placeholder `Deleted`
-- [ ] Column 3 `printable.fursuit.name`, label `Fursuit`, searchable, placeholder `Deleted`
-- [ ] Column 4 `status`, badge, `PrintJobStatusEnum::label()` (so `queued` reads `Claimed`), colours Printed success / Failed danger / Printing+Queued primary / Retrying warning / Cancelled gray
-- [ ] Column 5 `completion_source`, label `Finished by`, `PrintCompletionSourceEnum::label()`, placeholder `Not finished`
-- [ ] Column 6 `verified_print_at`, label `Verified`, boolean icon, true check-badge/success, false question-mark/warning
-- [ ] Column 6a tooltip = `verification_source->label()` when verified, else `Nobody has confirmed this card came out`
-- [ ] Column 7 `attempt_count`, label `Tries`, toggleable, **hidden by default**
-- [ ] Column 8 `error_message`, label `Error`, wrapped, placeholder `None`, toggleable, **hidden by default**
-- [ ] Filter 1 `unverified`, label `Printed but unverified`
-- [ ] Filter 2 `status` select over **all seven** `PrintJobStatusEnum` cases including `cancelled`
-- [ ] `verify` action, label `Mark verified`, icon check-badge, colour success, visible only for a `Printed` job with `verified_print_at` null
-- [ ] `verify` confirm heading `Confirm this card`
-- [ ] `verify` confirm description `Only do this with the printed card in front of you. This records that a human checked it.`
-- [ ] `verify` writes `verified_print_at`, `verification_source = operator`, `verified_by_id`, mirrors onto the badge and recalculates batch counters
-- [ ] `verify` success notification title `Card verified`
-- [~] `verify` requires `is_admin` — fixed, see rebuild-plan 2.10 #18
-- [ ] No bulk verify (audit 86 — deliberate; confirm it stays that way)
-- [ ] Default sort `sequence` ascending
+- [x] Tab title `Cards` — the heading over the card list on `Pages/Manage/PrintBatches/Show.vue`
+- [x] Column 1 `sequence`, label `#`, sortable, the frozen print order — `PrintBatchesTest`: the card list renders the eight columns in order, in print order
+- [x] Column 2 `printable.custom_id`, label `Badge`, searchable, placeholder `Deleted` — keyed `badge`; searched through `whereHasMorph`, because `printable` is a morphTo and `whereHas` cannot traverse one — `PrintBatchesTest`: the card list searches the badge id and the fursuit name through the morph
+- [x] Column 3 `printable.fursuit.name`, label `Fursuit`, searchable, placeholder `Deleted` — keyed `fursuit`, searched the same way — `PrintBatchesTest`: the card list searches the badge id and the fursuit name through the morph
+- [x] Column 4 `status`, badge, `PrintJobStatusEnum::label()` (so `queued` reads `Claimed`), colours Printed success / Failed danger / Printing+Queued primary / Retrying warning / Cancelled gray — through `Status::printJob`, the same mapping the print-job list uses; the relation manager's single `primary` for Printing+Queued splits into `live` and `info` (the print-job list's own distinction) and `gray` becomes `idle`, so a card in the printer never shares a tone with one waiting behind a retry — `PrintBatchesTest`: a card names its badge and its fursuit, and says who finished it; and a card in the printer does not share a tone with one waiting behind a retry (all seven statuses)
+- [x] Column 5 `completion_source`, label `Finished by`, `PrintCompletionSourceEnum::label()`, placeholder `Not finished` — `PrintBatchesTest`: a card names its badge and its fursuit, and says who finished it
+- [x] Column 6 `verified_print_at`, label `Verified`, boolean icon, true check-badge/success, false question-mark/warning — lucide `circle-check` / `circle-help`, the panel's own glyphs; centred, because `Column::icon()` centres every icon column panel-wide, where the resource aligned only `unverified` — `PrintBatchesTest`: the verified icon carries the audit tooltip while nobody has vouched for the card
+- [x] Column 6a tooltip = `verification_source->label()` when verified, else `Nobody has confirmed this card came out` — `PrintBatchesTest`: the verified icon carries the audit tooltip while nobody has vouched for the card
+- [x] Column 7 `attempt_count`, label `Tries`, toggleable, **hidden by default** — `PrintBatchesTest`: the card list renders the eight columns in order, in print order
+- [~] Column 8 `error_message`, label `Error`, wrapped, placeholder `None`, toggleable, **hidden by default** — label, placeholder and the hidden-by-default toggle ship; `->wrap()` does not, because `DataTable` renders every cell `whitespace-nowrap` panel-wide and there is no per-column wrap flag yet. Not plan-sanctioned: recorded as a follow-up rather than ticked
+- [x] Filter 1 `unverified`, label `Printed but unverified` — `PrintBatchesTest`: the card filters narrow the run
+- [x] Filter 2 `status` select over **all seven** `PrintJobStatusEnum` cases including `cancelled` — `PrintBatchesTest`: the card list declares the unverified toggle and all seven job statuses
+- [x] `verify` action, label `Mark verified`, icon check-badge, colour success, visible only for a `Printed` job with `verified_print_at` null — hidden rather than disabled here, unlike the batch controls: a run is hundreds of rows and a greyed-out button on every unprinted card buries the ones that need checking — `PrintBatchesTest`: verify is offered only for a printed card that nobody has vouched for
+- [x] `verify` confirm heading `Confirm this card` — `PrintBatchesTest`: verify is offered only for a printed card that nobody has vouched for
+- [x] `verify` confirm description `Only do this with the printed card in front of you. This records that a human checked it.` — `PrintBatchesTest`: verify is offered only for a printed card that nobody has vouched for
+- [x] `verify` writes `verified_print_at`, `verification_source = operator`, `verified_by_id`, mirrors onto the badge and recalculates batch counters — the predicate is re-asked at the write, and a card from another batch is a 404 — `PrintBatchesTest`: verifying stamps the card, mirrors onto the badge and recalculates the counters
+- [x] `verify` success notification title `Card verified` — `PrintBatchesTest`: verifying stamps the card, mirrors onto the badge and recalculates the counters
+- [x] `verify` requires `is_admin` — fixed, see rebuild-plan 2.10 #18 — `PrintBatchPolicy::verify()`, asked of the batch the way a relation manager authorizes against its owner — `PrintBatchesTest`: a reviewer is refused pause, resume, cancel and verify
+- [x] No bulk verify (audit 86 — deliberate; confirm it stays that way) — confirmed and kept: `bulkActions([])` on the card table — `PrintBatchesTest`: the card list renders the eight columns in order, in print order
+- [x] Default sort `sequence` ascending — `ListEnvelopeTest`: the batch card list sorts and paginates under a partial visit
 
 ## 15. Print Jobs (audit 4.9)
 
 ### Columns
 
-- [ ] 1 `id`, label `ID`, sortable
-- [ ] 2 `printer.name`, label `Printer`, sortable, searchable
-- [ ] 3 `type`, badge, `badge` primary / `receipt`
-- [ ] 4 `status`, badge, pending warning / queued info / printing primary / printed success / failed danger / retrying
-- [~] 4a `cancelled` is present in the status colour map — fixed, see rebuild-plan 1.3 vocabulary decision (audit 87)
-- [ ] 5 `printable`, label `Printable`, `Badge #{custom_id}` for badges else `{ClassBasename} #{id}`
-- [ ] 6 `priority`, badge, sortable, colours >=10 danger / >=5 warning / >=1 info / else gray
-- [~] 6a A null `priority` no longer 500s the table — fixed, see rebuild-plan 2.10 #7 (audit 29)
-- [ ] 7 `retry_count`, label `Retries`, badge, >=3 danger / >=1 warning / else gray
-- [~] 7a A null `retry_count` no longer 500s the table — fixed, see rebuild-plan 2.10 #7 (audit 29)
-- [ ] 8 `processingMachine.name`, label `Machine`, placeholder `Not assigned`
-- [ ] 9 `created_at`, label `Created`, sortable, app default datetime
-- [ ] 10 `printed_at`, label `Printed`, placeholder `Not printed`
-- [ ] 11 `error_message`, label `Error`, limit 50, tooltip = full value, placeholder `None`
+- [x] 1 `id`, label `ID`, sortable — `PrintJobsTest`: the list renders the twelve columns in order
+- [x] 2 `printer.name`, label `Printer`, sortable, searchable — keyed `printer_name`, label unchanged; sorts through a correlated subquery — `PrintJobsTest`: the printer column sorts across the relation and searches it
+- [x] 3 `type`, badge, `badge` primary / `receipt` — through `Status::printJobType`, so `receipt` has a tone at all (`secondary` rendered unstyled) — `PrintJobsTest`: the type column carries both cases with their own tones
+- [x] 4 `status`, badge, pending warning / queued info / printing primary / printed success / failed danger / retrying — through `Status::printJob`, which keeps the finer of the two Filament maps (audit 7.9/7.10): Claimed `info`, Printing `live`, Pending and Retrying `warn`, so no two states an operator has to tell apart share a tone — `PrintJobsTest`: the status column speaks one vocabulary
+- [~] 4a `cancelled` is present in the status colour map — fixed, see rebuild-plan 1.3 vocabulary decision (audit 87) — `PrintJobsTest`: a cancelled job is coloured rather than rendered unstyled
+- [x] 5 `printable`, label `Printable`, `Badge #{custom_id}` for badges else `{ClassBasename} #{id}` — `PrintJobsTest`: the printable cell reads Badge #custom_id for a badge and ClassBasename #id otherwise
+- [x] 6 `priority`, badge, sortable, colours >=10 danger / >=5 warning / >=1 info / else gray — `PrintJobsTest`: the priority and retry ladders carry the audit colours
+- [~] 6a A null `priority` no longer 500s the table — fixed, see rebuild-plan 2.10 #7 (audit 29) — `PrintJobsTest`: a null priority or retry count no longer takes the table down
+- [x] 7 `retry_count`, label `Retries`, badge, >=3 danger / >=1 warning / else gray — `PrintJobsTest`: the priority and retry ladders carry the audit colours
+- [~] 7a A null `retry_count` no longer 500s the table — fixed, see rebuild-plan 2.10 #7 (audit 29) — `PrintJobsTest`: a null priority or retry count no longer takes the table down
+- [x] 8 `processingMachine.name`, label `Machine`, placeholder `Not assigned` — keyed `machine_name`, label unchanged — `PrintJobsTest`: the list renders the twelve columns in order
+- [x] 9 `created_at`, label `Created`, sortable, app default datetime — `PrintJobsTest`: the list renders the twelve columns in order
+- [x] 10 `printed_at`, label `Printed`, placeholder `Not printed` — `PrintJobsTest`: the list renders the twelve columns in order
+- [x] 11 `error_message`, label `Error`, limit 50, tooltip = full value, placeholder `None` — `PrintJobsTest`: the error column truncates to fifty characters and keeps the full text as the tooltip
 - [~] One status vocabulary across this list and the batch card list (`queued` cannot read `queued` here and `Claimed` there) — fixed, see rebuild-plan 1.3 (audit 7.9)
 
 ### Filters
 
-- [ ] 1 `status` select
-- [~] 1a The `status` filter offers `cancelled` — fixed, see rebuild-plan 1.3 (audit 87)
-- [ ] 2 `type` select, options Badge / Receipt
-- [ ] 3 `printer` select from the `printer` relation
-- [ ] 4 `printable_id`, label `Printable ID`, numeric, indicator `Printable ID: {value}`
-- [ ] 5 `printable_type`, label `Printable Type`, indicator `Type: {ClassBasename}`
-- [~] `?printer=` becomes an ordinary filter with a visible indicator instead of a resource-wide `getEloquentQuery()` scope — fixed, see rebuild-plan 2.3 (audit 88)
-- [ ] The printer-scoped list still names the printer in the page title (`Print Jobs - {name}`)
+- [x] 1 `status` select — `PrintJobsTest`: the status filter narrows the list
+- [~] 1a The `status` filter offers `cancelled` — fixed, see rebuild-plan 1.3 (audit 87) — `PrintJobsTest`: the status filter offers all seven cases including cancelled
+- [x] 2 `type` select, options Badge / Receipt — `PrintJobsTest`: the type filter narrows the list
+- [x] 3 `printer` select from the `printer` relation — `PrintJobsTest`: the printer filter narrows the list and renames the page
+- [x] 4 `printable_id`, label `Printable ID`, numeric, indicator `Printable ID: {value}` — a single free value, so declared as a select with no options and rendered as the numeric input it is by `Pages/Manage/PrintJobs/Index.vue`, the way the badge list renders its range — `PrintJobsTest`: the printable filters narrow the list
+- [x] 5 `printable_type`, label `Printable Type`, indicator `Type: {ClassBasename}` — same shape as filter 4 — `PrintJobsTest`: the printable filters narrow the list
+- [~] `?printer=` becomes an ordinary filter with a visible indicator instead of a resource-wide `getEloquentQuery()` scope — fixed, see rebuild-plan 2.3 (audit 88) — `PrintJobsTest`: the six filters are declared in the audit order, with printer among them
+- [~] 6 A `verified` ternary joins them: `Verified and not` / `Verified only` / `Unverified only` — new, see rebuild-plan 2.10 #70. The phase-0 status strip deep-links here with `filter[status]=printed&filter[verified]=0`, and without the filter that link silently shows every printed card — `PrintJobsTest`: the six filters are declared in the audit order, with printer among them
+- [~] The five audit filters carry named placeholders (`All statuses`, `All types`, `All printers`, and `Printable ID` / `Printable Type` on the two free-value inputs) rather than Filament's `All` — new, see rebuild-plan 2.10 #67. The two filter indicators are unchanged
+- [x] The printer-scoped list still names the printer in the page title (`Print Jobs - {name}`) — `PrintJobsTest`: the printer filter narrows the list and renames the page
 
 ### Actions
 
-- [ ] View (row)
-- [ ] Edit (row)
-- [ ] `Retry` (row), icon arrow-path, colour warning, visible only when `canRetry()` (Failed and `retry_count < 3`)
-- [ ] `Retry` confirm: heading `Retry`, description `Are you sure you would like to do this?`, submit `Confirm`
-- [ ] `Retry` creates a new Pending job with `retry_of`, the same batch, sequence, printable and file, reassigning to an available printer of the same type
-- [ ] `Retry` leaves the original job `Failed` and the batch `Paused` (audit 85 — record whether that stays)
-- [ ] `Retry` success notification title `Created retry job #{id}`
-- [ ] Delete selected (bulk), Filament default bulk delete copy
-- [~] Deleting jobs recalculates the parent batch counters — fixed, see rebuild-plan 2.10 #11 (audit 23)
-- [ ] Create (header)
-- [~] Creating a badge job with no `print_batch_id` no longer produces an orphan that sits Pending forever — fixed, see rebuild-plan phase 6 (audit 89)
-- [ ] Edit (view page header)
-- [ ] View + Delete (edit page header)
+- [x] View (row) — `PrintJobsTest`: Retry is offered only on a failed job with fewer than three retries
+- [x] Edit (row) — `PrintJobsTest`: Retry is offered only on a failed job with fewer than three retries
+- [x] `Retry` (row), icon arrow-path, colour warning, visible only when `canRetry()` (Failed and `retry_count < 3`) — a POST on its own endpoint with its own `retry` ability, never a GET, so no page load or poll can reach it — `PrintJobsTest`: Retry is offered only on a failed job with fewer than three retries; Retry is an authorized POST and nothing else
+- [x] `Retry` confirm: heading `Retry`, description `Are you sure you would like to do this?`, submit `Confirm` — `PrintJobsTest`: the Retry confirm copy is the bare requiresConfirmation copy, verbatim
+- [x] `Retry` creates a new Pending job with `retry_of`, the same batch, sequence, printable and file, reassigning to an available printer of the same type — `PrintJobsTest`: Retry queues a new pending job and leaves the original failed
+- [x] `Retry` leaves the original job `Failed` and the batch `Paused` (audit 85 — record whether that stays) — it stays; recorded in the test so the day it changes, it changes deliberately — `PrintJobsTest`: Retry queues a new pending job and leaves the original failed
+- [x] `Retry` success notification title `Created retry job #{id}` — `PrintJobsTest`: Retry flashes the audit notification title
+- [x] Delete selected (bulk), Filament default bulk delete copy — `PrintJobsTest`: the bulk delete carries Filament default copy and is admin only
+- [~] Deleting jobs recalculates the parent batch counters — fixed, see rebuild-plan 2.10 #11 (audit 23) — single and bulk, and the retry too, since it adds a job to the batch — `PrintJobsTest`: deleting a job recalculates its batch counters; the bulk delete recalculates every batch it touched
+- [~] Deleting or cancelling the **last outstanding** job also finishes the batch, and releases the badge's print lock when no job of that badge survives uncancelled — new, see rebuild-plan 2.10 #65. `PrintBatchStatusEnum` gains `Paused -> Completed` for it, which `completeIfFinished()` can only reach with nothing outstanding — `PrintJobsTest`: deleting the last outstanding job lets its batch finish; cancelling the last outstanding job lets its batch finish; deleting a badge last print job hands editing back to its owner; a badge that still has a card or a queued job stays locked
+- [~] A job in `Queued` or `Printing` cannot be deleted at all, single or bulk — new, see rebuild-plan 2.10 #65. The agent holds the card and its `printed` callback is route-model-bound, so deleting the row 404s it: the badge is never promoted and the printer never releases the job — `PrintJobsTest`: a job a machine is holding cannot be deleted
+- [x] Create (header) — `PrintJobsTest`: the list header offers the create page
+- [~] Creating a badge job with no `print_batch_id` no longer produces an orphan that sits Pending forever — fixed, see rebuild-plan phase 6 (audit 89) — the create form asks for a batch and the request requires one for a badge job; it also asks for the `printable_type` / `printable_id` pair, which are NOT NULL and which the Filament form collected neither of, so creating a job from admin threw an integrity error — `PrintJobsTest`: a badge job cannot be created without a batch; a created badge job joins the end of its batch and updates the counters
+- [x] Edit (view page header) — `PrintJobsTest`: the view page renders the record read-only with an Edit header action
+- [x] View + Delete (edit page header) — `PrintJobsTest`: the edit page carries View and Delete with Filament delete copy
 
 ### Form
 
-- [ ] `printer_id` Select from the `printer` relation, required
-- [ ] `type` Select, required, options Badge / Receipt
-- [~] `status` becomes a transition picker calling `PrintJob::transitionTo()` — fixed, see rebuild-plan 2.10 #10 (audit 22)
-- [~] Setting a job to Printed from `/manage` promotes the badge and recalculates the batch — fixed, see rebuild-plan 2.10 #10
-- [ ] `priority` TextInput, numeric, default 0
-- [ ] `retry_count` TextInput, numeric, default 0
-- [ ] `error_message` Textarea, 3 rows
-- [ ] `firmware_job_id` TextInput, label `Printer job id`, max 64
-- [ ] `firmware_job_uuid` TextInput, label `Printer job UUID`, max 64
-- [ ] The batch a card belongs to is visible from this list (audit: `print_batch_id` and `sequence` are surfaced nowhere today)
+- [x] `printer_id` Select from the `printer` relation, required — `PrintJobsTest`: a status the machine would refuse is rejected by the request
+- [x] `type` Select, required, options Badge / Receipt — always `PrintJobTypeEnum`, never the raw string CheckoutResource writes — `PrintJobsTest`: the receipt type is written as the enum, never as a raw string
+- [~] `status` becomes a transition picker calling `PrintJob::transitionTo()` — fixed, see rebuild-plan 2.10 #10 (audit 22) — the picker offers only the edges the enum allows, and a create fixes it at Pending because there is nothing to transition from — `PrintJobsTest`: the status picker offers only the edges the machine allows; a status the machine would refuse is rejected by the request; a created job always starts pending, whatever the request asks for
+- [~] The picker offers **operator** edges only: `Queued`, `Printing` and `Retrying` belong to the agent and its lease and are never offered, and a failed card goes back to `Pending` through `PrintJob::requeue()` while a claimed one goes back through `releaseLease()` — new, see rebuild-plan 2.10 #64 — `PrintJobsTest`: the status picker never offers a state only an agent can write; a failed job is put back in the queue rather than left Retrying; a claimed job sent back to Pending drops its lease and its machine
+- [~] The form is grouped into `Destination` / `Printable` / `Status` / `Diagnostics` sections where the audit records a flat schema — new, see rebuild-plan 2.10 #69, with the helper texts on `print_batch_id`, `status` and the read-only batch and sequence fields
+- [~] Setting a job to Printed from `/manage` promotes the badge and recalculates the batch — fixed, see rebuild-plan 2.10 #10 — through `markPrinted(operator)` and `markFailed()`, so the printer is released and a failure pauses its batch the way one reported by the agent does — `PrintJobsTest`: marking a job printed from admin promotes the badge and recalculates the batch; marking a job failed from admin pauses its batch the way the agent does
+- [x] `priority` TextInput, numeric, default 0 — `PrintJobsTest`: saving without touching the status leaves the job where it is
+- [x] `retry_count` TextInput, numeric, default 0 — `PrintJobsTest`: saving without touching the status leaves the job where it is
+- [x] `error_message` Textarea, 3 rows — `PrintJobsTest`: marking a job failed from admin pauses its batch the way the agent does
+- [x] `firmware_job_id` TextInput, label `Printer job id`, max 64 — helper text verbatim — `PrintJobsTest`: saving without touching the status leaves the job where it is
+- [x] `firmware_job_uuid` TextInput, label `Printer job UUID`, max 64 — `PrintJobsTest`: the list renders the twelve columns in order
+- [x] The batch a card belongs to is visible from this list (audit: `print_batch_id` and `sequence` are surfaced nowhere today) — a twelfth `Batch` column carrying the run and the sequence, plus both on the view page — `PrintJobsTest`: the batch cell names the run and the sequence in it
 
 ### Table config
 
-- [ ] Default sort `id` desc
-- [ ] Poll 5s
-- [~] The relation columns are eager-loaded — fixed, see rebuild-plan 2.3 (audit 97)
+- [x] Default sort `id` desc — `PrintJobsTest`: the list opens newest first and flips through the partial reload the client sends
+- [x] Poll 5s — `usePoll(5000, { only: ['rows', 'meta'] })` in `Pages/Manage/PrintJobs/Index.vue` — `PrintJobsTest`: no page load and no poll ever queues a card
+- [~] The relation columns are eager-loaded — fixed, see rebuild-plan 2.3 (audit 97) — `printer`, `processingMachine`, `printable` and `batch` in one `with()`
 
 ## 16. Staff (audit 4.10)
 
 ### Columns
 
-- [ ] 1 `name`, sortable, searchable
-- [ ] 2 `pin_code`, label `PIN Code`, renders `Set` / `Not Set` only, toggleable, **hidden by default**
-- [ ] 3 `is_active`, label `Active`, boolean icon
-- [ ] 4 `rfid_tags_count`, label `RFID Tags`
-- [ ] 5 `last_login_at`, label `Last Login`, relative (`since`), sortable
-- [ ] 5a Blank cell when never logged in (audit 122 — inconsistent with the RFID table's `Never used`; decide and record)
-- [ ] 6 `created_at`, sortable, toggleable, **hidden by default**
+- [x] 1 `name`, sortable, searchable — `StaffTest`: the column list is the audit table; search covers the name only
+- [x] 2 `pin_code`, label `PIN Code`, renders `Set` / `Not Set` only, toggleable, **hidden by default** — the two words are computed on the server, so unlike Filament the plaintext PIN is never in the payload at all. `StaffTest`: the PIN column is the two literal words and the PIN itself never reaches the payload
+- [x] 3 `is_active`, label `Active`, boolean icon
+- [x] 4 `rfid_tags_count`, label `RFID Tags` — `StaffTest`: the RFID tag count column counts the member tags
+- [x] 5 `last_login_at`, label `Last Login`, relative (`since`), sortable — `StaffTest`: the list sorts by last login through the partial visit
+- [x] 5a Blank cell when never logged in (audit 122 — inconsistent with the RFID table's `Never used`) — decided: parity kept. Staff stays blank, the RFID table keeps `Never used`; unifying them changes what one of the two columns reads as, and neither reading was ever recorded as a decision. `StaffTest`: a member who never logged in gets a blank cell, not a placeholder
+- [x] 6 `created_at`, sortable, toggleable, **hidden by default** — `StaffTest`: the two hidden-by-default columns are the PIN and created_at
 
 ### Filters
 
-- [ ] 1 `is_active` ternary, label `Active Status`, blank = all
+- [x] 1 `is_active` ternary, label `Active Status`, blank = all — `StaffTest`: the active status filter narrows the row set through the partial visit
+- [~] Its options read `All staff` / `Active` / `Inactive` rather than Filament's `-` / `Yes` / `No` — new, see rebuild-plan 2.10 #67
 
 ### Actions
 
-- [ ] Edit (row)
-- [ ] Delete (row), Filament default delete copy, hard delete, cascades the member's RFID tags
-- [ ] Delete selected (bulk), Filament default bulk delete copy, same cascade
-- [ ] Create (header), label `New staff`
-- [ ] Delete (edit page header)
-- [ ] `Generate` suffix action on `setup_code`, label `Generate`, icon arrow-path, visible while creating or while the member has no PIN
-- [~] `Generate` writes into form state only and persists on save — fixed, see rebuild-plan 2.10 #23 (audit 36)
+- [x] Edit (row)
+- [x] Delete (row), Filament default delete copy, hard delete, cascades the member's RFID tags — `StaffTest`: each row offers Edit and Delete, with Filament default delete copy; deleting a member is a hard delete that takes their tags with it
+- [x] Delete selected (bulk), Filament default bulk delete copy, same cascade — all-or-nothing per rebuild-plan 2.5. `StaffTest`: the bulk action is Delete selected, with Filament default bulk delete copy
+- [x] Create (header), label `New staff` — `StaffTest`: the page action is New staff
+- [x] Delete (edit page header) — `StaffTest`: the edit page carries a header delete action
+- [x] `Generate` suffix action on `setup_code`, label `Generate`, icon arrow-path, visible while creating or while the member has no PIN — visibility reads the persisted record, as Filament's predicate did, so typing a PIN does not make the button vanish mid-edit
+- [~] `Generate` writes into form state only and persists on save — fixed, see rebuild-plan 2.10 #23 (audit 36). `POST /admin/staff/{staff}/setup-code` proposes an unused code and flashes it back; nothing in `StaffSetupCodeController` calls a model write. `StaffTest`: Generate proposes a setup code without writing one; the proposed code reaches the form as a prop and only persists on save
 
 ### Form
 
-- [ ] `name` TextInput, required, max 255
-- [ ] `pin_code` TextInput, label `PIN Code (6 digits)`, nullable, exactly 6, helper `Enter a secure 6-digit PIN code. Leave empty to require setup code first.`
-- [~] `SecurePinRule` receives the record id, so saving an unchanged staff row stops failing with `This PIN is not secure enough. Please choose a different PIN.` — fixed, see rebuild-plan 2.10 #21 (audit 34)
-- [ ] The duplicate-PIN message stays deliberately vague (`This PIN is not secure enough...`), audit 121
-- [ ] `setup_code` TextInput, label `Setup Code`, nullable, exactly 6, uppercased on save, helper `6-character alphanumeric code for initial account setup. Auto-generated if left empty.`
-- [~] A blank `setup_code` stores `null`, not `''`, so the UNIQUE index stops colliding — fixed, see rebuild-plan 2.10 #22 (audit 35)
-- [ ] `is_active` Toggle, label `Active`, default true, helper `Inactive staff cannot login to POS`
-- [~] The PIN helper text says plaintext storage out loud — new, see rebuild-plan 2.10 #24 (audit 11)
+- [x] `name` TextInput, required, max 255
+- [x] `pin_code` TextInput, label `PIN Code (6 digits)`, nullable, exactly 6, helper `Enter a secure 6-digit PIN code. Leave empty to require setup code first.` — validated `digits:6` rather than Filament's `numeric` + `length(6)`, which measured the number rather than the string and dropped a leading zero (audit 121). `StaffTest`: the name is required and the PIN must be exactly six digits
+- [~] `SecurePinRule` receives the record id, so saving an unchanged staff row stops failing with `This PIN is not secure enough. Please choose a different PIN.` — fixed, see rebuild-plan 2.10 #21 (audit 34). `StaffTest`: saving an unchanged member with a PIN no longer fails against itself
+- [x] The duplicate-PIN message stays deliberately vague (`This PIN is not secure enough...`), audit 121 — `StaffTest`: another members PIN is still refused, with the deliberately vague message
+- [x] `setup_code` TextInput, label `Setup Code`, nullable, exactly 6, uppercased on save, helper `6-character alphanumeric code for initial account setup. Auto-generated if left empty.` — also validated unique against `staff.setup_code`, which the UNIQUE index has always enforced and the Filament form never checked, so a collision was SQL 1062 rather than a field error (same reasoning as the uniqueness `UserRequest` added). `StaffTest`: a setup code is uppercased on save and cannot duplicate another one
+- [~] A blank `setup_code` stores `null`, not `''`, so the UNIQUE index stops colliding — fixed, see rebuild-plan 2.10 #22 (audit 35). `StaffTest`: a blank setup code stores null, so a second blank member does not collide
+- [x] `is_active` Toggle, label `Active`, default true, helper `Inactive staff cannot login to POS`
+- [~] The PIN helper text says plaintext storage out loud — new, see rebuild-plan 2.10 #24 (audit 11). The verbatim sentence is kept intact and the plaintext note appended after it
+- [~] The edit form is prefilled with `StaffController::PIN_UNCHANGED`, never the PIN — new, see rebuild-plan 2.10 #66. The plaintext is not in the page props, the DOM or Inertia's history state; `StaffRequest` drops the sentinel before validation, so it can never be written, and emptying the field still clears the PIN. `StaffTest`: the edit page never carries the plaintext PIN either; a member with no PIN gets an empty field rather than the sentinel; submitting the sentinel unchanged keeps the stored PIN; the sentinel itself can never be written as a PIN; emptying the PIN field still clears the PIN, as the helper text says
+- [~] The form is wrapped in a `Staff` section heading where the audit records a flat schema — new, see rebuild-plan 2.10 #68
 
 ### Table config
 
-- [~] Unpaginated today; becomes `perPage: 200` with pagination visible — fixed, see rebuild-plan 2.3
+- [~] Unpaginated today; becomes `perPage: 200` with pagination visible — fixed, see rebuild-plan 2.3. `StaffTest`: the unpaginated table becomes a page of 200 with the pager visible
+- [~] `defaultSort('id')` is stated where `StaffResource` declares none — new, see rebuild-plan 2.10 #71
 
 ## 17. RFID tags (audit 4.10.1)
 
-- [ ] Column 1 `content`, label `RFID Code`, searchable, copyable
-- [ ] Column 2 `name`, label `Tag Name`, searchable, placeholder `No name set`
-- [ ] Column 3 `is_active`, label `Active`, boolean icon
-- [ ] Column 4 `last_login_at`, label `Last Used`, relative, sortable, placeholder `Never used`
-- [ ] Column 5 `created_at`, label `Added`, relative, sortable
-- [ ] Filter 1 `is_active` ternary, label `Active Status`
-- [ ] Edit (row)
-- [ ] Delete (row), Filament default delete copy, hard delete
-- [ ] Delete selected (bulk), Filament default bulk delete copy
-- [ ] Create (header), label `Create rfid tag`
-- [ ] `content` TextInput, required, unique on `rfid_tags.content` ignoring self, max 255, helper `The unique identifier from the RFID tag`
-- [ ] `name` TextInput, label `Tag Name (Optional)`, max 255, helper `A friendly name for this RFID tag`
-- [ ] `is_active` Toggle, label `Active`, default true, helper `Inactive tags cannot be used for authentication`
-- [ ] Decide on the asymmetry with POS self-service validation (`min:8`, `max:20`, digits only), audit 120
+- [x] Column 1 `content`, label `RFID Code`, searchable, copyable — `StaffTest`: the tag columns carry the audit labels, placeholders and copyable code; the tag search covers the code and the tag name
+- [x] Column 2 `name`, label `Tag Name`, searchable, placeholder `No name set`
+- [x] Column 3 `is_active`, label `Active`, boolean icon
+- [x] Column 4 `last_login_at`, label `Last Used`, relative, sortable, placeholder `Never used`
+- [x] Column 5 `created_at`, label `Added`, relative, sortable — `StaffTest`: the tag table is the audit column list and shows only this members tags
+- [x] Filter 1 `is_active` ternary, label `Active Status` — `StaffTest`: the tag table filters and sorts through the partial visit
+- [~] Its options read `All tags` / `Active` / `Inactive` rather than Filament's `-` / `Yes` / `No` — new, see rebuild-plan 2.10 #67
+- [~] `defaultSort('id')` is stated where the relation manager declares none — new, see rebuild-plan 2.10 #71
+- [x] Edit (row) — a dialog on the staff edit page, as the relation-manager modal was. It is the one control in this module that is not a server-declared `Action`: `DataTable` can only render server actions, and a link out to an edit page would discard unsaved changes in the staff form above while an `ActionButton` field set has nowhere to show the unique-code error. The tag table's columns, filters, deletes and bulk delete are all still server-declared
+- [x] Delete (row), Filament default delete copy, hard delete — `StaffTest`: a tag row offers Delete with Filament default delete copy, and the bulk action names rfid tags; a tag is hard deleted, one at a time and in bulk
+- [x] Delete selected (bulk), Filament default bulk delete copy — all-or-nothing per rebuild-plan 2.5, and confined to the member in the URL. `StaffTest`: a bulk delete that names a tag of another member deletes nothing
+- [x] Create (header), label `Create rfid tag` — same dialog as Edit, on the tag card header
+- [x] `content` TextInput, required, unique on `rfid_tags.content` ignoring self, max 255, helper `The unique identifier from the RFID tag` — `StaffTest`: a tag code is required and unique across every member; a tag keeps its own code when it is saved unchanged
+- [x] `name` TextInput, label `Tag Name (Optional)`, max 255, helper `A friendly name for this RFID tag`
+- [x] `is_active` Toggle, label `Active`, default true, helper `Inactive tags cannot be used for authentication`
+- [x] Decide on the asymmetry with POS self-service validation (`min:8`, `max:20`, digits only), audit 120 — decided: the admin form keeps accepting any string up to 255. Tightening it to the POS rules is a behaviour change nobody asked for and would lock an admin out of correcting a tag that already exists in the table. Recorded in `RfidTagRequest`
 
 ## 18. SumUp Readers (audit 4.11)
 
-- [ ] Column 1 `name`
-- [ ] Column 2 `remote_id`, label `Remote Id`
-- [~] Column 3 `paring_code` is masked by default, with a `reveal` action gated on `is_admin` and logged — fixed, see rebuild-plan 2.10 #16 (audit 10)
-- [ ] The column-name typo `paring_code` is kept (baked into the migration and POS code paths)
-- [ ] No filters
-- [ ] Edit (row)
-- [ ] Delete selected (bulk), Filament default bulk delete copy, hard delete
-- [ ] Create (header)
-- [ ] Delete (edit page header), Filament default delete copy
-- [ ] `name` TextInput, required, max 255
-- [~] `remote_id` is dropped from the request payload entirely, not merely `readOnly()` — fixed, see rebuild-plan 2.10 #17 (audit 12)
-- [ ] `paring_code` TextInput, required, max 255
-- [ ] Deleting a reader still breaks the link between a past card checkout and the terminal (audit 132 — warn in the confirm copy or record the decision)
+- [x] Column 1 `name` - `SumUpReadersTest`: the column list is the audit table in order, and nothing is sortable, searchable or toggleable
+- [x] Column 2 `remote_id`, label `Remote Id` - `SumUpReadersTest`: the cell carries the stored value verbatim
+- [~] Column 3 `paring_code` is masked by default, with a `reveal` action gated on `is_admin` and logged — fixed, see rebuild-plan 2.10 #16 (audit 10) - `SumUpReadersTest`: the cell is a fixed dot string, neither the rendered page nor the Inertia payload contains the code, and `reveal` is a POST on its own `SumUpReaderPolicy::reveal` ability that writes `Revealed SumUp pairing code` to the activity log and flashes the plaintext for one response
+- [x] The column-name typo `paring_code` is kept (baked into the migration and POS code paths) - `SumUpReadersTest`: the column key and the request field are both `paring_code`
+- [x] No filters - `SumUpReadersTest`: `filters` is empty
+- [x] Edit (row), and no delete row action (audit 4.11 verbatim: "`EditAction` only") - `SumUpReadersTest`: the row offers Reveal and Edit, and no delete
+- [~] `Reveal` (row) joins Edit - new, rides with rebuild-plan 2.10 #16: the plaintext left the cell, so reading it has to be a gesture. Its confirm copy is rebuild-plan 2.10 #72 - `SumUpReadersTest`: the row offers Reveal and Edit, and no delete
+- [x] Delete selected (bulk), Filament default bulk delete copy, hard delete - `SumUpReadersTest`: heading `Delete selected sum up readers`, default description, submit `Delete`, and the rows are gone from `sumup_readers`
+- [x] Create (header) - `SumUpReadersTest`: the single page action `New sum up reader` points at the create page
+- [x] Delete (edit page header), Filament default delete copy - `SumUpReadersTest`: the plan's route table missed it; `DELETE /admin/sumup-readers/{reader}` is registered and the Edit header carries it with heading `Delete sum up reader`
+- [x] `name` TextInput, required, max 255 - `SumUpReadersTest`: required on create and update, 256 characters is a field error
+- [~] `remote_id` is dropped from the request payload entirely, not merely `readOnly()` — fixed, see rebuild-plan 2.10 #17 (audit 12) - `SumUpReadersTest`: a crafted `remote_id` on store and on update reaches neither model. The field is rendered as read-only text on the create page as well as the edit page, as Filament's `readOnly()` TextInput was: empty on create, because SumUp has not bound the reader yet. Its helper is rebuild-plan 2.10 #72
+- [~] `paring_code` TextInput, required, max 255 - required on create only; on update it is optional and an empty field keeps the stored code, because the form never receives it (rebuild-plan 2.10 #16) - `SumUpReadersTest`: blank on update keeps the credential, a value replaces it, 256 characters is a field error
+- [~] Deleting a reader still breaks the link between a past card checkout and the terminal (audit 132 — warn in the confirm copy or record the decision) - decision recorded rather than warned: both delete confirmations are pinned to Filament's default copy verbatim by the two boxes above, so the note lives in `SumUpReaderController`'s docblock instead
+- [~] The form is wrapped in a `Sum Up Reader` section heading where the audit records a flat schema, and both fields gain helper text - new, see rebuild-plan 2.10 #68 and #72
+- [~] `defaultSort('id')` is stated where `SumUpReaderResource` declares none - new, see rebuild-plan 2.10 #71
 
 ## 19. TSE Clients (audit 4.12)
 
-- [ ] Column 1 `remote_id`, label `Remote ID`, searchable
-- [ ] Column 2 `serial_number`, label `Serial Number`, searchable
-- [ ] Column 3 `state`, label `State`, searchable, raw `REGISTERED` / `DEREGISTERED`
-- [ ] No filters
-- [ ] Edit (row)
-- [ ] No delete action anywhere (audit 133: only an empty `getHeaderActions()` prevents it today)
-- [ ] No bulk actions
-- [~] The `Create TSE Client` (`createnew`) header action is removed — dropped, see rebuild-plan 2.10 #13 (audit 7: it fabricates a UUID serial locally and never talks to Fiskaly)
-- [~] `remote_id`, `serial_number` and `state` become read-only — fixed, see rebuild-plan 2.10 #14 (audit 8)
-- [ ] The real lifecycle stays `tse:update-state` / `tse:change-admin-pin`
-- [ ] `TseClient::machine()` is surfaced so you can see which POS machine a client is bound to (nothing shows it today)
+- [x] Column 1 `remote_id`, label `Remote ID`, searchable — `TseClientsTest`: the column list is the audit table with its labels; the search box covers each of the three columns
+- [x] Column 2 `serial_number`, label `Serial Number`, searchable — `TseClientsTest`: the column list is the audit table with its labels; the search box covers each of the three columns. Also `ListEnvelopeTest`: the tse clients list searches and paginates under a partial visit
+- [x] Column 3 `state`, label `State`, searchable, raw `REGISTERED` / `DEREGISTERED` — the cell is `TseClientStateEnum`'s own case value rather than a literal, so the vocabulary has one definition instead of the three Filament kept. `TseClientsTest`: the state cell is the raw stored value, taken from the enum case (both cases, and the two strings pinned because `FiskalyService::updateClient()` PATCHes `state->value` upstream); a stored state the enum does not know renders as itself instead of throwing, since the cast's `from()` raises a ValueError on a legacy row
+- [x] No filters — `TseClientsTest`: the table declares no filters (and `ListEnvelopeTest` asserts the key is still carried under the partial visit)
+- [~] `TseClientResource` declares no `defaultSort`; the module states `->defaultSort('id')` — the resource fell back to whatever order the driver returned, which is primary key order in practice and nothing in particular in principle. Stated so a fiscal list does not reorder itself between two reads of the same data. Cosmetic, disclosed here because it is not in the plan — `ListEnvelopeTest`: the tse clients list searches and paginates under a partial visit
+- [~] Edit (row) becomes View — fixed, see rebuild-plan 2.10 #14: `remote_id`, `serial_number` and `state` are the whole record, so making them read-only empties the form and leaves nothing for an edit page to do. The row opens the record instead. `TseClientsTest`: the row carries View and nothing else, and there are no page or bulk actions
+- [x] No delete action anywhere (audit 133: only an empty `getHeaderActions()` prevents it today) — here the route simply does not exist. `TseClientsTest`: the module registers no write route at all; no action anywhere in the module deletes, creates or edits
+- [x] No bulk actions — `TseClientsTest`: the row carries View and nothing else, and there are no page or bulk actions
+- [~] The `Create TSE Client` (`createnew`) header action is removed — dropped, see rebuild-plan 2.10 #13 (audit 7: it fabricates a UUID serial locally and never talks to Fiskaly) — `TseClientsTest`: `pageActions` is empty, no create or store route exists, and `/admin/tse-clients/create` is a 404 rather than the reachable-by-URL page it was
+- [~] `remote_id`, `serial_number` and `state` become read-only — fixed, see rebuild-plan 2.10 #14 (audit 8) — read-only as a claim about the routing table, not about the UI: there is no create, store, edit, update, destroy or bulk route, and the module never calls `create`, `update` or `delete` on the model. `TseClientsTest`: an admin cannot write to a client through the URLs the Filament resource had, and rendering the list or a record writes nothing and calls Fiskaly not at all (`TseClientsObserver` PATCHes the TSS on every `updated`, so a form here would have been a remote write too)
+- [x] The real lifecycle stays `tse:update-state` / `tse:change-admin-pin` — named on the list page and under the state field, since the panel no longer looks like it can issue a client. `TseClientsTest`: the show page ships no actions prop for a header that has none, and no route in the module writes
+- [x] `TseClient::machine()` is surfaced so you can see which POS machine a client is bound to (nothing shows it today) — on the new Show page, which the Filament resource had no counterpart for (no view page, no infolist). `TseClientsTest`: the show page carries the identity, the state and the bound machine; an unbound client shows no machine rather than failing
 
 ## 20. Users (audit 4.13)
 
@@ -800,111 +856,133 @@ description, and submit `Confirm`.
 
 ### Actions
 
-- [ ] `Generate Badge List PDF`, icon document-text, colour primary, visible when `pdf_type = badge_list`
-- [ ] `Generate Box Labels PDF`, icon tag, colour success, visible when `pdf_type = box_labels`
+- [x] `Generate Badge List PDF`, icon document-text, colour primary, visible when `pdf_type = badge_list` — `Pages/Manage/Tools/PdfGenerator.vue`: a same-tab anchor to `manage.tools.pdf.badge-list`, icon `file-text`, tone `info` (Filament's `primary`), shown while `pdf_type = badge_list`. Not an `ActionButton`, because its GET is an Inertia `<Link>` and an XHR cannot save a file
+- [x] `Generate Box Labels PDF`, icon tag, colour success, visible when `pdf_type = box_labels` — `Pages/Manage/Tools/PdfGenerator.vue`: same shape, tone `ok` (Filament's `success`), icon `tag`, which `ManageIcon`'s map gained in the phase-9 integration pass
 
 ### Form
 
-- [ ] Section `PDF Generation Options`, description `Generate PDFs for badge management`
-- [ ] `pdf_type` Select, label `PDF Type`, required, default `badge_list`, reactive
-- [~] `pdf_type` option label `Box Labels (3 per A4 page)` corrected to one label per page — fixed, see rebuild-plan 2.10 #32 (audit 45)
-- [ ] `payment_status` Select, label `Payment Status Filter`, required, default `all`, options `All Badges` / `Paid Badges Only` / `Unpaid Badges Only`, badge-list only
-- [ ] `badge_ranges` Textarea, 3 rows, label `Badge Ranges`, required, default `0-999,1000-1999,2000-2999,3000-3999,4000-4999`, placeholder `e.g., 1-1699,1700-2400,2401-3000`, helper `Enter comma-separated ranges (e.g., 1-1699,1700-2400). Each range will be on a separate page.`
-- [ ] `title` TextInput, box-labels only, placeholder `e.g., "Badge Range 1-999"`
-- [ ] `subtitle` TextInput, box-labels only, placeholder `e.g., "Free Badges"`
-- [ ] `rows_per_column` TextInput numeric, default 50, badge-list only
-- [ ] `columns` TextInput numeric, default 12, badge-list only
-- [ ] `font_size` TextInput numeric, label `Font Size (px)`, default 6, badge-list only
+- [x] Section `PDF Generation Options`, description `Generate PDFs for badge management` — `Pages/Manage/Tools/PdfGenerator.vue`
+- [x] `pdf_type` Select, label `PDF Type`, required, default `badge_list`, reactive — `PdfGeneratorTest`: the form opens on the Filament defaults (the select drives which fields and which button the page shows)
+- [~] `pdf_type` option label `Box Labels (3 per A4 page)` corrected to one label per page — fixed, see rebuild-plan 2.10 #32 (audit 45) — `PdfGeneratorTest`: the selects carry their Filament labels, with the box-label count corrected (`Box Labels (1 per page)`)
+- [x] `payment_status` Select, label `Payment Status Filter`, required, default `all`, options `All Badges` / `Paid Badges Only` / `Unpaid Badges Only`, badge-list only — `PdfGeneratorTest`: the selects carry their Filament labels, and the No Data body names the payment filter that found nothing
+- [x] `badge_ranges` Textarea, 3 rows, label `Badge Ranges`, required, default `0-999,1000-1999,2000-2999,3000-3999,4000-4999`, placeholder `e.g., 1-1699,1700-2400,2401-3000`, helper `Enter comma-separated ranges (e.g., 1-1699,1700-2400). Each range will be on a separate page.` — `PdfGeneratorTest`: the form opens on the Filament defaults; the placeholder and helper are verbatim in `Pages/Manage/Tools/PdfGenerator.vue`
+- [x] `title` TextInput, box-labels only, placeholder `e.g., "Badge Range 1-999"` — `Pages/Manage/Tools/PdfGenerator.vue`
+- [x] `subtitle` TextInput, box-labels only, placeholder `e.g., "Free Badges"` — `Pages/Manage/Tools/PdfGenerator.vue`
+- [x] `rows_per_column` TextInput numeric, default 50, badge-list only — `PdfGeneratorTest`: the form opens on the Filament defaults, and the layout numbers are integers with a ceiling (`->numeric()` was a client-side hint, so `columns=100000` reached mPDF; see `PdfGeneratorRequest`)
+- [x] `columns` TextInput numeric, default 12, badge-list only — same test
+- [x] `font_size` TextInput numeric, label `Font Size (px)`, default 6, badge-list only — same test
+- [~] `title` / `subtitle` inside `Grid::make(2)` and `rows_per_column` / `columns` / `font_size` inside `Grid::make(3)` — dropped, see rebuild-plan 2.10 #76 — all five ship as full-width `FormField` rows, which is the panel-wide form shape from phase 0 (`FormSection`'s `columns` prop is for read-only infolist blocks); the three layout numbers keep `narrow`, so the short controls stay short
+- [~] A read-only `Event` field naming the event the badge list will cover, with the helper `Select an event in the header. A badge list is always one event.` — new copy, see rebuild-plan 2.10 #77. The field has no Filament counterpart; it follows from 2.9 wiring the page to `EventScope`, on a page that used to ignore the header entirely (audit 63)
+- [~] `badge_ranges` is capped at 1000 characters and `title` / `subtitle` at 255 — new limits, see rebuild-plan 2.10 #78. None of the three had any bound: the range list is parsed part by part and both strings are interpolated into a filename
 
 ### Notifications
 
-- [ ] Danger title `Error`, body `No event selected in the header.`
-- [ ] Warning title `No Data`, body `No {paid badges|unpaid badges|badges} found for the current event.`
-- [ ] Danger title `Invalid Range Format`, body `Please enter valid badge ranges in the format: 1-1699,1700-2400`
-- [ ] Warning title `No Badges in Ranges`, body `No badges found within the specified ranges. Please check your range settings.`
-- [ ] Danger title `Error`, body `Title is required for box labels.`
-- [~] Badges outside every configured range are reported rather than silently dropped — fixed, see rebuild-plan 2.10 #33 (audit 47)
+- [x] Danger title `Error`, body `No event selected in the header.` — `PdfGeneratorTest`: all events selected reports that no event is selected, rather than guessing one (the branch was unreachable before, see line 56)
+- [x] Warning title `No Data`, body `No {paid badges|unpaid badges|badges} found for the current event.` — `PdfGeneratorTest`: the No Data body names the payment filter that found nothing, and the badge list covers the selected event and nothing else
+- [x] Danger title `Invalid Range Format`, body `Please enter valid badge ranges in the format: 1-1699,1700-2400` — `PdfGeneratorTest`: an unparsable range list is refused with the Filament copy
+- [x] Warning title `No Badges in Ranges`, body `No badges found within the specified ranges. Please check your range settings.` — `PdfGeneratorTest`: a range list no badge falls into is refused with the Filament copy
+- [x] Danger title `Error`, body `Title is required for box labels.` — `PdfGeneratorTest`: box labels refuse an empty title with the Filament copy
+- [~] Badges outside every configured range are reported rather than silently dropped — fixed, see rebuild-plan 2.10 #33 (audit 47) — `PdfGeneratorTest`: badges outside every declared range are reported, not dropped. They get their own page, headed `Outside configured ranges (n attendees)` by the same range view, and the count also rides back on `X-Badges-Out-Of-Range`
 
 ### Output
 
-- [ ] Badge list: A4 portrait, 5mm margins, helvetica; header view then one page per range; grouped by range then attendee; badges with an empty `custom_id` dropped
-- [ ] Badge-list header renders `{event name}` and the literal `Attendee Reference`
-- [ ] Range header renders `{range} ({n} attendees)`; empty-state text `No attendees in this range.`
-- [~] Download filename `badge-list-{event}{-paid|-unpaid}-{Y-m-d}.pdf` is **slugged** — fixed, see rebuild-plan 2.10 #31 (audit 15: header injection from a free-text event name)
-- [ ] Box labels: `210x94mm` page, 5mm margins, `{title}` and optional `{subtitle}`
-- [~] The box-label geometry has one source of truth (page format vs the blade's hardcoded `84x200mm`) — fixed, see rebuild-plan 2.10 #32 (audit 45)
-- [ ] Box-label download filename `box-label-{slug(title)}-{Y-m-d}.pdf`
-- [ ] Page copy: `Badge List PDF` callout and `Box Labels PDF` callout
-- [~] The callout copy claiming "all free badges" and "3 columns per page" is corrected to match the 12-column default — fixed, see rebuild-plan 2.10 #32 (audit 46)
-- [~] `resources/views/pdfs/badge-list.blade.php` (dead, 165 lines) is not ported — dropped, see rebuild-plan 2.10 #44 (audit 40)
+- [x] Badge list: A4 portrait, 5mm margins, helvetica; header view then one page per range; grouped by range then attendee; badges with an empty `custom_id` dropped — `PdfGeneratorTest`: the badge list streams a PDF, and a range list that covers every badge reports nothing out of range (one range, one page). The geometry, the view order and the grouping are `PdfGeneratorController::badgeList()` and `groupBadges()`
+- [x] Badge-list header renders `{event name}` and the literal `Attendee Reference` — the unchanged `pdfs.badge-list-header`, rendered once with the scoped event (`PdfGeneratorTest`: the badge list covers the selected event and nothing else)
+- [x] Range header renders `{range} ({n} attendees)`; empty-state text `No attendees in this range.` — `pdfs.badge-list-range`, which every section including the out-of-range one is rendered through. A range that needs more than one page heads its later pages `{range} (continued)`, so the count is still the count of what is on the page
+- [~] A range holding more badges than `rows_per_column x columns` is paged rather than truncated — fixed, see rebuild-plan 2.10 #74 — `PdfGeneratorTest`: five badges at two rows by two columns come back as two pages, with nothing out of range; `paginateSections()` splits the section and the view no longer slices its columns away
+- [~] An attendee id longer than four characters renders instead of 500ing the request — fixed, see rebuild-plan 2.10 #74 — `PdfGeneratorTest`: a five-digit id streams a PDF. `4 - strlen($firstPart)` went negative and `str_repeat()` throws; the out-of-range bucket above is what first routed such an id into the view at all
+- [~] The attendee id is escaped into the range view — fixed, see rebuild-plan 2.10 #74 — `PdfGeneratorTest`: an id carrying markup comes back escaped. Only the alignment padding is markup, and `attendee_id` is registration-service input rendered through `{!! !!}`
+- [~] Filament's `fursuit.user.eventUsers` eager load is dropped, and the box-label path's no-op `mb_convert_encoding($v, 'UTF-8', 'UTF-8')` with it — dropped, see rebuild-plan 2.10 #78 — the document is built from `custom_id` alone, and the document-level `mb_check_encoding` guard stays; no rendered byte changes either way
+- [~] Download filename `badge-list-{event}{-paid|-unpaid}-{Y-m-d}.pdf` is **slugged** — fixed, see rebuild-plan 2.10 #31 (audit 15: header injection from a free-text event name) — `PdfGeneratorTest`: the badge-list filename is slugged, so an event name cannot break the header, and the payment filter names itself in the filename, or does not
+- [x] Box labels: `210x94mm` page, 5mm margins, `{title}` and optional `{subtitle}` — `PdfGeneratorTest`: box labels stream a PDF under a slugged filename (`PdfGeneratorController::BOX_LABEL_FORMAT`, `MARGIN`)
+- [~] The box-label geometry has one source of truth (page format vs the blade's hardcoded `84x200mm`) — fixed, see rebuild-plan 2.10 #32 (audit 45) — `PdfGeneratorTest`: the box-label content size is derived from the page format and the margins. The blade is unchanged and still states the same numbers; `withBoxLabelGeometry()` appends the derived rule last, so the format wins and the two cannot drift
+- [x] Box-label download filename `box-label-{slug(title)}-{Y-m-d}.pdf` — `PdfGeneratorTest`: box labels stream a PDF under a slugged filename
+- [x] Page copy: `Badge List PDF` callout and `Box Labels PDF` callout — `Pages/Manage/Tools/PdfGenerator.vue`
+- [~] The callout copy claiming "all free badges" and "3 columns per page" is corrected to match the 12-column default — fixed, see rebuild-plan 2.10 #32 (audit 46) — `Pages/Manage/Tools/PdfGenerator.vue`: the badge-list callout says the selected event's badges, one range per page, 12 columns by default, one badge number per cell; the box-label callout says one label per page on a 210x94mm page
+- [~] `resources/views/pdfs/badge-list.blade.php` (dead, 165 lines) is not ported — dropped, see rebuild-plan 2.10 #44 (audit 40) — nothing in `PdfGeneratorController` references `pdfs.badge-list`; the four views it renders are `badge-list-css`, `badge-list-header`, `badge-list-range` and `box-labels`
 
 ## 22. Badge Preview (audit 5.2)
 
-- [ ] `customId` TextInput, label `Badge Custom ID`, required, max 255, placeholder `Enter badge custom ID (e.g., ABC123)`
-- [ ] `Load Badge` button
-- [ ] Details panel labels `Custom ID:`, `Fursuit Name:`, `Species:`, `Owner:`, `Event:`, `Badge Type:`
-- [~] `Badge Type:` defaults to `EF30_Badge`, matching `BadgePdfController` — fixed, see rebuild-plan 2.10 #34 (audit 48: the blade says `EF28_Badge` and hands you an EF30 PDF)
-- [ ] The details panel survives a missing species, user or event (audit 113)
-- [~] `View PDF in Browser` actually opens a new tab — fixed, see rebuild-plan 2.10 #34 (audit 49)
-- [ ] `Download PDF` button, colour success, icon arrow-down-tray
-- [ ] Danger notification title `Badge not found`, body `No badge found with custom ID: {customId}`
-- [ ] Success notification title `Badge loaded`, body `Badge found for: {fursuit name}`
-- [ ] Warning notification title `No badge loaded`, body `Please load a badge first` (download)
-- [ ] Warning notification title `No badge loaded`, body `Please load a badge first` (view)
+- [x] `customId` TextInput, label `Badge Custom ID`, required, max 255, placeholder `Enter badge custom ID (e.g., ABC123)` — `BadgePreviewTest`: the lookup is required and capped at 255
+- [x] `Load Badge` button, label unchanged while submitting — `BadgePreviewTest`: a found badge flashes the Filament copy and redirects to its own url
+- [x] Section headings `Load Badge` and `Badge Details`, verbatim from the blade — `Pages/Manage/Tools/BadgePreview.vue`
+- [x] Details panel labels `Custom ID:`, `Fursuit Name:`, `Species:`, `Owner:`, `Event:`, `Badge Type:` — `BadgePreviewTest`: the details panel carries the six rows the blade showed
+- [x] `Badge Type:` defaults to `EF30_Badge`, matching `BadgePdfController` — fixed, see rebuild-plan 2.10 #34 (audit 48: the blade says `EF28_Badge` and hands you an EF30 PDF) — `BadgePreviewTest`: the badge class falls back to EF30_Badge, which is what the renderer uses
+- [x] The details panel survives a missing species, user or event (audit 113) — `BadgePreviewTest`: the panel survives a soft-deleted fursuit rather than throwing
+- [x] `View PDF in Browser` actually opens a new tab — fixed, see rebuild-plan 2.10 #34 (audit 49) — `BadgePreviewTest`: the two PDF buttons are GET links and only the view one opens a new tab (a `newTab` action, which `ActionButton` renders as a real `<a target="_blank">`; the blade put `target="_blank"` on this button alone)
+- [x] `Download PDF` button, colour success, icon arrow-down-tray, no new tab — `BadgePreviewTest`: the two PDF buttons are GET links and only the view one opens a new tab (tone `ok`, which is Filament's `success`; icon `download`, the lucide name for arrow-down-tray)
+- [x] Danger notification title `Badge not found`, body `No badge found with custom ID: {customId}` — `BadgePreviewTest`: a missing badge flashes the danger copy and still carries the typed id back
+- [x] Success notification title `Badge loaded`, body `Badge found for: {fursuit name}` — `BadgePreviewTest`: a found badge flashes the Filament copy and redirects to its own url
+- [x] Warning notification title `No badge loaded`, body `Please load a badge first` (download) — `BadgePreviewTest`: an unknown id on either PDF route warns rather than rendering
+- [x] Warning notification title `No badge loaded`, body `Please load a badge first` (view) — same test
 
 ## 23. DB Service (audit 5.3)
 
-- [ ] Admin-only page and admin-only nav entry (`manage-admin`)
-- [ ] Section heading `Fix free badges`
-- [ ] Section description `Finds badges that were charged the badge fee even though the owner had unused prepaid / free badge entitlement for the current event, converts them to free and refunds the wrongly charged amount to the owner's wallet. The change is logged (activity log + wallet transaction).`
-- [ ] Idle state: button `Fix free badges`, icon magnifying-glass, runs the preview
-- [ ] Review state stat cards `Affected badges`, `Affected users`, `Total to refund`
-- [ ] Review table header cells `Image`, `Fursuit`, `Species`, `Owner`, `Badges (event)`, `Should be free`, `Should be paid`, `Refund`
-- [ ] Review rows fall back to `—` for missing fursuit / species / owner and to a placeholder image
-- [ ] Button `Confirm & apply fix`, icon check, shown only when `affected_badge_count > 0`
-- [ ] Confirm copy `Convert {n} badge(s) to free and refund {€}? This cannot be undone automatically.`
-- [ ] Button `Cancel`, icon x-mark, clears the review
-- [ ] Result state: success panel `Fix applied successfully.` with `Badges converted to free`, `Users affected`, `Total refunded`
-- [ ] Result state: failure panel `Fix failed.` plus the error string
-- [ ] Button `Run again`, icon arrow-path
-- [ ] Success notification title `Nothing to fix`, body `No wrongly-charged prepaid badges were found for the current event.`
-- [ ] Success notification title `Fix applied`, body `Converted {n} badge(s) for {m} user(s) to free.`
-- [ ] Danger notification title `Fix failed`, body = the error, falling back to `Unknown error.`
-- [ ] `repair(null, …)` error string `No active event.`
-- [ ] Repair writes `is_free_badge`, zero totals, `Paid`, `paid_at`, credits the wallet with meta title `Prepaid badge fee correction` and description `Refund of wrongly charged fee for badge #{id}`
-- [ ] Activity log message `Corrected wrongly charged prepaid badge to free`
-- [ ] The page still targets `Event::getActiveEvent()` (newest by `starts_at`), not the header selection, and says so (audit 123)
-- [ ] `DbServiceMaintenancePageTest`'s four cases are re-expressed against `/manage/maintenance/db-service`
+> Context for this whole section: `App\Filament\Pages\DbService`, its blade view,
+> `App\Services\FreeBadgeRepairService` and `tests/Feature/DbServiceMaintenancePageTest.php` were
+> all deleted from the repository in commit `5aa2148`, and the wallet package went with `fa0554e`.
+> The page is rebuilt here from the audit rather than ported: `DbServiceController` carries the
+> analysis and the write, in the module that owns the screen, and `DbServiceTest` is the only
+> coverage of the repair path that now exists.
+
+- [x] Admin-only page and admin-only nav entry (`manage-admin`) — `DbServiceTest`: a reviewer is refused the page, the preview and the apply, and the nav entry is offered to an admin and hidden from a reviewer
+- [x] Section heading `Fix free badges` — shipped as the FormSection title
+- [~] Section description `Finds badges that were charged the badge fee even though the owner had unused prepaid / free badge entitlement for the current event, converts them to free and refunds the wrongly charged amount to the owner's wallet. The change is logged (activity log + wallet transaction).` — the wallet half is dropped, see docs/wallet-removal-plan.md (the `deposit()` credit was deleted from the service before the service itself went, and `bavix/laravel-wallet` was removed in `fa0554e`). Shipped verbatim up to that clause, ending `converts them to free and clears the wrongly charged amount from what the owner owes. The change is logged (activity log).`
+- [x] Idle state: button `Fix free badges`, icon magnifying-glass, runs the preview — `DbServiceTest`: the page opens idle, naming the active event and offering only the preview (icon `search`, the lucide name for magnifying-glass)
+- [x] Review state stat cards `Affected badges`, `Affected users`, `Total to refund` — `DbServiceTest`: the review reports the badge, the counts and the money; the three cards are still rendered, zeroed, on an empty report
+- [x] Review table header cells `Image`, `Fursuit`, `Species`, `Owner`, `Badges (event)`, `Should be free`, `Should be paid`, `Refund` — the eight cells, with the last four right-aligned as the blade had them; every one is fed by a key `DbServiceTest` asserts on
+- [x] Review rows fall back to `—` for missing fursuit / species / owner and to a placeholder image — `DbServiceTest`: a row with no stored image reports a null image url for the page to fall back on; the em-dash fallbacks are in the page template, over the null-safe values the controller sends
+- [x] Button `Confirm & apply fix`, icon check, shown only when `affected_badge_count > 0` — `DbServiceTest`: the apply button carries the confirm copy verbatim and only when there is work (an empty report offers Cancel alone)
+- [x] Confirm copy `Convert {n} badge(s) to free and refund {€}? This cannot be undone automatically.` — same test, asserted byte for byte. It moves from a browser `wire:confirm` into `ManageDialog`, the panel's one dialog, and the sentence is unchanged
+- [x] Button `Cancel`, icon x-mark, clears the review — `DbServiceTest`: the cancel action is a GET link back to the bare page, which renders with no report, so leaving the review writes nothing
+- [x] Result state: success panel `Fix applied successfully.` with `Badges converted to free`, `Users affected`, `Total refunded` — `DbServiceTest`: the result panel shows the counters and offers Run again
+- [x] Result state: failure panel `Fix failed.` plus the error string — `DbServiceTest`: with no event at all the apply fails with No active event, and the page renders `result.success` false with the error
+- [x] Button `Run again`, icon arrow-path — same test (icon `refresh-cw`, the lucide name for arrow-path). A GET link, so the reset writes nothing
+- [x] Success notification title `Nothing to fix`, body `No wrongly-charged prepaid badges were found for the current event.` — `DbServiceTest`: an empty preview flashes Nothing to fix and still shows its zeroed cards, and a preview that found something does not flash it
+- [x] Success notification title `Fix applied`, body `Converted {n} badge(s) for {m} user(s) to free.` — `DbServiceTest`: apply flashes the fix applied notification and reports the result
+- [x] Danger notification title `Fix failed`, body = the error, falling back to `Unknown error.` — `DbServiceTest`: with no event at all the apply fails with No active event
+- [x] `repair(null, …)` error string `No active event.` — same test
+- [~] Repair writes `is_free_badge`, zero totals, `Paid`, `paid_at`, credits the wallet with meta title `Prepaid badge fee correction` and description `Refund of wrongly charged fee for badge #{id}` — the wallet credit is dropped, see docs/wallet-removal-plan.md line 140 (`bavix/laravel-wallet` removed in `fa0554e`; the service had already lost the `deposit()` call). Everything else ships: `DbServiceTest`: apply writes exactly what the preview promised (`is_free_badge`, zeroed total, subtotal and tax, `Paid`, `paid_at`), and the amount that had been charged is still reported and logged
+- [~] A badge that has already been paid is never converted — fixed, see rebuild-plan 2.10 #75 — `DbServiceTest`: a paid badge is not reported, not priced into the confirm total and not written, and its `paid_at` survives; an owner holding one paid badge and one unpaid one gets the unpaid one converted. The deleted service selected on `is_free_badge` alone, so it zeroed money it could no longer give back once the wallet went
+- [x] Activity log message `Corrected wrongly charged prepaid badge to free` — `DbServiceTest`: apply logs the correction against the badge with the causer and the old money (`reason`, `event_id`, `prepaid_badges`, `old_total`, `old_subtotal`, `old_tax`, `new_total`, `refunded_cents`)
+- [x] The page still targets `Event::getActiveEvent()` (newest by `starts_at`), not the header selection, and says so (audit 123) — `DbServiceTest`: the page ignores the header event selection, and names the event it operates on above the section
+- [x] `DbServiceMaintenancePageTest`'s four cases are re-expressed against `/manage/maintenance/db-service` — `DbServiceTest`: admin reaches the page, a reviewer is refused, the nav entry is hidden from a reviewer, and the preview to apply round trip converts the badge. The Filament original was deleted with the page it tested (`5aa2148`), so there is nothing left to keep until phase 10
+- [x] The preview is a pure read — `DbServiceTest`: the preview writes nothing (every badge row and the counts of badges, event_users, activity_log, fursuits and users are identical after the POST and the review render). Cancel and Run again are GET links for the same reason
+- [x] The prepaid rules of CLAUDE.md and docs/bugfix-03-fix.md hold — `DbServiceTest`: the full entitlement is honoured with no minus one; spare copies are never converted and never consume the allowance; a badge already free consumes the allowance, so a second run is a no-op; the lowest badge id is converted first; a badge from another event is left alone
+- [x] The corrupted-total report is linked rather than copied (rebuild-plan 2.10 #3) — `DbServiceTest`: the idle page carries `manage.badges.corrupted-totals` as a link; both pages are `manage-admin`
+- [~] Page subtitle `Data repairs, run by hand and logged`, idle paragraph `Nothing has run. The check reads the database and shows what it would change before anything is written.`, and the zero-row review line repeating the `Nothing to fix` body as page text — new copy, see rebuild-plan 2.10 #77. The Filament page had a title and an empty frame; the zero-row line is what a review reached by reload says, because the toast is gone by then
 
 ## 24. Dashboard widgets (audit 6)
 
 ### StatsOverview
 
-- [ ] Stat 1 `Current Event`: value = event name or `No Event`; description `Orders Open` / `Orders Closed` / `No current event`; check-circle vs x-circle; success vs danger
-- [ ] Stat 2 `Current Event Badges`: value = badge count; description `+{n} vs {previous event}` / `{n} vs {previous event}` / `No previous event`; trending icons; success / danger / gray
-- [ ] Stat 3 `Current Event Fursuits`: same shape against fursuit counts
-- [ ] Stat 4 `Pending Approval`: value = pending count; description `Awaiting review`; clock icon; warning above zero else success; links to the fursuits list
-- [~] The pending count uses `whereState`, not the raw string `'pending'` — fixed, see rebuild-plan 2.10 #29 (audit 115)
-- [ ] `No previous event` is shown only when there really is no previous event, not whenever the diff is zero (audit 115)
+- [x] Stat 1 `Current Event`: value = event name or `No Event`; description `Orders Open` / `Orders Closed` / `No current event`; check-circle vs x-circle; success vs danger — `DashboardTest`: all three descriptions, both icons and both tones. "All events" is a third case rather than a fourth string on this one: it is reachable only since rebuild-plan 2.9 and is not the same state as an empty events table, so it reads `All events` / `Not scoped to one event` and the `No Event` copy stays for the empty table
+- [x] Stat 2 `Current Event Badges`: value = badge count; description `+{n} vs {previous event}` / `{n} vs {previous event}` / `No previous event`; trending icons; success / danger / gray — `DashboardTest`: counted through `fursuit.event_id`, `+2 vs Eurofurence 28`, `-2 vs …`, `trending-up` / `trending-down` / `minus`, `Status::OK` / `DANGER` / `IDLE` (the gray)
+- [x] Stat 3 `Current Event Fursuits`: same shape against fursuit counts — `DashboardTest`: same three branches against `Fursuit::where('event_id', …)`
+- [x] Stat 4 `Pending Approval`: value = pending count; description `Awaiting review`; clock icon; warning above zero else success; links to the fursuits list — `DashboardTest`: the count ignores approved and rejected, the tone flips at zero and the card links to `manage.fursuits.index`
+- [~] The pending count uses `whereState`, not the raw string `'pending'` — fixed, see rebuild-plan 2.10 #29 (audit 115) — `DashboardTest`: a fursuit created from the state class is counted, which the literal comparison could not guarantee
+- [x] `No previous event` is shown only when there really is no previous event, not whenever the diff is zero (audit 115) — `DashboardTest`: an equal count against a real previous event reads `0 vs Eurofurence 28` with the `minus` icon; `No previous event` is left for the first event in the sequence
 
 ### BadgeStatusChart
 
-- [ ] Heading `Current Event Badge Status`, doughnut, legend bottom
-- [ ] Groups by `status_payment` x `status_fulfillment` for the selected event
-- [ ] No-event fallback: single grey segment labelled `No Active Event`
-- [ ] Labels are readable (`Paid / Ready for Pickup`, not `Paid / Readyforpickup`), audit 114
-- [ ] Every payment x fulfillment combination gets a stable colour (only 5 colours for up to 10 groups today, and the mapping is not stable across renders), audit 114
+- [x] Heading `Current Event Badge Status`, doughnut, legend bottom — `DashboardTest`: heading, `type: 'doughnut'` and the options array verbatim, all server-shaped; `ChartDoughnut.vue` registers only the doughnut pieces of `chart.js` 4.5 and draws them
+- [x] Groups by `status_payment` x `status_fulfillment` for the selected event — `DashboardTest`: two segments over three badges, the fourth on another event excluded; the grouped count runs on SQLite and compiles under both grammars, replacing `selectRaw('… COUNT(*) as count')` (audit 18)
+- [x] No-event fallback: single grey segment labelled `No Active Event` — `DashboardTest`: verbatim, with `rgb(156, 163, 175)`, for an empty events table
+- [x] Labels are readable (`Paid / Ready for Pickup`, not `Paid / Readyforpickup`), audit 114 — `DashboardTest`: the labels come from `Status::badgePayment()` and `Status::badgeFulfillment()`, the panel's one state vocabulary, not from `ucfirst()` of the column
+- [x] Every payment x fulfillment combination gets a stable colour (only 5 colours for up to 10 groups today, and the mapping is not stable across renders), audit 114 — `DashboardTest`: six combinations, six distinct colours, identical across two renders. The audit's five hues are bound one per fulfillment state and payment moves opacity, so all ten combinations are covered and the segments are emitted in declared order rather than `GROUP BY` order
 
 ### EventComparisonChart
 
-- [ ] Heading `Event Comparison`, bar, legend on, y-axis begins at zero
-- [ ] Labels `Badges` and `Fursuits`; one dataset per event, current then previous
-- [ ] No-event fallback: single dataset labelled `No Events` with `[0, 0]`
+- [x] Heading `Event Comparison`, bar, legend on, y-axis begins at zero — `DashboardTest`: heading, `type: 'bar'` and the options array verbatim; `ChartBar.vue` registers only the bar controller and the two scales
+- [x] Labels `Badges` and `Fursuits`; one dataset per event, current then previous — `DashboardTest`: both datasets with `rgba(59, 130, 246, 0.8)` then `rgba(16, 185, 129, 0.8)`, and the second one dropped for the first event in the sequence. On "All events" there is one dataset, labelled `All events`, because there is nothing left to compare every event against
+- [x] No-event fallback: single dataset labelled `No Events` with `[0, 0]` — `DashboardTest`: verbatim, grey, for an empty events table
 
 ### Widget config
 
-- [~] Widgets poll at 15s, not 5s — fixed, see rebuild-plan 2.10 #28 (audit 7.1)
-- [~] The current/previous event resolution lives in one place, not duplicated across three widgets — fixed, see rebuild-plan 2.10 (audit 101)
+- [~] Widgets poll at 15s, not 5s — fixed, see rebuild-plan 2.10 #28 (audit 7.1) — `Dashboard.vue`: `usePoll(15000, { only: ['stats', 'charts'] })`, the two data props and nothing else; `DashboardTest`: the partial visit the poll actually sends comes back with both, and two of them in a row write nothing
+- [~] The current/previous event resolution lives in one place, not duplicated across three widgets — fixed, see rebuild-plan 2.10 (audit 101) — `DashboardController`: one `EventScope` read and one `previousEvent()`, feeding all four stats and both charts
+- [~] Page subtitle naming the scope the numbers are for (`{event} ({year})` or `All events`) — new copy, see rebuild-plan 2.10 #77. It follows from 2.9 and is the only place the dashboard states which selection it is showing
+- [~] `previousEvent()` returns null when the current event has no `starts_at` — recorded, see rebuild-plan 2.10 #78. The three widgets did not check; `where('starts_at', '<', null)` already matched nothing, so the guard states the intent rather than changing the answer
 
 ## 25. Cross-cutting (audit 7)
 
@@ -940,25 +1018,25 @@ description, and submit `Confirm`.
 - [ ] Badge list image column reads s3 private
 - [ ] Fursuit list image column reads s3 private
 - [ ] Fursuit view image entry reads s3 private
-- [ ] DB Service review images use a 15-minute signed URL
-- [~] `public/images/placeholder.png` actually exists — fixed, see rebuild-plan 2.7 (audit 50)
+- [x] DB Service review images use a 15-minute signed URL — `Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(15))`, falling back to the plain disk URL and then to null. `DbServiceTest`: a review row carries a URL, and a row with no stored image reports null for the page's placeholder to take over
+- [x] `public/images/placeholder.png` actually exists — fixed, see rebuild-plan 2.7 (audit 50) — shipped at integration, since no module's deliverable list carried it; `ListEnvelopeTest`: the image placeholder every fallback points at exists
 
 ### Soft deletes
 
 - [ ] Badge soft deletes stay invisible in the panel, or a trashed filter is added deliberately (audit 136)
 - [ ] Fursuit soft deletes stay invisible in the panel, or a trashed filter is added deliberately (audit 136)
 - [ ] Events, Users, Staff, RFID tags, Printers, Print Jobs, SumUp Readers and Special Codes stay hard deletes
-- [ ] Machines keep the bespoke `archived_at` model with no delete action
+- [x] Machines keep the bespoke `archived_at` model with no delete action — `MachinesTest`: nothing in the module offers a delete, single, bulk or on the page; archiving stamps archived_at and says so; restoring clears archived_at and says so
 
 ### Activity log
 
 - [ ] Fursuit transitions keep writing `Fursuit approved`, `Fursuit rejected` (with property `reason`) and `Fursuit approved (was previously rejected)`
-- [ ] `FreeBadgeRepairService` keeps writing `Corrected wrongly charged prepaid badge to free`
+- [x] The free-badge repair keeps writing `Corrected wrongly charged prepaid badge to free` — the writer is now `DbServiceController::ACTIVITY_DESCRIPTION`, asserted by `DbServiceTest`. `App\Services\FreeBadgeRepairService` no longer exists: it was deleted in `5aa2148` with the Filament page it served (see the note at line 914), and the repair was reproduced in the controller that owns the screen rather than by restoring the file
 - [~] New entries for minting a machine login link, revealing a SumUp pairing code and queueing a receipt — new, see rebuild-plan 2.10 #15, #16, #37
 
 ### Table behaviour
 
-- [ ] All 17 `isToggledHiddenByDefault: true` flags transcribed (Badges 5, Events 3, Print Batches 3, Users 2, Staff 2, batch cards 2)
+- [x] All 17 `isToggledHiddenByDefault: true` flags transcribed (Badges 5, Events 3, Print Batches 3, Users 2, Staff 2, batch cards 2) — `BadgesTest` (extra_copy, total, created_at, printed_at, picked_up_at), `EventsTest`: the three toggleable columns open hidden, `PrintBatchesTest`: the three toggleable columns open hidden + the card list's Tries and Error, `UsersTest`: created_at and updated_at both start hidden, `StaffTest`: the two hidden-by-default columns are the PIN and created_at
 - [ ] Column-toggle choice persists per user, keyed by table name
 - [ ] Per-table search matches exactly the fields the audit marks `searchable()`
 - [~] Printers and Machines get a working search box (`->searchable(false)` hides it today) — fixed, see rebuild-plan 2.3
@@ -969,7 +1047,7 @@ description, and submit `Confirm`.
 
 - [ ] Every mutating action flashes a toast with the audit's title and body, verbatim, where one exists today
 - [ ] `./vendor/bin/pint` clean
-- [ ] `php artisan test` green, including `DbServiceMaintenancePageTest` against the old panel until phase 10
+- [ ] `php artisan test` green. `DbServiceMaintenancePageTest` is no longer part of this requirement: it was deleted in `5aa2148`, so there is nothing to keep running against the old panel, and its four cases are already re-expressed in `tests/Feature/Manage/DbServiceTest.php` (line 940). Phase-10 step 12 is therefore done for us
 - [ ] Reviewer walkthrough: 20 pending fursuits approved or rejected end to end from `/manage`, notifications landing in Mailpit
 - [ ] Operator walkthrough: select badges, build a batch, watch it print, pause on a fault, resume, verify cards, cancel the remainder, confirm badges unlocked and counters agree
 - [ ] Fiscal spot check: three checkouts compared field by field between `/admin` and `/manage`, including that the money figures agree with each other and with the receipt
@@ -980,36 +1058,37 @@ description, and submit `Confirm`.
 
 | Section | Boxes |
 |---|---|
-| 1. Shell (audit 2) | 12 |
+| 1. Shell (audit 2) | 13 |
 | 2. Global event selector (audit 2.1, 7.3) | 15 |
 | 3. Authorization (audit 3) | 22 |
-| 4. Events (audit 4.1) | 31 |
-| 5. Badges (audit 4.2) | 64 |
-| 6. Fursuits (audit 4.3) | 65 |
+| 4. Events (audit 4.1) | 33 |
+| 5. Badges (audit 4.2) | 70 |
+| 6. Fursuits (audit 4.3) | 68 |
 | 7. Fursuit activity log (audit 4.3.5) | 7 |
-| 8. Special Codes (audit 4.4) | 21 |
+| 8. Special Codes (audit 4.4) | 27 |
 | 9. Checkouts (audit 4.5) | 45 |
 | 10. Checkout items (audit 4.5.1) | 10 |
-| 11. Machines (audit 4.6) | 31 |
-| 12. Printers (audit 4.7) | 28 |
-| 13. Print Batches (audit 4.8) | 39 |
+| 11. Machines (audit 4.6) | 34 |
+| 12. Printers (audit 4.7) | 33 |
+| 13. Print Batches (audit 4.8) | 42 |
 | 14. Batch cards (audit 4.8.1) | 20 |
-| 15. Print Jobs (audit 4.9) | 49 |
-| 16. Staff (audit 4.10) | 24 |
-| 17. RFID tags (audit 4.10.1) | 14 |
-| 18. SumUp Readers (audit 4.11) | 13 |
-| 19. TSE Clients (audit 4.12) | 11 |
-| 20. Users (audit 4.13) | 21 |
-| 21. PDF Generator (audit 5.1) | 28 |
-| 22. Badge Preview (audit 5.2) | 11 |
-| 23. DB Service (audit 5.3) | 21 |
-| 24. Dashboard widgets (audit 6) | 16 |
+| 15. Print Jobs (audit 4.9) | 55 |
+| 16. Staff (audit 4.10) | 28 |
+| 17. RFID tags (audit 4.10.1) | 16 |
+| 18. SumUp Readers (audit 4.11) | 16 |
+| 19. TSE Clients (audit 4.12) | 12 |
+| 20. Users (audit 4.13) | 22 |
+| 21. PDF Generator (audit 5.1) | 35 |
+| 22. Badge Preview (audit 5.2) | 12 |
+| 23. DB Service (audit 5.3) | 26 |
+| 24. Dashboard widgets (audit 6) | 18 |
 | 25. Cross-cutting (audit 7) | 42 |
-| **Total** | **660** |
+| **Total** | **721** |
 
-Of those, **111** are `[~]` lines resolved by a numbered entry or a named section in
-[`rebuild-plan.md`](./rebuild-plan.md); the remaining **549** are parity behaviours that each need a
-passing test in `tests/Feature/Manage/`.
+Of those, **182** are `[~]` lines: most are resolved by a numbered entry or a named section in
+[`rebuild-plan.md`](./rebuild-plan.md), and a handful say in their own body that they are recorded
+here rather than in the plan. The remaining **539** are parity behaviours that each need a passing
+test in `tests/Feature/Manage/`.
 
 For comparison, the audit's own tallies (section 10) are 119 table columns, 22 filters and 79
 actions. This checklist exceeds them because it also breaks out confirm-modal strings, notification

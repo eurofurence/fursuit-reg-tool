@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Fursuit\Fursuit;
 use App\Models\Species;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Fursuit\Fursuit
+/** @mixin Fursuit
  * Builds a array with relevant data from fursuits
  * Filters out unnecessary details
  * withCount("badges"), with("species") and with("user") are recommended to save database load
