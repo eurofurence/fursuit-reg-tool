@@ -124,8 +124,9 @@ wraps this with its own models, services, and states.
 **Multi-Interface Design**:
 
 - `/` — Public fursuit badge registration interface (Vue/Inertia)
-- `/admin` — Inertia admin panel for staff (route names `manage.*`, see `docs/admin/rebuild-plan.md`)
-- `/admin-legacy` — the Filament panel it is replacing, still fully working until cutover
+- `/admin` — the Inertia admin panel for staff, and the only one (route names `manage.*`, see
+  `docs/admin/rebuild-plan.md`). The Filament panel it replaced is gone; `/admin-legacy` is a
+  redirect kept for one release so old bookmarks land on `/admin`
 - `/pos` — Point-of-sale system for on-site operations (machine + staff PIN auth)
 - `/catch-em-all` — "Catch-Em-All" game interface (mobile-first, PWA)
 - `/gallery` — Public fursuit gallery
@@ -141,7 +142,8 @@ cert/signing), `catch-em-all.php`, `gallery.php`, `api.php`, `channels.php`, `co
 - `app/Models/FCEA/` — Catch-Em-All catch/log/ranking models
 - `app/Badges/` — Badge rendering system (PDF generation); bases in `app/Badges/Bases/`
 - `app/Domain/` — Domain-specific logic: `CatchEmAll/`, `Checkout/`, `Printing/`
-- `app/Filament/` — Admin panel resources, pages, and widgets
+- `app/Support/Manage/` — the admin table/column/filter/action layer the `/admin` panel is built on
+- `app/Http/Controllers/Manage/` — one controller per admin module; routes in `routes/manage/`
 - `app/Http/Controllers/` — Grouped by interface: `Admin/`, `POS/` (incl. `Printing/`),
   `FCEA/`, `GALLERY/`, `API/`, plus public controllers
 - `app/Jobs/` — Queued jobs (receipt generation, `Printing/` jobs, ranking updates)
@@ -220,6 +222,76 @@ the available transitions rather than mutating state properties directly.
   process, `--all` to re-render everything).
 - Signed storage URLs are cached for 30 minutes by `Fursuit::signedStorageUrl()`; a gallery
   page otherwise signs 20 objects per load.
+
+### Desk corrections and the manager gate
+
+Two POS edits, two different bars, both in `POS\BadgeEditController`:
+
+- **Details** (fursuit name, species, `dual_side_print`, `published`, `catch_em_all`) — any
+  cashier, no approval. Reached from the attendee page by selecting **exactly one** badge,
+  which then enables "Edit badge" in the commit bar; deliberately not a button on every row.
+  Unlike the attendee-facing `BadgeController@update`, this does **not** send the fursuit back
+  to Pending review, and it does not clear the print file: `GenerateBadgePrintFileJob` keys off
+  a content hash, so a renamed badge re-renders on its next print by itself.
+- **Price** — needs a manager. `staff.is_manager` is the flag; `ManagerApprovalService::approve()`
+  passes a manager who is already signed in at the till, and otherwise takes a manager PIN or
+  a scanned RFID tag in the same field (PIN first, then tag — the two namespaces do not
+  overlap). Failed attempts are rate limited per machine.
+
+**A price change cannot edit a live transaction.** The Fiskaly receipt is signed against a
+total, so `POST /pos/badges/prices` reprices the badges, then `CheckoutService::rebuild()`
+cancels the open checkout (end signature) and opens a fresh one holding the same badges,
+redirecting to it. Only the ACTIVE checkout **on the same machine** is rebuilt. Already-paid
+badges are refused outright — that is a refund, not a correction. Every override is written to
+the activity log with from/to, the approving manager and an optional reason.
+
+`CheckoutService` is where a checkout is built; `CheckoutController@store` is a thin caller.
+
+### Fursuit review (the approval queue)
+
+A verdict answers **two independent questions**, so do not collapse them:
+
+- `status` (Spatie state) decides whether the **card** may be printed and handed out. Only a
+  Code of Conduct rejection blocks it, and `BadgePrintQueue` is where that is enforced
+  (`withoutUnapprovedFursuits`) — before that, printing looked only at the badge, so a rejected
+  submission was printed anyway and the rejection only ever meant an email. A badge that never
+  reaches Processing also never reaches PickedUp, so that one filter closes printer and desk.
+- `publication_blocked_at` / `publication_block_reason` decide whether the fursuit may be
+  **shown** (gallery *and* Catch-Em-All — hence "publication", not "gallery"). Blocking also
+  clears the attendee's `published` / `catch_em_all` switches, because `catch_em_all` is read by
+  the badge artwork and the catch-code lookup and a printed QR that resolves to nothing is worse
+  than no QR; `Fursuit::scopePublicationAllowed()` keeps the surfaces closed if the attendee
+  turns a switch back on. Lifting a block restores the switches from the block's own snapshot.
+
+`App\Enum\FursuitReviewOutcomeEnum` = `Approved | Rejected | PublicationBlocked`, and
+`App\Services\FursuitReviewService` is the only place a verdict is applied (queue page, record
+page and edit form all go through it).
+
+- **A block on somebody who asked for neither surface is recorded as a plain approval**
+  (`silentlyApproves()`), needs no reason, and the reviewer is told by toast. Refusing a request
+  nobody made would only confuse the attendee.
+- **The undo window is a column, never a queue delay.** Each verdict writes a
+  `fursuit_review_decisions` row with `notify_at`; `fursuits:deliver-review-decisions` (scheduled
+  every minute) dispatches `DeliverFursuitReviewDecisionJob`, which re-checks that the verdict is
+  still current before mailing. A `->delay()` would be ignored by the `sync` driver — which the
+  test suite uses — and the mail would go out inside the reviewer's own request. The transitions
+  therefore take a `notify` flag the review path sets to false.
+- **Undo is a restore, not a transition.** The machine has no approved -> pending edge; the
+  decision row carries a `restore` snapshot. Undo is refused once `notified_at` is set.
+- **There is no claim lock.** `App\Services\FursuitPresence` (cache, 45s TTL, refreshed by the
+  review page's own poll) makes `next` skip records somebody is on and names other viewers, but
+  never refuses a verdict. The old Filament lock did refuse them, so a shared link was useless and
+  a dead browser froze a record for five minutes. `Fursuit::claim()` is now unused by any screen.
+- **Submission history**: `FursuitObserver` writes a `fursuit_submission_revisions` row whenever
+  `name`, `species_id` or `image` changes, and the attendee editor no longer deletes the photo it
+  replaces — the review page shows the previous image so "they resubmitted the same file" is
+  visible. Guard: skip when the originals are all null (the `created` hook's second save fires
+  `updating` before Eloquent syncs originals).
+
+Surfaces: `/admin/fursuits/review` is the keyboard-first queue (A/R/G, 1-9 for reasons, Enter to
+confirm, right arrow to skip; undo is a button on purpose). `/admin/fursuits/{id}` stays the
+record page. Attendee-facing wording lives in `Info/Faq.vue` and
+`FursuitPublicationBlockedNotification`.
 
 ### Printing System
 

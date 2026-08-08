@@ -16,13 +16,10 @@ use App\Notifications\BadgeCreatedNotification;
 use App\Services\BadgeCalculationService;
 use App\Services\FursuitImageService;
 use App\Services\TokenRefreshService;
-use App\Support\DeskOpeningHours;
-use App\Support\PickupBooths;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class BadgeController extends Controller
@@ -89,13 +86,10 @@ class BadgeController extends Controller
             'canCreate' => Gate::allows('create', Badge::class),
             'prepaidBadges' => $prepaidBadges,
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
-            // Drives the pickup booth hint: the desk splits its day-1 queue by
-            // attendee id, which is also the prefix of every custom_id.
             'attendeeId' => $eventUser?->attendee_id,
-            'pickupBooths' => PickupBooths::forEvent($activeEvent),
-            // Same source as the public pickup page: Settings > On-Site Desk. Empty until
-            // the desk team publishes hours, and the card drops the block when it is.
-            'deskOpeningHours' => DeskOpeningHours::forEvent($activeEvent),
+            // No booth split and no opening hours here. This page used to render its own
+            // copy of both, which meant the desk retiming itself had to be reflected in
+            // two templates; the pickup card now links to /pickup, which owns them.
             'event' => $activeEvent ? [
                 'id' => $activeEvent->id,
                 'name' => $activeEvent->name,
@@ -248,15 +242,36 @@ class BadgeController extends Controller
                 'catch_em_all' => $validated['catchEmAll'] ?? false,
             ]);
             if ($request->hasFile('image')) {
-                Storage::delete($fursuit->image);
+                /*
+                 * The replaced photo is deliberately kept. FursuitObserver writes a
+                 * submission revision pointing at this path, and a history entry with no
+                 * picture cannot answer the question a reviewer is asking on a resubmission -
+                 * "is this actually a different image?". The derived gallery variants are
+                 * still cleaned up by the observer; only the master survives.
+                 */
                 $fursuit->image = app(FursuitImageService::class)->store(
                     $request->file('image'),
                     $validated['crop'] ?? null,
                 );
             }
-            // if species_id, name or image changed, status goes back to pending review
+            /*
+             * A changed submission goes back to the queue, and takes its publication
+             * verdict with it.
+             *
+             * Clearing the block is the attendee's way back into the gallery: a badge that
+             * was approved but barred from the public surfaces - digital art rather than a
+             * photo of the suit - is told it may resubmit, and that promise is worthless if
+             * the block outlives the photo it was about. The record is pending again, so
+             * nothing prints until a reviewer has looked at the new submission and decided
+             * both questions afresh.
+             *
+             * The status column is written directly rather than through a transition: the
+             * machine has no approved -> pending edge, and this is not a review verdict, it
+             * is the withdrawal of the thing a verdict was about.
+             */
             if ($fursuit->isDirty(['species_id', 'name', 'image', 'catch_em_all', 'published'])) {
-                $fursuit->status = \App\Models\Badge\State_Fulfillment\Pending::$name;
+                $fursuit->status = Pending::$name;
+                $fursuit->clearPublicationBlock();
             }
             $fursuit->save();
             /**

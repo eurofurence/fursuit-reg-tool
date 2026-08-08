@@ -157,19 +157,8 @@ const submit = () => {
         </FormField>
       </FormSection>
 
-<<<<<<< worktree
       <FormSection title="Action data" :description="schema.description">
         <p v-if="classUnavailable" class="py-2 text-[12px] text-state-danger">
-=======
-      <FormSection
-        title="Action data"
-        :description="schema.description"
-      >
-        <p
-          v-if="classUnavailable"
-          class="py-2 text-[12px] text-state-danger"
-        >
->>>>>>> stash
           This code names {{ form.class_name }}, which the panel no longer offers. Its stored data is
           shown below and kept as it is; pick a class from the list before saving.
         </p>
@@ -187,14 +176,7 @@ const submit = () => {
           :error="form.errors[`data.${field.name}`]"
         />
 
-<<<<<<< worktree
         <p v-if="!schema.fields.length && !classUnavailable" class="py-2 text-[12px] text-fg-3">
-=======
-        <p
-          v-if="!schema.fields.length && !classUnavailable"
-          class="py-2 text-[12px] text-fg-3"
-        >
->>>>>>> stash
           Nothing to fill in for this class.
         </p>
 

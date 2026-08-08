@@ -35,6 +35,10 @@ const props = defineProps({
   actions: { type: Array, default: () => [] },
   /** The eight keyed rejection reasons, in order. */
   rejectReasons: { type: Array, default: () => [] },
+  /** The publication-block reasons, worded for a badge that is approved and printed. */
+  publicationReasons: { type: Array, default: () => [] },
+  /** How many times the submission has been changed since it was made. */
+  revisions: { type: Number, default: 0 },
   notificationTypes: { type: Array, default: () => [] },
 
   // The activity log envelope.
@@ -50,14 +54,17 @@ const props = defineProps({
   pageActions: { type: Array, default: () => [] },
 });
 
-/** The two actions this page renders itself. */
-const CUSTOM = ['reject', 'send-notification'];
+/** The actions this page renders itself, because each carries a live form. */
+const CUSTOM = ['reject', 'block-publication', 'send-notification'];
 
 const named = (name) => props.actions.find((action) => action.name === name) ?? null;
 
 const headerActions = computed(() => props.actions.filter((action) => !CUSTOM.includes(action.name)));
 
 const rejectAction = computed(() => named('reject'));
+const blockAction = computed(() => named('block-publication'));
+/** Server-declared, so the link cannot drift from the route the action list carries. */
+const reviewUrl = computed(() => named('review')?.url ?? null);
 const notifyAction = computed(() => named('send-notification'));
 
 const activities = computed(() => ({
@@ -73,20 +80,27 @@ const activities = computed(() => ({
   pageActions: props.pageActions,
 }));
 
-const claimLabel = computed(() => {
-  if (props.fursuit.claim.mine) {
-    return 'Claimed by you';
+/**
+ * Who else is looking at this record.
+ *
+ * Advisory, and that is the change: the Filament page took a five-minute cache lock on
+ * load and then refused every verdict unless the caller held it, so a reviewer who opened
+ * a record by link could do nothing with it. Presence is shown, never enforced.
+ */
+const others = computed(() => props.fursuit.presence?.others ?? []);
+
+const presenceLabel = computed(() => {
+  const names = others.value.map((viewer) => viewer.name);
+
+  if (names.length === 0) {
+    return null;
   }
 
-  return props.fursuit.claim.claimed ? 'Claimed by another reviewer' : 'Not claimed';
-});
-
-const claimTone = computed(() => {
-  if (props.fursuit.claim.mine) {
-    return 'ok';
+  if (names.length === 1) {
+    return `${names[0]} is also viewing this fursuit`;
   }
 
-  return props.fursuit.claim.claimed ? 'warn' : 'idle';
+  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are also viewing this fursuit`;
 });
 
 /* Reject. The picker only fills the textarea; only the textarea is stored and sent. */
@@ -110,6 +124,36 @@ const submitReject = () => {
     onSuccess: () => {
       rejectOpen.value = false;
       rejectForm.reset();
+    },
+  });
+};
+
+/*
+ * Block from the gallery. Same shape as reject - picker fills the textarea - but a wholly
+ * different verdict: the badge is approved, printed and handed out, and only the gallery
+ * and the game are closed. Before this outcome existed a reviewer had to reject such a
+ * submission outright, which stopped a card that was never against any rule.
+ */
+const blockOpen = ref(false);
+const blockForm = useForm({ reason: '', custom_reason: '' });
+
+watch(
+  () => blockForm.reason,
+  (key) => {
+    const option = props.publicationReasons.find((reason) => reason.value === key);
+
+    if (option) {
+      blockForm.custom_reason = option.label;
+    }
+  },
+);
+
+const submitBlock = () => {
+  blockForm.post(blockAction.value.url, {
+    preserveScroll: true,
+    onSuccess: () => {
+      blockOpen.value = false;
+      blockForm.reset();
     },
   });
 };
@@ -156,6 +200,16 @@ const textarea =
         </button>
 
         <button
+          v-if="blockAction"
+          type="button"
+          class="inline-flex h-7 items-center gap-1.5 rounded border border-state-warn/35 px-2 text-[12px] font-medium text-state-warn transition-colors hover:bg-state-warn/12"
+          @click="blockOpen = true"
+        >
+          <ManageIcon :name="blockAction.icon" />
+          {{ blockAction.label }}
+        </button>
+
+        <button
           v-if="notifyAction"
           type="button"
           class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
@@ -168,6 +222,35 @@ const textarea =
     </PageHeader>
 
     <div class="flex flex-col gap-3 p-4">
+      <!--
+        Presence, not a lock. It says who else is here and leaves the decision to the
+        reviewer; the queue already skips records somebody is on, so seeing this means
+        somebody followed a link straight to the record - which is allowed.
+      -->
+      <div
+        v-if="presenceLabel"
+        class="flex items-center gap-2 rounded border border-state-warn/40 bg-state-warn/10 px-3 py-2 text-[12px] text-state-warn"
+      >
+        <ManageIcon name="users" />
+        <span>{{ presenceLabel }}.</span>
+      </div>
+
+      <!--
+        This submission has been changed since it was made. The pictures live on the review
+        page, which is where two versions can be compared side by side; here it is a pointer,
+        because judging a resubmission from a count alone is the thing that goes wrong.
+      -->
+      <div
+        v-if="revisions > 0"
+        class="flex items-center gap-2 rounded border border-hairline bg-mg-surface-1 px-3 py-2 text-[12px] text-fg-2"
+      >
+        <ManageIcon name="rotate-ccw" :size="14" />
+        <span>
+          Changed {{ revisions }} time{{ revisions === 1 ? '' : 's' }} since it was submitted.
+        </span>
+        <a :href="reviewUrl" class="ml-auto text-state-live underline">Compare in the queue</a>
+      </div>
+
       <!--
         The infolist: a twelve-column grid, image on three and everything else on nine,
         transcribed from FursuitResource::infolist().
@@ -241,20 +324,29 @@ const textarea =
             </div>
             <div class="flex items-center gap-2 pt-1">
               <StatusBadge :status="fursuit.status" />
-              <!--
-                Who holds the lock. The Filament page showed no indication of a claim at
-                all, so a reviewer could only find out by pressing a button and seeing
-                where it took them.
-              -->
-              <span
-                class="text-[11px]"
-                :class="{
-                  'text-state-ok': claimTone === 'ok',
-                  'text-state-warn': claimTone === 'warn',
-                  'text-fg-3': claimTone === 'idle',
-                }"
-              >{{ claimLabel }}</span>
             </div>
+          </div>
+
+          <!--
+            The other half of a verdict. `status` says whether the card may be printed and
+            handed out; this says whether the fursuit may be shown. They are independent on
+            purpose: a photo that is not a photo of a suit used to be rejected outright,
+            which cost the attendee a badge over a gallery rule.
+          -->
+          <div
+            v-if="fursuit.publication.blocked"
+            class="rounded border border-state-warn/40 bg-state-warn/10 px-3 py-2"
+          >
+            <div class="flex items-center gap-2">
+              <ManageIcon name="eye-off" :size="16" class="text-state-warn" />
+              <span class="text-[12px] font-medium text-state-warn">Blocked from the gallery and the game</span>
+            </div>
+            <p v-if="fursuit.publication.reason" class="pt-1 text-[12px] text-fg-2">
+              {{ fursuit.publication.reason }}
+            </p>
+            <p class="text-[11px] text-fg-3">
+              The badge is approved: it is printed and handed out as normal.
+            </p>
           </div>
         </div>
       </section>
@@ -310,6 +402,59 @@ const textarea =
           @click="submitReject"
         >
           {{ rejectAction.confirm?.submit ?? 'Confirm' }}
+        </button>
+      </template>
+    </ManageDialog>
+
+    <!--
+      Block from the gallery: the reviewer's own confirm copy, because this verdict is easy
+      to mistake for a rejection and is the opposite of one for the attendee.
+    -->
+    <ManageDialog
+      v-if="blockAction"
+      v-model:visible="blockOpen"
+      :header="blockAction.confirm?.heading ?? blockAction.label"
+      width="32rem"
+    >
+      <p v-if="blockAction.confirm?.description" class="text-[13px] text-fg-2">
+        {{ blockAction.confirm.description }}
+      </p>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">Reason</span>
+        <select v-model="blockForm.reason" :class="control">
+          <option value="">Write my own</option>
+          <option v-for="reason in publicationReasons" :key="reason.value" :value="reason.value">
+            {{ reason.label }}
+          </option>
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">
+          Reason Sent to the User!
+        </span>
+        <textarea v-model="blockForm.custom_reason" rows="4" :class="textarea" required />
+        <span v-if="blockForm.errors.custom_reason" class="text-[11px] text-state-danger">
+          {{ blockForm.errors.custom_reason }}
+        </span>
+      </label>
+
+      <template #footer>
+        <button
+          type="button"
+          class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
+          @click="blockOpen = false"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="h-8 rounded bg-state-warn px-3 text-[13px] font-medium text-mg-surface-0"
+          :disabled="blockForm.processing"
+          @click="submitBlock"
+        >
+          {{ blockAction.confirm?.submit ?? 'Confirm' }}
         </button>
       </template>
     </ManageDialog>

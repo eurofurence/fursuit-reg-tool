@@ -22,7 +22,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Response;
-use stdClass;
 
 /**
  * Printers, the successor to PrinterResource and its three pages (audit 4.7).
@@ -625,12 +624,8 @@ class PrinterController extends Controller
 
     /**
      * Exactly the fields the form writes, so nothing else can round-trip through it.
-     * `paper_sizes` rides along read-only: the field is disabled, the agent owns it.
-     *
-     * A printer that has reported nothing renders `{}`, not `[]`. The column is an
-     * `array` cast over an empty json object, so `json_encode` would print a list where
-     * Filament's own default state for the field printed an object, and the two pages of
-     * this form would disagree with each other.
+     * `reportedPaperSizes` rides along read-only: the agent owns the reading, the panel
+     * only shows it, and PrinterRequest does not accept the column under any name.
      *
      * @return array<string, mixed>
      */
@@ -642,8 +637,63 @@ class PrinterController extends Controller
             'type' => $printer->type?->value,
             'machine_id' => $printer->machine_id,
             'default_paper_size' => $printer->default_paper_size,
-            'paper_sizes' => json_encode($printer->paper_sizes ?: new stdClass, JSON_PRETTY_PRINT),
+            'reportedPaperSizes' => $this->reportedPaperSizes($printer),
             'is_active' => (bool) $printer->is_active,
         ];
+    }
+
+    /**
+     * What the print agent last reported, as rows rather than as a JSON document.
+     *
+     * Filament printed this column into a Textarea, so the one place in the panel that
+     * showed a printer's real capabilities showed them as pretty-printed JSON. It is a
+     * short list of named sizes with a couple of measurements each, which is a table; the
+     * braces were never information. Nothing here is editable, so this is a display
+     * decision only - the column is still written exclusively by AgentSessionController.
+     *
+     * The shape the agent posts is free-form beyond `name`, so every other key is rendered
+     * as `key: value` in the order it arrived rather than being mapped to fields this
+     * controller would have to keep in step with the agent.
+     *
+     * @return list<array{name: string, detail: string|null}>
+     */
+    private function reportedPaperSizes(Printer $printer): array
+    {
+        return collect($printer->paper_sizes ?? [])
+            ->map(function ($size, $key) {
+                if (! is_array($size)) {
+                    return ['name' => (string) $key, 'detail' => self::scalar($size)];
+                }
+
+                $name = isset($size['name']) && is_scalar($size['name'])
+                    ? (string) $size['name']
+                    : (string) $key;
+
+                $detail = collect($size)
+                    ->except('name')
+                    ->map(fn ($value, string $attribute) => $attribute.': '.self::scalar($value))
+                    ->implode(' · ');
+
+                return ['name' => $name, 'detail' => $detail === '' ? null : $detail];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * One reported measurement as text. Nested values (`mm: [54, 86]`) are joined rather
+     * than json-encoded, so no row can put braces back on the page.
+     */
+    private static function scalar(mixed $value): string
+    {
+        if (is_array($value)) {
+            return implode(' × ', array_map(self::scalar(...), $value));
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'yes' : 'no';
+        }
+
+        return $value === null ? '—' : (string) $value;
     }
 }

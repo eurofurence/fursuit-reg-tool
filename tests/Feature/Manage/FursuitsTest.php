@@ -11,8 +11,9 @@
  *  - the state machine: every status change goes through a transition, so approved_at,
  *    rejected_at, the activity entries and the owner's mail follow from it rather than
  *    being restated here;
- *  - the plan's deliberate changes: claiming is explicit, unclaiming checks ownership,
- *    the queue walk is ordered and event-scoped, and refusals speak.
+ *  - the plan's deliberate changes: the claim lock is gone in favour of advisory presence,
+ *    the queue walk is ordered and event-scoped, refusals speak, and a verdict waits out
+ *    an undo window before the attendee hears about it.
  *
  * The partial-visit test is the one that catches a broken envelope. Asserting that a
  * column is declared sortable proves nothing; asserting that the visit the client
@@ -20,6 +21,7 @@
  * five reloaded keys is what proves sorting works.
  */
 
+use App\Enum\FursuitReviewOutcomeEnum;
 use App\Http\Controllers\Manage\FursuitController;
 use App\Http\Controllers\Manage\FursuitModerationController;
 use App\Http\Controllers\Manage\FursuitNotificationController;
@@ -37,6 +39,8 @@ use App\Notifications\FursuitRejectedNotification;
 use App\Notifications\FursuitRejectionReversedNotification;
 use App\Policies\ActivityPolicy;
 use App\Policies\FursuitPolicy;
+use App\Services\FursuitPresence;
+use App\Services\FursuitReviewService;
 use App\Support\Manage\Action;
 use App\Support\Manage\EventScope;
 use App\Support\Manage\Filter;
@@ -125,7 +129,14 @@ test('the list renders the seven columns in order, with their labels', function 
             ->where('columns.4', fn ($c) => $c['key'] === 'image' && $c['label'] === 'Image' && $c['type'] === 'image')
             ->where('columns.5', fn ($c) => $c['key'] === 'published' && $c['label'] === 'Published' && $c['type'] === 'bool')
             ->where('columns.6', fn ($c) => $c['key'] === 'catch_em_all' && $c['label'] === 'Catch em all' && $c['type'] === 'bool')
-            ->count('columns', 7)
+            /*
+             * The eighth column is the publication verdict, which is not the same
+             * information as `published`: that one is the attendee's request and this one is
+             * the reviewer's veto over it. Reading only `published` would show a blocked
+             * fursuit as being in the gallery.
+             */
+            ->where('columns.7', fn ($c) => $c['key'] === 'publication_blocked' && $c['label'] === 'Gallery blocked' && $c['type'] === 'bool')
+            ->count('columns', 8)
         );
 });
 
@@ -138,7 +149,7 @@ test('the status filter opens on Pending and hides everything else until it is c
 
     ($this->scoped)($this->admin, null)->get(route('manage.fursuits.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->count('filters', 1)
+            ->count('filters', 2)
             ->where('filters.0.key', 'status')
             ->where('filters.0.label', 'Status')
             ->where('filters.0.default', 'pending')
@@ -213,9 +224,11 @@ test('a fursuit with no owner still renders', function () {
         );
 });
 
-test('the only row action is View, and there are no bulk or page actions', function () {
+test('the only row action is View, and the one page action is the review queue', function () {
     // ViewAction only: EditAction sits commented out in the resource, no bulk actions are
     // declared, and the create header action is refused by the policy (audit 4.3, 38).
+    // The page action is new: without it the way into the queue is a URL you have to know,
+    // and the list is where a reviewer lands.
     $fursuit = ($this->fursuit)();
 
     ($this->scoped)($this->admin, null)->get(route('manage.fursuits.index'))
@@ -225,7 +238,40 @@ test('the only row action is View, and there are no bulk or page actions', funct
             ->where('rows.0.actions.0.label', 'View')
             ->where('rows.0.actions.0.url', route('manage.fursuits.show', $fursuit))
             ->count('bulkActions', 0)
-            ->count('pageActions', 0)
+            ->count('pageActions', 1)
+            ->where('pageActions.0.name', 'review')
+            ->where('pageActions.0.url', route('manage.fursuits.review'))
+        );
+});
+
+test('the gallery-blocked filter separates the reviewer veto from the attendee switch', function () {
+    // Both fursuits ask to be published. Only one has been vetoed, and `status` cannot tell
+    // them apart, which is exactly why the column and the filter exist.
+    $blocked = ($this->fursuit)(['status' => Approved::$name, 'name' => 'Vetoed']);
+    $blocked->forceFill([
+        'publication_blocked_at' => now(),
+        'publication_block_reason' => 'Not a photo of a costume.',
+    ])->save();
+
+    $clear = ($this->fursuit)(['status' => Approved::$name, 'name' => 'Fine']);
+
+    ($this->scoped)($this->admin, null)
+        ->get(route('manage.fursuits.index', ['filter' => ['status' => Filter::CLEARED, 'publication_blocked' => '1']]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->count('rows', 1)
+            ->where('rows.0.id', $blocked->id)
+            ->where('rows.0.cells.publication_blocked', true)
+            // The attendee's own switch is untouched by the filter and still says "yes,
+            // publish me". The block is the answer to it.
+            ->where('rows.0.cells.published', true)
+        );
+
+    ($this->scoped)($this->admin, null)
+        ->get(route('manage.fursuits.index', ['filter' => ['status' => Filter::CLEARED, 'publication_blocked' => '0']]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->count('rows', 1)
+            ->where('rows.0.id', $clear->id)
+            ->where('rows.0.cells.publication_blocked', false)
         );
 });
 
@@ -310,91 +356,81 @@ test('the view page ships the infolist content', function () {
             ->where('fursuit.catch_em_all', true)
             ->where('fursuit.status', ['label' => 'Pending', 'tone' => 'warn', 'icon' => 'clock'])
             ->where('fursuit.image', fn ($url) => str_contains((string) $url, 'fursuits/fluffy.jpg'))
-            // The claim state, which the Filament page never showed at all.
-            ->where('fursuit.claim.claimed', false)
-            ->where('fursuit.claim.mine', false)
+            // The publication verdict, which is the half of a review that `status` cannot
+            // carry, and presence, which the Filament page never showed at all.
+            ->where('fursuit.publication.blocked', false)
+            ->where('fursuit.presence.others', [])
         );
 });
 
-test('opening a pending fursuit does not claim it', function () {
-    // plan 2.10 #41, audit 69: `public $defaultAction = 'Claim'` mounted the action on
-    // every page load, so merely looking at a record took the lock.
+test('opening a record does not lock it, and the three verdicts need no claim', function () {
+    /*
+     * The claim is gone (plan 2.10 #41, audit 69/71). It was a five-minute cache lock taken
+     * on page load that then *refused* every verdict unless the caller held it, so a
+     * reviewer who followed a link could do nothing with the record and a dead browser
+     * froze it for five minutes. Presence replaced it: shown, never enforced.
+     */
     $fursuit = ($this->fursuit)();
 
-    actingAs($this->reviewer)->get(route('manage.fursuits.show', $fursuit))->assertSuccessful();
-
-    expect($fursuit->isClaimed())->toBeFalse();
-});
-
-test('Claim and Unclaim are offered on the state they belong to', function () {
-    $fursuit = ($this->fursuit)();
-
-    $actions = fn () => collect(
+    $actions = collect(
         actingAs($this->reviewer)->get(route('manage.fursuits.show', $fursuit))
             ->viewData('page')['props']['actions']
     )->keyBy('name');
 
-    expect($actions()->keys()->all())->toContain('claim')
-        ->and($actions()->keys()->all())->not->toContain('unclaim', 'approve', 'reject');
+    expect($actions->keys()->all())->toContain('approve', 'reject', 'block-publication')
+        ->and($actions->keys()->all())->not->toContain('claim', 'unclaim')
+        ->and($actions['approve']['icon'])->toBe('circle-check')
+        ->and($actions['approve']['tone'])->toBe('ok')
+        ->and($actions['reject']['icon'])->toBe('circle-x')
+        ->and($actions['reject']['tone'])->toBe('danger')
+        ->and($actions['block-publication']['icon'])->toBe('eye-off')
+        ->and($actions['block-publication']['tone'])->toBe('warn');
 
-    actingAs($this->reviewer)->post(route('manage.fursuits.claim', $fursuit))->assertRedirect();
-
-    $claimed = $actions();
-
-    expect($claimed->keys()->all())->toContain('unclaim', 'approve', 'reject')
-        ->and($claimed->keys()->all())->not->toContain('claim')
-        ->and($claimed['approve']['icon'])->toBe('circle-check')
-        ->and($claimed['approve']['tone'])->toBe('ok')
-        ->and($claimed['reject']['icon'])->toBe('circle-x')
-        ->and($claimed['reject']['tone'])->toBe('danger')
-        ->and($claimed['unclaim']['tone'])->toBe('danger');
+    expect(route('manage.fursuits.review.show', $fursuit))->toBeString();
 });
 
-test('a claim is not silently inherited by a second reviewer', function () {
-    // audit 70. The mechanism is unchanged - one cache key per fursuit with a five
-    // minute TTL - but the two gestures around it are now explicit and checked.
+test('presence is advisory: it names the other reviewer and never refuses a verdict', function () {
     $fursuit = ($this->fursuit)();
+    $next = ($this->fursuit)(['name' => 'Next in line']);
 
-    actingAs($this->reviewer)->post(route('manage.fursuits.claim', $fursuit))->assertRedirect();
+    // The reviewer opens the record, which is what registers presence.
+    actingAs($this->reviewer)->get(route('manage.fursuits.show', $fursuit))->assertSuccessful();
 
-    expect($fursuit->isClaimedBySelf($this->reviewer))->toBeTrue()
-        ->and($fursuit->isClaimedBySelf($this->admin))->toBeFalse();
+    expect(FursuitPresence::isBusy($fursuit, $this->admin))->toBeTrue()
+        ->and(FursuitPresence::others($fursuit, $this->admin))
+        ->toBe([['id' => $this->reviewer->id, 'name' => $this->reviewer->name]])
+        // Not "busy" for the person who is on it.
+        ->and(FursuitPresence::isBusy($fursuit, $this->reviewer))->toBeFalse();
 
-    // The second reviewer is moved on rather than handed the same record.
-    $second = ($this->fursuit)(['name' => 'Second']);
+    // A second reviewer arriving by link is told, and can still decide.
+    ($this->scoped)($this->admin, $this->event->id)->get(route('manage.fursuits.show', $fursuit))
+        ->assertInertia(fn (Assert $page) => $page->where(
+            'fursuit.presence.others.0.name',
+            $this->reviewer->name,
+        ));
 
     ($this->scoped)($this->admin, $this->event->id)
-        ->post(route('manage.fursuits.claim', $fursuit))
-        ->assertRedirect(route('manage.fursuits.show', $second))
-        ->assertInertiaFlash('toast', [
-            'tone' => 'warning',
-            'title' => 'Already claimed',
-            'body' => 'Another reviewer is working on this fursuit.',
-        ]);
+        ->post(route('manage.fursuits.approve', $fursuit))
+        ->assertRedirect(route('manage.fursuits.show', $next));
 
-    expect($fursuit->isClaimedBySelf($this->reviewer))->toBeTrue();
+    expect($fursuit->fresh()->status)->toBeInstanceOf(Approved::class);
 });
 
-test('unclaim refuses to drop somebody else\'s claim', function () {
-    // plan 2.10 #41, audit 71: Fursuit::unclaim() takes no parameter and checks nothing,
-    // so anyone could drop anyone's lock.
+test('presence expires on its own, so a dead browser frees the record', function () {
+    // The lock it replaces held for five minutes whatever happened to the browser. An entry
+    // here lives one TTL past the last heartbeat, and the page heartbeats every 15 seconds.
     $fursuit = ($this->fursuit)();
 
-    actingAs($this->reviewer)->post(route('manage.fursuits.claim', $fursuit))->assertRedirect();
+    actingAs($this->reviewer)->get(route('manage.fursuits.show', $fursuit));
 
-    actingAs($this->admin)->delete(route('manage.fursuits.unclaim', $fursuit))
-        ->assertRedirect()
-        ->assertInertiaFlash('toast', [
-            'tone' => 'danger',
-            'title' => 'Nothing was unclaimed',
-            'body' => 'This fursuit is not claimed by you.',
-        ]);
+    expect(FursuitPresence::isBusy($fursuit, $this->admin))->toBeTrue();
 
-    expect($fursuit->isClaimedBySelf($this->reviewer))->toBeTrue();
+    $this->travel(FursuitPresence::TTL_SECONDS + 1)->seconds();
 
-    actingAs($this->reviewer)->delete(route('manage.fursuits.unclaim', $fursuit))->assertRedirect();
+    expect(FursuitPresence::isBusy($fursuit, $this->admin))->toBeFalse()
+        ->and(FursuitPresence::others($fursuit, $this->admin))->toBe([]);
 
-    expect($fursuit->isClaimed())->toBeFalse();
+    $this->travelBack();
 });
 
 /*
@@ -406,8 +442,6 @@ test('unclaim refuses to drop somebody else\'s claim', function () {
 test('Approve runs PendingToApproved and advances to the next pending fursuit', function () {
     $fursuit = ($this->fursuit)();
     $next = ($this->fursuit)(['name' => 'Next in line']);
-
-    ($this->scoped)($this->reviewer, $this->event->id)->post(route('manage.fursuits.claim', $fursuit));
 
     ($this->scoped)($this->reviewer, $this->event->id)
         ->post(route('manage.fursuits.approve', $fursuit))
@@ -422,31 +456,43 @@ test('Approve runs PendingToApproved and advances to the next pending fursuit', 
     expect(Activity::where('subject_id', $fursuit->id)->where('description', 'Fursuit approved')->exists())
         ->toBeTrue();
 
+    /*
+     * The mail waits out the undo window. Nothing is sent inside the reviewer's request any
+     * more, which is what makes the arrow-back on a mis-click cost the attendee nothing;
+     * `fursuits:deliver-review-decisions` sends it once `notify_at` has passed.
+     */
+    Notification::assertNothingSent();
+
+    expect($fursuit->latestReviewDecision()->outcome)->toBe(FursuitReviewOutcomeEnum::Approved);
+
+    $this->travel(FursuitReviewService::UNDO_WINDOW_MINUTES + 1)->minutes();
+    $this->artisan('fursuits:deliver-review-decisions')->assertSuccessful();
+    $this->travelBack();
+
     Notification::assertSentTo($fursuit->user, FursuitApprovedNotification::class);
 });
 
-test('Approve refuses, and says so, when the record is not claimed by you', function () {
-    // plan 2.10 #43, audit 72: both actions logged an error and returned with no
-    // operator feedback whatsoever.
-    $fursuit = ($this->fursuit)();
+test('Approve refuses, and says so, when the state has no room for it', function () {
+    // plan 2.10 #43, audit 72: the Filament action logged an error and returned with no
+    // operator feedback whatsoever. The refusal is no longer about a claim - there is none -
+    // but about the record's own state.
+    $fursuit = ($this->fursuit)(['status' => Approved::$name]);
 
     actingAs($this->reviewer)->post(route('manage.fursuits.approve', $fursuit))
         ->assertRedirect()
         ->assertInertiaFlash('toast', [
             'tone' => 'danger',
-            'title' => 'Nothing was approved',
-            'body' => 'Claim this fursuit before approving it.',
+            'title' => 'Nothing was decided',
+            'body' => 'This fursuit cannot be approved from its current status.',
         ]);
 
-    expect($fursuit->fresh()->status)->toBeInstanceOf(Pending::class);
+    expect($fursuit->fresh()->reviewDecisions()->count())->toBe(0);
     Notification::assertNothingSent();
 });
 
 test('Reject stores and mails only the custom reason, then advances', function () {
     $fursuit = ($this->fursuit)();
     $next = ($this->fursuit)(['name' => 'Next in line']);
-
-    ($this->scoped)($this->reviewer, $this->event->id)->post(route('manage.fursuits.claim', $fursuit));
 
     ($this->scoped)($this->reviewer, $this->event->id)
         ->post(route('manage.fursuits.reject', $fursuit), [
@@ -466,16 +512,18 @@ test('Reject stores and mails only the custom reason, then advances', function (
 
     expect($entry->properties['reason'])->toBe('Edited by the reviewer before sending.');
 
+    $this->travel(FursuitReviewService::UNDO_WINDOW_MINUTES + 1)->minutes();
+    $this->artisan('fursuits:deliver-review-decisions')->assertSuccessful();
+    $this->travelBack();
+
     Notification::assertSentTo(
         $fursuit->user,
         fn (FursuitRejectedNotification $notification) => $notification->reason === 'Edited by the reviewer before sending.',
     );
 });
 
-test('Reject requires a reason to send and refuses an unclaimed record', function () {
+test('Reject requires a reason to send and refuses a state it cannot reach', function () {
     $fursuit = ($this->fursuit)();
-
-    actingAs($this->reviewer)->post(route('manage.fursuits.claim', $fursuit));
 
     actingAs($this->reviewer)->post(route('manage.fursuits.reject', $fursuit), ['reason' => 'name'])
         ->assertSessionHasErrors('custom_reason');
@@ -486,16 +534,24 @@ test('Reject requires a reason to send and refuses an unclaimed record', functio
         'custom_reason' => 'Anything',
     ])->assertSessionHasErrors('reason');
 
-    actingAs($this->reviewer)->delete(route('manage.fursuits.unclaim', $fursuit));
-
-    actingAs($this->reviewer)->post(route('manage.fursuits.reject', $fursuit), ['custom_reason' => 'Anything'])
-        ->assertInertiaFlash('toast', [
-            'tone' => 'danger',
-            'title' => 'Nothing was rejected',
-            'body' => 'Claim this fursuit before rejecting it.',
-        ]);
+    // A publication-block slug is not a rejection slug: each outcome validates against its
+    // own list, so a verdict cannot be filed under another verdict's reason.
+    actingAs($this->reviewer)->post(route('manage.fursuits.reject', $fursuit), [
+        'reason' => 'no_costume',
+        'custom_reason' => 'Anything',
+    ])->assertSessionHasErrors('reason');
 
     expect($fursuit->fresh()->status)->toBeInstanceOf(Pending::class);
+
+    // Already rejected: there is no second rejection to hand down.
+    $rejected = ($this->fursuit)(['status' => Rejected::$name, 'name' => 'Already out']);
+
+    actingAs($this->reviewer)->post(route('manage.fursuits.reject', $rejected), ['custom_reason' => 'Anything'])
+        ->assertInertiaFlash('toast', [
+            'tone' => 'danger',
+            'title' => 'Nothing was decided',
+            'body' => 'This fursuit cannot be rejected from its current status.',
+        ]);
 });
 
 test('the eight rejection reasons ship verbatim, as a keyed list', function () {
@@ -518,7 +574,6 @@ test('the eight rejection reasons ship verbatim, as a keyed list', function () {
     }
 
     $fursuit = ($this->fursuit)();
-    actingAs($this->reviewer)->post(route('manage.fursuits.claim', $fursuit));
 
     $reject = collect(
         actingAs($this->reviewer)->get(route('manage.fursuits.show', $fursuit))
@@ -534,7 +589,6 @@ test('the eight rejection reasons ship verbatim, as a keyed list', function () {
 
 test('Approve and Reject carry the framework default confirm copy', function () {
     $fursuit = ($this->fursuit)();
-    actingAs($this->reviewer)->post(route('manage.fursuits.claim', $fursuit));
 
     $actions = collect(
         actingAs($this->reviewer)->get(route('manage.fursuits.show', $fursuit))
@@ -549,7 +603,17 @@ test('Approve and Reject carry the framework default confirm copy', function () 
         'heading' => 'Reject',
         'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
         'submit' => 'Confirm',
-    ]);
+    ])
+        /*
+         * The publication block does not use the default copy, and must not: "are you sure
+         * you would like to do this" beside a button called Block reads as a rejection,
+         * which is the one thing this verdict is not.
+         */
+        ->and($actions['block-publication']['confirm'])->toBe([
+            'heading' => 'Block from gallery and game',
+            'description' => 'The badge is approved, printed and handed out. It will not appear in the gallery and cannot be caught in the game.',
+            'submit' => 'Block publication',
+        ]);
 });
 
 /*
@@ -692,17 +756,19 @@ test('a rejection notification needs its reason and keeps the fallback string', 
 |--------------------------------------------------------------------------
 */
 
-test('Next Fursuit walks the queue in order, event-scoped, skipping claimed records', function () {
+test('Next Fursuit walks the queue in order, event-scoped, skipping records somebody is on', function () {
     // plan 2.10 #42 and 2.9, audit 76: `Fursuit::where('status','pending')->first()` is
     // unordered and unscoped, and the three-try loop redirected to the last candidate
-    // whether or not it was still claimed.
+    // whether or not anybody was on it.
     $current = ($this->fursuit)();
-    $claimed = ($this->fursuit)(['name' => 'Taken']);
+    $taken = ($this->fursuit)(['name' => 'Taken']);
     $free = ($this->fursuit)(['name' => 'Free']);
     $elsewhere = ($this->fursuit)(['name' => 'Other event', 'event_id' => $this->otherEvent->id]);
     ($this->fursuit)(['name' => 'Already done', 'status' => Approved::$name]);
 
-    actingAs($this->admin)->post(route('manage.fursuits.claim', $claimed));
+    // Another reviewer is on `$taken`, so the queue hands out the one after it. Nothing is
+    // locked: the skip is a courtesy, not a refusal.
+    FursuitPresence::touch($taken, $this->admin);
 
     ($this->scoped)($this->reviewer, $this->event->id)
         ->get(route('manage.fursuits.next', $current))
@@ -802,7 +868,6 @@ test('the logged attributes and the three transition entries are unchanged', fun
 
     $fursuit = ($this->fursuit)();
 
-    actingAs($this->reviewer)->post(route('manage.fursuits.claim', $fursuit));
     actingAs($this->reviewer)->post(route('manage.fursuits.reject', $fursuit), [
         'custom_reason' => 'The name of the fursuit is not appropriate.',
     ]);
@@ -814,7 +879,6 @@ test('the logged attributes and the three transition entries are unchanged', fun
         ->and($descriptions)->toContain('Fursuit approved (was previously rejected)');
 
     $fresh = ($this->fursuit)(['name' => 'Second']);
-    actingAs($this->reviewer)->post(route('manage.fursuits.claim', $fresh));
     actingAs($this->reviewer)->post(route('manage.fursuits.approve', $fresh));
 
     expect(Activity::where('subject_id', $fresh->id)->pluck('description'))
@@ -1070,7 +1134,7 @@ test('a reviewer works the queue but cannot edit or delete a record', function (
 
     get(route('manage.fursuits.index'))->assertSuccessful();
     get(route('manage.fursuits.show', $fursuit))->assertSuccessful();
-    post(route('manage.fursuits.claim', $fursuit))->assertRedirect();
+    get(route('manage.fursuits.review.show', $fursuit))->assertSuccessful();
     get(route('manage.fursuits.next', $fursuit))->assertRedirect();
 
     get(route('manage.fursuits.edit', $fursuit))->assertForbidden();
@@ -1087,8 +1151,9 @@ test('a user with neither flag is shut out of the module', function () {
 
     get(route('manage.fursuits.index'))->assertForbidden();
     get(route('manage.fursuits.show', $fursuit))->assertForbidden();
-    post(route('manage.fursuits.claim', $fursuit))->assertForbidden();
+    get(route('manage.fursuits.review.show', $fursuit))->assertForbidden();
     post(route('manage.fursuits.approve', $fursuit))->assertForbidden();
+    post(route('manage.fursuits.block-publication', $fursuit), ['custom_reason' => 'x'])->assertForbidden();
     post(route('manage.fursuits.reject', $fursuit), ['custom_reason' => 'x'])->assertForbidden();
     post(route('manage.fursuits.notify', $fursuit), ['notification_type' => 'approved'])->assertForbidden();
 });

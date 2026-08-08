@@ -2,6 +2,7 @@
 
 import { Head, router, usePage } from "@inertiajs/vue3";
 import Button from '@/Components/UI/UiButton.vue';
+import Card from '@/Components/UI/UiCard.vue';
 import dayjs from "dayjs";
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { Link } from "@inertiajs/vue3";
@@ -57,12 +58,6 @@ const user = computed(() => usePage().props.auth.user);
 const prepaidBadgesLeft = computed(() => props.prepaidBadgesLeft || 0);
 
 const amountDue = computed(() => usePage().props.auth?.amountDue ?? 0);
-
-const teasers = computed(() => [
-    { label: 'What it costs', hint: 'Prices, free badges, paying', href: route('info.faq'), icon: 'pi pi-euro' },
-    { label: 'Where to collect it', hint: 'Badge desk and booths', href: route('info.pickup'), icon: 'pi pi-map-marker' },
-    { label: 'Catch-Em-All', hint: 'The badge scanning game', href: route('info.catch-em-all'), icon: 'pi pi-trophy' },
-]);
 
 /*
  * "Is my badge ready" is the question people open this page to answer while standing in
@@ -182,39 +177,9 @@ const shouldShowRegMessage = computed(() => {
             content="Get your personalized fursuit badge at Eurofurence for 5€ and join our exciting Catch-Em-All game. Celebrate your fursuit and connect with fellow fursuiters." />
     </Head>
 
-    <!--
-      Status strip. Deliberately the first thing under the header rather than another card
-      further down: on a phone the hero used to push both of these below the fold, and the
-      amount due landed underneath the fixed tab bar. Answers the two on-site questions,
-      "is it ready" and "what do I owe", before anything else on the page.
-    -->
-    <div v-if="user && (badgeStatusLine || amountDue > 0)" class="site-container pt-4">
-        <div class="rounded-lg bg-white shadow-sm divide-y divide-gray-100">
-            <Link v-if="badgeStatusLine" :href="route('badges.index')" class="flex items-center gap-3 p-4">
-                <i class="pi pi-id-card text-xl text-primary-500"></i>
-                <span class="flex-1">
-                    <span class="block text-xs uppercase tracking-wide text-gray-500">Your badges</span>
-                    <span class="font-semibold">{{ badgeStatusLine }}</span>
-                </span>
-                <i class="pi pi-chevron-right text-gray-400"></i>
-            </Link>
-
-            <div v-if="amountDue > 0" class="flex items-center gap-3 p-4">
-                <i class="pi pi-euro text-xl text-yellow-600"></i>
-                <span class="flex-1">
-                    <span class="block text-xs uppercase tracking-wide text-gray-500">Still to pay at the desk</span>
-                    <span class="text-2xl font-bold font-main">{{ formatEuroFromCents(amountDue) }}</span>
-                </span>
-                <Link :href="route('info.pickup')" class="text-sm font-semibold text-primary-500 underline">
-                    Where?
-                </Link>
-            </div>
-        </div>
-    </div>
-
     <!-- Hero Section -->
     <div class="relative z-0 mb-4 md:mb-8">
-        <div class="bannerImage flex flex-col items-center justify-center px-6 py-10 md:py-32 text-white text-center">
+        <div class="bannerImage flex flex-col items-center justify-center px-6 py-10 md:py-16 text-white text-center">
             <div class="flex flex-col">
                     <h1 class="font-main text-4xl md:text-6xl font-bold drop-shadow-xl mb-4">
                     Eurofurence Fursuit Badge
@@ -377,6 +342,36 @@ const shouldShowRegMessage = computed(() => {
 
     <div>
         <div class="site-container pt-3">
+    <!--
+      Status strip. First thing under the hero, ahead of any marketing copy: it answers
+      the two questions somebody on site opens this page for, "is it ready" and "what do
+      I owe". It sat above the hero for a while, which read as a utility bar bolted on top
+      of the banner - the hero has to come first, this comes immediately after.
+    -->
+    <div v-if="user && (badgeStatusLine || amountDue > 0)" class="max-w-3xl mx-auto mb-6">
+        <div class="rounded-lg bg-white shadow-sm divide-y divide-gray-100">
+            <Link v-if="badgeStatusLine" :href="route('badges.index')" class="flex items-center gap-3 p-4">
+                <i class="pi pi-id-card text-xl text-primary-500"></i>
+                <span class="flex-1">
+                    <span class="block text-xs uppercase tracking-wide text-gray-500">Your badges</span>
+                    <span class="font-semibold">{{ badgeStatusLine }}</span>
+                </span>
+                <i class="pi pi-chevron-right text-gray-400"></i>
+            </Link>
+
+            <div v-if="amountDue > 0" class="flex items-center gap-3 p-4">
+                <i class="pi pi-euro text-xl text-yellow-600"></i>
+                <span class="flex-1">
+                    <span class="block text-xs uppercase tracking-wide text-gray-500">Still to pay at the desk</span>
+                    <span class="text-2xl font-bold font-main">{{ formatEuroFromCents(amountDue) }}</span>
+                </span>
+                <Link :href="route('info.pickup')" class="text-sm font-semibold text-primary-500 underline">
+                    Where?
+                </Link>
+            </div>
+        </div>
+    </div>
+
             <!-- Flash Messages -->
             <Message v-if="usePage().props.flash.message" severity="error" :closable="true" class="mb-6">
                 {{ usePage().props.flash.message }}
@@ -390,29 +385,137 @@ const shouldShowRegMessage = computed(() => {
             </Message>
 
             <!--
-              The two long cards that used to live here restated /faq, /pickup and
-              /catch-em-all - about half the document, and on a phone they pushed
-              everything actionable off the first screen. Worse, the pickup copy had
-              drifted: it named a different desk than /pickup does and left out the booth
-              split entirely. Three links to the pages that own the answers instead.
-
-              PaymentInfoWidget went with them: the amount due is in the status strip at
-              the top now, labelled, rather than as a bare number halfway down the page.
+              The price and the free-badge deadline come from badgePrice and the event,
+              never typed in here: these cards and /faq quote the same two facts, and when
+              this page hardcoded "5€" and "1st August 2026" the two were free to drift.
+              Each card ends in a link to the page that owns the rest of the answer.
             -->
-            <div class="grid gap-3 sm:grid-cols-3 mb-8">
-                <Link
-                    v-for="teaser in teasers"
-                    :key="teaser.label"
-                    :href="teaser.href"
-                    class="bg-white rounded-lg shadow-sm p-4 flex items-center gap-3 hover:shadow transition-shadow"
-                >
-                    <i :class="teaser.icon" class="text-xl text-primary-500"></i>
-                    <span class="flex-1">
-                        <span class="block font-semibold">{{ teaser.label }}</span>
-                        <span class="block text-sm text-gray-500">{{ teaser.hint }}</span>
-                    </span>
-                    <i class="pi pi-chevron-right text-gray-400"></i>
-                </Link>
+            <div class="grid md:grid-cols-2 gap-8 mb-8 items-start">
+                <!-- About Fursuit Badges -->
+                <Card>
+                    <template #title>
+                        <div class="flex items-center gap-3">
+                            <i class="pi pi-id-card text-3xl text-primary-500"></i>
+                            <h2 class="text-2xl font-bold font-main">Fursuit Badges</h2>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="space-y-4">
+                            <p>
+                                Get your own custom keepsake: the <strong>Eurofurence Fursuit Badge</strong> for your
+                                costume and character.
+                            </p>
+
+                            <div class="border-t border-gray-200 divide-y divide-gray-200">
+                                <div class="flex items-start gap-4 py-4">
+                                    <i class="pi pi-tag text-xl text-gray-400 mt-1"></i>
+                                    <div class="flex-1">
+                                        <strong>Price</strong>
+                                        <p class="mt-1 text-sm text-gray-600">
+                                            <span class="text-lg font-bold text-gray-900 align-middle">{{ formatEuroFromCents(badgePrice) }}</span>
+                                            <span class="align-middle"> per badge</span>
+                                        </p>
+                                        <p class="mt-1 text-sm text-gray-600">
+                                            <template v-if="freeBadgeDeadline">
+                                                First badge free if booked with your registration before
+                                                {{ freeBadgeDeadline }}.
+                                            </template>
+                                            <template v-else>
+                                                First badge free if booked with your registration.
+                                            </template>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-4 py-4">
+                                    <i class="pi pi-calendar text-xl text-gray-400 mt-1"></i>
+                                    <div class="flex-1">
+                                        <strong>Pickup</strong>
+                                        <ul class="mt-1 space-y-1 text-sm text-gray-600 list-disc pl-5">
+                                            <li>At the desk in the Fursuit Lounge</li>
+                                            <li>You do <strong>not</strong> need to bring your fursuit</li>
+                                            <li v-if="freeBadgeDeadline">
+                                                Ordered until {{ freeBadgeDeadline }}: pre-printed, ready on day 1
+                                            </li>
+                                            <li v-else>Ordered before the pre-print run: ready on day 1</li>
+                                            <li>Ordered afterwards: printed on site, from day 2</li>
+                                            <li>
+                                                Anything still to pay at the desk is
+                                                <strong>card only</strong> (Mastercard, Visa, Amex) via SumUp
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap gap-x-5 gap-y-2">
+                                <Link :href="route('info.faq')" class="font-semibold text-primary-500 underline w-fit">
+                                    Prices and payment in detail
+                                </Link>
+                                <Link :href="route('info.pickup')" class="font-semibold text-primary-500 underline w-fit">
+                                    Pickup times and booths
+                                </Link>
+                            </div>
+                        </div>
+                    </template>
+                </Card>
+
+                <!-- Catch-Em-All Game -->
+                <Card>
+                    <template #title>
+                        <div class="flex items-center gap-3">
+                            <i class="pi pi-trophy text-3xl text-primary-500"></i>
+                            <h2 class="text-2xl font-bold font-main">Catch-Em-All Game</h2>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="space-y-4">
+                            <p>
+                                Join our community game and collect as many fursuit badges as you can. Meet fellow
+                                fursuiters, make friends, and compete for the top spot.
+                            </p>
+
+                            <div class="border-t border-gray-200 divide-y divide-gray-200">
+                                <div class="flex items-start gap-4 py-4">
+                                    <i class="pi pi-hashtag text-xl text-gray-400 mt-1"></i>
+                                    <div class="flex-1">
+                                        <strong>Scan the badges you meet</strong>
+                                        <p class="mt-1 text-sm text-gray-600">
+                                            Every fursuit badge carries a 5-character code. Enter somebody's code and
+                                            you have caught that fursuit.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-4 py-4">
+                                    <i class="pi pi-users text-xl text-gray-400 mt-1"></i>
+                                    <div class="flex-1">
+                                        <strong>Collect and unlock</strong>
+                                        <p class="mt-1 text-sm text-gray-600">
+                                            Caught fursuits land in your collection, and catching enough of them
+                                            unlocks achievements.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-4 py-4">
+                                    <i class="pi pi-star text-xl text-gray-400 mt-1"></i>
+                                    <div class="flex-1">
+                                        <strong>Climb the leaderboard</strong>
+                                        <p class="mt-1 text-sm text-gray-600">
+                                            Catches count towards a live ranking, and the top collector is announced
+                                            at the closing ceremony.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Link :href="route('info.catch-em-all')" class="font-semibold text-primary-500 underline w-fit block">
+                                How Catch-Em-All works
+                            </Link>
+                        </div>
+                    </template>
+                </Card>
             </div>
         </div>
     </div>

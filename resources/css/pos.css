@@ -592,6 +592,19 @@ button.pos-row:active,
     min-height: var(--pos-commit);
 }
 
+/* The same field scaled for a dialog, where several of them sit in a list
+   instead of one owning the screen. */
+.pos-field--sm {
+    font-size: 1.25rem;
+    letter-spacing: 0.06em;
+    padding: 8px 12px;
+    min-height: 48px;
+}
+
+.pos-field--sm::placeholder {
+    font-size: 0.9rem;
+}
+
 .pos-field::placeholder {
     color: rgb(var(--pos-muted) / 0.6);
     letter-spacing: 0.05em;

@@ -6,6 +6,8 @@ use App\Http\Controllers\GALLERY\GalleryController;
 use App\Jobs\GenerateFursuitWebpJob;
 use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Fursuit\Fursuit;
+use App\Models\Fursuit\FursuitSubmissionRevision;
+use App\Models\Species;
 use App\Services\FursuitCatchCode;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -93,6 +95,8 @@ class FursuitObserver
      */
     public function updating(Fursuit $fursuit): void
     {
+        $this->recordRevision($fursuit);
+
         if (! $fursuit->isDirty('image')) {
             return;
         }
@@ -102,6 +106,54 @@ class FursuitObserver
         self::$replacedImage[$fursuit->id] = $fursuit->getOriginal('image');
         $fursuit->image_webp = null;
         $fursuit->image_thumb = null;
+    }
+
+    /**
+     * The three fields a reviewer judges. A change to any of them is a new submission.
+     */
+    private const SUBMISSION_INPUTS = ['name', 'species_id', 'image'];
+
+    /**
+     * Keep what the submission looked like before this change.
+     *
+     * Here rather than in the controllers because there are four write paths - the attendee
+     * editor, the desk correction, the admin form and the odd console command - and a
+     * reviewer needs the history whichever one was used. `updating` is the only place the
+     * old values are still readable.
+     *
+     * The species name is snapshotted alongside the id so the entry still reads correctly
+     * after a species is renamed or merged.
+     */
+    private function recordRevision(Fursuit $fursuit): void
+    {
+        if (! $fursuit->isDirty(self::SUBMISSION_INPUTS)) {
+            return;
+        }
+
+        /*
+         * Nothing to snapshot means this is not a revision. `created` above mints the catch
+         * code and saves again, and that save fires `updating` before Eloquent has synced the
+         * originals of the insert - so every field reads as dirty and every original as null,
+         * which wrote a revision full of nulls for every fursuit ever created. Both columns
+         * are required of an attendee, so a genuine edit can never look like this.
+         */
+        if ($fursuit->getOriginal('name') === null && $fursuit->getOriginal('image') === null) {
+            return;
+        }
+
+        $speciesId = $fursuit->getOriginal('species_id');
+
+        FursuitSubmissionRevision::create([
+            'fursuit_id' => $fursuit->id,
+            'name' => $fursuit->getOriginal('name'),
+            'species_id' => $speciesId,
+            'species_name' => $speciesId ? Species::whereKey($speciesId)->value('name') : null,
+            'image' => $fursuit->getOriginal('image'),
+            'published' => (bool) $fursuit->getOriginal('published'),
+            'catch_em_all' => (bool) $fursuit->getOriginal('catch_em_all'),
+            // Null when nobody is signed in, e.g. a console command or a queued job.
+            'changed_by_id' => auth()->id(),
+        ]);
     }
 
     /**

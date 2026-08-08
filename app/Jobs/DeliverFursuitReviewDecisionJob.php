@@ -47,6 +47,13 @@ class DeliverFursuitReviewDecisionJob implements ShouldQueue
             return;
         }
 
+        // The undo window, enforced where it is stored. The sweeper only queues rows that
+        // are due, but a job can also be dispatched by hand or replayed from a failed-jobs
+        // table, and sending early is exactly the thing the window exists to prevent.
+        if ($decision->notify_at !== null && now()->lt($decision->notify_at)) {
+            return;
+        }
+
         if (! $decision->isCurrent()) {
             return;
         }
@@ -67,7 +74,7 @@ class DeliverFursuitReviewDecisionJob implements ShouldQueue
             default => 'approved',
         };
 
-        if ($fursuit->status::$name !== $expected) {
+        if ($expected !== $fursuit->status::$name) {
             Log::info('fursuit review notification skipped: the record moved on', [
                 'decision_id' => $decision->id,
                 'fursuit_id' => $fursuit->id,

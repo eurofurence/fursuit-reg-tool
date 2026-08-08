@@ -147,13 +147,8 @@ class SpecialCodeRequest extends FormRequest
          * a row written before this form existed survive a round trip through it.
          *
          * They are dropped when the class changes, because they described the previous
-<<<<<<< worktree
          * action, and when the stored value was not an object, because there are no keys
          * to keep there and writing the value back would restore the shape that raises a
-=======
-         * action, and when the stored value was not an object, because residue() returns
-         * the raw value there and writing it back would restore the shape that raises a
->>>>>>> stash
          * TypeError in the redeem path.
          */
         $sameClass = $this->className() === (string) ($this->route('code')?->class_name ?? '');

@@ -3,18 +3,19 @@
 /*
  * Phase 0 access contract for the Inertia panel at /admin (plan part 4.2, item 1).
  *
- * There is no baseline suite to inherit here: DbServiceMaintenancePageTest is the only
- * test in the repository that touches the admin at all, and it covers one Filament page.
- * So this file states the panel-level rules from scratch rather than porting them, and it
- * also pins /admin-legacy as still working, because Filament has to keep serving the whole
- * migration and nothing in phase 0 is allowed to disturb it.
+ * There is no baseline suite to inherit here: DbServiceMaintenancePageTest was the only
+ * test in the repository that touched the admin at all, and it covered one Filament page.
+ * So this file states the panel-level rules from scratch rather than porting them.
  *
- * The route names are still manage.*: admin.* belongs to admin.badge-pdf.* until part 5.
+ * Filament is gone (plan part 5). /admin-legacy is now a redirect kept for one release so
+ * bookmarked deep links land on the new panel, and that is what is pinned below.
+ *
+ * The route names are still manage.*: admin.* belongs to admin.badge-pdf.* until the
+ * rename phase.
  */
 
 use App\Models\Event;
 use App\Models\User;
-use Filament\Facades\Filament;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
@@ -46,9 +47,9 @@ test('a guest is redirected to login rather than shown a manage login form', fun
         ->assertRedirect(route('login'));
 });
 
-test('the panel is mounted at /admin and Filament has moved to /admin-legacy', function () {
+test('the panel is mounted at /admin and the Filament route names are gone', function () {
     expect(route('manage.dashboard', absolute: false))->toBe('/admin');
-    expect(route('filament.admin.pages.dashboard', absolute: false))->toBe('/admin-legacy');
+    expect(Route::has('filament.admin.pages.dashboard'))->toBeFalse();
 });
 
 test('the admin.badge-pdf routes still resolve under /admin', function () {
@@ -78,9 +79,9 @@ test('the admin.badge-pdf routes refuse a signed-in attendee', function () {
 });
 
 test('the admin.badge-pdf routes stay open to the panel users that link to them', function () {
-    // `can:access-manage` is `is_admin || is_reviewer`, the same set
-    // `User::canAccessPanel()` lets into the Filament panel that renders these links, so
-    // nobody who can reach them today loses them. A missing badge is a 404 from the
+    // `can:access-manage` is `is_admin || is_reviewer`, the same set the retired Filament
+    // panel's `User::canAccessPanel()` admitted, so nobody who could reach these links
+    // loses them. A missing badge is a 404 from the
     // controller's own `firstOrFail`, which is the guard letting the request through.
     foreach ([$this->admin, $this->reviewer] as $operator) {
         actingAs($operator);
@@ -137,11 +138,12 @@ test('manage-admin separates admin from reviewer', function () {
     expect(Gate::forUser($this->attendee)->allows('manage-admin'))->toBeFalse();
 });
 
-test('the two gates agree with the panel access User::canAccessPanel() grants today', function () {
-    // Nobody may lose access at cutover, so access-manage has to be exactly the old rule.
+test('access-manage still spells out the rule canAccessPanel() carried', function () {
+    // Nobody may lose access at cutover, so access-manage has to be exactly the old rule:
+    // `is_admin || is_reviewer`, read off the flags rather than off the deleted method.
     foreach ([$this->admin, $this->reviewer, $this->attendee] as $user) {
         expect(Gate::forUser($user)->allows('access-manage'))
-            ->toBe($user->canAccessPanel(Filament::getPanel('admin')));
+            ->toBe($user->is_admin || $user->is_reviewer);
     }
 });
 
@@ -158,20 +160,15 @@ test('the manage-only props stay off every other interface', function () {
         );
 });
 
-test('/admin-legacy is untouched and still reachable for an admin', function () {
-    // Filament serves the real admin until phase 10. Only its mount path moved.
-    actingAs($this->admin);
-
-    get(route('filament.admin.pages.dashboard'))->assertSuccessful();
+test('/admin-legacy redirects to the panel instead of 404ing', function () {
+    // The Filament mount is gone. The redirect stays for one release so a bookmark still
+    // lands somewhere useful. It is deliberately unguarded: /admin does the checking.
+    get('/admin-legacy')->assertRedirect('/admin');
 });
 
-test('/admin-legacy keeps its own guard: reviewer in, attendee out, guest redirected', function () {
-    actingAs($this->reviewer);
-    get(route('filament.admin.pages.dashboard'))->assertSuccessful();
-
-    actingAs($this->attendee);
-    get(route('filament.admin.pages.dashboard'))->assertForbidden();
-
-    auth()->logout();
-    get(route('filament.admin.pages.dashboard'))->assertRedirect();
+test('a bookmarked /admin-legacy deep link redirects too', function () {
+    // The catch-all is why an old resource URL does not dead-end. It lands on the
+    // dashboard rather than the matching new page, which is the accepted trade.
+    get('/admin-legacy/badges')->assertRedirect('/admin');
+    get('/admin-legacy/print-jobs/12/edit')->assertRedirect('/admin');
 });

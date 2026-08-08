@@ -15,13 +15,10 @@ use Illuminate\Auth\Access\HandlesAuthorization;
  * asserts that none exists, so the write abilities are unreachable from /admin whatever they
  * answer.
  *
- * They are deliberately left answering `is_admin` rather than being closed here, because
- * this policy is shared: Filament consults it too, and /admin-legacy keeps its create page
- * and its row EditAction until cutover. Closing the ability would take two screens the
- * parity contract documents as working off a panel that is supposed to keep running (the
- * plan's own rule for phase 10). The two screens are classified as defects and the panel
- * that replaces them does not carry them; retiring them is the cutover's job, not this
- * module's.
+ * They are deliberately left answering `is_admin` rather than being closed here. Filament
+ * shared this policy and its create page and row EditAction were the only callers; both
+ * went with the panel. Closing the abilities now would be a behaviour change on top of a
+ * removal, so they keep their answer and stay unreachable by having no route.
  *
  * The real client lifecycle is `php artisan tse:update-state` and `tse:change-admin-pin`,
  * which talk to the TSE and do not go through this policy at all.
@@ -51,9 +48,9 @@ class TseClientPolicy
      * Determine whether the user can create TSE clients.
      * Only admins can create new TSE clients.
      *
-     * Reached from /admin-legacy only. A client is issued by the TSS, and the Filament
-     * page fabricates one from a random UUID Fiskaly never issued (plan 2.10 #13), which
-     * is why the new panel offers no such screen.
+     * Unreachable: nothing routes here. A client is issued by the TSS, and the Filament
+     * page fabricated one from a random UUID Fiskaly never issued (plan 2.10 #13), which
+     * is why the panel that replaced it offers no such screen.
      */
     public function create(User $user): bool
     {
@@ -64,9 +61,9 @@ class TseClientPolicy
      * Determine whether the user can update the TSE client.
      * Only admins can update TSE clients.
      *
-     * Reached from /admin-legacy only. `remote_id`, `serial_number` and `state` are the
+     * Unreachable: nothing routes here. `remote_id`, `serial_number` and `state` are the
      * signing identity past checkouts were signed under (plan 2.10 #14), which is why the
-     * new panel has no edit form.
+     * panel has no edit form.
      */
     public function update(User $user, TseClient $tseClient): bool
     {

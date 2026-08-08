@@ -122,6 +122,7 @@ class StaffRequest extends FormRequest
                 Rule::unique('staff', 'setup_code')->ignore($id),
             ],
             'is_active' => ['required', 'boolean'],
+            'is_manager' => ['required', 'boolean'],
         ];
     }
 
@@ -136,6 +137,7 @@ class StaffRequest extends FormRequest
             'pin_code' => 'PIN Code',
             'setup_code' => 'Setup Code',
             'is_active' => 'Active',
+            'is_manager' => 'Manager',
         ];
     }
 }

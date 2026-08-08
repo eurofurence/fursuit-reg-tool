@@ -22,8 +22,6 @@ const props = defineProps({
     prepaidBadges: Number,
     prepaidBadgesLeft: Number,
     attendeeId: [String, Number],
-    pickupBooths: Array,
-    deskOpeningHours: { type: Array, default: () => [] },
     event: Object
 });
 
@@ -51,10 +49,6 @@ async function refreshPrepaidBadges() {
 const showPickupInfo = computed(() =>
     props.badges.some((badge) => ['processing', 'ready_for_pickup'].includes(badge.status_fulfillment))
     || (props.unpickedBadges?.length ?? 0) > 0
-);
-
-const hasUnpaidBadges = computed(() =>
-    props.badges.some((badge) => badge.status_payment === 'unpaid')
 );
 </script>
 
@@ -157,18 +151,10 @@ const hasUnpaidBadges = computed(() =>
             </template>
         </Card>
 
-        <!-- Pickup Info -->
-        <div v-if="showPickupInfo" class="mt-6 space-y-6">
-            <BadgePickupInfo
-                :attendee-id="attendeeId"
-                :booths="pickupBooths"
-                :opening-hours="deskOpeningHours"
-            />
-
-            <Message v-if="hasUnpaidBadges" severity="warn" :closable="false">
-                <strong>Open payment:</strong> pay at the desk when you collect your badge.
-                We only take <strong>card</strong> on site (Mastercard, Visa, Amex) through SumUp.
-            </Message>
+        <!-- Pickup Info. Booth split and opening hours are deliberately not repeated
+             here - the card links to /pickup, which owns both. -->
+        <div v-if="showPickupInfo" class="mt-6">
+            <BadgePickupInfo/>
         </div>
 
         <!-- Refresh Prepaid Badges Section -->

@@ -28,6 +28,8 @@ export function useSiteNav() {
 
     const isAuthenticated = computed(() => Boolean(page.props.auth?.user));
     const catchEmAllActive = computed(() => Boolean(page.props.catchEmAllActive));
+    /** Decided server-side from the published desk hours. See DeskOpeningHours::isOpenNow(). */
+    const deskOpenNow = computed(() => Boolean(page.props.deskOpenNow));
 
     /** A Ziggy router pinned to the page Inertia currently has open. */
     const router = computed(() => {
@@ -60,6 +62,7 @@ export function useSiteNav() {
     return {
         isAuthenticated,
         catchEmAllActive,
+        deskOpenNow,
         primary,
         secondary,
         /** What fits in the bottom bar next to "More". */

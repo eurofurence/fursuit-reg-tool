@@ -10,10 +10,10 @@ use Illuminate\Support\Facades\Route;
 | Manage routes
 |--------------------------------------------------------------------------
 |
-| The Inertia admin panel. It serves /admin; the Filament panel has moved to
-| /admin-legacy and keeps running there until the parity suite is green; see
-| docs/admin/rebuild-plan.md. The route names stay manage.* until part 5
-| removes Filament, because admin.* still belongs to admin.badge-pdf.* in
+| The Inertia admin panel, and the only one: it serves /admin and the Filament
+| panel that used to sit there is gone; see docs/admin/rebuild-plan.md. The
+| route names stay manage.* until the rename phase, because admin.* still
+| belongs to admin.badge-pdf.* in
 | routes/web.php. This file holds the panel shell only: the dashboard, the
 | session-state endpoints and the shared table endpoint. Every module lives
 | in its own file under routes/manage/ and is picked up automatically, so
@@ -21,8 +21,8 @@ use Illuminate\Support\Facades\Route;
 | this file.
 |
 | Guests are pushed into the existing Identity SSO flow by `auth`, which is
-| what the Filament panel already does since it declares no ->login(). There
-| is no /admin/login. A signed-in user without `access-manage` gets a 403.
+| what the Filament panel did too since it declared no ->login(). There is no
+| /admin/login. A signed-in user without `access-manage` gets a 403.
 |
 | Every mutation is a POST/PUT/DELETE that redirects back with a flash. No
 | JSON endpoints: data reaches the client through Inertia props.

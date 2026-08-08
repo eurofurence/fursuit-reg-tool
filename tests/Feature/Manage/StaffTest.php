@@ -41,6 +41,8 @@ const MANAGE_STAFF_COLUMNS = [
     'name',
     'pin_code',
     'is_active',
+    // Added with the POS price override: who may approve one.
+    'is_manager',
     'rfid_tags_count',
     'last_login_at',
     'created_at',
@@ -96,6 +98,7 @@ function manageStaffPayload(array $overrides = []): array
         'pin_code' => null,
         'setup_code' => null,
         'is_active' => true,
+        'is_manager' => false,
     ], $overrides);
 }
 

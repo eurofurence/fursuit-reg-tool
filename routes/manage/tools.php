@@ -78,6 +78,12 @@ Route::prefix('maintenance')->name('maintenance.')->middleware('can:manage-admin
  * No extra gate, same as Badge Preview: `can:access-manage` on the group is the whole
  * guard, so reviewers keep the page they have today (parity checklist line 83).
  */
+Route::prefix('tools')->name('tools.')->group(function () {
+    Route::get('pdf-generator', [PdfGeneratorController::class, 'index'])->name('pdf');
+    Route::get('pdf-generator/badge-list', [PdfGeneratorController::class, 'badgeList'])->name('pdf.badge-list');
+    Route::get('pdf-generator/box-labels', [PdfGeneratorController::class, 'boxLabels'])->name('pdf.box-labels');
+});
+
 /*
  * The booth split used to live here as `tools.pickup-booths`. It moved to Settings >
  * On-Site Desk (routes/manage/settings.php) because it configures the convention rather
@@ -88,15 +94,14 @@ Route::prefix('maintenance')->name('maintenance.')->middleware('can:manage-admin
  * to have bookmarked: it was the only way to retune the ranges mid-convention, which is
  * exactly when nobody has time to go hunting through the rail for where it went.
  *
- * Deliberately unnamed. App\Support\Manage\Navigation drops a rail item whose route does
- * not exist, and giving this one the old name would put "Pickup Booths" back in Tools
- * pointing at a redirect. The target is resolved per request rather than written out, so
- * the two cannot drift apart.
+ * Not `tools.pickup-booths`: App\Support\Manage\Navigation drops a rail item whose route
+ * does not exist, and reusing the old name would put "Pickup Booths" back in Tools
+ * pointing at a redirect. It is named all the same, because a route registered inside the
+ * `manage.` name group with no name of its own is not unnamed - it inherits the group's
+ * prefix and is registered as `manage.`, so it squats a name a second unnamed route would
+ * then collide with, and `route:cache` refuses a duplicate name at deploy time.
+ *
+ * The target is resolved per request rather than written out, so the two cannot drift.
  */
-Route::get('tools/pickup-booths', fn () => redirect()->route('manage.settings.on-site-desk'));
-
-Route::prefix('tools')->name('tools.')->group(function () {
-    Route::get('pdf-generator', [PdfGeneratorController::class, 'index'])->name('pdf');
-    Route::get('pdf-generator/badge-list', [PdfGeneratorController::class, 'badgeList'])->name('pdf.badge-list');
-    Route::get('pdf-generator/box-labels', [PdfGeneratorController::class, 'boxLabels'])->name('pdf.box-labels');
-});
+Route::get('tools/pickup-booths', fn () => redirect()->route('manage.settings.on-site-desk'))
+    ->name('tools.pickup-booths-moved');

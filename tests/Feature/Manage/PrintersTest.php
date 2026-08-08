@@ -698,11 +698,29 @@ test('creating a printer writes an empty paper size list for the agent to fill i
         // `is_active` carries no boolean cast on the model, so this is the driver's 1.
         ->and((bool) $printer->is_active)->toBeTrue();
 
-    // The create page renders `{}` for the disabled field, which is Filament's own
-    // default state for it, so the edit page has to render `{}` for the same printer
-    // rather than the `[]` an array cast would json_encode to.
-    expect(get(route('manage.printers.edit', $printer))->viewData('page')['props']['printer']['paper_sizes'])
-        ->toBe('{}');
+    // The reported sizes reach the edit page as rows, never as a JSON document: the panel
+    // has no raw-JSON field anywhere, and this one was the last of them. A printer that
+    // has reported nothing has no rows, and the page says so rather than printing `{}`.
+    expect(get(route('manage.printers.edit', $printer))->viewData('page')['props']['printer'])
+        ->not->toHaveKey('paper_sizes')
+        ->and(get(route('manage.printers.edit', $printer))->viewData('page')['props']['printer']['reportedPaperSizes'])
+        ->toBe([]);
+});
+
+test('the reported paper sizes reach the edit page as rows rather than as JSON', function () {
+    actingAs($this->admin);
+
+    $printer = Printer::factory()->create(['machine_id' => $this->machine->id]);
+
+    $rows = get(route('manage.printers.edit', $printer))
+        ->viewData('page')['props']['printer']['reportedPaperSizes'];
+
+    // Name on its own, every other reported key rendered as `key: value` in the order the
+    // agent sent it, and a nested measurement joined rather than json-encoded.
+    expect($rows)->toBe([
+        ['name' => 'A4', 'detail' => 'width: 210 · height: 297 · mm: 210 × 297'],
+        ['name' => 'Letter', 'detail' => 'width: 216 · height: 279 · mm: 216 × 279'],
+    ]);
 });
 
 test('the create form refuses a paper size the printer has never reported', function () {

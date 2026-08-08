@@ -6,9 +6,6 @@ use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\InfoController;
 use App\Http\Controllers\WelcomeController;
 use App\Http\Middleware\EventEndedMiddleware;
-use App\Models\Machine;
-use App\Models\Staff;
-use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', WelcomeController::class)->name('welcome');
@@ -47,15 +44,16 @@ Route::middleware(EventEndedMiddleware::class)->group(function () {
     });
 });
 
-// Admin badge PDF routes (used by Filament).
+// Admin badge PDF routes.
 //
 // `can:access-manage` and not `auth` alone: `custom_id` is `{attendee_id}-{n}`, so the
 // whole namespace is enumerable and every signed-in attendee could pull any other
 // attendee's badge PDF, image, name, species and Catch-Em-All QR code included (audit
-// landmine 60, rebuild-plan 2.10 change 20). The gate is `is_admin || is_reviewer`, which
-// is the same set `User::canAccessPanel()` lets into the Filament panel that links here,
-// so nobody who can reach these links loses them. The routes themselves stay until phase
-// 10 retires Filament; `manage.tools.badge-preview.pdf.*` are their successors.
+// landmine 60, rebuild-plan 2.10 change 20). The gate is `is_admin || is_reviewer`, the
+// same set the retired Filament panel admitted, so nobody who could reach these links
+// loses them. `manage.tools.badge-preview.pdf.*` are their successors; these two names
+// still own the `admin.` prefix, which is why the panel routes stay `manage.*` until the
+// rename phase.
 Route::middleware(['auth', 'can:access-manage'])->prefix('admin')->group(function () {
     Route::get('/badge-pdf/{customId}/view', [BadgePdfController::class, 'view'])
         ->name('admin.badge-pdf.view');
@@ -63,27 +61,9 @@ Route::middleware(['auth', 'can:access-manage'])->prefix('admin')->group(functio
         ->name('admin.badge-pdf.download');
 });
 
-// TEMPORARY local-only sign-in, for driving the admin panel in a browser
-// without going through OIDC. Guarded by the environment and by a signed URL,
-// and removed as soon as it has been used.
-if (app()->environment('local')) {
-    Route::get('/dev-login/{user}', function (User $user) {
-        auth()->login($user);
-
-        return redirect('/admin');
-    })->middleware('signed')->name('dev.login');
-
-    // POS needs three guards, not one: the web user plus a machine and the
-    // staff member operating it.
-    Route::get('/dev-login-pos/{user}/{machine}/{staff}', function (User $user, Machine $machine, Staff $staff) {
-        auth()->login($user);
-        auth()->guard('machine')->login($machine);
-        // The machine-user guard is backed by Staff, not User.
-        auth()->guard('machine-user')->login($staff);
-
-        return redirect('/pos');
-    })->middleware('signed')->name('dev.login.pos');
-}
+// The Filament panel used to sit here. It is gone; the Inertia panel owns /admin.
+// Kept for one release so bookmarked deep links land on the new panel instead of a 404.
+Route::redirect('/admin-legacy/{path?}', '/admin', 301)->where('path', '.*');
 
 // TEMPORARY: side-by-side parity harness for the PrimeVue -> Components/UI
 // migration. Delete together with resources/js/Pages/Dev/UiParity.vue.

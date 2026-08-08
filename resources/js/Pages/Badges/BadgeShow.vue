@@ -6,14 +6,9 @@ import Card from '@/Components/UI/UiCard.vue';
 import Tag from '@/Components/UI/UiTag.vue';
 import Message from '@/Components/UI/UiMessage.vue';
 import Layout from "@/Layouts/Layout.vue";
+import BadgePickupInfo from '@/Components/BadgePickupInfo.vue';
 import { badgeStatusTags } from '@/badgeStatus.js';
 import {
-    Plus,
-    Shield,
-    Printer,
-    Package,
-    CheckCircle2,
-    Calendar,
     AlertCircle,
     ArrowLeft,
     Check,
@@ -41,87 +36,19 @@ const isDuringEvent = computed(() => {
     return startDate <= now && endDate >= now;
 });
 
-/*
- * The tracker mirrors the fulfillment state machine one-to-one:
- * pending -> processing -> ready_for_pickup -> picked_up, with the fursuit
- * review sitting inside `pending`. Picked Up stays in the list during the event
- * too - dropping it used to leave the tracker with no final step, so a
- * collected badge looked unfinished.
- */
-const progressSteps = computed(() => {
-    const steps = [
-        { key: 'pending', label: 'Ordered', icon: Plus },
-        { key: 'approved', label: 'Reviewed', icon: Shield },
-        { key: 'processing', label: 'Printing', icon: Printer },
-        { key: 'ready_for_pickup', label: props.badge.is_free_badge ? 'Ready for pickup' : 'Pay & pick up', icon: Package },
-        { key: 'picked_up', label: 'Picked up', icon: CheckCircle2 },
-    ];
-
-    // On site the fursuit is in front of us, so badges skip the review queue.
-    return isDuringEvent.value ? steps.filter((step) => step.key !== 'approved') : steps;
-});
-
-// Order of the fulfillment states, used to compare "where are we" against a step.
-const FULFILLMENT_ORDER = ['pending', 'processing', 'ready_for_pickup', 'picked_up'];
-
-const fulfillmentIndex = computed(() => {
-    const index = FULFILLMENT_ORDER.indexOf(props.badge.status_fulfillment);
-
-    return index === -1 ? 0 : index;
-});
-
-function getStepStatus(step) {
-    switch (step.key) {
-        case 'pending':
-            return 'completed'; // The badge exists, so it was ordered.
-        case 'approved':
-            // Past pending means the fursuit cleared review, whatever it says now.
-            if (fulfillmentIndex.value > 0) return 'completed';
-
-            return props.badge.fursuit.status === 'approved' ? 'completed' :
-                   props.badge.fursuit.status === 'rejected' ? 'failed' : 'current';
-        case 'processing':
-            return props.badge.status_fulfillment === 'processing' ? 'current' :
-                   fulfillmentIndex.value > 1 ? 'completed' : 'pending';
-        case 'ready_for_pickup':
-            return props.badge.status_fulfillment === 'ready_for_pickup' ? 'current' :
-                   fulfillmentIndex.value > 2 ? 'completed' : 'pending';
-        case 'picked_up':
-            return props.badge.status_fulfillment === 'picked_up' ? 'completed' : 'pending';
-        default:
-            return 'pending';
-    }
-}
+// Same rule as the badge list: the pickup card appears once the badge is on its way to
+// the desk, not while it is still an order that can be edited.
+const showPickupInfo = computed(() =>
+    ['processing', 'ready_for_pickup'].includes(props.badge.status_fulfillment)
+);
 
 /*
- * How much of the connector between the first and last step circle is filled,
- * as a 0..1 scale factor. The circles sit at the ends of that track, so a step's
- * centre is at index / (count - 1).
+ * There is deliberately no step-by-step progress tracker here. The real route a
+ * badge takes changes across the event (pre-print run, on-site printing, printed
+ * on demand at the desk), so a fixed set of steps was wrong for most attendees
+ * and read as "not printed yet" for badges that were already waiting for them.
+ * The status message below is the single source of truth instead.
  */
-const progressLineScale = computed(() => {
-    const steps = progressSteps.value;
-    const lastReached = steps.reduce((reached, step, index) => {
-        const status = getStepStatus(step);
-
-        return status === 'completed' || status === 'current' || status === 'failed' ? index : reached;
-    }, 0);
-
-    return lastReached / Math.max(steps.length - 1, 1);
-});
-
-
-function getStepClass(status) {
-    switch (status) {
-        case 'completed':
-            return 'bg-green-500 text-white border-green-500';
-        case 'current':
-            return 'bg-blue-500 text-white border-blue-500 ring-4 ring-blue-200';
-        case 'failed':
-            return 'bg-red-500 text-white border-red-500';
-        default:
-            return 'bg-gray-200 text-gray-500 border-gray-300';
-    }
-}
 
 function getActionableStatuses(badge) {
     return badgeStatusTags(badge);
@@ -216,116 +143,6 @@ function cancelBadge() {
     <Head :title="`Badge: ${badge.fursuit.name}`"/>
 
     <div class="site-container py-12">
-        <!-- Progress Tracker -->
-        <Card class="mb-6">
-            <template #title>
-                <h2 class="text-2xl font-bold">Badge Progress</h2>
-            </template>
-            <template #content>
-                <!-- Desktop Progress Tracker -->
-                <div class="hidden md:block relative mb-8">
-                    <!-- Progress Line Background -->
-                    <div class="absolute top-6 left-6 right-6 h-0.5 bg-gray-300"></div>
-
-                    <!-- Progress Line Filled -->
-                    <div
-                        class="absolute top-6 left-6 right-6 h-0.5 origin-left bg-green-500 transition-all duration-500"
-                        :style="{ transform: `scaleX(${progressLineScale})` }"
-                    ></div>
-
-                    <!-- Steps -->
-                    <div class="flex justify-between items-start">
-                        <div
-                            v-for="step in progressSteps"
-                            :key="step.key"
-                            class="flex flex-col items-center"
-                        >
-                            <!-- Step Circle -->
-                            <div
-                                :class="[
-                                    'w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-200 bg-white z-10 relative',
-                                    getStepClass(getStepStatus(step))
-                                ]"
-                            >
-                                <component
-                                    :is="step.icon"
-                                    :size="20"
-                                    :class="[
-                                        getStepStatus(step) === 'completed' ? 'text-green-500' :
-                                        getStepStatus(step) === 'current' ? 'text-blue-500' :
-                                        getStepStatus(step) === 'failed' ? 'text-red-500' :
-                                        'text-gray-500'
-                                    ]"
-                                />
-                            </div>
-
-                            <!-- Step Label -->
-                            <span
-                                :class="[
-                                    'mt-2 text-sm font-medium text-center max-w-20',
-                                    getStepStatus(step) === 'completed' ? 'text-green-700' :
-                                    getStepStatus(step) === 'current' ? 'text-blue-700' :
-                                    getStepStatus(step) === 'failed' ? 'text-red-700' :
-                                    'text-gray-500'
-                                ]"
-                            >
-                                {{ step.label }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Mobile Progress Tracker -->
-                <div class="md:hidden mb-8">
-                    <div
-                        v-for="(step, index) in progressSteps"
-                        :key="step.key"
-                        class="relative flex items-center gap-4 pb-6 last:pb-0"
-                    >
-                        <!-- Step Circle -->
-                        <div
-                            :class="[
-                                'w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-200 bg-white flex-shrink-0 relative z-10',
-                                getStepClass(getStepStatus(step))
-                            ]"
-                        >
-                            <component
-                                :is="step.icon"
-                                :size="20"
-                                :class="[
-                                    getStepStatus(step) === 'completed' ? 'text-green-500' :
-                                    getStepStatus(step) === 'current' ? 'text-blue-500' :
-                                    getStepStatus(step) === 'failed' ? 'text-red-500' :
-                                    'text-gray-500'
-                                ]"
-                            />
-                        </div>
-
-                        <!-- Step Content -->
-                        <div class="flex-1">
-                            <span
-                                :class="[
-                                    'text-base font-medium block',
-                                    getStepStatus(step) === 'completed' ? 'text-green-700' :
-                                    getStepStatus(step) === 'current' ? 'text-blue-700' :
-                                    getStepStatus(step) === 'failed' ? 'text-red-700' :
-                                    'text-gray-500'
-                                ]"
-                            >
-                                {{ step.label }}
-                            </span>
-                        </div>
-
-                        <!-- Connecting Line (except for last item) -->
-                        <div
-                            v-if="index < progressSteps.length - 1"
-                            class="absolute left-6 top-12 w-0.5 h-6 bg-gray-300 z-0"
-                        ></div>
-                    </div>
-                </div>
-            </template>
-        </Card>
-
         <!-- Status Message -->
         <div class="mb-6" v-if="getNextStepExplanation()">
             <Message :severity="getMessageSeverity()" class="text-sm" :closable="false">
@@ -422,6 +239,28 @@ function cancelBadge() {
                                             />
                                             <span class="font-semibold">Fursuit Gallery</span>
                                         </div>
+
+                                        <!--
+                                            The reviewer's veto over both switches above. It is
+                                            deliberately not framed as an error: the badge is
+                                            approved, printed and handed out, and only the two
+                                            public surfaces are closed. Without this the two
+                                            crosses above would look like the attendee's own
+                                            setting and the mail explaining them like a mistake.
+                                        -->
+                                        <div
+                                            v-if="badge.fursuit.publication_blocked_at"
+                                            class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm"
+                                        >
+                                            <p class="font-semibold text-amber-900">Not shown in the gallery or the game</p>
+                                            <p v-if="badge.fursuit.publication_block_reason" class="mt-1 text-amber-800">
+                                                {{ badge.fursuit.publication_block_reason }}
+                                            </p>
+                                            <p class="mt-1 text-amber-800">
+                                                Your badge itself is approved and will be waiting for you at the desk. To be
+                                                in the gallery and the game, submit a photo of your costume before we print.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -432,6 +271,10 @@ function cancelBadge() {
 
             <!-- Right Column - Instructions -->
             <div class="space-y-6">
+                <!-- Same card as the badge list, and like there it only points at /pickup:
+                     the booth split and the desk hours live on that page alone. -->
+                <BadgePickupInfo v-if="showPickupInfo"/>
+
                 <!-- Action Buttons -->
                 <div class="space-y-3" v-if="canEdit">
                     <Button
@@ -487,13 +330,3 @@ function cancelBadge() {
         </div>
     </div>
 </template>
-
-<style scoped>
-.relative {
-    position: relative;
-}
-
-.absolute {
-    position: absolute;
-}
-</style>

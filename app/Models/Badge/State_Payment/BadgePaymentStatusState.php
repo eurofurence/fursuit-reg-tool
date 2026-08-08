@@ -3,12 +3,10 @@
 namespace App\Models\Badge\State_Payment;
 
 use App\Models\Badge\State_Payment\Transitions\ToPaid;
-use Filament\Support\Contracts\HasColor;
-use Filament\Support\Contracts\HasIcon;
 use Spatie\ModelStates\State;
 use Spatie\ModelStates\StateConfig;
 
-abstract class BadgePaymentStatusState extends State implements HasColor, HasIcon
+abstract class BadgePaymentStatusState extends State
 {
     public static string $name;
 

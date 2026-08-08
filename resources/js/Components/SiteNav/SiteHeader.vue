@@ -55,10 +55,13 @@ onBeforeUnmount(() => {
             </Link>
 
             <div ref="menu" class="ml-auto relative">
+                <!-- The right padding tracks the name, which is hidden below sm: with a fixed
+                     pr-3 the chip kept the space the name would have taken and read as a
+                     lopsided circle with a gap glued to its right. -->
                 <button
                     v-if="user"
                     type="button"
-                    class="flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white py-1 pl-1 pr-3 text-sm font-semibold transition-colors"
+                    class="flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white py-1 pl-1 pr-1 sm:pr-3 text-sm font-semibold transition-colors"
                     :aria-expanded="open"
                     aria-haspopup="menu"
                     @click="open = !open"

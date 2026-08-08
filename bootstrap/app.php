@@ -28,10 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->middleware('web')
                 ->group(base_path('routes/web.php'));
 
-            // Manage panel: the Inertia admin. It owns /admin; Filament has moved
-            // to /admin-legacy and stays there until cutover deletes it. The route
-            // names stay manage.* until then, because admin.* is still taken by
-            // admin.badge-pdf.* above. See docs/admin/rebuild-plan.md.
+            // Manage panel: the Inertia admin, and the only one. It owns /admin;
+            // the Filament panel that sat at /admin-legacy is gone. The route names
+            // stay manage.* until the rename phase, because admin.* is still taken
+            // by admin.badge-pdf.* above. See docs/admin/rebuild-plan.md.
             //
             // Registered after routes/web.php on purpose: the admin.badge-pdf.*
             // routes also live under /admin and must keep matching first.

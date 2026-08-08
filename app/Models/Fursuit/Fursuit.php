@@ -6,13 +6,16 @@ use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\FCEA\UserCatchLog;
+use App\Models\Fursuit\States\Approved;
 use App\Models\Fursuit\States\FursuitStatusState;
 use App\Models\Species;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -164,6 +167,104 @@ class Fursuit extends Model
         });
     }
 
+    public function reviewDecisions(): HasMany
+    {
+        return $this->hasMany(FursuitReviewDecision::class);
+    }
+
+    /**
+     * Superseded versions of this submission, written by FursuitObserver.
+     *
+     * What a reviewer reads on a resubmission: an attendee who was told their image is not a
+     * photo of a costume and sent the same file back looks identical to one who fixed it,
+     * unless the previous version is on screen next to the current one.
+     */
+    public function submissionRevisions(): HasMany
+    {
+        return $this->hasMany(FursuitSubmissionRevision::class);
+    }
+
+    /**
+     * The verdict currently standing on this fursuit, if any.
+     */
+    public function latestReviewDecision(): ?FursuitReviewDecision
+    {
+        return $this->reviewDecisions()->latest('id')->first();
+    }
+
+    /**
+     * Whether a reviewer has barred this fursuit from the gallery and the game.
+     *
+     * Independent of `status`: a blocked fursuit is still approved, so its card prints
+     * and is handed out. The block only covers the public surfaces, and it sits over the
+     * attendee's own `published` / `catch_em_all` switches rather than overwriting them,
+     * so lifting it restores what the attendee asked for.
+     */
+    public function isPublicationBlocked(): bool
+    {
+        return $this->publication_blocked_at !== null;
+    }
+
+    /**
+     * Whether the gallery and Catch-Em-All may show this fursuit at all.
+     *
+     * The reviewer's verdict and the attendee's switch both have to say yes. Read this
+     * rather than testing `published` alone.
+     */
+    public function isPublishable(): bool
+    {
+        return $this->status instanceof Approved
+            && ! $this->isPublicationBlocked()
+            && (bool) $this->published;
+    }
+
+    /**
+     * Whether this fursuit's badges may be printed and handed out.
+     *
+     * Only a Code of Conduct rejection blocks the card, and a fursuit still waiting for
+     * review has not been cleared yet either. A publication block never reaches here.
+     */
+    public function isPrintable(): bool
+    {
+        return $this->status instanceof Approved;
+    }
+
+    /**
+     * Restrict a query to fursuits a reviewer has not barred from the public surfaces.
+     *
+     * Belt and braces. Blocking also turns the attendee's own `published` and
+     * `catch_em_all` switches off, which is what every existing gallery and game query
+     * already filters on, so this scope changes nothing on its own. It is here because the
+     * attendee can turn a switch back on from their badge page: the switch is a request,
+     * the block is the answer, and the answer has to win until a reviewer changes it.
+     */
+    public function scopePublicationAllowed(Builder $query): Builder
+    {
+        return $query->whereNull('publication_blocked_at');
+    }
+
+    /**
+     * Drop the publication block, e.g. because the attendee resubmitted.
+     *
+     * Does not save: callers are usually mid-update on the same model.
+     */
+    public function clearPublicationBlock(): void
+    {
+        $this->publication_blocked_at = null;
+        $this->publication_block_reason = null;
+    }
+
+    /**
+     * The five-minute cache lock the Filament panel used to reserve a record.
+     *
+     * Legacy only. The Inertia panel replaced it with FursuitPresence, which is advisory:
+     * it tells a reviewer that somebody else is on the record and keeps the queue from
+     * handing the same record to two people, without ever refusing a decision. The lock
+     * refused decisions instead, which meant a reviewer who opened a record by link could
+     * do nothing with it, and a stale lock froze a record for five minutes.
+     *
+     * Unused since the Filament panel was removed: nothing calls it any more.
+     */
     private function getClaimCacheKey(): string
     {
         return 'fursuit:'.$this->id.':claim';

@@ -7,6 +7,8 @@ import POSLayout from '@/Layouts/POSLayout.vue';
 import ConfirmModal from '@/Components/POS/ConfirmModal.vue';
 import BadgeCard from '@/Components/POS/Attendee/BadgeCard.vue';
 import AttendeeDetailsSheet from '@/Components/POS/Attendee/AttendeeDetailsSheet.vue';
+import BadgeEditModal from '@/Components/POS/BadgeEditModal.vue';
+import PriceOverrideModal from '@/Components/POS/PriceOverrideModal.vue';
 import { badgeAction, isHandoutable, isPayable } from '@/Components/POS/Attendee/badgeAction.js';
 import { usePosKeyboard } from '@/composables/usePosKeyboard';
 import { formatEuroFromCents } from '@/helpers.js';
@@ -141,6 +143,37 @@ function startPayment(badgeIds = null) {
     }));
 }
 
+/* --- Editing --------------------------------------------------------------
+ * Deliberately not a button on every card: correcting a badge is the rare move,
+ * and a third control in the row would sit next to Print and Hand out all shift
+ * collecting mis-taps. Pick exactly one badge and the commit bar offers it.
+ */
+const editing = ref(null);
+const overriding = ref(null);
+
+const editTarget = computed(() => {
+    if (selectedIds.value.length !== 1) {
+        return null;
+    }
+
+    return props.badges.find((badge) => badge.id === selectedIds.value[0]) ?? null;
+});
+
+// The override dialog speaks in generic lines so the payment screen can reuse it.
+const overrideItems = computed(() => (overriding.value
+    ? [{
+        id: overriding.value.id,
+        label: overriding.value.fursuit?.name || 'Fursuit badge',
+        sublabel: overriding.value.custom_id || `#${overriding.value.id}`,
+        total: overriding.value.total ?? 0,
+    }]
+    : []));
+
+function startOverride(badge) {
+    editing.value = null;
+    overriding.value = badge;
+}
+
 /* --- Sheets --------------------------------------------------------------- */
 
 const showDetails = ref(false);
@@ -221,6 +254,19 @@ usePosKeyboard({
             @close="showDetails = false"
         />
 
+        <BadgeEditModal
+            :show="editing !== null"
+            :badge="editing"
+            @close="editing = null"
+            @override-price="startOverride"
+        />
+
+        <PriceOverrideModal
+            :show="overriding !== null"
+            :items="overrideItems"
+            @close="overriding = null"
+        />
+
         <!-- Who is at the desk, and what they owe -->
         <div class="pos-card flex items-center justify-between gap-4 flex-wrap">
             <div class="flex flex-col">
@@ -290,8 +336,13 @@ usePosKeyboard({
             No badges for this event.
         </div>
 
-        <!-- Commit bar: the two money moves stay under the thumbs -->
-        <div class="pos-commitbar grid-cols-2 md:grid-cols-4">
+        <!--
+            Commit bar: the two money moves stay under the thumbs. Edit keeps a
+            fixed slot rather than appearing and disappearing with the selection,
+            because a bar that reflows is a bar whose buttons get pressed by
+            position and hit the wrong one.
+        -->
+        <div class="pos-commitbar grid-cols-2 md:grid-cols-5">
             <button
                 type="button"
                 class="pos-btn pos-btn--commit"
@@ -311,6 +362,15 @@ usePosKeyboard({
             >
                 Hand out {{ hasSelection ? 'selected' : 'all' }} ({{ handoutTargets.length }})
                 <span class="pos-kcap">*</span>
+            </button>
+            <button
+                type="button"
+                class="pos-btn pos-btn--commit"
+                :disabled="editTarget === null"
+                :title="editTarget === null ? 'Select exactly one badge to edit it' : ''"
+                @click="editing = editTarget"
+            >
+                Edit badge
             </button>
             <button type="button" class="pos-btn pos-btn--commit" @click="showDetails = true">
                 <i class="pi pi-list"></i> Details

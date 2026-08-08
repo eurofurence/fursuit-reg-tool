@@ -11,9 +11,9 @@ use Illuminate\Auth\Access\HandlesAuthorization;
  * user list: this is the one module in the rebuild where the two gates diverge by design.
  *
  * `restore` and `forceDelete` describe operations that cannot happen - User carries no
- * SoftDeletes - but they stay because Filament still calls them from /admin-legacy until
- * cutover, and removing them would flip the answer from false-by-policy to
- * false-by-absence for the legacy panel.
+ * SoftDeletes. Filament was their only caller and is gone; they stay because deleting them
+ * would flip the answer from false-by-policy to false-by-absence, which is a behaviour
+ * change and not part of the removal.
  */
 class UserPolicy
 {

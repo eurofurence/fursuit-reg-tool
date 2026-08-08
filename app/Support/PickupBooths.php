@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Badge\Badge;
 use App\Models\Event;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -54,6 +55,36 @@ final class PickupBooths
         $normalized = self::normalize($configured);
 
         return $normalized === [] ? self::DEFAULTS : $normalized;
+    }
+
+    /**
+     * The one day the booth split applies to, `Y-m-d`, or null when it cannot be placed.
+     *
+     * The split only exists to break up the day-one rush, so it is tied to the first day
+     * the desk is open rather than to the whole convention. That day comes from the
+     * published opening hours, because they are what the desk team actually maintains -
+     * `starts_at` is the convention's own start and can sit a day either side of when
+     * the badge desk first opens. It is the fallback, not the source.
+     */
+    public static function splitDay(?Event $event): ?string
+    {
+        return DeskOpeningHours::firstDate($event) ?? $event?->starts_at?->format('Y-m-d');
+    }
+
+    /**
+     * Whether the booth split is still worth showing.
+     *
+     * True up to and including the split day: before it, an attendee planning their
+     * arrival wants to know which queue is theirs; after it, the desk runs one counter
+     * and a booth grid on the page only sends people looking for a booth that is not
+     * there. Decided on the server so every viewer gets the same answer regardless of
+     * their device clock.
+     */
+    public static function splitActive(?Event $event): bool
+    {
+        $day = self::splitDay($event);
+
+        return $day !== null && CarbonImmutable::now()->format('Y-m-d') <= $day;
     }
 
     /**

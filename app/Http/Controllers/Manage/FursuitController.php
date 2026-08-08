@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Manage;
 
+use App\Enum\FursuitReviewOutcomeEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\FursuitRequest;
 use App\Models\Event;
@@ -12,6 +13,8 @@ use App\Models\Fursuit\States\Pending;
 use App\Models\Fursuit\States\Rejected;
 use App\Models\Species;
 use App\Models\User;
+use App\Services\FursuitPresence;
+use App\Services\FursuitReviewService;
 use App\Support\Manage\Action;
 use App\Support\Manage\Column;
 use App\Support\Manage\EventScope;
@@ -103,6 +106,13 @@ class FursuitController extends Controller
 
         $fursuit->load(['user', 'species', 'event']);
 
+        /*
+         * Reading a record counts as working it, so the queue skips it for other reviewers
+         * while somebody has it open. Advisory only: presence never refuses a verdict, it
+         * only keeps `next` from handing the same record to two people.
+         */
+        FursuitPresence::touch($fursuit, $request->user());
+
         return inertia('Manage/Fursuits/Show', [
             'fursuit' => $this->viewData($fursuit, $request->user()),
             'actions' => array_map(
@@ -119,6 +129,9 @@ class FursuitController extends Controller
              * form round-trip).
              */
             'rejectReasons' => FursuitModerationController::rejectReasonOptions(),
+            // The publication block has its own list: the eight rejection strings all tell
+            // the attendee to fix a badge which, in this case, is fine and will be printed.
+            'publicationReasons' => FursuitReviewService::reasonOptions(FursuitReviewOutcomeEnum::PublicationBlocked),
             'notificationTypes' => FursuitNotificationController::typeOptions(),
             ...$this->activityTable($request, $fursuit),
         ]);
@@ -275,6 +288,19 @@ class FursuitController extends Controller
                         'rejected' => 'Rejected',
                     ])
                     ->default('pending'),
+
+                /*
+                 * The other half of a verdict. An approved fursuit may still be barred
+                 * from the gallery and the game, and that is not visible in `status` -
+                 * which is the point of it, but it also means the list could not answer
+                 * "what did we block, and was that right" without this.
+                 */
+                Filter::ternary('publication_blocked', 'Gallery blocked')
+                    ->trueLabel('Blocked')
+                    ->falseLabel('Not blocked')
+                    ->apply(fn (Builder $query, mixed $value) => $value
+                        ? $query->whereNotNull('publication_blocked_at')
+                        : $query->whereNull('publication_blocked_at')),
             ])
             ->rows(fn (Fursuit $fursuit) => [
                 'user_name' => $fursuit->user?->name,
@@ -284,6 +310,7 @@ class FursuitController extends Controller
                 'image' => self::imageUrl($fursuit->image),
                 'published' => (bool) $fursuit->published,
                 'catch_em_all' => (bool) $fursuit->catch_em_all,
+                'publication_blocked' => $fursuit->isPublicationBlocked(),
             ])
             ->recordUrl(fn (Fursuit $fursuit) => route('manage.fursuits.show', $fursuit))
             // ViewAction only. EditAction sits commented out in the resource (audit
@@ -294,7 +321,12 @@ class FursuitController extends Controller
             // FursuitResource declares no bulk actions, and the create header action is
             // hidden in practice because the policy refuses it.
             ->bulkActions([])
-            ->pageActions([])
+            // The way into the queue. The list is where a reviewer lands, and working the
+            // backlog record page by record page is the thing the queue page exists to
+            // stop.
+            ->pageActions([
+                Action::link('review', 'Review queue', route('manage.fursuits.review'))->icon('shield-check'),
+            ])
             ->toArray($request);
     }
 
@@ -332,6 +364,9 @@ class FursuitController extends Controller
             Column::image('image', 'Image')->circular(),
             Column::bool('published', 'Published'),
             Column::bool('catch_em_all', 'Catch em all'),
+            // Read beside the two above, never instead of them: those are the attendee's
+            // switches and this is the reviewer's veto over both.
+            Column::bool('publication_blocked', 'Gallery blocked'),
         ];
     }
 
@@ -353,14 +388,33 @@ class FursuitController extends Controller
             'catch_em_all' => (bool) $fursuit->catch_em_all,
             'status' => Status::fursuit($fursuit->status),
             /*
-             * Who holds the lock. The Filament page showed no indication of a claim at
-             * all, so a reviewer could only find out by pressing a button and watching
-             * where it took them.
+             * The second half of the verdict: approved records may still be barred from
+             * the gallery and Catch-Em-All. The two `published` / `catch_em_all` flags
+             * above are the attendee's own switches, and the block sits over them, so this
+             * has to be read beside them or the page would claim a blocked fursuit is
+             * published.
              */
-            'claim' => [
-                'claimed' => $fursuit->isClaimed(),
-                'mine' => $viewer !== null && $fursuit->isClaimedBySelf($viewer),
+            'publication' => [
+                'blocked' => $fursuit->isPublicationBlocked(),
+                'reason' => $fursuit->publication_block_reason,
+                'blockedAt' => $fursuit->publication_blocked_at?->toIso8601String(),
             ],
+            /*
+             * Who else is looking. The Filament page showed no indication at all, so a
+             * reviewer could only find out by pressing a button and watching where it took
+             * them - and the lock behind that button then refused their verdict.
+             */
+            'presence' => [
+                'others' => $viewer === null ? [] : FursuitPresence::others($fursuit, $viewer),
+                'heartbeatSeconds' => FursuitPresence::HEARTBEAT_SECONDS,
+            ],
+            /*
+             * How many times the submission has been changed since it was made. The record
+             * page keeps it to a count and points at the queue page for the pictures: this
+             * page already carries the full activity log, and the side-by-side comparison is
+             * what the review surface is for.
+             */
+            'revisions' => $fursuit->submissionRevisions()->count(),
             'editUrl' => $viewer !== null && Gate::forUser($viewer)->allows('update', $fursuit)
                 ? route('manage.fursuits.edit', $fursuit)
                 : null,
@@ -368,11 +422,18 @@ class FursuitController extends Controller
     }
 
     /**
-     * The seven header actions of ViewFursuit, in the order the page declared them.
+     * The record page's header actions.
      *
-     * Visibility is the resource's own predicate in every case, with one deliberate
-     * change: Claim is an ordinary action rather than the page's `$defaultAction`, so
-     * opening a pending fursuit no longer claims it (plan 2.10 #41, audit 69).
+     * Two deliberate departures from ViewFursuit, both of them plan decisions.
+     *
+     * Claim and Unclaim are gone. The lock they took refused verdicts, so a reviewer who
+     * opened a record by link could do nothing with it and a dead browser froze the record
+     * for five minutes (plan 2.10 #41, audit 69/71). Presence replaced it, and presence is
+     * advisory: it is shown, never enforced. A verdict therefore needs no claim first.
+     *
+     * The publication block is new. Approval used to be a yes/no, so a photo that broke a
+     * gallery rule but no rule in the Code of Conduct could only be rejected - which stops
+     * the card as well, costing the attendee a badge over a gallery rule.
      *
      * @return array<int, Action>
      */
@@ -383,20 +444,13 @@ class FursuitController extends Controller
         }
 
         $status = $fursuit->status;
-        $claimedByMe = $fursuit->isClaimedBySelf($viewer);
-        $canApprove = $status->canTransitionTo(Approved::class, $viewer);
-        $canReject = $status->canTransitionTo(Rejected::class, $viewer, '');
+        $reviews = app(FursuitReviewService::class);
+        $canApprove = $reviews->can($fursuit, FursuitReviewOutcomeEnum::Approved, $viewer);
+        $canReject = $reviews->can($fursuit, FursuitReviewOutcomeEnum::Rejected, $viewer);
+        $canBlock = $reviews->can($fursuit, FursuitReviewOutcomeEnum::PublicationBlocked, $viewer);
 
         return array_values(array_filter([
-            $canApprove && ! $claimedByMe
-                ? Action::post('claim', 'Claim', route('manage.fursuits.claim', $fursuit))->tone(Status::INFO)
-                : null,
-
-            $canApprove && $claimedByMe
-                ? Action::delete('unclaim', 'Unclaim', route('manage.fursuits.unclaim', $fursuit))->tone(Status::DANGER)
-                : null,
-
-            $canApprove && $claimedByMe
+            $canApprove
                 ? Action::post('approve', 'Approve', route('manage.fursuits.approve', $fursuit))
                     ->icon('circle-check')
                     ->tone(Status::OK)
@@ -405,7 +459,7 @@ class FursuitController extends Controller
                     ->confirmDefault()
                 : null,
 
-            $canReject && $claimedByMe
+            $canReject
                 ? Action::post('reject', 'Reject', route('manage.fursuits.reject', $fursuit))
                     ->icon('circle-x')
                     ->tone(Status::DANGER)
@@ -425,6 +479,43 @@ class FursuitController extends Controller
                             'required' => true,
                         ],
                     ])
+                : null,
+
+            $canBlock
+                ? Action::post('block-publication', 'Block from gallery', route('manage.fursuits.block-publication', $fursuit))
+                    ->icon('eye-off')
+                    ->tone(Status::WARN)
+                    ->confirm(
+                        'Block from gallery and game',
+                        'The badge is approved, printed and handed out. It will not appear in the gallery and cannot be caught in the game.',
+                        'Block publication',
+                    )
+                    ->fields([
+                        [
+                            'key' => 'reason',
+                            'label' => 'Reason',
+                            'type' => 'select',
+                            'options' => FursuitReviewService::reasonOptions(FursuitReviewOutcomeEnum::PublicationBlocked),
+                            'required' => false,
+                        ],
+                        [
+                            'key' => 'custom_reason',
+                            'label' => 'Reason Sent to the User!',
+                            'type' => 'textarea',
+                            'required' => true,
+                        ],
+                    ])
+                : null,
+
+            $fursuit->isPublicationBlocked()
+                ? Action::delete('unblock-publication', 'Lift gallery block', route('manage.fursuits.unblock-publication', $fursuit))
+                    ->icon('eye')
+                    ->tone(Status::INFO)
+                    ->confirm(
+                        'Lift the gallery block',
+                        'The gallery and the game follow the attendee\'s own setting again. The attendee is not notified.',
+                        'Lift block',
+                    )
                 : null,
 
             $status instanceof Rejected
@@ -461,6 +552,15 @@ class FursuitController extends Controller
 
             Action::link('next', 'Next Fursuit', route('manage.fursuits.next', $fursuit))
                 ->icon('arrow-right')
+                ->tone(Status::INFO),
+
+            /*
+             * Into the queue surface. Not a ViewFursuit action: the queue page did not
+             * exist. A reviewer who lands on a record from the list should not have to
+             * work the rest of the afternoon through record pages.
+             */
+            Action::link('review', 'Review in queue', route('manage.fursuits.review.show', $fursuit))
+                ->icon('shield-check')
                 ->tone(Status::INFO),
 
             /*

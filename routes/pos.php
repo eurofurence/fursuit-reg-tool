@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\POS\AttendeeController;
 use App\Http\Controllers\POS\BadgeController;
+use App\Http\Controllers\POS\BadgeEditController;
 use App\Http\Controllers\POS\BadgeManagementController;
 use App\Http\Controllers\POS\CheckoutController;
 use App\Http\Controllers\POS\DashboardController;
@@ -31,6 +32,11 @@ Route::post('/badges/print/bulk', [BadgeController::class, 'printBulk'])->name('
 Route::post('/badges/{badge}/handout', [BadgeController::class, 'handout'])->name('badges.handout');
 Route::post('/badges/{badge}/handout/undo', [BadgeController::class, 'handoutUndo'])->name('badges.handout.undo');
 Route::post('/badges/handout/bulk', [BadgeController::class, 'handoutBulk'])->name('badges.handout.bulk');
+// Desk corrections. The details are open to any cashier; the price needs a manager,
+// which BadgeEditController enforces rather than a middleware, because an approval can
+// also come from the manager signed in at the till without a code.
+Route::put('/badges/{badge}', [BadgeEditController::class, 'update'])->name('badges.update');
+Route::post('/badges/prices', [BadgeEditController::class, 'updatePrices'])->name('badges.prices');
 Route::resource('checkout', CheckoutController::class);
 Route::post('/checkout/{checkout}/startCardPayment', [CheckoutController::class, 'startCardPayment'])->name('checkout.startCardPayment');
 Route::post('/checkout/{checkout}/payWithCash', [CheckoutController::class, 'payWithCash'])->name('checkout.payWithCash');

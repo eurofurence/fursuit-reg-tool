@@ -209,6 +209,7 @@ class StaffController extends Controller
                 // Two literal words, decided here. The PIN itself is never serialised.
                 'pin_code' => $staff->pin_code ? 'Set' : 'Not Set',
                 'is_active' => (bool) $staff->is_active,
+                'is_manager' => (bool) $staff->is_manager,
                 'rfid_tags_count' => (int) $staff->rfid_tags_count,
                 'last_login_at' => $this->since($staff->last_login_at),
                 'created_at' => $this->datetime($staff->created_at),
@@ -245,6 +246,8 @@ class StaffController extends Controller
             Column::text('name', 'Name')->searchable()->sortable(),
             Column::text('pin_code', 'PIN Code')->toggleable(hiddenByDefault: true),
             Column::bool('is_active', 'Active'),
+            // Who may approve a price override at the till.
+            Column::bool('is_manager', 'Manager'),
             Column::number('rfid_tags_count', 'RFID Tags'),
             // `->dateTime()->since()` renders as a human diff, and a member who never
             // logged in gets a blank cell rather than a placeholder: StaffResource sets
@@ -382,6 +385,7 @@ class StaffController extends Controller
             'pin_code' => $staff->pin_code === null || $staff->pin_code === '' ? '' : self::PIN_UNCHANGED,
             'setup_code' => $staff->setup_code,
             'is_active' => (bool) $staff->is_active,
+            'is_manager' => (bool) $staff->is_manager,
         ];
     }
 }

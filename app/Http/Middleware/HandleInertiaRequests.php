@@ -6,6 +6,7 @@ use App\Domain\Printing\Models\Printer;
 use App\Enum\PrinterConditionEnum;
 use App\Enum\PrinterStatusEnum;
 use App\Models\Event;
+use App\Support\DeskOpeningHours;
 use App\Support\Manage\EventScope;
 use App\Support\Manage\Navigation;
 use Illuminate\Http\Request;
@@ -52,6 +53,10 @@ class HandleInertiaRequests extends Middleware
             // rather than linking to a game nobody can play. Computed off the event we
             // already loaded, so the nav costs no extra query. See Event::isCatchEmAllActive().
             'catchEmAllActive' => (bool) $event?->isCatchEmAllActive(),
+            // Puts an "Open" marker beside the Pickup entry in the desktop rail while the
+            // badge desk is actually staffed. Read off the same already-loaded event as
+            // the line above, so the marker costs no query either. See DeskOpeningHours.
+            'deskOpenNow' => DeskOpeningHours::isOpenNow($event),
             // Lazy load printer status - only needed for POS header display
             'printerStatus' => fn () => $this->getPrinterStatus($request),
             ...$this->getManageContent($request),
@@ -121,7 +126,11 @@ class HandleInertiaRequests extends Middleware
 
         if ($request->routeIs('pos.*')) {
             return [
-                'user' => $request->user('machine-user')?->only(['id', 'name', 'is_admin']),
+                // `is_manager` decides whether a price override prompts for a second
+                // credential or goes straight through. It replaces an `is_admin` key
+                // that was shared here for a column the staff table never had, so it
+                // was always absent from the payload.
+                'user' => $request->user('machine-user')?->only(['id', 'name', 'is_manager']),
                 // Machine data with SumUp reader for all POS routes (needed in header)
                 'machine' => $request->user('machine')?->load('sumupReader'),
             ];

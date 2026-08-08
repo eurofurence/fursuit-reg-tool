@@ -2,209 +2,137 @@
 
 namespace App\Http\Controllers\Manage;
 
+use App\Enum\FursuitReviewOutcomeEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
-use App\Models\Fursuit\States\Pending;
 use App\Models\Fursuit\States\Rejected;
+use App\Services\FursuitPresence;
+use App\Services\FursuitReviewService;
 use App\Support\Manage\EventScope;
 use App\Support\Manage\Toast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 /**
- * The approval workflow of ViewFursuit (audit 4.3.1), as six endpoints.
+ * The verbs of a review: the three verdicts, the correction of one, and the queue step.
  *
- * All six are gated on `view`, not `update`. That is what the Filament page did: its
- * header actions carried no authorization of their own beyond the resource's view
- * check, so a reviewer - who fails `update`, which is admin-only - has always been able
- * to claim, approve and reject. Moderating the queue is the reviewer role.
+ * All of them are gated on `view`, not `update`. That is what the Filament page did: its
+ * header actions carried no authorization of their own beyond the resource's view check,
+ * so a reviewer - who fails `update`, which is admin-only - has always been able to
+ * approve and reject. Moderating the queue is the reviewer role.
  *
- * Four things behave differently, all of them in the plan.
+ * Two shapes are worth knowing before reading the methods.
  *
- *  - Claiming is explicit. `public $defaultAction = 'Claim'` mounted the Claim action on
- *    every page load, so opening a pending fursuit took the lock without a gesture
- *    (plan 2.10 #41, audit 69).
- *  - Unclaiming checks ownership. Fursuit::unclaim() is declared with zero parameters
- *    and was called with one, so anyone could drop anyone's claim (plan 2.10 #41, audit
- *    71). The check lives here rather than in the model, which the POS also uses.
- *  - Approve and Reject say something when they refuse. Both logged an error and
- *    returned with no operator feedback at all (plan 2.10 #43, audit 72).
- *  - The next-record walk is deterministic. toNextFursuit() looped three times and then
- *    redirected to the last candidate whether or not it was claimed, over an unordered,
- *    unscoped `Fursuit::where('status','pending')->first()` that handed reviewers
- *    fursuits from past events (plan 2.10 #42, plan 2.9, audit 76).
+ * **There is no claim.** The Filament page took a five-minute cache lock on load and then
+ * *refused* every verdict unless the caller held it, which meant a reviewer who opened a
+ * record by link could do nothing with it and a dead browser froze the record for five
+ * minutes. Presence replaced it (App\Services\FursuitPresence): the queue skips records
+ * somebody is on and the page says who else is there, but no verdict is ever refused
+ * because of it. Claiming survives on the model but nothing calls it any more.
+ *
+ * **The verdict is not applied here.** FursuitReviewService owns it, because the queue
+ * page, the record page and the edit form all have to mean the same thing by "approved" -
+ * and because the attendee's mail is queued behind an undo window rather than sent inside
+ * the transition. See that class for why undo is a restore and not a transition.
  */
 class FursuitModerationController extends Controller
 {
+    public function __construct(private readonly FursuitReviewService $reviews) {}
+
     /**
      * The eight rejection reasons, verbatim and in order, keyed by slug.
      *
-     * The Filament array was a list, so the persisted select value was the integer index
-     * `0`-`7`: clearing the select threw "Undefined array key", and reordering the array
-     * silently rewired every prefill (plan 2.10 #40, audit 37). Slugs are stable under
-     * reordering and mean something in a request log.
-     *
-     * Only `custom_reason` is ever stored and mailed. The picker exists to fill the
-     * textarea, and the reviewer may edit it afterwards, which is the behaviour today.
+     * Kept as an alias so nothing that already reads this constant has to learn a new
+     * name; the list itself moved to FursuitReviewService, which now holds one list per
+     * outcome. A publication block needs its own wording - the same eight strings all tell
+     * the attendee to fix a badge that, in that case, is fine and will be printed.
      *
      * @var array<string, string>
      */
-    public const REJECT_REASONS = [
-        'human' => 'The submission shows a human. We can only accept badges created for fursuits.',
-        'explicit' => 'The submission is explicit and does not follow our guidelines.',
-        'low_quality' => 'The submission is of low quality and does not meet our guidelines.',
-        'not_a_photo' => 'The submission is a not a photo. We only accept photos, we do not accept illustrations or other digital art as fursuit images.',
-        'real_animal' => 'The submission shows an animal. We do not allow images of real animals, only fursuits.',
-        'ai_generated' => 'The submission is AI generated and does not show a real fursuit.',
-        'name' => 'The name of the fursuit is not appropriate.',
-        'species' => 'The species of the fursuit is not appropriate.',
-    ];
+    public const REJECT_REASONS = FursuitReviewService::REASONS[FursuitReviewOutcomeEnum::Rejected->value];
 
     /**
      * @return array<int, array{value: string, label: string}>
      */
     public static function rejectReasonOptions(): array
     {
-        return collect(self::REJECT_REASONS)
-            ->map(fn (string $reason, string $key) => ['value' => $key, 'label' => $reason])
-            ->values()
-            ->all();
+        return FursuitReviewService::reasonOptions(FursuitReviewOutcomeEnum::Rejected);
     }
 
     /**
-     * Take the lock, or be sent to a record that is free.
+     * Fine on both counts: the card prints and the fursuit may be published.
      *
-     * The "already claimed by somebody else" branch is the Filament action's own: it
-     * moves the reviewer on rather than letting two people work the same record. It now
-     * says so, because with claiming made explicit a silent jump to a different fursuit
-     * is indistinguishable from a bug.
-     */
-    public function claim(Request $request, Fursuit $fursuit, EventScope $scope): RedirectResponse
-    {
-        Gate::authorize('view', $fursuit);
-
-        $user = $request->user();
-
-        if ($fursuit->isClaimed() && ! $fursuit->isClaimedBySelf($user)) {
-            Toast::flashWarning(
-                'Already claimed',
-                'Another reviewer is working on this fursuit.',
-            );
-
-            return $this->advance($fursuit, $scope);
-        }
-
-        $fursuit->claim($user);
-
-        return back();
-    }
-
-    /**
-     * Drop your own lock, and only your own.
-     */
-    public function unclaim(Request $request, Fursuit $fursuit): RedirectResponse
-    {
-        Gate::authorize('view', $fursuit);
-
-        if (! $fursuit->isClaimedBySelf($request->user())) {
-            Toast::flashDanger(
-                'Nothing was unclaimed',
-                'This fursuit is not claimed by you.',
-            );
-
-            return back();
-        }
-
-        $fursuit->unclaim();
-
-        return back();
-    }
-
-    /**
-     * Pending -> Approved, then on to the next record in the queue.
-     *
-     * No success toast: the Filament action had none and the move to the next fursuit is
-     * the feedback. The refusals below are the change (plan 2.10 #43).
+     * No success toast: the move to the next record is the feedback, and in the queue the
+     * undo bar is. The refusal speaks, which the Filament action did not - it logged an
+     * error and returned with no operator feedback at all.
      */
     public function approve(Request $request, Fursuit $fursuit, EventScope $scope): RedirectResponse
     {
-        Gate::authorize('view', $fursuit);
-
-        $user = $request->user();
-
-        if (! $fursuit->isClaimedBySelf($user)) {
-            Toast::flashDanger(
-                'Nothing was approved',
-                'Claim this fursuit before approving it.',
-            );
-
-            return back();
-        }
-
-        if (! $fursuit->status->canTransitionTo(Approved::class, $user)) {
-            Toast::flashDanger(
-                'Nothing was approved',
-                'This fursuit cannot be approved from its current status.',
-            );
-
-            return back();
-        }
-
-        // Runs PendingToApproved (or RejectedToApproved): stamps approved_at, clears
-        // rejected_at, writes the activity entry and notifies the owner.
-        $fursuit->status->transitionTo(Approved::class, $user);
-
-        return $this->advance($fursuit, $scope);
+        return $this->decide($request, $fursuit, $scope, FursuitReviewOutcomeEnum::Approved);
     }
 
     /**
-     * Pending -> Rejected with the reason that is mailed to the owner, then on to the
-     * next record.
+     * Breaks the Code of Conduct: nothing prints and nothing is handed out until the
+     * attendee changes the submission.
      */
     public function reject(Request $request, Fursuit $fursuit, EventScope $scope): RedirectResponse
     {
-        Gate::authorize('view', $fursuit);
-
-        $validated = $request->validate([
-            // The picker only prefills the textarea; it is never stored or sent, which
-            // is the behaviour today. Validated all the same so a request cannot carry
-            // a key nothing recognises.
-            'reason' => ['nullable', 'string', 'in:'.implode(',', array_keys(self::REJECT_REASONS))],
-            'custom_reason' => ['required', 'string'],
-        ]);
-
-        $user = $request->user();
-
-        if (! $fursuit->isClaimedBySelf($user)) {
-            Toast::flashDanger(
-                'Nothing was rejected',
-                'Claim this fursuit before rejecting it.',
-            );
-
-            return back();
-        }
-
-        if (! $fursuit->status->canTransitionTo(Rejected::class, $user, $validated['custom_reason'])) {
-            Toast::flashDanger(
-                'Nothing was rejected',
-                'This fursuit cannot be rejected from its current status.',
-            );
-
-            return back();
-        }
-
-        // PendingToRejected stamps rejected_at, clears approved_at, logs the entry with
-        // the reason as a property and mails FursuitRejectedNotification($reason).
-        $fursuit->status->transitionTo(Rejected::class, $user, $validated['custom_reason']);
-
-        return $this->advance($fursuit, $scope);
+        return $this->decide($request, $fursuit, $scope, FursuitReviewOutcomeEnum::Rejected);
     }
 
     /**
-     * Rejected -> Approved. Requires no claim, unlike Approve and Reject, and stays on
-     * the record rather than advancing: it is an apology, not a queue step.
+     * Fine by the Code of Conduct, wrong for the gallery and Catch-Em-All.
+     *
+     * The outcome that did not exist before: a photo that is not a photo of a suit had to
+     * be rejected outright, which cost the attendee a badge that was never against any
+     * rule. Here the card is printed and handed out as normal and only the public surfaces
+     * are closed.
+     */
+    public function blockPublication(Request $request, Fursuit $fursuit, EventScope $scope): RedirectResponse
+    {
+        return $this->decide($request, $fursuit, $scope, FursuitReviewOutcomeEnum::PublicationBlocked);
+    }
+
+    /**
+     * Lift a publication block that was placed in error.
+     *
+     * Not a verdict: it changes nothing about the approval, writes no decision row and
+     * mails nobody. A reviewer who wants the attendee told approves the record instead.
+     */
+    public function unblockPublication(Request $request, Fursuit $fursuit): RedirectResponse
+    {
+        Gate::authorize('view', $fursuit);
+
+        if (! $fursuit->isPublicationBlocked()) {
+            Toast::flashWarning(
+                'Nothing to lift',
+                'This fursuit is not blocked from the gallery.',
+            );
+
+            return back();
+        }
+
+        $this->reviews->unblockPublication($fursuit, $request->user());
+
+        Toast::flashSuccess(
+            'Publication block lifted',
+            'The gallery and the game follow the attendee\'s own setting again.',
+        );
+
+        return back();
+    }
+
+    /**
+     * Rejected -> Approved as an apology.
+     *
+     * Deliberately not routed through FursuitReviewService: this is not a queue verdict.
+     * It stays on the record rather than advancing, it mails immediately rather than
+     * behind an undo window, and the mail it sends is the rejection-reversal one, which
+     * exists precisely to say "we got that wrong" and is sent even after the event has
+     * ended.
      */
     public function approveRejected(Request $request, Fursuit $fursuit): RedirectResponse
     {
@@ -219,7 +147,6 @@ class FursuitModerationController extends Controller
             return back();
         }
 
-        // RejectedToApproved always notifies, regardless of whether the event has ended.
         $fursuit->status->transitionTo(Approved::class, $request->user());
 
         Toast::flashSuccess('Rejected fursuit approved successfully');
@@ -230,24 +157,109 @@ class FursuitModerationController extends Controller
     /**
      * Hand the reviewer the next record to work on.
      */
-    public function next(Fursuit $fursuit, EventScope $scope): RedirectResponse
+    public function next(Request $request, Fursuit $fursuit, EventScope $scope): RedirectResponse
     {
         Gate::authorize('view', $fursuit);
 
-        return $this->advance($fursuit, $scope);
+        FursuitPresence::leave($fursuit, $request->user());
+
+        return $this->advance($request, $fursuit, $scope);
     }
 
     /**
-     * The queue step: the next pending fursuit, or the list with an explicit empty
-     * state.
+     * The shared body of the three verdicts.
      *
-     * The empty state is new. Filament redirected to the index and left the reviewer to
-     * work out whether the queue was empty or the walk had simply given up after three
-     * tries (audit 76).
+     * The reason is validated against the picker for *this* outcome, so a rejection cannot
+     * be filed under a publication-block slug. Only the final text is stored and mailed;
+     * the slug exists to prefill the textarea and is validated so a request cannot carry a
+     * key nothing recognises.
      */
-    private function advance(Fursuit $fursuit, EventScope $scope): RedirectResponse
+    private function decide(
+        Request $request,
+        Fursuit $fursuit,
+        EventScope $scope,
+        FursuitReviewOutcomeEnum $outcome,
+    ): RedirectResponse {
+        Gate::authorize('view', $fursuit);
+
+        $reason = null;
+
+        /*
+         * A block on somebody who never asked to be published needs no reason, because it is
+         * recorded as a plain approval and the attendee is told nothing about a request they
+         * did not make. Requiring one here would refuse the single keystroke the reviewer
+         * meant to make.
+         */
+        $silent = $this->reviews->silentlyApproves($fursuit, $outcome);
+
+        if ($outcome->requiresReason() && ! $silent) {
+            $validated = $request->validate([
+                'reason' => ['nullable', 'string', Rule::in(array_keys(FursuitReviewService::REASONS[$outcome->value]))],
+                'custom_reason' => ['required', 'string'],
+            ]);
+
+            $reason = $validated['custom_reason'];
+        }
+
+        $user = $request->user();
+
+        if (! $this->reviews->can($fursuit, $outcome, $user)) {
+            Toast::flashDanger(
+                'Nothing was decided',
+                'This fursuit cannot be '.$this->pastTense($outcome).' from its current status.',
+            );
+
+            return back();
+        }
+
+        $this->reviews->decide($fursuit, $outcome, $user, $reason);
+
+        FursuitPresence::leave($fursuit, $user);
+
+        $redirect = $this->advance($request, $fursuit, $scope);
+
+        /*
+         * After advance(), deliberately. There is one toast slot, and advance() uses it to say
+         * the queue is empty - which matters less than telling the reviewer that the Block
+         * they pressed was recorded as an approval. Flashing this second means it wins.
+         */
+        if ($silent) {
+            Toast::flashSuccess(
+                'Approved, not published',
+                'The attendee asked for neither the gallery nor the game, so this was approved with nothing to block and nothing to explain to them.',
+            );
+        }
+
+        return $redirect;
+    }
+
+    private function pastTense(FursuitReviewOutcomeEnum $outcome): string
     {
-        $next = $this->nextPending($fursuit, $scope);
+        return match ($outcome) {
+            FursuitReviewOutcomeEnum::Approved => 'approved',
+            FursuitReviewOutcomeEnum::Rejected => 'rejected',
+            FursuitReviewOutcomeEnum::PublicationBlocked => 'blocked from the gallery',
+        };
+    }
+
+    /**
+     * The queue step: the next record waiting, or an explicit empty state.
+     *
+     * Which page it lands on depends on where the verdict came from. `queue` is set by the
+     * review page, so a reviewer working the queue keeps working it, while a verdict handed
+     * down on a record page stays on record pages. The empty state is explicit: Filament
+     * redirected to the index and left the reviewer to work out whether the queue was
+     * empty or its three-try walk had simply given up.
+     */
+    private function advance(Request $request, Fursuit $fursuit, EventScope $scope): RedirectResponse
+    {
+        $inQueue = $request->boolean('queue');
+
+        $next = $this->reviews->nextPending(
+            $scope->apply(Fursuit::query()),
+            $request->user(),
+            $fursuit,
+        );
 
         if ($next === null) {
             Toast::flashSuccess(
@@ -258,31 +270,9 @@ class FursuitModerationController extends Controller
             return redirect()->route('manage.fursuits.index');
         }
 
-        return redirect()->route('manage.fursuits.show', $next);
-    }
-
-    /**
-     * The oldest pending fursuit in the current event scope that nobody is holding.
-     *
-     * Ordered by id so two reviewers walking the queue at the same time see the same
-     * sequence, and event-scoped so it cannot hand out a fursuit from a past event
-     * (plan 2.9). The claim lives in the cache rather than in a column, so "unclaimed"
-     * cannot be a where clause; `lazy()` stops at the first free record instead of
-     * loading the whole queue to find it.
-     */
-    private function nextPending(Fursuit $fursuit, EventScope $scope): ?Fursuit
-    {
-        $query = $scope->apply(Fursuit::query())
-            ->whereState('status', Pending::class)
-            ->whereKeyNot($fursuit->getKey())
-            ->orderBy('id');
-
-        foreach ($query->lazy() as $candidate) {
-            if ($candidate->isNotClaimed()) {
-                return $candidate;
-            }
-        }
-
-        return null;
+        return redirect()->route(
+            $inQueue ? 'manage.fursuits.review.show' : 'manage.fursuits.show',
+            $next,
+        );
     }
 }

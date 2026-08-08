@@ -18,6 +18,7 @@ class Staff extends Authenticatable
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_manager' => 'boolean',
         'last_login_at' => 'datetime',
     ];
 
@@ -34,6 +35,20 @@ class Staff extends Authenticatable
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeManagers($query)
+    {
+        return $query->where('is_manager', true);
+    }
+
+    /**
+     * Whether this member may approve the actions the desk cannot take on its own
+     * (price changes). Inactive accounts approve nothing, even if still flagged.
+     */
+    public function isManager(): bool
+    {
+        return (bool) $this->is_manager && (bool) $this->is_active;
     }
 
     public function updateLastLogin()

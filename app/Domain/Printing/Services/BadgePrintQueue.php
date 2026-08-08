@@ -45,7 +45,9 @@ class BadgePrintQueue
         ?int $createdById = null,
     ): ?PrintBatch {
         $badges = self::withoutCardsAlreadyOnTheirWay(
-            $badges->filter(fn (Badge $badge) => $badge->exists)
+            self::withoutUnapprovedFursuits(
+                $badges->filter(fn (Badge $badge) => $badge->exists)
+            )
         );
 
         if ($badges->isEmpty()) {
@@ -88,6 +90,44 @@ class BadgePrintQueue
         ]);
 
         return $batch->fresh();
+    }
+
+    /**
+     * Drop badges whose fursuit has not been cleared for printing.
+     *
+     * This is where a Code of Conduct rejection actually stops a card. Nothing used to
+     * enforce it: printing looked only at the badge, so a rejected fursuit - a submission
+     * a reviewer had refused, with the attendee already told to change it - was printed
+     * and handed out by any of the four print entry points, and the rejection only ever
+     * meant an email. A badge that never reaches Processing also never reaches PickedUp,
+     * so this one filter closes both the printer and the desk.
+     *
+     * A publication block deliberately does not appear here. It bars the gallery and the
+     * game, and the whole reason it exists is that the card is fine: an attendee does not
+     * lose their badge over a gallery rule.
+     *
+     * @param  Collection<int, Badge>  $badges
+     * @return Collection<int, Badge>
+     */
+    private static function withoutUnapprovedFursuits(Collection $badges): Collection
+    {
+        if ($badges->isEmpty()) {
+            return $badges;
+        }
+
+        [$printable, $blocked] = $badges->partition(
+            // A badge with no fursuit row left is not printable either: the artwork is
+            // rendered from it.
+            fn (Badge $badge) => $badge->fursuit?->isPrintable() === true
+        );
+
+        if ($blocked->isNotEmpty()) {
+            Log::info('badges skipped: their fursuit is not approved', [
+                'badge_ids' => $blocked->map(fn (Badge $badge) => $badge->getKey())->values()->all(),
+            ]);
+        }
+
+        return $printable->values();
     }
 
     /**

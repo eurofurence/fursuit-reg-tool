@@ -10,6 +10,7 @@ import {useForm} from "laravel-precognition-vue-inertia";
 import Message from 'primevue/message'
 import {router} from "@inertiajs/vue3";
 import {usePage} from '@inertiajs/vue3';
+import PriceOverrideModal from '@/Components/POS/PriceOverrideModal.vue';
 
 defineOptions({
     layout: POSLayout,
@@ -206,6 +207,24 @@ function getSeverityFromTransactionStatus(status) {
     }
 }
 
+/* --- Price override -------------------------------------------------------
+ * The transaction is signed against its total, so a correction cannot edit this
+ * one: the server voids it and opens a fresh transaction at the new price, and
+ * this page is replaced by the new one. That is only possible while nothing has
+ * been taken yet, hence the guard on a live or completed card payment.
+ */
+const showOverride = ref(false);
+
+const overrideItems = computed(() => props.checkout.items.map((item) => ({
+    id: item.payable_id,
+    label: item.payable?.fursuit?.name || item.name,
+    sublabel: item.payable?.custom_id || `Badge #${item.payable_id}`,
+    total: item.total,
+})));
+
+const canOverride = computed(() => props.checkout.status !== 'FINISHED'
+    && ! (props.transaction && (props.transaction.status === 'SUCCESSFUL' || props.transaction.status === 'PENDING')));
+
 const emailReceiptForm = useForm('POST', route('pos.checkout.receipt.email', {'checkout': props.checkout.id}), {});
 const printReceiptForm = useForm('POST', route('pos.checkout.receipt.print', {'checkout': props.checkout.id}), {});
 
@@ -221,6 +240,12 @@ function receiptForm(via) {
 
 <template>
     <div class="w-full flex-1 flex flex-col">
+        <PriceOverrideModal
+            :show="showOverride"
+            :items="overrideItems"
+            @close="showOverride = false"
+        />
+
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-row gap-2 mb-2">
             <!-- Left Side - Cash Calculator -->
@@ -434,6 +459,15 @@ function receiptForm(via) {
                     <span class="ml-2 text-xs opacity-75">[/]</span>
                 </template>
             </Button>
+
+            <!-- Price Override Button -->
+            <Button v-if="canOverride"
+                @click="showOverride = true"
+                severity="secondary"
+                size="small"
+                class="flex-1 h-12 text-xs font-bold"
+                icon="pi pi-pencil"
+                label="Override Price" />
 
             <!-- Clear Cash Button -->
             <Button v-if="checkout.status !== 'FINISHED'"

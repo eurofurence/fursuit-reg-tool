@@ -22,3 +22,11 @@ Schedule::command('printing:reap-leases')
     ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Send the review notifications whose undo window has passed. Every minute, because the
+// window is five minutes and an attendee should hear about a verdict promptly once the
+// reviewer can no longer take it back.
+Schedule::command('fursuits:deliver-review-decisions')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();

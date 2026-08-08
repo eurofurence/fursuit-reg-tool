@@ -53,6 +53,10 @@ class InfoController extends Controller
      * until the desk team publishes them. That is why the page renders nothing at all
      * rather than a placeholder when the list is empty: this used to be a hardcoded
      * paragraph that no one could correct without a deploy.
+     *
+     * The booth split is only relevant on the desk's first day, so `boothsActive` decides
+     * server-side whether the page shows it at all. Past that day the desk is one counter
+     * and the grid would send people hunting for a booth that has been packed away.
      */
     public function pickup(): Response
     {
@@ -66,6 +70,8 @@ class InfoController extends Controller
             'openingHours' => DeskOpeningHours::forEvent($event),
             'attendeeId' => $attendeeId,
             'myBoothIndex' => $attendeeId === null ? null : PickupBooths::boothIndex($booths, $attendeeId),
+            'boothsActive' => PickupBooths::splitActive($event),
+            'boothDay' => PickupBooths::splitDay($event),
         ]);
     }
 

@@ -100,8 +100,9 @@ final class Navigation
              * item and the first pane are one URL.
              *
              * No `permits()` argument: reading how the convention is configured is open to
-             * the whole panel, like Pickup Booths and the other tools, and each pane gates
-             * its own writes on `manage-admin`.
+             * the whole panel, like the tools above it, and each pane gates its own writes
+             * on `manage-admin`. On-Site Desk is the one pane that has any, which is also
+             * why the booth split left Tools for it.
              */
             ['label' => 'Configuration', 'items' => [
                 $this->item('Settings', 'cog', 'manage.settings.general'),

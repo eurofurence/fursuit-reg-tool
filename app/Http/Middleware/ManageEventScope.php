@@ -13,9 +13,9 @@ use Symfony\Component\HttpFoundation\Response;
  * The instance is bound into the container so the controllers, the shared Inertia prop
  * and the table queries all read the same resolved event once per request.
  *
- * Not a replacement for App\Http\Middleware\FilamentEventSelector, which keeps running
- * on /admin-legacy until Filament is removed. The two use different session keys on purpose:
- * the panels must not fight over one selection while both are live.
+ * Successor to App\Http\Middleware\FilamentEventSelector, deleted with the Filament panel.
+ * The session keys differ on purpose: the two panels ran side by side for the whole
+ * migration and were not allowed to fight over one selection.
  */
 class ManageEventScope
 {

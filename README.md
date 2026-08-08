@@ -7,7 +7,7 @@ compliance, and the "Catch-Em-All" social game.
 [![Laravel Tests](https://github.com/eurofurence/fursuit-reg-tool/actions/workflows/laravel.yml/badge.svg)](https://github.com/eurofurence/fursuit-reg-tool/actions/workflows/laravel.yml)
 [![Docker Build and Publish](https://github.com/eurofurence/fursuit-reg-tool/actions/workflows/docker.yml/badge.svg)](https://github.com/eurofurence/fursuit-reg-tool/actions/workflows/docker.yml)
 
-Built with **Laravel 11**, **Inertia.js + Vue 3**, **Filament**, and **PrimeVue**.
+Built with **Laravel 11**, **Inertia.js + Vue 3**, and **PrimeVue**.
 
 ---
 
@@ -19,7 +19,6 @@ The system manages the full badge lifecycle and is split into several interfaces
 | --------------- | ----------- | ------------------------------------------------------------------- |
 | `/`             | Attendees   | Public badge registration & customization (Vue/Inertia)             |
 | `/admin`        | Staff       | Inertia admin panel (badges, fursuits, events, payments, printing)  |
-| `/admin-legacy` | Staff       | The Filament panel it replaces, live until cutover                  |
 | `/pos`          | On-site ops | Point-of-sale: checkout, cashier, printing, machine auth            |
 | `/catch-em-all` | Attendees   | Mobile-first "Catch-Em-All" game (PWA)                              |
 | `/gallery`      | Public      | Fursuit gallery                                                     |
@@ -41,7 +40,7 @@ The system manages the full badge lifecycle and is split into several interfaces
 
 - **Backend:** Laravel 11, PHP 8.2+ (CI and images run 8.4), Laravel Octane (Swoole) in production
 - **Frontend:** Inertia.js, Vue 3, PrimeVue, Tailwind CSS, Vite
-- **Admin:** Filament 3
+- **Admin:** Inertia + Vue, built on `App\Support\Manage` (tables, filters, actions)
 - **Data:** MySQL, Redis, Laravel Horizon (queues)
 - **Notable packages:** spatie/laravel-model-states, spatie/laravel-activitylog, bavix/laravel-wallet,
   laravel/reverb, laravel/sanctum, laravel/socialite, mpdf/mpdf

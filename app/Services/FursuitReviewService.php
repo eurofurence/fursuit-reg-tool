@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enum\FursuitReviewOutcomeEnum;
-use App\Jobs\DeliverFursuitReviewDecisionJob;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\FursuitReviewDecision;
 use App\Models\Fursuit\States\Approved;
@@ -60,13 +59,44 @@ class FursuitReviewService
      * @var array<string, array<string, string>>
      */
     public const REASONS = [
+        /*
+         * Rejections, which stop the card. Every one of them is either a Rules of Conduct
+         * breach the badge itself would carry into the convention
+         * (https://help.eurofurence.org/legal/roc/) or a submission that is not a fursuit badge
+         * at all. Nothing that is merely wrong for the gallery belongs here - that is what the
+         * publication list below is for, and putting "this is digital art" here is what used to
+         * cost attendees a badge over a gallery rule.
+         *
+         * Two rules are deliberately *not* rejection reasons, because they do not transfer from
+         * the hall to a photograph:
+         *
+         *  - **Prop weapons.** The RoC bans *carrying* weapons on the premises and requires
+         *    look-alikes, LARP props and replicas to be checked in at the Security Office. That
+         *    is a rule about an object somebody brings, not about a picture: a suit
+         *    photographed with a prop sword is not carrying anything. Only a real firearm or
+         *    bladed weapon, or an image of violence, is refused - `real_weapon` below. Do not
+         *    add a blanket weapons rejection.
+         *  - **Body paint and makeup.** Body paint needs Security's permission on site; a photo
+         *    of it breaks nothing.
+         */
         FursuitReviewOutcomeEnum::Rejected->value => [
-            'human' => 'The submission shows a human. We can only accept badges created for fursuits.',
-            'explicit' => 'The submission is explicit and does not follow our guidelines.',
-            'low_quality' => 'The submission is of low quality and does not meet our guidelines.',
-            'not_a_photo' => 'The submission is a not a photo. We only accept photos, we do not accept illustrations or other digital art as fursuit images.',
-            'real_animal' => 'The submission shows an animal. We do not allow images of real animals, only fursuits.',
-            'ai_generated' => 'The submission is AI generated and does not show a real fursuit.',
+            'human' => 'The submission shows a human rather than a fursuit. We can only accept badges created for fursuits.',
+            // RoC, Clothing: "Wearing costumes, accessories or displaying items made from real
+            // fur is not allowed." A suit that cannot be worn at the convention cannot be on a
+            // badge for it either.
+            'real_fur' => 'The costume appears to be made from real fur, which is not allowed at Eurofurence.',
+            'explicit' => 'The submission is sexual or fetish related and does not follow our guidelines.',
+            // RoC, Clothing: nothing "visibly 'anatomically correct' or indecently revealing".
+            'anatomically_correct' => 'The submission is anatomically correct or indecently revealing and does not follow our guidelines.',
+            // RoC, Harassment: hate speech and symbols promoting discrimination are prohibited.
+            'hate_symbol' => 'The submission shows symbols, slogans or insignia that are not acceptable at Eurofurence.',
+            // Not the prop-weapon rule; see the note above.
+            'real_weapon' => 'The submission shows a real weapon or an act of violence. Prop and costume weapons are fine, but real ones cannot go on a badge.',
+            'drugs' => 'The submission shows illegal substances or their use.',
+            // RoC, Photography: recording is not allowed in the Fursuit Lounge and other
+            // headless-fursuiter areas, and a badge photo carries whoever is in it.
+            'third_party' => 'The submission shows another person who is identifiable. Please send a photo of your own fursuit only.',
+            'low_quality' => 'The submission is too dark, too blurry or too small for us to print. Please send a clearer photo.',
             'name' => 'The name of the fursuit is not appropriate.',
             'species' => 'The species of the fursuit is not appropriate.',
         ],
@@ -117,7 +147,34 @@ class FursuitReviewService
     }
 
     /**
-     * Apply a verdict, record it, and queue the attendee's mail behind the undo window.
+     * Whether a publication block would be nothing but an approval.
+     *
+     * An attendee who ticked neither the gallery nor the game is not asking to be published,
+     * so there is nothing to block and nothing to tell them about. A reviewer looking at
+     * digital art will reach for the block anyway - it is the obvious button for "this is not
+     * a photo of a suit" - and turning that into a message explaining that a request they
+     * never made has been refused would be confusing at best.
+     *
+     * So the verdict becomes a plain approval: the card prints, the attendee gets the
+     * approval mail, and the reviewer is told on screen what was recorded instead.
+     */
+    public function silentlyApproves(Fursuit $fursuit, FursuitReviewOutcomeEnum $outcome): bool
+    {
+        return $outcome === FursuitReviewOutcomeEnum::PublicationBlocked
+            && ! $fursuit->published
+            && ! $fursuit->catch_em_all
+            && ! $fursuit->isPublicationBlocked();
+    }
+
+    /**
+     * Apply a verdict and record it. The attendee is told later, by the sweeper.
+     *
+     * Nothing is dispatched here on purpose. A delayed job would make the undo window a
+     * property of the queue driver: on the `sync` connection - which the test suite uses,
+     * and which any misconfigured environment can fall back to - a delay is ignored and the
+     * mail goes out inside this request, silently removing the only thing that makes a
+     * mis-click recoverable. `notify_at` on the row is the window, and
+     * `fursuits:deliver-review-decisions` is what reads it.
      *
      * @param  string|null  $reason  Required for both negative outcomes; ignored for an approval.
      */
@@ -127,7 +184,14 @@ class FursuitReviewService
         User $reviewer,
         ?string $reason = null,
     ): FursuitReviewDecision {
-        $decision = DB::transaction(function () use ($fursuit, $outcome, $reviewer, $reason) {
+        // A block on somebody who never asked to be published is an approval; see
+        // silentlyApproves(). The reason goes with it, because there is nothing to explain.
+        if ($this->silentlyApproves($fursuit, $outcome)) {
+            $outcome = FursuitReviewOutcomeEnum::Approved;
+            $reason = null;
+        }
+
+        return DB::transaction(function () use ($fursuit, $outcome, $reviewer, $reason) {
             $restore = self::snapshot($fursuit);
 
             match ($outcome) {
@@ -144,13 +208,6 @@ class FursuitReviewService
                 'notify_at' => now()->addMinutes(self::UNDO_WINDOW_MINUTES),
             ]);
         });
-
-        // Outside the transaction: a queue driver that is not the database would otherwise
-        // be able to run the job before the row it reads is committed.
-        DeliverFursuitReviewDecisionJob::dispatch($decision->id)
-            ->delay(now()->addMinutes(self::UNDO_WINDOW_MINUTES));
-
-        return $decision;
     }
 
     /**
@@ -263,6 +320,32 @@ class FursuitReviewService
     }
 
     /**
+     * What the attendee's two switches were before the block that is standing now.
+     *
+     * Read from the block's own decision row, so lifting a block always restores the state
+     * that block overwrote - not the state of some earlier verdict, and not `true`.
+     *
+     * @return array{published: bool, catch_em_all: bool}|null
+     */
+    private function switchesBeforeBlock(Fursuit $fursuit): ?array
+    {
+        $block = $fursuit->reviewDecisions()
+            ->where('outcome', FursuitReviewOutcomeEnum::PublicationBlocked->value)
+            ->whereNull('undone_at')
+            ->latest('id')
+            ->first();
+
+        if ($block === null) {
+            return null;
+        }
+
+        return [
+            'published' => (bool) ($block->restore['published'] ?? false),
+            'catch_em_all' => (bool) ($block->restore['catch_em_all'] ?? false),
+        ];
+    }
+
+    /**
      * Everything undo has to put back.
      *
      * @return array<string, mixed>
@@ -315,11 +398,22 @@ class FursuitReviewService
     /**
      * Fine by the Code of Conduct, wrong for the gallery and the game.
      *
-     * Two writes that have to happen together: the fursuit is approved, so its card is
-     * printed and handed out like any other, and the block is stamped, so no public
-     * surface shows it. The attendee's own `published` / `catch_em_all` switches are left
-     * exactly as they are - the block sits over them, so lifting it restores what the
-     * attendee asked for rather than what a reviewer happened to leave behind.
+     * Three writes that have to happen together. The fursuit is approved, so its card is
+     * printed and handed out like any other. The block is stamped, which is what the
+     * gallery, the game and the review queue read. And the attendee's two switches are
+     * turned off.
+     *
+     * Turning the switches off is not redundant with the block. `catch_em_all` is read in
+     * places a block column would have to be threaded through one by one - the badge
+     * artwork draws the catch code and its QR from it, the catch-code lookup matches on it,
+     * the observer mints the code from it - and a printed QR that no longer resolves is
+     * worse than no QR. Flipping the switch closes all of those at once; the block column
+     * then keeps the surfaces closed even if the attendee turns the switch back on while
+     * the block still stands.
+     *
+     * The snapshot on the decision row is what makes this safe to undo: the switches were
+     * the attendee's, so undo - and lifting the block - put back what they asked for rather
+     * than what a reviewer happened to leave behind.
      */
     private function applyPublicationBlocked(Fursuit $fursuit, User $reviewer, string $reason): void
     {
@@ -330,6 +424,8 @@ class FursuitReviewService
 
         $fursuit->publication_blocked_at = now();
         $fursuit->publication_block_reason = $reason;
+        $fursuit->published = false;
+        $fursuit->catch_em_all = false;
         $fursuit->save();
 
         activity()
@@ -342,9 +438,13 @@ class FursuitReviewService
     /**
      * Lift a publication block without touching the approval.
      *
-     * Not a verdict and not undoable: it is the correction of one, and the attendee is
-     * told through the ordinary approval mail only if a verdict follows. Used by the
-     * record page when a block was placed in error.
+     * Not a verdict and not undoable: it is the correction of one, and the attendee is told
+     * through the ordinary approval mail only if a verdict follows. Used by the record page
+     * when a block was placed in error.
+     *
+     * The attendee's two switches come back from the snapshot the block wrote, because the
+     * block turned them off; restoring them to `true` unconditionally would publish a
+     * fursuit whose owner never asked to be published.
      */
     public function unblockPublication(Fursuit $fursuit, User $reviewer): void
     {
@@ -353,6 +453,14 @@ class FursuitReviewService
         }
 
         $fursuit->clearPublicationBlock();
+
+        $wanted = $this->switchesBeforeBlock($fursuit);
+
+        if ($wanted !== null) {
+            $fursuit->published = $wanted['published'];
+            $fursuit->catch_em_all = $wanted['catch_em_all'];
+        }
+
         $fursuit->save();
 
         activity()

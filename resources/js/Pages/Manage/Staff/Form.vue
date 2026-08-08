@@ -72,6 +72,7 @@ const form = useForm({
   pin_code: props.staff?.pin_code ?? '',
   setup_code: props.staff?.setup_code ?? '',
   is_active: props.staff?.is_active ?? true,
+  is_manager: props.staff?.is_manager ?? false,
 });
 
 const submit = () => {
@@ -268,6 +269,14 @@ const submitTag = () => {
             type="toggle"
             helper="Inactive staff cannot login to POS"
             :error="form.errors.is_active"
+          />
+
+          <FormField
+            v-model="form.is_manager"
+            label="Manager"
+            type="toggle"
+            helper="Managers can override badge prices at the POS, and approve an override for another cashier with their PIN or RFID tag"
+            :error="form.errors.is_manager"
           />
         </FormSection>
       </div>

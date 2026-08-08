@@ -92,6 +92,50 @@ describe('Public information pages', function () {
             );
     });
 
+    test('the booth split is published up to the desk first day and dropped after it', function () {
+        // The split exists to break up the day-one rush. On day two the desk is one
+        // counter, so a booth grid would only send attendees looking for a booth that
+        // has been packed away.
+        $event = Event::factory()->create([
+            'starts_at' => now()->subDays(2),
+            'ends_at' => now()->addDays(3),
+            'desk_opening_hours' => [
+                ['date' => now()->format('Y-m-d'), 'opens' => '10:00', 'closes' => '18:00'],
+                ['date' => now()->addDay()->format('Y-m-d'), 'opens' => '10:00', 'closes' => '18:00'],
+            ],
+        ]);
+
+        get(route('info.pickup'))
+            ->assertSuccessful()
+            ->assertInertia(fn ($page) => $page
+                ->where('boothsActive', true)
+                ->where('boothDay', now()->format('Y-m-d'))
+            );
+
+        $this->travel(1)->days();
+
+        get(route('info.pickup'))
+            ->assertSuccessful()
+            ->assertInertia(fn ($page) => $page->where('boothsActive', false));
+    });
+
+    test('the booth split day falls back to the event start when no hours are published', function () {
+        // `starts_at` is the convention's own start, not the desk's, so it is only the
+        // fallback: an event that has published hours is placed by those instead.
+        Event::factory()->create([
+            'starts_at' => now()->addDays(2),
+            'ends_at' => now()->addDays(5),
+            'desk_opening_hours' => null,
+        ]);
+
+        get(route('info.pickup'))
+            ->assertSuccessful()
+            ->assertInertia(fn ($page) => $page
+                ->where('boothDay', now()->addDays(2)->format('Y-m-d'))
+                ->where('boothsActive', true)
+            );
+    });
+
     test('the Catch-Em-All page explains the game instead of redirecting to it', function () {
         Event::factory()->create([
             'starts_at' => now()->subDay(),

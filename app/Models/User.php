@@ -6,14 +6,12 @@ namespace App\Models;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Fursuit\Fursuit;
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Gate;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
@@ -84,11 +82,6 @@ class User extends Authenticatable implements FilamentUser
         $eventId = $eventId ?? Event::getActiveEvent()?->id;
 
         return $this->eventUsers()->where('event_id', $eventId)->first();
-    }
-
-    public function canAccessPanel(Panel $panel): bool
-    {
-        return $this->is_admin || $this->is_reviewer;
     }
 
     public function hasFreeBadge($eventId = null): bool

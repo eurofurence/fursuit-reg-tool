@@ -30,13 +30,20 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
+use function Pest\Laravel\get;
 use function Pest\Laravel\withSession;
 
 beforeEach(function () {
     $this->admin = User::factory()->create(['is_admin' => true, 'is_reviewer' => false]);
     $this->reviewer = User::factory()->create(['is_admin' => false, 'is_reviewer' => true]);
 
-    $this->event = Event::factory()->create(['name' => 'Eurofurence 30']);
+    // Real convention dates, because the opening-hours rows are bounded by them: the desk
+    // cannot be open on a day the event is not running.
+    $this->event = Event::factory()->create([
+        'name' => 'Eurofurence 30',
+        'starts_at' => '2026-09-02',
+        'ends_at' => '2026-09-06',
+    ]);
 
     $this->session = [
         EventScope::SESSION_ID => $this->event->id,
@@ -242,7 +249,44 @@ test('a bad opening-hours row is refused', function (array $hours, string $field
     ],
     'not a time' => [[['date' => '2026-09-02', 'opens' => 'morning', 'closes' => '18:00']], 'hours.0.opens'],
     'missing close' => [[['date' => '2026-09-02', 'opens' => '10:00']], 'hours.0.closes'],
+    // The event runs 2026-09-02 to 2026-09-06. A day either side of it is a desk nobody
+    // staffs, published on the pickup page as if somebody did.
+    'the day before the event' => [[['date' => '2026-09-01', 'opens' => '10:00', 'closes' => '18:00']], 'hours.0.date'],
+    'the day after the event' => [[['date' => '2026-09-07', 'opens' => '10:00', 'closes' => '18:00']], 'hours.0.date'],
 ]);
+
+test('the first and last day of the event are themselves allowed', function () {
+    // The bound is inclusive: the desk is open on both edges of the convention, and an
+    // off-by-one here would refuse the two busiest days of the event.
+    actingAs($this->admin);
+
+    withSession($this->session)
+        ->put(route('manage.settings.on-site-desk.hours'), [
+            'hours' => [
+                ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => ''],
+                ['date' => '2026-09-06', 'opens' => '10:00', 'closes' => '14:00', 'note' => ''],
+            ],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($this->event->fresh()->desk_opening_hours)->toBe([
+        ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => null],
+        ['date' => '2026-09-06', 'opens' => '10:00', 'closes' => '14:00', 'note' => null],
+    ]);
+});
+
+test('the editor is told the range it may pick from', function () {
+    // The date input carries min/max, so the page needs both dates to bound it with.
+    actingAs($this->admin);
+
+    withSession($this->session)
+        ->get(route('manage.settings.on-site-desk'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Manage/Settings/OnSiteDesk')
+            ->where('event.startsAt', '2026-09-02')
+            ->where('event.endsAt', '2026-09-06')
+        );
+});
 
 test('a reviewer can read the page but neither write', function () {
     actingAs($this->reviewer);
@@ -281,7 +325,7 @@ test('badges whose owner has no attendee id are reported as unassigned', functio
         ->and($counts['totals']['badges'])->toBe(0);
 });
 
-test('the attendee badge list is served the configured split and the desk hours', function () {
+test('the split and the desk hours are served to the pickup page and to nothing else', function () {
     $this->event->update([
         'pickup_booths' => [['label' => 'Only booth', 'from' => 0, 'to' => null]],
         'desk_opening_hours' => [['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => null]],
@@ -290,12 +334,76 @@ test('the attendee badge list is served the configured split and the desk hours'
     $badge = ($this->badgeFor)(42);
     $owner = $badge->fursuit->user;
 
+    // Deliberately NOT on the badge list: it used to render its own booth grid and its own
+    // opening hours, so a desk that retimed itself had two templates to be wrong in. The
+    // card there links to /pickup, which is the one page that owns both.
     actingAs($owner)
         ->get(route('badges.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('attendeeId', '42')
-            ->where('pickupBooths', [['label' => 'Only booth', 'from' => 0, 'to' => null]])
-            ->where('deskOpeningHours.0.date', '2026-09-02')
+            ->missing('pickupBooths')
+            ->missing('deskOpeningHours')
         );
+
+    actingAs($owner)
+        ->get(route('info.pickup'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('booths', [['label' => 'Only booth', 'from' => 0, 'to' => null]])
+            ->where('openingHours.0.date', '2026-09-02')
+        );
+});
+
+test('the desk reports itself open only inside its published hours', function () {
+    // Drives the "Open" marker beside Pickup in the desktop rail. An unpublished desk is
+    // never open: the alternative is a marker that walks somebody across the hall on a guess.
+    $this->event->update([
+        'desk_opening_hours' => [
+            ['date' => '2026-09-03', 'opens' => '10:00', 'closes' => '18:00', 'note' => null],
+        ],
+    ]);
+
+    $this->travelTo('2026-09-03 09:59:00');
+    expect(DeskOpeningHours::isOpenNow($this->event->fresh()))->toBeFalse();
+
+    $this->travelTo('2026-09-03 10:00:00');
+    expect(DeskOpeningHours::isOpenNow($this->event->fresh()))->toBeTrue();
+
+    $this->travelTo('2026-09-03 18:00:00');
+    expect(DeskOpeningHours::isOpenNow($this->event->fresh()))->toBeFalse();
+
+    $this->travelTo('2026-09-04 12:00:00');
+    expect(DeskOpeningHours::isOpenNow($this->event->fresh()))->toBeFalse();
+
+    $this->event->update(['desk_opening_hours' => null]);
+    $this->travelTo('2026-09-03 12:00:00');
+    expect(DeskOpeningHours::isOpenNow($this->event->fresh()))->toBeFalse();
+});
+
+test('the booth split stops being published after the desk first day', function () {
+    // The split only runs while the desk has several counters open, which is its first
+    // day. `boothDay` is read off the published hours rather than the event's own
+    // `starts_at`, so retiming the desk moves the split with it.
+    $this->event->update([
+        'desk_opening_hours' => [
+            ['date' => '2026-09-03', 'opens' => '10:00', 'closes' => '18:00', 'note' => null],
+            ['date' => '2026-09-04', 'opens' => '10:00', 'closes' => '18:00', 'note' => null],
+        ],
+    ]);
+
+    $this->travelTo('2026-09-03 09:00:00');
+
+    get(route('info.pickup'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('boothsActive', true)
+            ->where('boothDay', '2026-09-03')
+        );
+
+    $this->travelTo('2026-09-04 09:00:00');
+
+    get(route('info.pickup'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('boothsActive', false));
 });

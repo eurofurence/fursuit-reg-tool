@@ -88,6 +88,40 @@ final class DeskOpeningHours
     }
 
     /**
+     * The first day the desk publishes hours for, `Y-m-d`, or null when it publishes none.
+     *
+     * `forEvent()` sorts by date, so the first row is the earliest one regardless of the
+     * order an operator typed them in. This is the day the booth split applies to.
+     */
+    public static function firstDate(?Event $event): ?string
+    {
+        return self::forEvent($event)[0]['date'] ?? null;
+    }
+
+    /**
+     * Whether the desk is open at this moment.
+     *
+     * Answered from the published rows and nothing else: a desk with no hours is never
+     * reported open, because the alternative is a nav badge that sends someone across
+     * the hall on a guess. Times are the event's local wall clock, which is what an
+     * operator typed and what an attendee reads off their phone.
+     */
+    public static function isOpenNow(?Event $event): bool
+    {
+        $now = CarbonImmutable::now();
+        $today = $now->format('Y-m-d');
+        $time = $now->format('H:i');
+
+        foreach (self::forEvent($event) as $row) {
+            if ($row['date'] === $today && $time >= $row['opens'] && $time < $row['closes']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * "10:00 – 18:00", the one string both the panel and the public page print.
      *
      * @param  array{opens: string, closes: string}  $row

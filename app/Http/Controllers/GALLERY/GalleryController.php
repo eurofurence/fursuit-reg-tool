@@ -116,7 +116,7 @@ class GalleryController extends Controller
         // Get all species for filter dropdown (only those used 10+ times)
         $allSpecies = Species::query()
             ->whereHas('fursuits', function ($q) {
-                $q->where('status', 'approved')->where('published', true);
+                $q->where('status', 'approved')->publicationAllowed()->where('published', true);
             }, '>=', 10)
             ->orderBy('name')
             ->get();
@@ -124,7 +124,7 @@ class GalleryController extends Controller
         // Get all events that have published fursuits
         $allEvents = Event::query()
             ->whereHas('fursuits', function ($q) {
-                $q->where('status', 'approved')->where('published', true);
+                $q->where('status', 'approved')->publicationAllowed()->where('published', true);
             })
             ->orderBy('starts_at', 'desc')
             ->get();
@@ -202,6 +202,7 @@ class GalleryController extends Controller
     {
         $count = Fursuit::query()
             ->where('status', 'approved')
+            ->publicationAllowed()
             ->where('published', true)
             ->count();
 
@@ -215,11 +216,17 @@ class GalleryController extends Controller
      * serving the print-quality master - those run past a megabyte at 2040x2720 - so a
      * fursuit whose variants have not been rendered yet simply is not listed. It appears
      * the moment GenerateFursuitWebpJob fills the columns in.
+     *
+     * `publicationAllowed()` is the reviewer's veto. It reads alongside `published`, not
+     * instead of it: the attendee's switch says they want to be here, the block says a
+     * reviewer decided this photo does not belong here, and a blocked fursuit whose owner
+     * flips the switch back on must still stay out.
      */
     private function publishedFursuits(): Builder
     {
         return Fursuit::query()
             ->where('status', 'approved')
+            ->publicationAllowed()
             ->whereNotNull('image')
             ->whereNotNull('image_thumb')
             ->where('published', true);

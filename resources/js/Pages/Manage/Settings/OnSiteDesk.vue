@@ -61,16 +61,47 @@ const hoursForm = useForm({
   hours: props.openingHours.map((row) => ({ ...row, note: row.note ?? '' })),
 });
 
+/**
+ * The convention itself, which is the only span the desk can be open in.
+ *
+ * The picker is bounded by it and so is the server (`updateHours`), because a date input
+ * with a `max` is a hint an operator can type straight past: the browser marks the field
+ * invalid without stopping the submit, and a day outside the convention would publish an
+ * opening time for a hall nobody is in.
+ */
+const firstDay = computed(() => props.event?.startsAt ?? null);
+const lastDay = computed(() => props.event?.endsAt ?? null);
+
+/** Held inside the convention, so a default never lands on a day the picker refuses. */
+const clampToEvent = (date) => {
+  if (!date) {
+    return '';
+  }
+
+  if (firstDay.value && date < firstDay.value) {
+    return firstDay.value;
+  }
+
+  if (lastDay.value && date > lastDay.value) {
+    return lastDay.value;
+  }
+
+  return date;
+};
+
 const addHourRow = () => {
   const previous = hoursForm.hours[hoursForm.hours.length - 1];
 
   // The next convention day, at the times the day before it ran. A desk schedule is
   // mostly the same day repeated, and the alternative default - today - is almost never
-  // the day being configured.
+  // the day being configured. The last day repeats itself rather than running past the
+  // end of the convention, and the duplicate is what the distinct rule then points at.
   hoursForm.hours.push({
-    date: previous?.date
-      ? dayjs(previous.date).add(1, 'day').format('YYYY-MM-DD')
-      : props.event?.startsAt ?? '',
+    date: clampToEvent(
+      previous?.date
+        ? dayjs(previous.date).add(1, 'day').format('YYYY-MM-DD')
+        : firstDay.value ?? '',
+    ),
     opens: previous?.opens ?? '10:00',
     closes: previous?.closes ?? '18:00',
     note: '',
@@ -92,6 +123,18 @@ const hoursDirty = computed(
 );
 
 const canAddHourRow = computed(() => hoursForm.hours.length < props.maxHourRows);
+
+// The bounds are named in the copy as well as enforced on the control, because a date
+// input that silently refuses a day out of range explains nothing about why.
+const hoursDescription = computed(() => {
+  const base = 'One row per convention day, by date. Shown on the public pickup page; publish nothing and the page stays quiet about times.';
+
+  if (!firstDay.value || !lastDay.value) {
+    return base;
+  }
+
+  return `${base} Dates are limited to ${dayjs(firstDay.value).format('D MMM YYYY')} to ${dayjs(lastDay.value).format('D MMM YYYY')}, the event's own dates.`;
+});
 
 /* -------------------------------------------------------------------- booth ranges */
 
@@ -184,7 +227,7 @@ const control =
     <!-- ============================================================ opening hours -->
     <FormSection
       title="Opening hours"
-      description="One row per convention day, by date. Shown on the public pickup page; publish nothing and the page stays quiet about times."
+      :description="hoursDescription"
     >
       <form class="space-y-2 py-2" @submit.prevent="submitHours">
         <div v-if="hoursForm.hours.length" class="space-y-1.5">
@@ -213,7 +256,8 @@ const control =
                 type="date"
                 :class="control"
                 :disabled="!canEdit"
-                :min="event?.startsAt ?? null"
+                :min="firstDay"
+                :max="lastDay"
               />
               <p v-if="hourError(index, 'date')" class="mt-1 text-[11px] text-state-danger">
                 {{ hourError(index, 'date') }}

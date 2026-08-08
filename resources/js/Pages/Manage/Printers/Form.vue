@@ -49,6 +49,9 @@ const typeOptions = computed(() => [placeholder, ...props.types]);
 const machineOptions = computed(() => [placeholder, ...props.machines]);
 const paperSizeOptions = computed(() => [placeholder, ...props.paperSizes]);
 
+/* What the agent last reported, as [{ name, detail }]. Empty on create. */
+const reportedPaperSizes = computed(() => props.printer?.reportedPaperSizes ?? []);
+
 const paperSizeHelper = computed(() =>
   props.paperSizes.length
     ? null
@@ -123,17 +126,29 @@ const submit = () => {
           />
 
           <!--
-            Disabled, exactly as Filament had it: the print agent owns this reading, so
-            the panel shows it and never writes it. PrinterRequest does not accept the
-            field either, so a crafted post cannot overwrite the hardware's own answer.
+            Read-only, and rows rather than the JSON document Filament printed into a
+            disabled Textarea: it is a short list of named sizes, which is a table, and the
+            braces were never information. The print agent owns this reading, so the panel
+            shows it and never writes it; PrinterRequest does not accept the field either,
+            so a crafted post cannot overwrite the hardware's own answer.
           -->
-          <FormField label="Paper Sizes">
-            <textarea
-              :value="printer?.paper_sizes ?? '{}'"
-              rows="10"
-              disabled
-              class="w-full rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 font-mono text-[12px] text-fg-1 opacity-60"
-            />
+          <FormField
+            label="Paper Sizes"
+            helper="Reported by the print agent when the printer checks in. Not editable here."
+          >
+            <ul v-if="reportedPaperSizes.length" class="space-y-1 py-1">
+              <li
+                v-for="(size, index) in reportedPaperSizes"
+                :key="index"
+                class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded border border-hairline bg-mg-surface-2 px-2 py-1.5"
+              >
+                <span class="text-[13px] text-fg-1">{{ size.name }}</span>
+                <span v-if="size.detail" class="text-[12px] text-fg-3">{{ size.detail }}</span>
+              </li>
+            </ul>
+            <span v-else class="flex h-8 items-center text-[13px] text-fg-3">
+              Nothing reported yet.
+            </span>
           </FormField>
 
           <FormField

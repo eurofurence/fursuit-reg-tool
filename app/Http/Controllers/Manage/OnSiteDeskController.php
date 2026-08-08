@@ -66,8 +66,8 @@ class OnSiteDeskController extends Controller
 
         return inertia('Manage/Settings/OnSiteDesk', [
             // The dates ride along because the hours editor is a list of calendar days:
-            // a new row defaults to the next convention day rather than to today, which
-            // is almost never the day being configured.
+            // they bound its date picker and a new row defaults to the next convention
+            // day rather than to today, which is almost never the day being configured.
             'event' => $event ? [
                 'id' => $event->id,
                 'name' => $event->name,
@@ -104,11 +104,32 @@ class OnSiteDeskController extends Controller
             return $this->noEvent('editing its opening hours');
         }
 
+        // The desk cannot be open on a day the convention is not running, so the event's
+        // own dates bound every row. The editor puts the same bounds on the date input,
+        // but a date input's `min`/`max` only marks the field invalid: the value still
+        // posts, so the rule has to exist here too.
+        $firstDay = $event->starts_at?->toDateString();
+        $lastDay = $event->ends_at?->toDateString();
+
+        $dateRules = ['required', 'date_format:Y-m-d', 'distinct'];
+
+        if ($firstDay !== null) {
+            $dateRules[] = 'after_or_equal:'.$firstDay;
+        }
+
+        if ($lastDay !== null) {
+            $dateRules[] = 'before_or_equal:'.$lastDay;
+        }
+
+        $withinEvent = $firstDay !== null && $lastDay !== null
+            ? 'The desk can only open between '.$firstDay.' and '.$lastDay.', the dates of '.$event->name.'.'
+            : 'That day is outside '.$event->name.'.';
+
         $validated = $request->validate([
             'hours' => ['present', 'array', 'max:'.DeskOpeningHours::MAX_ROWS],
             // `date_format` rather than `date`: only a real calendar day in the one shape
             // the column stores, so "31 September" is refused rather than rolled forward.
-            'hours.*.date' => ['required', 'date_format:Y-m-d', 'distinct'],
+            'hours.*.date' => $dateRules,
             'hours.*.opens' => ['required', 'date_format:H:i'],
             'hours.*.closes' => ['required', 'date_format:H:i'],
             'hours.*.note' => ['nullable', 'string', 'max:120'],
@@ -116,6 +137,8 @@ class OnSiteDeskController extends Controller
             'hours.*.date.required' => 'Every row needs a date.',
             'hours.*.date.date_format' => 'Pick a real calendar day.',
             'hours.*.date.distinct' => 'This day is already listed. Put both slots in one row, or use the note.',
+            'hours.*.date.after_or_equal' => $withinEvent,
+            'hours.*.date.before_or_equal' => $withinEvent,
             'hours.*.opens.date_format' => 'Opening times have to look like 10:00.',
             'hours.*.closes.date_format' => 'Closing times have to look like 18:00.',
         ]);

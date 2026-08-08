@@ -100,9 +100,9 @@ class AuthServiceProvider extends ServiceProvider
 
         /*
          * The /manage panel gate. Direct successor to User::canAccessPanel(), which
-         * returns is_admin || is_reviewer and is the only panel-level gate today, so
-         * nobody loses access at cutover. canAccessPanel() stays as it is: Filament
-         * still calls it.
+         * returned is_admin || is_reviewer and was the only panel-level gate, so nobody
+         * lost access at cutover. It is now the only place the rule is expressed:
+         * canAccessPanel() went with Filament.
          *
          * Both flags are cast bool on the model since phase 1; the explicit bool stays
          * so the gate does not depend on that.

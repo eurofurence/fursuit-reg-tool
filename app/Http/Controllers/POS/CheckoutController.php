@@ -8,6 +8,7 @@ use App\Domain\Checkout\Models\Checkout\Checkout;
 use App\Domain\Checkout\Models\Checkout\States\Active;
 use App\Domain\Checkout\Models\Checkout\States\Cancelled;
 use App\Domain\Checkout\Models\Checkout\States\Finished;
+use App\Domain\Checkout\Services\CheckoutService;
 use App\Domain\Checkout\Services\FiskalyService;
 use App\Http\Controllers\Controller;
 use App\Models\Badge\Badge;
@@ -15,9 +16,7 @@ use App\Models\Badge\State_Payment\Unpaid;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class CheckoutController extends Controller
@@ -49,7 +48,9 @@ class CheckoutController extends Controller
         }
 
         return Inertia::render('POS/Checkout/Show', [
-            'checkout' => $checkout->load('items'),
+            // The payable comes along so the price override dialog can name the
+            // fursuit rather than repeat "Fursuit Badge" once per line.
+            'checkout' => $checkout->load('items.payable.fursuit'),
             'transaction' => $transactionData ?? null,
         ]);
     }
@@ -94,48 +95,7 @@ class CheckoutController extends Controller
             return redirect()->back()->with(['error' => 'No badges found']);
         }
 
-        // Auto-cancel any previous ACTIVE checkouts for this machine
-        $this->cancelPreviousActiveCheckouts();
-
-        $checkout = DB::transaction(function () use ($badges, $data) {
-            $total = $badges->sum('total');
-            $subtotal = $badges->sum('subtotal');
-            $tax = $badges->sum('tax');
-
-            // Create Checkout
-            $checkout = Checkout::create([
-                'remote_id' => Str::uuid(),
-                'remote_rev_count' => 1,
-                'status' => 'ACTIVE',
-                'user_id' => $data['user_id'],
-                'cashier_id' => auth('machine-user')->id(),
-                'machine_id' => auth('machine')->user()->id,
-                'total' => $total,
-                'tax' => $tax,
-                'subtotal' => $subtotal,
-                'fiskaly_data' => [],
-            ]);
-
-            foreach ($badges as $badge) {
-                $checkout->items()->create([
-                    'payable_type' => Badge::class,
-                    'payable_id' => $badge->id,
-                    //
-                    'name' => $this->generateName($badge),
-                    'description' => $this->generateDescription($badge),
-                    //
-                    'total' => $badge->total,
-                    'tax' => $badge->tax,
-                    'subtotal' => $badge->subtotal,
-                ]);
-            }
-
-            return $checkout;
-        });
-
-        // Fiskaly
-        $fiskalyService = new FiskalyService;
-        $fiskalyService->updateOrCreateTransaction($checkout);
+        $checkout = (new CheckoutService)->create($badges, $data['user_id']);
 
         return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id]);
 
@@ -202,24 +162,6 @@ class CheckoutController extends Controller
         return redirect()->route('pos.checkout.show', ['checkout' => $checkout->id]);
     }
 
-    private function generateDescription(Badge $badge): array
-    {
-        $features = [];
-        if ($badge->dual_side_print) {
-            $features[] = 'Double Sided Print';
-        }
-        if ($badge->extra_copy_of) {
-            $features[] = 'Extra Copy';
-        }
-
-        return $features;
-    }
-
-    private function generateName(Badge $badge): string
-    {
-        return 'Fursuit Badge';
-    }
-
     /**
      * @return array|mixed
      *
@@ -244,52 +186,5 @@ class CheckoutController extends Controller
         }
 
         return $transactionData;
-    }
-
-    /**
-     * Cancel any previous ACTIVE checkouts for this machine
-     * This ensures only one checkout is active at a time per machine
-     */
-    private function cancelPreviousActiveCheckouts(): void
-    {
-        $machineId = auth('machine')->user()->id;
-
-        // Find all ACTIVE checkouts for this machine
-        $activeCheckouts = Checkout::where('machine_id', $machineId)
-            ->where('status', Active::$name)
-            ->get();
-
-        foreach ($activeCheckouts as $activeCheckout) {
-            try {
-                // Refresh from DB to get latest state
-                $activeCheckout->refresh();
-
-                // Skip if already cancelled
-                if ($activeCheckout->status instanceof Cancelled) {
-                    continue;
-                }
-
-                // Transition to cancelled state (this will handle Fiskaly cancellation via ToCancelled transition)
-                if ($activeCheckout->status->canTransitionTo(Cancelled::class)) {
-                    $activeCheckout->status->transitionTo(Cancelled::class);
-                }
-            } catch (\Exception $e) {
-                // Log the error but continue processing other checkouts
-                \Log::warning('Failed to cancel stale checkout', [
-                    'checkout_id' => $activeCheckout->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                // Force transition to cancelled even if Fiskaly fails
-                try {
-                    $activeCheckout->update(['status' => Cancelled::$name]);
-                } catch (\Exception $updateException) {
-                    \Log::error('Could not force cancel checkout', [
-                        'checkout_id' => $activeCheckout->id,
-                        'error' => $updateException->getMessage(),
-                    ]);
-                }
-            }
-        }
     }
 }
