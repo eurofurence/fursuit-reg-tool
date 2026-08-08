@@ -524,11 +524,15 @@ class AlertRelayTest(unittest.TestCase):
     class Inner:
         def __init__(self, result=True):
             self.calls = []
+            self.cleared = []
             self.result = result
 
         def alert(self, key, title, message, *args, **kwargs):
             self.calls.append((key, title, message))
             return self.result
+
+        def clear(self, key):
+            self.cleared.append(key)
 
     def relay(self, *responses, inner=None, chat_id="-100123"):
         subject, opener = channel(*responses, chat_id=chat_id)
@@ -544,6 +548,23 @@ class AlertRelayTest(unittest.TestCase):
 
         self.assertIn("Card jam", body)
         self.assertIn("Clear the jammed card", body)
+
+    def test_clearing_a_cooldown_reaches_the_notifier_underneath(self):
+        # The worker drops a fault's cooldown once the station is healthy
+        # again, so the same fault recurring is heard about twice. It looks for
+        # `clear` on whatever notifier it holds, and on a station with Telegram
+        # configured that is this relay rather than Pushover itself.
+        inner = self.Inner()
+        subject, _ = self.relay(inner=inner)
+
+        subject.clear("printer:ZXP9-Left:service_required")
+
+        self.assertEqual(inner.cleared, ["printer:ZXP9-Left:service_required"])
+
+    def test_clearing_survives_a_notifier_that_cannot(self):
+        subject, _ = self.relay(inner=object())
+
+        subject.clear("printer:ZXP9-Left:service_required")
 
     def test_a_fault_carries_no_control_keyboard(self):
         # The buttons belong on cards. Answering a jam should not mean working

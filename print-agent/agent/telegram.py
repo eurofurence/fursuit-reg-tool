@@ -562,6 +562,25 @@ class AlertRelay:
 
         return delivered
 
+    def clear(self, key: str) -> None:
+        """Forget a key's cooldown on the wrapped notifier.
+
+        The chat has no cooldown of its own - it is a log, and a repeated fault
+        belongs in it twice - so this exists purely to pass the call through.
+        Without it the worker's recovery hook finds no `clear` on the relay and
+        the Pushover cooldown outlives the fault on exactly the stations that
+        have Telegram configured.
+        """
+        clear = getattr(self.inner, "clear", None)
+
+        if not callable(clear):
+            return
+
+        try:
+            clear(key)
+        except Exception as error:  # noqa: BLE001 - see module docstring
+            log.warning("could not clear the alert cooldown: %s", error)
+
 
 class PhotoSender:
     """Posts cards on a thread of its own.

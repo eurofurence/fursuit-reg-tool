@@ -344,6 +344,11 @@ class _BaseWorker:
         self.current_job: Optional[Dict[str, Any]] = None
         self.last_outcome: Optional[Outcome] = None
 
+        # Alert keys raised since the station was last healthy, so their
+        # cooldown can be dropped the moment the fault clears. See
+        # _clear_alerts().
+        self._alerted: set = set()
+
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
@@ -874,8 +879,43 @@ class _BaseWorker:
         if self.notifier is None:
             return
 
+        self._alerted.add(key)
+
         _safely(self.notifier.alert, key, title, message,
                 stops_printing=stops_printing)
+
+    def _clear_alerts(self) -> None:
+        """Drop the cooldown on every alert raised since we were last healthy.
+
+        The notifier sends at most one alert per key per cooldown window, five
+        minutes by default, so that a jam does not become a hundred
+        notifications. Nothing ever told it a fault had been dealt with, so the
+        window kept running after the fix: a printer that went into
+        `service_required`, was cleared, printed three cards and faulted again
+        raised the same key inside the window and was silenced. The second
+        stop - the one that proves the first fix did not hold - was the one
+        nobody heard about.
+
+        Called from the point the station is provably healthy again, which is
+        the only place that knows the previous fault is over. Keys are cleared
+        as a set rather than individually because "we got past the gate" means
+        every one of them has gone: the tray was emptied, the jam cleared, the
+        server answered.
+        """
+        if self.notifier is None or not self._alerted:
+            return
+
+        clear = getattr(self.notifier, "clear", None)
+
+        # A notifier without a cooldown has nothing to forget.
+        if not callable(clear):
+            self._alerted.clear()
+            return
+
+        for key in self._alerted:
+            _safely(clear, key)
+
+        self._alerted.clear()
 
     def _call(self, function: Callable, *args) -> Any:
         """Best-effort call for anything that must not stop the printer.
@@ -1174,6 +1214,12 @@ class PrintWorker(_BaseWorker):
             self._recheck = self._printer_ready
 
             return Outcome(BLOCKED, blocked)
+
+        # Past the tray latch and the printer gate, so whatever stopped this
+        # station last has been dealt with. Forget the cooldowns now, or the
+        # next occurrence of the same fault is silent for the rest of the
+        # window - which is precisely the fault worth hearing about twice.
+        self._clear_alerts()
 
         if self.batch_id is None:
             return Outcome(EMPTY, "No batch selected")
