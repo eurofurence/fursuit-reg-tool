@@ -394,18 +394,20 @@ class BadgeController extends Controller
 
     /**
      * The audit's fourteen columns, in order, with the old panel's own labels verbatim,
-     * followed by Verified, which is not the audit's.
+     * plus the two the desk check-off added: Check off and Verified.
      *
      * Five are hidden by default, which is every `isToggledHiddenByDefault: true` flag
      * the old badge list carries: extra_copy, total, created_at, printed_at, picked_up_at
-     *. Verified is hidden too: it is read with the print_verified filter when a crate is
-     * being reconciled, and is noise the rest of the time.
+     *. The two check-off columns are hidden too: they are read when a crate is being
+     * reconciled, and are noise the rest of the time. Turning one on sticks - the column
+     * menu persists the hidden set per operator per table through TableColumnController -
+     * so ticking a crate off survives paging, sorting and filtering.
      *
      * @return array<int, Column>
      */
     private function columns(): array
     {
-        return [
+        return array_values(array_filter([
             // the old panel's ImageColumn is ->circular() here too.
             Column::image('fursuit.image', 'Image')->circular(),
             Column::text('fursuit.name', 'Fursuit')
@@ -420,6 +422,15 @@ class BadgeController extends Controller
             Column::copyable('custom_id', 'Badge ID')
                 ->searchable('custom_id')
                 ->toggleable(),
+            // The check-off box, sitting next to the number it is checked against, because
+            // that is the pair the operator's eye moves between while somebody reads the
+            // crate out loud. Writes on click, through BadgeVerificationController.
+            //
+            // Only for operators who may change badges: the cell carries the URL it posts
+            // to, and a reviewer offered a checkbox that 403s is worse than no checkbox.
+            Gate::allows('manage-admin')
+                ? Column::toggle('verify_print', 'Check off')->toggleable(hiddenByDefault: true)
+                : null,
             Column::text('sort_attendee_id', 'Attendee ID')
                 ->sortUsing(fn (Builder $query, string $direction) => $query->orderBy(
                     self::numeric('sort_attendee_id'),
@@ -449,7 +460,7 @@ class BadgeController extends Controller
             Column::datetime('verified_print_at', 'Verified')
                 ->toggleable(hiddenByDefault: true)
                 ->fallback('Not verified'),
-        ];
+        ]));
     }
 
     /**
@@ -475,6 +486,16 @@ class BadgeController extends Controller
                     : route('admin.settings.users.index', ['search' => $badge->fursuit->user->name]),
             ),
             'custom_id' => $badge->custom_id,
+            'verify_print' => [
+                'value' => $badge->verified_print_at !== null,
+                // The URL carries the state the operator is asking for, taken from what
+                // they are looking at, rather than "flip whatever is in the database when
+                // this arrives". The five-second poll rewrites it with the row.
+                'url' => route('admin.badges.verify', [
+                    'badge' => $badge->getKey(),
+                    'verified' => $badge->verified_print_at !== null ? 0 : 1,
+                ]),
+            ],
             'sort_attendee_id' => $badge->sort_attendee_id,
             'print_jobs_count' => $this->printJobs($badge),
             'status_fulfillment' => Status::badgeFulfillment($badge->status_fulfillment),

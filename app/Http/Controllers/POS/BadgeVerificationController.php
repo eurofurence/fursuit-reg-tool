@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers\POS;
 
-use App\Domain\Printing\Models\PrintJob;
-use App\Enum\PrintJobStatusEnum;
-use App\Enum\PrintVerificationSourceEnum;
+use App\Domain\Printing\Services\BadgePrintVerification;
 use App\Http\Controllers\Controller;
 use App\Models\Badge\Badge;
 use App\Models\Event;
@@ -12,7 +10,6 @@ use App\Models\EventUser;
 use App\Models\Machine;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 /**
@@ -148,27 +145,7 @@ class BadgeVerificationController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($badge) {
-            $badge->printJobs()
-                ->whereNotNull('verified_print_at')
-                ->get()
-                ->each(function (PrintJob $job) {
-                    $job->update([
-                        'verified_print_at' => null,
-                        'verification_source' => null,
-                        'verified_by_id' => null,
-                    ]);
-
-                    $job->batch?->recalculateCounters();
-                });
-
-            $badge->forceFill(['verified_print_at' => null])->saveQuietly();
-
-            activity()
-                ->performedOn($badge)
-                ->withProperties(['staff' => auth('machine-user')->user()?->name])
-                ->log('Badge check-off reverted at the desk');
-        });
+        BadgePrintVerification::revert($badge, 'at the desk', auth('machine-user')->user()?->name);
 
         return back()->with('verification', [
             'status' => 'reverted',
@@ -178,35 +155,20 @@ class BadgeVerificationController extends Controller
     }
 
     /**
-     * Stamp the card, through the print job where there is one.
+     * Stamp the card. The write itself is BadgePrintVerification, which the admin
+     * list's inline check-off column shares, so a crate reconciled on either
+     * screen leaves the same record behind.
      *
-     * `PrintJob::markVerified()` is what the agent calls, and it mirrors the
-     * stamp onto the badge and recounts the batch. A badge printed before print
-     * jobs existed, or whose job was pruned, still has to be checkable off, so
-     * the badge is stamped directly in that case.
+     * No `verified_by`: that column points at `users`, and the person at the desk
+     * is a `staff` row. The activity entry carries who.
      */
     private function verify(Badge $badge): void
     {
-        DB::transaction(function () use ($badge) {
-            $job = $badge->printJobs()
-                ->where('status', PrintJobStatusEnum::Printed)
-                ->orderByDesc('printed_at')
-                ->first()
-                ?? $badge->printJobs()->orderByDesc('id')->first();
-
-            if ($job) {
-                // No `verified_by`: that column points at `users`, and the person
-                // at the desk is a `staff` row. The activity log below carries who.
-                $job->markVerified(PrintVerificationSourceEnum::Operator);
-            } else {
-                $badge->forceFill(['verified_print_at' => now()])->saveQuietly();
-            }
-
-            activity()
-                ->performedOn($badge)
-                ->withProperties(['staff' => auth('machine-user')->user()?->name])
-                ->log('Badge checked off at the desk');
-        });
+        BadgePrintVerification::verify(
+            $badge,
+            'at the desk',
+            staff: auth('machine-user')->user()?->name,
+        );
     }
 
     /**

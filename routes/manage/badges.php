@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Manage\BadgeController;
 use App\Http\Controllers\Manage\BadgePrintController;
+use App\Http\Controllers\Manage\BadgeVerificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,6 +43,9 @@ Route::prefix('badges')->name('badges.')->group(function () {
         Route::post('bulk/print', [BadgePrintController::class, 'bulk'])->name('bulk.print');
         Route::post('bulk/status', [BadgeController::class, 'bulkStatus'])->name('bulk.status');
         Route::post('{badge}/print', [BadgePrintController::class, 'store'])->whereNumber('badge')->name('print');
+        // The inline check-off column. A POST carrying the state it wants, never a PUT on
+        // the record: it writes one column and it is not the form.
+        Route::post('{badge}/verify', [BadgeVerificationController::class, 'update'])->whereNumber('badge')->name('verify');
         Route::put('{badge}', [BadgeController::class, 'update'])->whereNumber('badge')->name('update');
         Route::delete('{badge}', [BadgeController::class, 'destroy'])->whereNumber('badge')->name('destroy');
     });
