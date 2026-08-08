@@ -36,7 +36,7 @@ class MachineUserAuthController extends Controller
                 ->with('staff')
                 ->first();
 
-            if (! $rfidTag || ! $rfidTag->staff->is_active) {
+            if (! $rfidTag || ! $rfidTag->staff || $rfidTag->staff->isArchived()) {
                 return redirect()->back()->withErrors(['code' => 'Invalid or inactive RFID badge']);
             }
 

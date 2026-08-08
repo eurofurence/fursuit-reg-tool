@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import Card from "primevue/card";
+import Card from "@/Components/UI/UiCard.vue";
 import Dropdown from "primevue/dropdown";
 import {
     BookOpen,

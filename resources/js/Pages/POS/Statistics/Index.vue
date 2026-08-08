@@ -1,426 +1,223 @@
 <script setup>
-import { Head } from "@inertiajs/vue3";
-import POSLayout from "@/Layouts/POSLayout.vue";
-import Card from 'primevue/card';
-import Chart from 'primevue/chart';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import Button from 'primevue/button';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, onMounted, onUnmounted } from 'vue';
+import POSLayout from '@/Layouts/POSLayout.vue';
 import { formatEuroFromCents } from '@/helpers.js';
-import { computed, ref, onMounted } from 'vue';
 
 defineOptions({
     layout: POSLayout,
 });
 
 const props = defineProps({
-    overview: Object,
-    badges: Object,
+    today: Object,
+    totals: Object,
+    fulfillment: Object,
     printing: Object,
-    sales: Object,
-    daily: Object,
-    financial: Object,
+    daily: Array,
     currentEvent: Object,
+    generatedAt: String,
 });
 
-const chartData = ref({});
-const chartOptions = ref({});
+// Server caches for 60s, so refreshing more often than that only costs requests.
+let refreshTimer = null;
 
 onMounted(() => {
-    setChartData();
-    setChartOptions();
+    refreshTimer = setInterval(() => {
+        router.reload({ preserveState: true, preserveScroll: true });
+    }, 60000);
 });
 
-const setChartData = () => {
-    const documentStyle = getComputedStyle(document.documentElement);
-    
-    chartData.value = {
-        labels: props.daily.event_days?.map(day => day.day_name) || [],
-        datasets: [
-            {
-                label: 'Revenue',
-                data: props.daily.event_days?.map(day => day.revenue / 100) || [], // Convert cents to euros
-                fill: false,
-                borderColor: documentStyle.getPropertyValue('--blue-500'),
-                tension: 0.4
-            },
-            {
-                label: 'Badges Created',
-                data: props.daily.event_days?.map(day => day.badges_created) || [],
-                fill: false,
-                borderColor: documentStyle.getPropertyValue('--green-500'),
-                tension: 0.4
-            }
-        ]
-    };
-};
+onUnmounted(() => clearInterval(refreshTimer));
 
-const setChartOptions = () => {
-    const documentStyle = getComputedStyle(document.documentElement);
-    const textColor = documentStyle.getPropertyValue('--text-color');
-    const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
-    const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
+const todayTiles = computed(() => [
+    { label: 'Taken today', value: formatEuroFromCents(props.today?.money_total ?? 0), sub: `${props.today?.checkouts ?? 0} checkouts`, primary: true },
+    { label: 'Cash today', value: formatEuroFromCents(props.today?.money_cash ?? 0) },
+    { label: 'Card today', value: formatEuroFromCents(props.today?.money_card ?? 0) },
+    { label: 'Handed out today', value: props.today?.badges_handed_out ?? 0 },
+    { label: 'Printed today', value: props.today?.badges_printed ?? 0 },
+    { label: 'Ordered today', value: props.today?.badges_ordered ?? 0 },
+]);
 
-    chartOptions.value = {
-        maintainAspectRatio: false,
-        aspectRatio: 0.6,
-        plugins: {
-            legend: {
-                labels: {
-                    color: textColor
-                }
-            }
-        },
-        scales: {
-            x: {
-                ticks: {
-                    color: textColorSecondary
-                },
-                grid: {
-                    color: surfaceBorder
-                }
-            },
-            y: {
-                ticks: {
-                    color: textColorSecondary
-                },
-                grid: {
-                    color: surfaceBorder
-                }
-            }
-        }
-    };
-};
+const fulfillmentRows = computed(() => Object.values(props.fulfillment ?? {}));
 
-const statusColors = {
-    pending: 'warning',
-    processing: 'info',
-    ready_for_pickup: 'success',
-    picked_up: 'secondary'
-};
+// Queue waits run to hours when the agent is down, and "8700s" is not a number
+// anyone can read at a glance.
+function formatDuration(seconds) {
+    if (seconds === null || seconds === undefined) {
+        return 'no prints today';
+    }
+    if (seconds < 60) {
+        return `${seconds}s`;
+    }
+    if (seconds < 3600) {
+        return `${Math.round(seconds / 60)}m`;
+    }
+
+    return `${Math.floor(seconds / 3600)}h ${Math.round((seconds % 3600) / 60)}m`;
+}
+
+const printRows = computed(() => [
+    { label: 'Waiting', value: props.printing?.pending ?? 0 },
+    { label: 'In progress', value: props.printing?.active ?? 0 },
+    { label: 'Failed', value: props.printing?.failed ?? 0, bad: (props.printing?.failed ?? 0) > 0 },
+    { label: 'Printed today', value: props.printing?.printed_today ?? 0 },
+    { label: 'Average wait to print', value: formatDuration(props.printing?.average_seconds) },
+    { label: 'Badge jobs / receipts', value: `${props.printing?.badge_jobs ?? 0} / ${props.printing?.receipt_jobs ?? 0}` },
+]);
+
+const maxDailyMoney = computed(
+    () => Math.max(1, ...(props.daily ?? []).map((day) => day.money ?? 0))
+);
+
+const generatedTime = computed(() => {
+    if (! props.generatedAt) {
+        return '';
+    }
+
+    return new Date(props.generatedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+});
 </script>
 
 <template>
     <Head>
         <title>POS - Statistics</title>
     </Head>
-    
-    <div class="w-full p-4">
-        <!-- Header -->
-        <div class="mb-6">
-            <Card class="shadow-lg border-0 bg-gradient-to-r from-green-600 to-green-700 text-white">
-                <template #content>
-                    <div class="p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h1 class="text-3xl font-bold mb-2">POS Statistics</h1>
-                                <p class="text-green-100 text-lg">
-                                    Event: {{ currentEvent?.name || 'No Active Event' }}
-                                </p>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-6xl opacity-20">
-                                    <i class="pi pi-chart-bar"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </Card>
+
+    <div class="w-full flex-1 flex flex-col gap-2 max-w-[1100px] mx-auto">
+        <div class="pos-card flex items-center justify-between gap-4 flex-wrap">
+            <div>
+                <h1 class="text-2xl font-bold leading-tight">Statistics</h1>
+                <span class="text-sm text-pos-muted">
+                    {{ currentEvent?.name || 'No active event' }} · counted at {{ generatedTime }}
+                </span>
+            </div>
+            <Link :href="route('pos.dashboard')" class="pos-btn">
+                Dashboard <span class="pos-kcap">−</span>
+            </Link>
         </div>
 
-        <!-- Daily Overview Stats -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-2xl font-bold text-blue-600">{{ overview.badges_ordered_today }}</div>
-                        <div class="text-sm text-gray-600">Badges Ordered Today</div>
-                    </div>
-                </template>
-            </Card>
-            
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-2xl font-bold text-green-600">{{ formatEuroFromCents(overview.money_processed_today * 100) }}</div>
-                        <div class="text-sm text-gray-600">Money Today (Total)</div>
-                    </div>
-                </template>
-            </Card>
-
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-2xl font-bold text-emerald-600">{{ formatEuroFromCents(overview.cash_processed_today * 100) }}</div>
-                        <div class="text-sm text-gray-600">Cash Today</div>
-                    </div>
-                </template>
-            </Card>
-
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-2xl font-bold text-cyan-600">{{ formatEuroFromCents(overview.card_processed_today * 100) }}</div>
-                        <div class="text-sm text-gray-600">Card Today</div>
-                    </div>
-                </template>
-            </Card>
-
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-2xl font-bold text-orange-600">{{ overview.badges_picked_up_today }}</div>
-                        <div class="text-sm text-gray-600">Badges Picked Up Today</div>
-                    </div>
-                </template>
-            </Card>
-            
-            <Card class="text-center">
-                <template #content>
-                    <div class="p-4">
-                        <div class="text-2xl font-bold text-purple-600">{{ overview.badges_printed_today }}</div>
-                        <div class="text-sm text-gray-600">Badges Printed Today</div>
-                    </div>
-                </template>
-            </Card>
+        <!-- Today: what this desk has done since midnight -->
+        <div class="pos-block pos-block--cols">
+            <div
+                v-for="tile in todayTiles"
+                :key="tile.label"
+                class="pos-stat"
+                :class="tile.primary ? 'pos-stat--primary' : ''"
+            >
+                <span class="pos-stat__k">{{ tile.label }}</span>
+                <span class="pos-stat__v">{{ tile.value }}</span>
+                <span v-if="tile.sub" class="pos-stat__sub">{{ tile.sub }}</span>
+            </div>
         </div>
 
-        <!-- Financial Overview -->
-        <div v-if="financial" class="mb-6">
-            <Card>
-                <template #title>
-                    <h3 class="text-lg font-semibold">Financial Overview</h3>
-                </template>
-                <template #content>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="text-center p-4">
-                            <div class="text-2xl font-bold text-green-600">€{{ financial.total_revenue.toFixed(2) }}</div>
-                            <div class="text-sm text-gray-600">Total Revenue</div>
-                            <div class="text-xs text-gray-500">Prepaid + Late</div>
-                        </div>
-                        <div class="text-center p-4">
-                            <div class="text-2xl font-bold text-cyan-600">€{{ financial.actual_revenue.toFixed(2) }}</div>
-                            <div class="text-sm text-gray-600">Actual Revenue</div>
-                            <div class="text-xs text-gray-500">POS + Prepaid</div>
-                        </div>
-                        <div class="text-center p-4">
-                            <div class="text-2xl font-bold text-blue-600">€{{ financial.prepaid_badge_revenue.toFixed(2) }}</div>
-                            <div class="text-sm text-gray-600">Prepaid Badges</div>
-                        </div>
-                        <div class="text-center p-4">
-                            <div class="text-2xl font-bold text-orange-600">€{{ financial.late_badge_revenue.toFixed(2) }}</div>
-                            <div class="text-sm text-gray-600">Late Badges</div>
-                        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <!-- Badge queue: where every badge of this event stands -->
+            <section class="flex flex-col gap-2">
+                <h2 class="pos-label px-1">Badges — {{ totals?.badges ?? 0 }} this event</h2>
+                <div class="pos-block pos-block--rows">
+                    <div v-for="row in fulfillmentRows" :key="row.label" class="pos-row">
+                        <span class="pos-row__body">
+                            <span class="pos-row__title">{{ row.label }}</span>
+                            <span class="pos-meter mt-2">
+                                <span class="pos-meter__fill" :style="{ width: `${row.percent}%` }"></span>
+                            </span>
+                        </span>
+                        <span class="pos-num text-lg font-bold w-16 text-right">{{ row.count }}</span>
+                        <span class="pos-num text-xs text-pos-muted w-10 text-right">{{ row.percent }}%</span>
                     </div>
-                    
-                    <div class="mt-4 pt-4 border-t border-gray-200">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="text-center p-4">
-                                <div class="text-2xl font-bold text-purple-600">€{{ financial.pos_badge_revenue.toFixed(2) }}</div>
-                                <div class="text-sm text-gray-600">POS Badge Sales</div>
-                            </div>
-                        </div>
+                </div>
+            </section>
+
+            <!-- Printing: the queue behind the desk -->
+            <section class="flex flex-col gap-2">
+                <h2 class="pos-label px-1">Printing</h2>
+                <div class="pos-block pos-block--rows">
+                    <div v-for="row in printRows" :key="row.label" class="pos-row">
+                        <span class="pos-row__body">
+                            <span class="pos-row__title">{{ row.label }}</span>
+                        </span>
+                        <span
+                            class="pos-num text-lg font-bold"
+                            :class="row.bad ? 'text-pos-bad' : ''"
+                        >{{ row.value }}</span>
                     </div>
-                    
-                    <div v-if="financial.printing_cost" class="mt-4 pt-4 border-t border-gray-200">
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div class="text-center p-4">
-                                <div class="text-2xl font-bold text-red-600">€{{ financial.printing_cost.toFixed(2) }}</div>
-                                <div class="text-sm text-gray-600">Printing Cost</div>
-                            </div>
-                            <div class="text-center p-4">
-                                <div :class="['text-2xl font-bold', financial.profit_margin >= 0 ? 'text-green-600' : 'text-red-600']">
-                                    €{{ financial.profit_margin.toFixed(2) }}
-                                </div>
-                                <div class="text-sm text-gray-600">Profit/Loss</div>
-                            </div>
-                            <div class="text-center p-4">
-                                <div :class="['text-2xl font-bold', financial.money_needed_to_cover > 0 ? 'text-red-600' : 'text-green-600']">
-                                    €{{ financial.money_needed_to_cover.toFixed(2) }}
-                                </div>
-                                <div class="text-sm text-gray-600">Still Needed</div>
-                            </div>
-                            <div class="text-center p-4">
-                                <div :class="['text-2xl font-bold', financial.is_profitable ? 'text-green-600' : 'text-red-600']">
-                                    {{ financial.is_profitable ? 'Covered' : 'Not Covered' }}
-                                </div>
-                                <div class="text-sm text-gray-600">Cost Status</div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </Card>
+                </div>
+            </section>
         </div>
 
-        <!-- Charts and Tables Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <!-- Event Days Chart -->
-            <Card>
-                <template #content>
-                    <Chart type="line" :data="chartData" :options="chartOptions" class="h-64" />
-                </template>
-            </Card>
-
-            <!-- Badge Status Breakdown -->
-            <Card>
-                <template #title>
-                    <h3 class="text-lg font-semibold">Badge Status Overview</h3>
-                </template>
-                <template #content>
-                    <div class="space-y-4">
-                        <div>
-                            <h4 class="font-medium mb-2">Payment Status</h4>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-sm">Paid</span>
-                                <span class="font-semibold">{{ badges.by_payment_status.paid }}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm">Unpaid</span>
-                                <span class="font-semibold text-red-600">{{ badges.by_payment_status.unpaid }}</span>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <h4 class="font-medium mb-2">Fulfillment Status</h4>
-                            <div class="space-y-1">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Pending</span>
-                                    <span class="font-semibold text-yellow-600">{{ badges.by_fulfillment_status.pending }}</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Processing</span>
-                                    <span class="font-semibold text-blue-600">{{ badges.by_fulfillment_status.processing }}</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Ready for Pickup</span>
-                                    <span class="font-semibold text-green-600">{{ badges.by_fulfillment_status.ready_for_pickup }}</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm">Picked Up</span>
-                                    <span class="font-semibold text-gray-600">{{ badges.by_fulfillment_status.picked_up }}</span>
-                                </div>
-                            </div>
-                        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <!-- Money for the whole event -->
+            <section class="flex flex-col gap-2">
+                <h2 class="pos-label px-1">Money · whole event</h2>
+                <div class="pos-block pos-block--rows">
+                    <div class="pos-row">
+                        <span class="pos-row__body">
+                            <span class="pos-row__title">Taken in total</span>
+                            <span class="pos-row__sub">{{ totals?.checkouts ?? 0 }} finished checkouts</span>
+                        </span>
+                        <span class="pos-num text-lg font-bold">{{ formatEuroFromCents(totals?.money_total ?? 0) }}</span>
                     </div>
-                </template>
-            </Card>
+                    <div class="pos-row">
+                        <span class="pos-row__body"><span class="pos-row__title">Cash</span></span>
+                        <span class="pos-num text-lg font-bold">{{ formatEuroFromCents(totals?.money_cash ?? 0) }}</span>
+                    </div>
+                    <div class="pos-row">
+                        <span class="pos-row__body"><span class="pos-row__title">Card</span></span>
+                        <span class="pos-num text-lg font-bold">{{ formatEuroFromCents(totals?.money_card ?? 0) }}</span>
+                    </div>
+                    <div class="pos-row" :class="(totals?.badges_unpaid ?? 0) > 0 ? 'pos-row--bad' : ''">
+                        <span class="pos-row__body">
+                            <span class="pos-row__title">Still unpaid</span>
+                            <span class="pos-row__sub">{{ totals?.badges_unpaid ?? 0 }} badges not yet paid for</span>
+                        </span>
+                        <span class="pos-num text-lg font-bold">{{ formatEuroFromCents(totals?.unpaid_value ?? 0) }}</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Counts that describe the event rather than the day -->
+            <section class="flex flex-col gap-2">
+                <h2 class="pos-label px-1">Event</h2>
+                <div class="pos-block pos-block--rows">
+                    <div class="pos-row">
+                        <span class="pos-row__body"><span class="pos-row__title">Attendees registered</span></span>
+                        <span class="pos-num text-lg font-bold">{{ totals?.participants ?? 0 }}</span>
+                    </div>
+                    <div class="pos-row">
+                        <span class="pos-row__body"><span class="pos-row__title">Badges ordered</span></span>
+                        <span class="pos-num text-lg font-bold">{{ totals?.badges ?? 0 }}</span>
+                    </div>
+                    <div class="pos-row">
+                        <span class="pos-row__body"><span class="pos-row__title">Double sided</span></span>
+                        <span class="pos-num text-lg font-bold">{{ totals?.double_sided ?? 0 }}</span>
+                    </div>
+                    <div class="pos-row">
+                        <span class="pos-row__body"><span class="pos-row__title">Spare copies</span></span>
+                        <span class="pos-num text-lg font-bold">{{ totals?.extra_copies ?? 0 }}</span>
+                    </div>
+                </div>
+            </section>
         </div>
 
-        <!-- Detailed Stats Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <!-- Printing Stats -->
-            <Card>
-                <template #title>
-                    <h3 class="text-lg font-semibold">Printing Statistics</h3>
-                </template>
-                <template #content>
-                    <div class="space-y-3">
-                        <div class="flex justify-between">
-                            <span>Total Jobs</span>
-                            <span class="font-semibold">{{ printing.total_jobs }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Pending</span>
-                            <span class="font-semibold text-yellow-600">{{ printing.pending_jobs }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Completed</span>
-                            <span class="font-semibold text-green-600">{{ printing.printed_jobs }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Jobs Today</span>
-                            <span class="font-semibold">{{ printing.jobs_today }}</span>
-                        </div>
-                        <div v-if="printing.average_print_time" class="flex justify-between">
-                            <span>Avg. Print Time</span>
-                            <span class="font-semibold">{{ printing.average_print_time }}min</span>
-                        </div>
-                    </div>
-                </template>
-            </Card>
-
-            <!-- Sales Stats -->
-            <Card>
-                <template #title>
-                    <h3 class="text-lg font-semibold">Sales Statistics</h3>
-                </template>
-                <template #content>
-                    <div class="space-y-3">
-                        <div class="flex justify-between">
-                            <span>Total Revenue</span>
-                            <span class="font-semibold text-green-600">{{ formatEuroFromCents(sales.total_revenue) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Today's Revenue</span>
-                            <span class="font-semibold">{{ formatEuroFromCents(sales.today_revenue) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Avg. Order Value</span>
-                            <span class="font-semibold">{{ formatEuroFromCents(sales.average_order_value) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Transactions Today</span>
-                            <span class="font-semibold">{{ sales.transactions_today }}</span>
-                        </div>
-                    </div>
-                </template>
-            </Card>
-
-            <!-- Badge Upgrades -->
-            <Card>
-                <template #title>
-                    <h3 class="text-lg font-semibold">Badge Upgrades</h3>
-                </template>
-                <template #content>
-                    <div class="space-y-3">
-                        <div class="flex justify-between">
-                            <span>Total Badges</span>
-                            <span class="font-semibold">{{ badges.total }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Double-Sided</span>
-                            <span class="font-semibold text-blue-600">{{ badges.upgrades.double_sided }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Extra Copies</span>
-                            <span class="font-semibold text-purple-600">{{ badges.upgrades.extra_copies }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Upgrade Rate</span>
-                            <span class="font-semibold">{{ Math.round(((badges.upgrades.double_sided + badges.upgrades.extra_copies) / badges.total) * 100) }}%</span>
-                        </div>
-                    </div>
-                </template>
-            </Card>
-        </div>
-
-        <!-- Event Days Breakdown -->
-        <Card>
-            <template #content>
-                <DataTable :value="daily.event_days" class="p-datatable-sm">
-                    <Column field="day_name" header="Day"></Column>
-                    <Column field="badges_created" header="Created"></Column>
-                    <Column field="badges_paid" header="Paid"></Column>
-                    <Column field="revenue" header="Revenue">
-                        <template #body="slotProps">
-                            {{ formatEuroFromCents(slotProps.data.revenue) }}
-                        </template>
-                    </Column>
-                    <Column field="print_jobs" header="Prints"></Column>
-                </DataTable>
-            </template>
-        </Card>
-
-        <!-- Back Button -->
-        <div class="mt-6 flex justify-center">
-            <Button 
-                label="Back to Dashboard" 
-                icon="pi pi-arrow-left" 
-                severity="secondary"
-                tag="a"
-                :href="route('pos.dashboard')"
-            />
-        </div>
+        <!-- Per day of the convention. Bars are relative to the busiest day. -->
+        <section v-if="daily?.length" class="flex flex-col gap-2">
+            <h2 class="pos-label px-1">By event day</h2>
+            <div class="pos-block pos-block--rows">
+                <div v-for="day in daily" :key="day.date" class="pos-row">
+                    <span class="w-16 shrink-0">
+                        <span class="pos-row__title">{{ day.day_name }}</span>
+                        <span class="pos-row__sub pos-num">{{ day.date.slice(8) }}.{{ day.date.slice(5, 7) }}.</span>
+                    </span>
+                    <span class="pos-row__body">
+                        <span class="pos-meter">
+                            <span class="pos-meter__fill" :style="{ width: `${Math.round((day.money / maxDailyMoney) * 100)}%` }"></span>
+                        </span>
+                    </span>
+                    <span class="pos-num text-sm text-pos-muted w-24 text-right">{{ day.badges_ordered }} ordered</span>
+                    <span class="pos-num text-sm text-pos-muted w-28 text-right">{{ day.badges_handed_out }} handed out</span>
+                    <span class="pos-num font-bold w-28 text-right">{{ formatEuroFromCents(day.money) }}</span>
+                </div>
+            </div>
+        </section>
     </div>
 </template>

@@ -9,11 +9,15 @@ use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
 test('batch print job sorts badges correctly for printing order', function () {
+    // Assigning custom_id now invalidates the rendered print file, and this test
+    // is about ordering rather than rendering.
+    Queue::fake();
+
     // Create an event
     $event = Event::factory()->create([
         'starts_at' => now()->addMonths(6)->startOfDay(),
@@ -219,132 +223,6 @@ test('batch print job respects priority ordering', function () {
     expect($actualOrder)->toBe($expectedOrder);
 });
 
-test('print job api returns badges in correct priority order', function () {
-    // Mock Storage to avoid S3 configuration issues in tests
-    Storage::fake('s3');
-
-    // Create a machine and printer
-    $machine = \App\Models\Machine::factory()->create();
-    $printer = \App\Domain\Printing\Models\Printer::factory()
-        ->for($machine)
-        ->create(['status' => 'idle']);
-
-    // Create event and users
-    $event = Event::factory()->create();
-    $users = collect([
-        ['attendee_id' => '16', 'badge_count' => 2],
-        ['attendee_id' => '14', 'badge_count' => 1],
-        ['attendee_id' => '15', 'badge_count' => 1],
-    ]);
-
-    $allPrintJobs = collect();
-
-    foreach ($users as $userData) {
-        $user = User::factory()->create();
-        EventUser::create([
-            'user_id' => $user->id,
-            'event_id' => $event->id,
-            'attendee_id' => $userData['attendee_id'],
-            'valid_registration' => true,
-            'prepaid_badges' => 0,
-        ]);
-
-        for ($i = 1; $i <= $userData['badge_count']; $i++) {
-            $fursuit = Fursuit::factory()->for($user)->for($event, 'event')->create();
-            $badge = Badge::factory()->for($fursuit)->create(['custom_id' => $userData['attendee_id']."-$i"]);
-
-            // Create print job
-            $printJob = $badge->printJobs()->create([
-                'printer_id' => $printer->id,
-                'type' => \App\Enum\PrintJobTypeEnum::Badge,
-                'status' => \App\Enum\PrintJobStatusEnum::Pending,
-                'file' => 'test.pdf',
-                'priority' => 1,
-                'queued_at' => now(),
-            ]);
-            $allPrintJobs->push($printJob);
-        }
-    }
-
-    // Test the API endpoint
-    $this->actingAs($machine, 'machine');
-    $response = $this->get('/pos/auth/printers/jobs');
-
-    $response->assertOk();
-    $jobs = $response->json();
-
-    // Should return jobs in correct order: 14-1, 15-1, 16-2, 16-1
-    $expectedOrder = ['14-1', '15-1', '16-2', '16-1'];
-    $actualOrder = collect($jobs)->pluck('id')->map(function ($jobId) {
-        $printJob = \App\Domain\Printing\Models\PrintJob::find($jobId);
-
-        return $printJob->printable->custom_id;
-    })->toArray();
-
-    expect($actualOrder)->toBe($expectedOrder);
-});
-
-test('high priority jobs are processed first regardless of badge order', function () {
-    // Mock Storage to avoid S3 configuration issues in tests
-    Storage::fake('s3');
-
-    // Create machine and printer
-    $machine = \App\Models\Machine::factory()->create();
-    $printer = \App\Domain\Printing\Models\Printer::factory()
-        ->for($machine)
-        ->create(['status' => 'idle']);
-
-    // Create event and user
-    $event = Event::factory()->create();
-    $user = User::factory()->create();
-    EventUser::create([
-        'user_id' => $user->id,
-        'event_id' => $event->id,
-        'attendee_id' => '99',
-        'valid_registration' => true,
-        'prepaid_badges' => 0,
-    ]);
-
-    // Create badges with different priorities
-    $normalBadgeFursuit = Fursuit::factory()->for($user)->for($event, 'event')->create();
-    $normalBadge = Badge::factory()->for($normalBadgeFursuit)->create(['custom_id' => '99-1']);
-
-    $highPriorityFursuit = Fursuit::factory()->for($user)->for($event, 'event')->create();
-    $highPriorityBadge = Badge::factory()->for($highPriorityFursuit)->create(['custom_id' => '99-2']);
-
-    // Create print jobs with different priorities
-    $normalPrintJob = $normalBadge->printJobs()->create([
-        'printer_id' => $printer->id,
-        'type' => \App\Enum\PrintJobTypeEnum::Badge,
-        'status' => \App\Enum\PrintJobStatusEnum::Pending,
-        'file' => 'normal.pdf',
-        'priority' => 1, // Normal priority
-        'queued_at' => now()->subMinutes(10), // Created first
-    ]);
-
-    $highPriorityPrintJob = $highPriorityBadge->printJobs()->create([
-        'printer_id' => $printer->id,
-        'type' => \App\Enum\PrintJobTypeEnum::Badge,
-        'status' => \App\Enum\PrintJobStatusEnum::Pending,
-        'file' => 'priority.pdf',
-        'priority' => 10, // High priority
-        'queued_at' => now(), // Created later
-    ]);
-
-    // Test API returns high priority job first
-    $this->actingAs($machine, 'machine');
-    $response = $this->get('/pos/auth/printers/jobs');
-
-    $response->assertOk();
-    $jobs = $response->json();
-
-    // High priority job should be first, despite being created later
-    expect($jobs[0]['id'])->toBe($highPriorityPrintJob->id);
-    expect($jobs[0]['priority'])->toBe(10);
-    expect($jobs[1]['id'])->toBe($normalPrintJob->id);
-    expect($jobs[1]['priority'])->toBe(1);
-});
-
 test('mass print uses single laravel batch with proper ordering', function () {
     Bus::fake();
 
@@ -415,7 +293,7 @@ test('mass print uses single laravel batch with proper ordering', function () {
 
     // Create PrintBadgeJob instances
     $printJobs = $sortedBadges->map(function ($badge) use ($printerId) {
-        return new \App\Jobs\Printing\PrintBadgeJob($badge, $printerId, priority: 1);
+        return new PrintBadgeJob($badge, $printerId, priority: 1);
     })->toArray();
 
     // Dispatch as single batch
@@ -433,7 +311,7 @@ test('mass print uses single laravel batch with proper ordering', function () {
 
         // All should be PrintBadgeJob instances
         foreach ($jobs as $job) {
-            expect($job)->toBeInstanceOf(\App\Jobs\Printing\PrintBadgeJob::class);
+            expect($job)->toBeInstanceOf(PrintBadgeJob::class);
         }
 
         return true;

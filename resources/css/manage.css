@@ -1,0 +1,513 @@
+/*
+ * /manage panel: the "Control Room" skin.
+ *
+ * Third token namespace in this repo, deliberately disjoint from the other two:
+ * app.css owns the public site's ramp (--primary-*, --surface-*), pos.css owns the
+ * POS "Cool Ledger" (--pos-*), and nothing here may disturb either. The names
+ * are ported from ef-streaming's Manage components; only the surface ramp
+ * collides, so streaming's surface-0..3 are --mg-surface-0..3 here. fg-1..3,
+ * hairline and state-* are unused names in this repo and keep theirs.
+ *
+ * Values are re-authored, not copied. Streaming declares these as oklch() under
+ * a Tailwind 4 @theme; this repo is Tailwind 3 and consumes them as
+ * rgb(var(--x) / <alpha-value>), which cannot parse an oklch() string, so each
+ * colour is converted once to space-separated sRGB channels, the same shape as
+ * --pos-canvas: 233 237 244. The perceptual intent is unchanged: a dark-first
+ * control room, surfaces stacked deepest to raised with a faint 200-hue chroma
+ * so they read as cool neutral rather than dead grey, and state colour as the
+ * only colour in the UI.
+ *
+ * See docs/admin/rebuild-plan.md 1.3 and 1.4.
+ *
+ * Imported from Layouts/ManageLayout.vue, not from app.js, so the panel's
+ * tokens ship with the panel's chunk.
+ */
+
+/*
+ * Tokens live on :root, not on .manage, for the same reason pos.css puts the
+ * POS tokens there: the panel's overlays are teleported to <body>, outside the
+ * layout subtree. ActionButton's confirm modal is a ManageDialog and teleports,
+ * so scoping the tokens under .manage would leave every confirm modal resolving
+ * against undefined properties. .manage claims only the canvas.
+ *
+ * The dark block is the :root block: /manage ships dark only, and it must not
+ * depend on the app's darkMode class being set. The mg-* namespace is read by
+ * nothing outside /manage, so owning :root costs the rest of the app nothing.
+ */
+:root {
+    /* Surfaces, deepest to raised. 0 app background, 1 rail and top strip,
+       2 cards / table header / filter bar, 3 row hover and popovers. */
+    --mg-surface-0: 9 14 15;
+    --mg-surface-1: 15 21 21;
+    --mg-surface-2: 21 28 28;
+    --mg-surface-3: 29 38 38;
+
+    /* Text, labels, placeholders. */
+    --fg-1: 241 246 246;
+    --fg-2: 167 176 176;
+    --fg-3: 115 125 125;
+
+    /* 1px separators. */
+    --hairline: 34 43 43;
+
+    /* State. Resolved from a tone name the server sends, never derived on the
+       client; see App\Support\Manage\Status and tones.js. */
+    --state-live: 59 198 179;
+    --state-ok: 85 201 117;
+    --state-warn: 242 176 54;
+    --state-idle: 115 125 125;
+    --state-danger: 247 93 89;
+    --state-info: 86 172 240;
+
+    /* Density (plan 1.4). Table rows 28px, header row 24px. The deliberate
+       successor to the old panel's 2px cell padding. */
+    --mg-row: 28px;
+    --mg-row-head: 24px;
+    --mg-strip: 40px;
+    --mg-rail: 240px;
+
+    /* The panel's one line box. A token rather than a literal because the native
+       control rules at the bottom of this file have to reproduce it exactly: a
+       <select> whose line box is taller than its content box cannot be centred
+       (see the note there), so both have to move together or they drift. */
+    --mg-line: 18px;
+
+    /* Ids, RFID contents, TSE serials, setup codes and PINs. */
+    --mg-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/*
+ * Restated under .dark so the panel is identical whether or not the app's
+ * darkMode class is on the html element. The public site toggles it; the admin
+ * panel does not follow it anywhere.
+ */
+.dark {
+    --mg-surface-0: 9 14 15;
+    --mg-surface-1: 15 21 21;
+    --mg-surface-2: 21 28 28;
+    --mg-surface-3: 29 38 38;
+
+    --fg-1: 241 246 246;
+    --fg-2: 167 176 176;
+    --fg-3: 115 125 125;
+
+    --hairline: 34 43 43;
+
+    --state-live: 59 198 179;
+    --state-ok: 85 201 117;
+    --state-warn: 242 176 54;
+    --state-idle: 115 125 125;
+    --state-danger: 247 93 89;
+    --state-info: 86 172 240;
+}
+
+/*
+ * The light value block, kept so a light panel is one class away if it is ever
+ * wanted. Nothing sets it, exactly as in ef-streaming. Put it on the same
+ * element as .manage and on the teleport root, or it will not reach overlays.
+ */
+.manage-light {
+    --mg-surface-0: 250 250 250;
+    --mg-surface-1: 255 255 255;
+    --mg-surface-2: 243 246 246;
+    --mg-surface-3: 232 236 236;
+
+    --fg-1: 22 22 22;
+    --fg-2: 85 85 85;
+    --fg-3: 128 128 128;
+
+    --hairline: 220 222 223;
+
+    --state-live: 0 117 103;
+    --state-ok: 5 137 62;
+    --state-warn: 185 118 0;
+    --state-idle: 128 128 128;
+    --state-danger: 204 39 46;
+    --state-info: 23 119 184;
+}
+
+/*
+ * The --surface-* ramp is the app-wide one, re-pointed and inverted here (0 is
+ * the raised card, 950 is near-white text) so that any third-party widget
+ * rendered inside .manage would re-skin itself to the control room without a
+ * preset edit. Same mechanism pos.css uses, opposite direction.
+ *
+ * The panel's own components read the mg-* tokens instead, so nothing currently
+ * reads this ramp. It is kept rather than deleted because it is the only thing
+ * standing between a widget someone drops in later and the public site's light
+ * surfaces; that is the owner's call, not a cleanup to make in passing.
+ *
+ * .manage-surface is still load-bearing, and for the other half of this file:
+ * it carries the 13px/18px base, color-scheme and the mg-num / mg-mono /
+ * mg-label rules to nodes rendered outside the .manage subtree. ManageDialog's
+ * backdrop and ToastHost's stack both wear it, the way .pos-surface is worn.
+ */
+.manage,
+.manage-surface {
+    --surface-0: 21 28 28;
+    --surface-50: 25 33 33;
+    --surface-100: 29 38 38;
+    --surface-200: 39 48 48;
+    --surface-300: 54 63 64;
+    --surface-400: 78 87 88;
+    --surface-500: 106 116 116;
+    --surface-600: 136 145 146;
+    --surface-700: 167 176 176;
+    --surface-800: 197 204 204;
+    --surface-900: 224 230 230;
+    --surface-950: 241 246 246;
+
+    /* Native controls, scrollbars and form fields follow. */
+    color-scheme: dark;
+}
+
+.manage {
+    background: rgb(var(--mg-surface-0));
+    color: rgb(var(--fg-1));
+    font-size: 13px;
+    line-height: var(--mg-line);
+}
+
+.manage-surface {
+    color: rgb(var(--fg-1));
+    font-size: 13px;
+    line-height: var(--mg-line);
+}
+
+/*
+ * Every numeric in the panel is tabular and right-aligned (plan 1.4). Applied
+ * here rather than per call site so a money cell added later cannot forget it.
+ */
+.manage .mg-num,
+.manage-surface .mg-num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.manage .mg-mono,
+.manage-surface .mg-mono {
+    font-family: var(--mg-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+/* 11px uppercase, 0.06em tracking. Column headers, filter labels, group titles. */
+.manage .mg-label,
+.manage-surface .mg-label {
+    font-size: 11px;
+    line-height: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgb(var(--fg-3));
+}
+
+/* ==========================================================================
+ * Native form controls.
+ *
+ * @tailwindcss/forms is registered globally in tailwind.config.js, and its base
+ * layer puts `appearance: none` plus a hard-coded light palette on every
+ * checkbox, radio, select, input and textarea in the app. That is the whole
+ * reason the panel's controls look wrong:
+ *
+ *   - `color-scheme: dark` above is inert. It only governs controls the UA still
+ *     paints itself, and `appearance: none` has already taken that job away.
+ *   - `accent-color` (the `accent-state-live` utility at most panel call sites)
+ *     is inert for the same reason, so the boxes render white with a grey border
+ *     and a blue-600 tick, in a near-black panel.
+ *   - `:focus` gets a blue-600 ring drawn as a box-shadow, which no `outline-*`
+ *     or `focus:border-*` utility at a call site can reach.
+ *
+ * The plugin cannot be dropped: the public site, the POS and Catch-Em-All are
+ * all drawn against it. So the panel re-points the plugin's own mechanism at the
+ * mg-* tokens instead of fighting it, scoped to the two panel roots.
+ *
+ * Scoped to the roots rather than written per component on purpose. The panel
+ * has checkboxes in FormField, FilterBar, DataTable (three of them) and the
+ * staff form, and any list added later gets them for free; a per-component class
+ * is a rule every future call site can forget.
+ *
+ * The plugin's selectors wrap the attribute in `:where()`, so they weigh a bare
+ * element selector and every rule below outranks them without !important.
+ * ========================================================================== */
+
+/*
+ * The box itself. `color` is load-bearing rather than decorative: the plugin
+ * paints the checked and indeterminate fill with `currentColor`, so setting the
+ * text colour here is what makes the tick teal.
+ */
+.manage input[type='checkbox'],
+.manage input[type='radio'],
+.manage-surface input[type='checkbox'],
+.manage-surface input[type='radio'] {
+    color: rgb(var(--state-live));
+    background-color: rgb(var(--mg-surface-2));
+    border-color: rgb(var(--hairline));
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease;
+}
+
+/* The plugin squares the checkbox off completely; the panel rounds every other
+   1px box by 4px, so a 3px corner on a 16px control matches without looking
+   like a button. Radios keep the plugin's circle. */
+.manage input[type='checkbox'],
+.manage-surface input[type='checkbox'] {
+    border-radius: 3px;
+}
+
+/*
+ * Checked and indeterminate share one fill. The plugin sets `border-color:
+ * transparent` here, which on a dark canvas eats a pixel off every edge and
+ * makes a ticked box read smaller than an empty one, so the border is kept and
+ * matched to the fill.
+ *
+ * DataTable's select-all is the indeterminate one: some rows on the page ticked,
+ * not all.
+ */
+.manage input[type='checkbox']:checked,
+.manage input[type='checkbox']:indeterminate,
+.manage input[type='radio']:checked,
+.manage-surface input[type='checkbox']:checked,
+.manage-surface input[type='checkbox']:indeterminate,
+.manage-surface input[type='radio']:checked {
+    background-color: rgb(var(--state-live));
+    border-color: rgb(var(--state-live));
+}
+
+/*
+ * The glyphs. Same paths the plugin ships, re-inked: it draws them white, and
+ * white on --state-live is about 1.9:1. --mg-surface-0 against the same teal is
+ * roughly 9.8:1, so the tick is the panel's darkest surface rather than white.
+ *
+ * The colour is a literal, not a token, because a data: URI cannot read a custom
+ * property. That is the one place in this file where an mg-* value is repeated
+ * by hand: --mg-surface-0 is 9 14 15, which is #090e0f. Changing that token
+ * means changing these three URIs.
+ */
+.manage input[type='checkbox']:checked,
+.manage-surface input[type='checkbox']:checked {
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='%23090e0f' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+}
+
+.manage input[type='checkbox']:indeterminate,
+.manage-surface input[type='checkbox']:indeterminate {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3e%3cpath stroke='%23090e0f' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8h8'/%3e%3c/svg%3e");
+}
+
+.manage input[type='radio']:checked,
+.manage-surface input[type='radio']:checked {
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='%23090e0f' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");
+}
+
+/*
+ * Hover. Guarded on :not(:disabled) because :hover does still match a disabled
+ * input, so without it a dead control would light up under the pointer.
+ *
+ * An empty box answers by lifting a surface and warming its border; a filled one
+ * has no room to change colour without leaving the palette, so it brightens.
+ *
+ * :not(:checked):not(:indeterminate) is what keeps those two answers apart, and it is
+ * load-bearing rather than tidy. `:not(:disabled):hover` adds two pseudo-classes where
+ * `:checked` adds one, so without the guard this rule outranks the filled state and
+ * repaints a ticked box back to the empty surface the moment the pointer touches it -
+ * leaving the tick, which is drawn in --mg-surface-0, near-black on near-black. The
+ * brightness rule below cannot rescue it: it sets `filter`, not `background-color`.
+ */
+.manage input[type='checkbox']:not(:disabled):not(:checked):not(:indeterminate):hover,
+.manage input[type='radio']:not(:disabled):not(:checked):hover,
+.manage-surface input[type='checkbox']:not(:disabled):not(:checked):not(:indeterminate):hover,
+.manage-surface input[type='radio']:not(:disabled):not(:checked):hover {
+    background-color: rgb(var(--mg-surface-3));
+    border-color: rgb(var(--state-live) / 0.5);
+}
+
+/*
+ * The filled box under the pointer. The fill and the border are restated rather than
+ * inherited from the :checked rule above so that this survives whatever else grows in
+ * this file: a hover rule that changes only `filter` is one specificity accident away
+ * from being overruled on `background-color` by something else, which is the bug this
+ * pair had.
+ */
+.manage input[type='checkbox']:checked:not(:disabled):hover,
+.manage input[type='checkbox']:indeterminate:not(:disabled):hover,
+.manage input[type='radio']:checked:not(:disabled):hover,
+.manage-surface input[type='checkbox']:checked:not(:disabled):hover,
+.manage-surface input[type='checkbox']:indeterminate:not(:disabled):hover,
+.manage-surface input[type='radio']:checked:not(:disabled):hover {
+    background-color: rgb(var(--state-live));
+    border-color: rgb(var(--state-live));
+    filter: brightness(1.12);
+}
+
+/*
+ * Focus, in two halves.
+ *
+ * The plugin draws its ring as a box-shadow on :focus, with a 2px white ring
+ * offset. That is what has to go, and only a rule that also matches :focus can
+ * remove it. Then :focus-visible puts the panel's own ring back, so a pointer
+ * click no longer leaves a ring behind but keyboard focus is still obvious.
+ *
+ * outline rather than box-shadow: it follows border-radius, and it survives a
+ * later `shadow-*` utility at a call site.
+ */
+.manage input[type='checkbox']:focus,
+.manage input[type='radio']:focus,
+.manage-surface input[type='checkbox']:focus,
+.manage-surface input[type='radio']:focus {
+    box-shadow: none;
+    outline: none;
+}
+
+.manage input[type='checkbox']:focus-visible,
+.manage input[type='radio']:focus-visible,
+.manage-surface input[type='checkbox']:focus-visible,
+.manage-surface input[type='radio']:focus-visible {
+    outline: 2px solid rgb(var(--state-live) / 0.6);
+    outline-offset: 1px;
+}
+
+/*
+ * Disabled dims rather than recolours. Recolouring would need one rule per
+ * state, and each would have to outrank :checked, which is how a disabled ticked
+ * box ends up rendering as an empty one.
+ */
+.manage input[type='checkbox']:disabled,
+.manage input[type='radio']:disabled,
+.manage-surface input[type='checkbox']:disabled,
+.manage-surface input[type='radio']:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+/*
+ * <select>: why the text sat low.
+ *
+ * The plugin's base rule gives every select `padding-top: .5rem`,
+ * `padding-bottom: .5rem` and `line-height: 1.5rem`. Panel call sites override
+ * the horizontal padding (`px-2`, `px-1`) and pin a height (`h-8`, `h-7`,
+ * `h-6`), but nothing overrides the vertical padding or the line height, so an
+ * h-8 select asks for 24 + 8 + 8 + 2 = 42px of box inside 32px. Its content box
+ * is 14px tall and the single line inside it is 24px.
+ *
+ * A select is a scroll container, and flexbox resolves cross-axis overflow in a
+ * scroll container by pinning the item to the start edge instead of centring it,
+ * so the UA's own `align-items: center` cannot save it: the line starts at the
+ * top of the content box, which is already 8px down. Measured in Chromium the
+ * glyphs land 5px below the true centre on h-8 and the h-6 per-page select is
+ * clipped out of sight entirely. That 8px is exactly the "top padding" the panel
+ * looks like it has.
+ *
+ * The fix is to stop the overflow rather than to counter-pad it: zero the
+ * vertical padding and set the line box to the panel's own --mg-line. 18px fits
+ * inside every panel height (h-6 leaves 22px of content box, h-8 leaves 30px),
+ * so there is no overflow left to resolve and the centring is the UA's again,
+ * identical in every engine and at every height.
+ */
+.manage select,
+.manage-surface select {
+    padding-block: 0;
+    line-height: var(--mg-line);
+}
+
+/*
+ * The chevron, for the same reason. The plugin sizes it `1.5em` (19.5px at the
+ * panel's 13px) and reserves 2.5rem for it, but the reserve is horizontal
+ * padding and every call site overwrites it with `px-*`, so the arrow is drawn
+ * on top of the label: "All statuses" in the filter bar renders under it today.
+ *
+ * 12px matches the ManageIcon chevrons the EventSelector trigger and the filter
+ * bar's own popover buttons already draw, so a native select and a hand-rolled
+ * one carry the same arrow. The reserve is restated here, deliberately outranking
+ * the call sites' `px-*`, because that padding is not a style choice: it is the
+ * space the arrow occupies. Only the right side is claimed, so `px-*` still owns
+ * the left.
+ *
+ * The stroke is #737d7d, which is --fg-3 (115 125 125); a data: URI cannot read a
+ * custom property. --fg-3 in .manage-light is 128 128 128, close enough that the
+ * light block below leaves it alone.
+ */
+.manage select,
+.manage-surface select {
+    padding-right: 22px;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23737d7d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 5px center;
+    background-size: 12px 12px;
+}
+
+.manage select:disabled,
+.manage-surface select:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/*
+ * The dropped-open list is the one part of a select the UA still paints itself,
+ * so `color-scheme: dark` above is what darkens it. Restated on the element
+ * because the popup is not a descendant of .manage in every engine.
+ */
+.manage select,
+.manage select option,
+.manage-surface select,
+.manage-surface select option {
+    color-scheme: dark;
+}
+
+/*
+ * Focus for the text-entry controls and selects, on the same two-part split as
+ * the checkboxes: kill the plugin's blue box-shadow ring on :focus, draw the
+ * panel's on :focus-visible. Call sites reach the border with
+ * `focus:border-state-live/50` but never the shadow, so today every panel input
+ * flashes blue-600 on focus under whatever border the call site asked for.
+ */
+.manage select:focus,
+.manage textarea:focus,
+.manage input:not([type='checkbox']):not([type='radio']):focus,
+.manage-surface select:focus,
+.manage-surface textarea:focus,
+.manage-surface input:not([type='checkbox']):not([type='radio']):focus {
+    box-shadow: none;
+    outline: none;
+}
+
+.manage select:focus-visible,
+.manage textarea:focus-visible,
+.manage input:not([type='checkbox']):not([type='radio']):focus-visible,
+.manage-surface select:focus-visible,
+.manage-surface textarea:focus-visible,
+.manage-surface input:not([type='checkbox']):not([type='radio']):focus-visible {
+    outline: 2px solid rgb(var(--state-live) / 0.5);
+    outline-offset: 0;
+}
+
+/*
+ * The plugin turns the focused border blue-600 too. Wrapped in :where() so this
+ * weighs less than a call site's own `focus:border-*` and only fills in for the
+ * controls that declare none, which is the pagination and confirm-dialog selects.
+ */
+.manage :where(select, textarea, input):focus,
+.manage-surface :where(select, textarea, input):focus {
+    border-color: rgb(var(--state-live) / 0.5);
+}
+
+/*
+ * Light-panel restatement. .manage-light is still set by nothing (see the token
+ * block above), but the three glyph URIs are the only mg-* values in this file
+ * that a token change cannot follow, so the light inks are written down here
+ * rather than discovered the day someone flips the class. --state-live is a dark
+ * teal in that palette, so the glyphs go back to white.
+ */
+.manage-light input[type='checkbox']:checked {
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+}
+
+.manage-light input[type='checkbox']:indeterminate {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3e%3cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8h8'/%3e%3c/svg%3e");
+}
+
+.manage-light input[type='radio']:checked {
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");
+}
+
+.manage-light select,
+.manage-light select option {
+    color-scheme: light;
+}

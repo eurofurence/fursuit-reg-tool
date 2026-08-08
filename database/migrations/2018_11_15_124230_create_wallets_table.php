@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use App\Support\Migrations\SchemaGuard;
-use Bavix\Wallet\Models\Transaction;
-use Bavix\Wallet\Models\Wallet;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -54,11 +52,11 @@ return new class extends Migration
 
     private function table(): string
     {
-        return (new Wallet)->getTable();
+        return 'wallets';
     }
 
     private function transactionTable(): string
     {
-        return (new Transaction)->getTable();
+        return 'transactions';
     }
 };

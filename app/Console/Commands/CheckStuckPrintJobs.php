@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use App\Domain\Printing\Models\PrintJob;
 use App\Domain\Printing\Models\Printer;
-use App\Enum\PrintJobStatusEnum;
+use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrinterStatusEnum;
+use App\Enum\PrintJobStatusEnum;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -36,6 +36,7 @@ class CheckStuckPrintJobs extends Command
 
         if ($stuckJobs->isEmpty()) {
             $this->info('No stuck print jobs found.');
+
             return Command::SUCCESS;
         }
 
@@ -51,7 +52,8 @@ class CheckStuckPrintJobs extends Command
                 ->exists();
 
             if ($recentSuccessfulJobs) {
-                $this->line("  ✓ Printer has processed jobs recently - skipping");
+                $this->line('  ✓ Printer has processed jobs recently - skipping');
+
                 continue;
             }
 
@@ -80,7 +82,7 @@ class CheckStuckPrintJobs extends Command
             'printer_id' => $printer->id,
             'job_id' => $stuckJob->id,
             'job_started_at' => $stuckJob->started_at,
-            'stuck_duration_minutes' => $stuckJob->started_at->diffInMinutes(now())
+            'stuck_duration_minutes' => $stuckJob->started_at->diffInMinutes(now()),
         ]);
 
         $this->warn("  ⚠ Marked printer '{$printer->name}' as PAUSED - requires staff attention");

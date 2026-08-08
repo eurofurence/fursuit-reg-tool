@@ -24,7 +24,6 @@ class BugBountyHunter extends SimpleAchievement implements SpecialAchievement
         );
     }
 
-
     public function getMaxProgress(): int
     {
         return 1;
@@ -34,14 +33,13 @@ class BugBountyHunter extends SimpleAchievement implements SpecialAchievement
     public function updateAchievementProgress(AchievementUpdateContext $context): int
     {
         // This achievement can only be triggered by special code, not by catches
-        if (!$context->isSpecialCodeTrigger() || $context->specialCodeType !== SpecialCodeType::BUG_BOUNTY) {
+        if (! $context->isSpecialCodeTrigger() || $context->specialCodeType !== SpecialCodeType::BUG_BOUNTY) {
             return -1; // Ignore this update
         }
 
         // Return completion progress - achievement granting is handled by AchievementService
         return $this->getMaxProgress(); // Return 1 (completed)
     }
-
 
     public function getSpecialCode(): SpecialCodeType
     {

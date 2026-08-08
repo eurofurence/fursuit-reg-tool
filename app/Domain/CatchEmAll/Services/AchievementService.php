@@ -12,34 +12,34 @@ use App\Models\EventUser;
 
 class AchievementService
 {
-  public function processAchievements(EventUser $eventUser, ?UserCatch $newCatch = null, ?SpecialCodeType $codeType = null): void
-  {
-    if ($newCatch == null && $codeType == null) {
-      return;
-    }
+    public function processAchievements(EventUser $eventUser, ?UserCatch $newCatch = null, ?SpecialCodeType $codeType = null): void
+    {
+        if ($newCatch == null && $codeType == null) {
+            return;
+        }
 
-    $context = AchievementUpdateContext::fromCatch($eventUser, $newCatch, $codeType);
+        $context = AchievementUpdateContext::fromCatch($eventUser, $newCatch, $codeType);
 
-    // Handle normal achievements
-    if ($newCatch != null) {
-        foreach (AchievementRegister::getNormalAchievements() as $achievement) {
-            $this->handleAchievementProgress($eventUser, $achievement, $context);
+        // Handle normal achievements
+        if ($newCatch != null) {
+            foreach (AchievementRegister::getNormalAchievements() as $achievement) {
+                $this->handleAchievementProgress($eventUser, $achievement, $context);
+            }
+        }
+
+        // Handle special achievements
+        if ($codeType != null) {
+            foreach (AchievementRegister::getSpecialAchievementsByCode($codeType) as $achievement) {
+                $this->handleAchievementProgress($eventUser, $achievement, $context);
+            }
         }
     }
 
-    // Handle special achievements
-    if ($codeType != null) {
-        foreach (AchievementRegister::getSpecialAchievementsByCode($codeType) as $achievement) {
-            $this->handleAchievementProgress($eventUser, $achievement, $context);
+    private function handleAchievementProgress(EventUser $eventUser, Achievement $achievement, AchievementUpdateContext $context): void
+    {
+        $newProgress = $achievement->updateAchievementProgress($context);
+        if ($newProgress >= 0) {
+            AchievementFactory::updateUserAchievementProgress($eventUser, $achievement, $newProgress);
         }
     }
-  }
-
-  private function handleAchievementProgress(EventUser $eventUser, Achievement $achievement, AchievementUpdateContext $context): void
-  {
-    $newProgress = $achievement->updateAchievementProgress($context);
-    if ($newProgress >= 0) {
-      AchievementFactory::updateUserAchievementProgress($eventUser, $achievement, $newProgress);
-    }
-  }
 }

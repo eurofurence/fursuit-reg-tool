@@ -1,8 +1,12 @@
 <?php
 
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Fulfillment\Pending;
+use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
+use App\Notifications\BadgeCreatedNotification;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -18,11 +22,11 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->event = \App\Models\Event::factory()->create([
-        'starts_at' => \Carbon\Carbon::parse('2024-06-01'),
-        'ends_at' => \Carbon\Carbon::parse('2024-06-30'),
-        'order_starts_at' => \Carbon\Carbon::parse('2024-06-01'),
-        'order_ends_at' => \Carbon\Carbon::parse('2024-06-25'),
+    $this->event = Event::factory()->create([
+        'starts_at' => Carbon::parse('2024-06-01'),
+        'ends_at' => Carbon::parse('2024-06-30'),
+        'order_starts_at' => Carbon::parse('2024-06-01'),
+        'order_ends_at' => Carbon::parse('2024-06-25'),
     ]);
 
     // Create EventUser relationship with no prepaid badges
@@ -43,7 +47,7 @@ test('user can create badge', function () {
     Notification::fake();
 
     // Travel to valid time
-    travelTo(\Carbon\Carbon::parse('2024-06-02'));
+    travelTo(Carbon::parse('2024-06-02'));
     actingAs($this->user);
     $response = post(route('badges.store'), [
         'species' => 'Wolf',
@@ -76,11 +80,11 @@ test('user can create badge', function () {
     // check if image was uploaded
     Storage::assertExists($badge->fursuit->image);
     // Check notification was sent
-    Notification::assertSentTo($this->user, \App\Notifications\BadgeCreatedNotification::class);
+    Notification::assertSentTo($this->user, BadgeCreatedNotification::class);
 });
 
 test('user cannot create badge when preorder has not started', function () {
-    travelTo(\Carbon\Carbon::parse('2024-04-15'));
+    travelTo(Carbon::parse('2024-04-15'));
     actingAs($this->user);
     $response = post(route('badges.store'), [
         'species' => 'Wolf',
@@ -98,7 +102,7 @@ test('user cannot create badge when preorder has not started', function () {
 
 test('user cannot create badge when event has ended', function () {
     Notification::fake();
-    travelTo(\Carbon\Carbon::parse('2024-07-01'));
+    travelTo(Carbon::parse('2024-07-01'));
     actingAs($this->user);
     post(route('badges.store'), [
         'species' => 'Wolf',
@@ -118,13 +122,13 @@ test('user cannot update badge when event has ended', function () {
     // Force a still-editable (Pending) paid badge so this genuinely exercises the
     // event-ended gate rather than passing by accident on the printed-status gate.
     $badge = Badge::factory()
-        ->recycle(\App\Models\Event::first())
+        ->recycle(Event::first())
         ->recycle($this->user)
         ->create([
-            'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
+            'status_fulfillment' => Pending::$name,
             'is_free_badge' => false,
         ]);
-    travelTo(\Carbon\Carbon::parse('2024-07-01')); // after ends_at (2024-06-30)
+    travelTo(Carbon::parse('2024-07-01')); // after ends_at (2024-06-30)
     actingAs($this->user);
     putJson(route('badges.update', $badge->id), [
         'species' => 'Wolf',
@@ -139,15 +143,15 @@ test('user can update paid badge after order window closes but before event ends
     // badge must stay possible after the order window (order_ends_at) closes while the event
     // is still running — for paid (non-free) badges, not just free ones.
     $badge = Badge::factory()
-        ->recycle(\App\Models\Event::first())
+        ->recycle(Event::first())
         ->recycle($this->user)
         ->create([
-            'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
+            'status_fulfillment' => Pending::$name,
             'is_free_badge' => false,
         ]);
 
     // order_ends_at is 2024-06-25, event ends_at is 2024-06-30 — this sits in between.
-    travelTo(\Carbon\Carbon::parse('2024-06-27'));
+    travelTo(Carbon::parse('2024-06-27'));
     actingAs($this->user);
 
     putJson(route('badges.update', $badge->id), [

@@ -2,7 +2,7 @@
 import Layout from "@/Layouts/Layout.vue";
 import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
 import RankingBanner from "@/Components/Gallery/RankingBanner.vue";
-import { Head, router } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch, computed, onMounted, onUnmounted, nextTick } from "vue";
 
 interface Fursuit {
@@ -10,6 +10,7 @@ interface Fursuit {
     name: string,
     species: string,
     image: string,
+    thumb?: string,
     scoring: number,
     event?: string,
     archival_notice?: string,
@@ -50,10 +51,10 @@ interface SelectedEvent {
 const props = defineProps<{
     fursuits: Fursuit[],
     ranking: Ranking[],
+    ranking_event?: string | null,
     has_more: boolean,
     totalResult: number,
     totalFursuit: number, // Count of All registered Fursuits
-    totalFursuiter: number, // Count of Fursuiter - as of a user with at leats one Fursuit
     filters: Filters,
     species_options: SpeciesOption[],
     event_options: EventOption[],
@@ -94,16 +95,22 @@ const sortOptions = computed(() => {
 
 const hasResults = computed(() => allFursuits.value && allFursuits.value.length > 0);
 
+// The grid lives inside a folder: the event is part of the URL, everything else stays
+// in the query string.
+const gridUrl = computed(() => selectedEvent.value
+    ? route('gallery.event', selectedEvent.value)
+    : route('gallery.all')
+);
+
 // Methods
 function applyFilters() {
     // Reset fursuits and load from beginning
     allFursuits.value = [];
     hasMore.value = true;
 
-    router.get(route('gallery.index'), {
+    router.get(gridUrl.value, {
         query: searchQuery.value,
         species: selectedSpecies.value,
-        event: selectedEvent.value,
         sort: selectedSort.value,
         offset: 0,
     }, {
@@ -123,10 +130,11 @@ function applyFilters() {
     });
 }
 
+// Clearing filters stays inside the folder the visitor opened; leaving it is what the
+// breadcrumb back to the overview is for.
 function resetFilters() {
     searchQuery.value = '';
     selectedSpecies.value = '';
-    selectedEvent.value = '';
     selectedSort.value = props.is_historical_event ? 'name_asc' : 'catches_desc';
     applyFilters();
 }
@@ -247,21 +255,28 @@ onUnmounted(() => {
     <div class="min-h-screen bg-gray-50">
         <Head title="Fursuit Gallery" />
 
-        <!-- Enhanced Ranking Banner -->
-        <div v-if="!is_historical_event" class="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <RankingBanner :ranking="ranking" />
-            </div>
+        <!-- Catch 'Em All leaders. The controller decides whether this year's standings
+             still belong on this page; an empty list means they do not. -->
+        <div v-if="ranking.length" class="site-container pt-8">
+            <RankingBanner :ranking="ranking" :event-name="ranking_event" />
         </div>
 
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="site-container py-8">
             <!-- Header Section -->
             <div class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Fursuit Gallery</h1>
-                <p v-if="selected_event && totalFursuiter" class="text-gray-600">
-                    Discover amazing fursuits from Eurofurence - {{ totalFursuiter }} total fursuiter with {{ totalFursuit }} fursuits of {{ selected_event.name }}
-                </p>
-                <p v-else-if="selected_event" class="text-gray-600">
+                <Link
+                    :href="route('gallery.index')"
+                    class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800 mb-3"
+                >
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    All conventions
+                </Link>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">
+                    {{ selected_event ? selected_event.name : 'Fursuit Gallery' }}
+                </h1>
+                <p v-if="selected_event" class="text-gray-600">
                     Discover amazing fursuits from Eurofurence - {{ totalFursuit }} total fursuits of {{ selected_event.name }}
                 </p>
                 <p v-else class="text-gray-600">
@@ -398,9 +413,6 @@ onUnmounted(() => {
                         <div v-if="fursuit.event" class="text-xs text-gray-500 mt-1">
                             {{ fursuit.event }}
                         </div>
-                        <div v-if="selected_event?.archival_notice" class="text-xs text-amber-600 mt-1 font-medium">
-                            📜 Archival
-                        </div>
                     </div>
                 </div>
             </div>
@@ -415,7 +427,7 @@ onUnmounted(() => {
                     <span>Loading more fursuits...</span>
                 </div>
                 <div v-else-if="!hasMore && hasResults" class="text-gray-500 text-center">
-                    <p>🎉 You've reached the end!</p>
+                    <p>You've reached the end!</p>
                     <p class="text-sm mt-1">That's all {{ allFursuits.length }} fursuits</p>
                 </div>
             </div>
@@ -470,7 +482,7 @@ onUnmounted(() => {
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span class="text-sm">📜 {{ selected_event.archival_notice }}</span>
+                            <span class="text-sm">{{ selected_event.archival_notice }}</span>
                         </div>
                     </div>
                     <p class="text-xs text-gray-300 mt-2">Click image to open in new tab • Press ESC to close</p>

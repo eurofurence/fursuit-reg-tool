@@ -1,0 +1,87 @@
+# Print agent dependencies.
+#
+# The station is Windows 7, so Python 3.8.10 is the last interpreter that will
+# install at all, and every pin below has to have a cp38 (or pure-Python) wheel
+# for Windows. Nothing here may need a compiler: there is no build toolchain on
+# that machine and there will not be one at a convention.
+#
+# Install with:  py -3.8 -m pip install -r requirements.txt
+#
+# Two things pip cannot check for you, both flagged again below:
+#   * Windows 7 SP1 with KB2999226 (UCRT) and the VC++ 2015-2022 redistributable
+#     must be present, or none of the binary wheels load.
+#   * A cp38 wheel existing is not the same as its binary running on Windows 7.
+#     Every pin here needs one smoke test on the real machine.
+
+# --- Printing ---------------------------------------------------------------
+
+# Spooler access: EnumPrinters, StartDoc (which is where the job id comes from)
+# and GetJob. 228 is the last build widely reported to still load on Windows 7;
+# it ships cp38 wheels for win32 and win_amd64.
+# UNCERTAIN: pywin32 306-311 also publish cp38 wheels, and if 228 misbehaves on
+# the target machine 302 is the next thing to try. This pin is chosen for the OS,
+# not for the Python version.
+pywin32==228
+
+# PDF rasterisation. Pure-Python ctypes binding with a bundled pdfium binary, so
+# there is no Ghostscript or SumatraPDF to install alongside the agent, and the
+# wheel is py3-none-win_amd64 (no cp38 constraint at all).
+# UNCERTAIN, AND THE BIGGEST RISK IN THIS FILE: 4.30.0 bundles a pdfium built
+# from a Chromium tree that dropped Windows 7 support. The DLL may simply refuse
+# to load. Test this first, before anything else. If it fails, the fallback is
+# pypdfium2 2.x/3.x, which bundles a pre-M110 pdfium but has a different render
+# API and would need a small change to agent/render.py.
+pypdfium2==4.30.0
+
+# --- Camera verification ----------------------------------------------------
+
+# Last opencv-python release with a cp36-abi3 Windows wheel that is known to run
+# on Windows 7; 4.6+ is built against a newer MSVC runtime and fails to load.
+opencv-python==4.5.5.64
+
+# Pinned because opencv links against it. 1.24.4 is the final release with cp38
+# wheels; 1.25 requires Python 3.9.
+numpy==1.24.4
+
+# OCR of the badge number and name off the captured frame. Pure Python: it
+# shells out to tesseract.exe, which is a separate MSI install on the station
+# and is NOT a pip dependency. Path is configured in CameraConfig.tesseract_path.
+pytesseract==0.3.10
+
+# Pulled in by pytesseract. 9.5.0 is the last release before Pillow 10's
+# deprecation sweep and is comfortable on cp38.
+Pillow==9.5.0
+
+# --- Printer status ---------------------------------------------------------
+
+# SNMP to the ZXP9 firmware, which is the only honest source of print status.
+# 4.4.12 is the last release of the original pysnmp; the 5/6/7 line (lextudio)
+# requires Python 3.10+. agent/zebra.py uses the pysnmp.hlapi sync API, which
+# 4.4.12 provides.
+# Windows 7 stopped getting root certificate updates in 2020, and its store no
+# longer validates api.telegram.org. certifi ships its own roots so the Telegram
+# channel can connect; without it the agent still prints, it just cannot post.
+certifi==2024.7.4
+
+pysnmp==4.4.12
+
+# Hard pin, not incidental: pysnmp 4.4.12 breaks on pyasn1 0.5+, which removed
+# the compat helpers it imports at module level. Leave this unpinned and SNMP
+# stops working entirely.
+pyasn1==0.4.8
+
+# pysnmp 4.4.12 declares both as install requirements. Neither is used by the
+# agent (numeric OIDs, SNMP v2c, no MIB compilation, no v3 crypto), but pip
+# installs them regardless, so they are pinned to versions with cp38 wheels
+# rather than left to resolve to something newer.
+pysmi==0.3.4
+pycryptodomex==3.20.0
+
+# --- Packaging --------------------------------------------------------------
+
+# Frozen single-folder build for the station. 5.13.2 is the last 5.x; PyInstaller
+# 6.x rebuilt its bootloader against a newer toolchain and no longer targets
+# Windows 7.
+# UNCERTAIN: the bootloader is the part that has to run on Win7, so confirm the
+# frozen build starts on the real machine, not just that it builds.
+pyinstaller==5.13.2

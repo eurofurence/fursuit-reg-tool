@@ -2,9 +2,10 @@
 
 namespace App\Domain\CatchEmAll\SpecialActions;
 
+use App\Domain\CatchEmAll\Interface\ConfigurableSpecialCodeAction;
 use App\Domain\CatchEmAll\Interface\SpecialCodeAction;
 
-abstract class AbstractSpecialCodeAction implements SpecialCodeAction
+abstract class AbstractSpecialCodeAction implements ConfigurableSpecialCodeAction, SpecialCodeAction
 {
     protected int $eventId;
 

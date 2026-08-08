@@ -7,16 +7,16 @@ use PHPUnit\Framework\TestCase;
 
 class PrinterStatusEnumTest extends TestCase
 {
-    public function test_from_qz_status_code_maps_correctly()
+    public function test_from_status_code_maps_correctly()
     {
-        $this->assertEquals(PrinterStatusEnum::ONLINE, PrinterStatusEnum::fromQzStatusCode('online'));
-        $this->assertEquals(PrinterStatusEnum::OFFLINE, PrinterStatusEnum::fromQzStatusCode('offline'));
-        $this->assertEquals(PrinterStatusEnum::MEDIA_EMPTY, PrinterStatusEnum::fromQzStatusCode('media-empty'));
-        $this->assertEquals(PrinterStatusEnum::MEDIA_JAM, PrinterStatusEnum::fromQzStatusCode('media-jam'));
-        $this->assertEquals(PrinterStatusEnum::COVER_OPEN, PrinterStatusEnum::fromQzStatusCode('cover-open'));
-        $this->assertEquals(PrinterStatusEnum::PAUSED, PrinterStatusEnum::fromQzStatusCode('paused'));
-        $this->assertEquals(PrinterStatusEnum::UNKNOWN, PrinterStatusEnum::fromQzStatusCode('some-unknown-code'));
-        $this->assertEquals(PrinterStatusEnum::UNKNOWN, PrinterStatusEnum::fromQzStatusCode(''));
+        $this->assertEquals(PrinterStatusEnum::ONLINE, PrinterStatusEnum::fromStatusCode('online'));
+        $this->assertEquals(PrinterStatusEnum::OFFLINE, PrinterStatusEnum::fromStatusCode('offline'));
+        $this->assertEquals(PrinterStatusEnum::MEDIA_EMPTY, PrinterStatusEnum::fromStatusCode('media-empty'));
+        $this->assertEquals(PrinterStatusEnum::MEDIA_JAM, PrinterStatusEnum::fromStatusCode('media-jam'));
+        $this->assertEquals(PrinterStatusEnum::COVER_OPEN, PrinterStatusEnum::fromStatusCode('cover-open'));
+        $this->assertEquals(PrinterStatusEnum::PAUSED, PrinterStatusEnum::fromStatusCode('paused'));
+        $this->assertEquals(PrinterStatusEnum::UNKNOWN, PrinterStatusEnum::fromStatusCode('some-unknown-code'));
+        $this->assertEquals(PrinterStatusEnum::UNKNOWN, PrinterStatusEnum::fromStatusCode(''));
     }
 
     public function test_requires_attention_identifies_problem_states()

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\SumUpReader;
 use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -11,7 +12,7 @@ return new class extends Migration
     {
         Schema::table('machines', function (Blueprint $table) {
             if (SchemaGuard::missingColumn('machines', 'sumup_reader_id')) {
-                $table->foreignIdFor(\App\Models\SumUpReader::class, 'sumup_reader_id')->after('tse_client_id')->nullable()->constrained()->after('tse_client_id')->nullOnDelete();
+                $table->foreignIdFor(SumUpReader::class, 'sumup_reader_id')->after('tse_client_id')->nullable()->constrained()->after('tse_client_id')->nullOnDelete();
             }
         });
     }

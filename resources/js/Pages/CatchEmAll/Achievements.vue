@@ -13,7 +13,7 @@ import {
     Users,
     Zap,
 } from "lucide-vue-next";
-import Card from "primevue/card";
+import Card from "@/Components/UI/UiCard.vue";
 
 type Achievement = {
     id: number;

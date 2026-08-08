@@ -1,41 +1,15 @@
 <script setup>
-import Button from "primevue/button";
+import Button from "@/Components/UI/UiButton.vue";
 import Menu from "primevue/menu";
+import { posMenuPt } from "@/Components/POS/posDialog.js";
 import { Link, router } from "@inertiajs/vue3";
 import DigitalClock from "@/Components/POS/DigitalClock.vue";
 import Badge from "primevue/badge";
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { usePosKeyboard } from '@/composables/usePosKeyboard';
 
-// QZ Status management
-const qzStatus = ref({
-    qz_status: 'disconnected',
-    is_connected: false,
-    pending_jobs: 0,
-    last_seen: null
-});
-
-// Printer states management
-const printerStates = ref({});
-
-// Handle QZ status updates from QZPrintService
-const handleQzStatusChange = (status) => {
-    qzStatus.value = { ...qzStatus.value, ...status };
-};
-
-const handlePendingJobsUpdate = (count) => {
-    qzStatus.value.pending_jobs = count;
-};
-
-const handlePrinterStatesUpdate = (states) => {
-    console.log('🎯 POSLayout received printer states update:', states);
-    printerStates.value = states;
-    console.log('📊 POSLayout printer states updated to:', printerStates.value);
-};
-import QZPrintService from "@/Components/POS/QZPrintService.vue";
 import ToastService from "@/Components/POS/ToastService.vue";
 import ShortcutsDialog from "@/Components/POS/ShortcutsDialog.vue";
-import QzStatusIndicator from "@/Components/POS/QzStatusIndicator.vue";
 import PrinterStatusIndicator from "@/Components/POS/PrinterStatusIndicator.vue";
 import InactivityTimer from "@/Components/POS/InactivityTimer.vue";
 import AutoLogoutModal from "@/Components/POS/AutoLogoutModal.vue";
@@ -77,19 +51,6 @@ const userMenuItems = ref([
     { label: 'Keyboard Shortcuts', icon: 'pi pi-keyboard', command: () => showShortcutsDialog.value = true },
     { label: 'Auto Logout Settings', icon: 'pi pi-clock', command: () => showAutoLogoutModal.value = true },
 ]);
-
-// Computed properties for printer status
-const printerStatusSummary = computed(() => {
-    const states = Object.values(printerStates.value);
-    return {
-        total: states.length,
-        idle: states.filter(s => s.status === 'idle').length,
-        working: states.filter(s => s.status === 'working').length,
-        paused: states.filter(s => s.status === 'paused').length
-    };
-});
-
-const hasPausedPrinters = computed(() => printerStatusSummary.value.paused > 0);
 
 // Use the centralized keyboard handler composable
 usePosKeyboard({
@@ -205,66 +166,53 @@ const backRoute = computed(() => {
 <template>
     <ToastService/>
     <InactivityTimer/>
-    <!-- Only load QZPrintService for devices that should discover printers -->
-    <QZPrintService
-        v-if="machine?.should_discover_printers"
-        @qz-status-changed="handleQzStatusChange"
-        @pending-jobs-updated="handlePendingJobsUpdate"
-        @printer-states-updated="handlePrinterStatesUpdate"
-    />
-    <div class="min-h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
+    <div class="pos min-h-screen w-full flex flex-col">
         <!-- Compact System Bar -->
-        <header class="bg-white border-b border-slate-200 h-8" v-if="page.props.auth.user">
-            <div class="px-2 h-full flex items-center justify-between text-xs">
+        <header class="bg-pos-panel-2 border-b border-pos-line h-9" v-if="page.props.auth.user">
+            <div class="px-2 h-full flex items-center justify-between text-xs text-pos-muted">
                 <!-- Left: Back & Attendee -->
                 <div class="flex items-center space-x-2">
-                    <Link :href="route(backRoute)" v-if="shouldShowBackArrow" title="Back to Dashboard">
-                        <i class="pi pi-arrow-left text-slate-600 hover:text-slate-800 cursor-pointer transition-colors"></i>
+                    <Link :href="route(backRoute)" v-if="shouldShowBackArrow" title="Back to Dashboard"
+                          class="flex items-center gap-1 hover:text-pos-text">
+                        <i class="pi pi-arrow-left cursor-pointer transition-colors"></i>
+                        <span class="pos-kcap">−</span>
                     </Link>
-                    <span v-if="attendee" class="text-slate-700 font-medium">
-                        {{ attendee.name }} #{{ eventUser?.attendee_id || 'N/A' }}
+                    <span v-if="attendee" class="text-pos-text font-semibold">
+                        {{ attendee.name }} <span class="pos-num">#{{ eventUser?.attendee_id || 'N/A' }}</span>
                     </span>
                 </div>
 
-                <!-- Center: Clock | QZ Status | Printers -->
-                <div class="flex items-center space-x-1 text-slate-600">
-                    <DigitalClock class="font-medium"/>
-                    <span class="text-slate-400">|</span>
-                    <QzStatusIndicator v-if="qzStatus" :qz-status="qzStatus" :show-pending-jobs="false" />
-                    <span v-else class="text-xs font-medium">POS Endpoint</span>
-                    <span v-if="machine?.should_discover_printers" class="text-slate-400">|</span>
-                    <Link v-if="machine?.should_discover_printers" :href="route('pos.printers.index')" class="flex items-center hover:text-slate-800">
-                        <i class="pi pi-print mr-1" :class="hasPausedPrinters ? 'text-red-500' : ''"></i>
-                        <span v-if="hasPausedPrinters" class="text-red-500 font-medium">{{ printerStatusSummary.paused }}</span>
-                    </Link>
+                <!-- Center: Clock -->
+                <div class="flex items-center space-x-1">
+                    <DigitalClock class="font-medium pos-num text-pos-text"/>
                 </div>
 
                 <!-- Right: Machine | Cashier | Card Reader | Printers | Menu -->
-                <div class="flex items-center space-x-1 text-slate-600">
+                <div class="flex items-center space-x-1">
                     <i class="pi pi-desktop text-xs"></i>
                     <span class="font-medium">{{ machine?.name || 'Unknown' }}</span>
-                    <span class="text-slate-400">|</span>
+                    <span class="text-pos-line-strong">|</span>
                     <i class="pi pi-user text-xs"></i>
-                    <span class="font-medium">{{ cashier?.name || 'Unknown' }}</span>
+                    <span class="font-medium text-pos-text">{{ cashier?.name || 'Unknown' }}</span>
                     <template v-if="machine?.sumup_reader">
-                        <span class="text-slate-400">|</span>
+                        <span class="text-pos-line-strong">|</span>
                         <i class="pi pi-credit-card text-xs"></i>
                         <span class="font-medium">{{ machine.sumup_reader.name || 'Unknown Reader' }}</span>
                     </template>
-                    <span class="text-slate-400">|</span>
+                    <span class="text-pos-line-strong">|</span>
                     <PrinterStatusIndicator />
-                    <span class="text-slate-400">|</span>
-                    <i class="pi pi-bars cursor-pointer hover:text-slate-800" @click="toggleUserMenu"></i>
-                    <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" class="mt-2">
+                    <span class="text-pos-line-strong">|</span>
+                    <i class="pi pi-bars cursor-pointer hover:text-pos-text p-1" @click="toggleUserMenu"></i>
+                    <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" class="mt-2" :pt="posMenuPt">
                         <template #item="{ item }">
                             <Link v-if="item.route" :href="item.route" :method="item.method" class="w-full">
-                                <div class="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors">
-                                    <span :class="item.icon" class="text-slate-600"></span>
+                                <div class="flex items-center px-4 py-3 hover:bg-pos-panel-2 transition-colors">
+                                    <span :class="item.icon" class="text-pos-muted"></span>
                                     <span class="ml-3 font-medium">{{ item.label }}</span>
                                 </div>
                             </Link>
-                            <a v-else @click="item.command" class="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer">
-                                <span :class="item.icon" class="text-slate-600"></span>
+                            <a v-else @click="item.command" class="flex items-center px-4 py-3 hover:bg-pos-panel-2 transition-colors cursor-pointer">
+                                <span :class="item.icon" class="text-pos-muted"></span>
                                 <span class="ml-3 font-medium">{{ item.label }}</span>
                             </a>
                         </template>
@@ -275,6 +223,7 @@ const backRoute = computed(() => {
 
         <!-- Main Content -->
         <main class="flex flex-1 p-2">
+
             <slot></slot>
             <ShortcutsDialog v-model:visible="showShortcutsDialog" />
             <AutoLogoutModal v-model:visible="showAutoLogoutModal" />

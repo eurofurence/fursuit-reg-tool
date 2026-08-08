@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Badge\Badge;
-use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Fulfillment\PickedUp;
+use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Fulfillment\ReadyForPickup;
 use App\Models\Event;
 use App\Models\EventUser;
@@ -296,26 +296,45 @@ class ReadyForPickupNotificationTest extends TestCase
         Notification::assertSentTo(
             [$user],
             BadgePrintedNotification::class,
-            function (BadgePrintedNotification $notification, $channels) use ($badge, $fursuit, $user) {
+            function (BadgePrintedNotification $notification, $channels) use ($badge, $user) {
                 // Test that the notification has the correct badge
                 $this->assertEquals($badge->id, $notification->badge->id);
-                
+
                 // Test the mail content
                 $mailMessage = $notification->toMail($user);
-                
-                // Check subject
-                $this->assertStringContainsString('Fluffy Wolf', $mailMessage->subject);
-                $this->assertStringContainsString('ready for pickup', $mailMessage->subject);
-                
-                // Check greeting
-                $this->assertEquals("Hello John Doe,", $mailMessage->greeting);
-                
-                // Check that body mentions the fursuit name and badge ID
-                $bodyText = implode(' ', $mailMessage->introLines);
-                $this->assertStringContainsString('Fluffy Wolf', $bodyText);
-                $this->assertStringContainsString('EF29-100-1', $bodyText);
-                $this->assertStringContainsString('Fursuit Lounge', $bodyText);
-                
+
+                /*
+                 * The fursuit name belongs in the subject, and quoted: a name is attendee-supplied
+                 * and routinely carries punctuation, which derails a sentence but survives quotes.
+                 * The body deliberately never uses it.
+                 */
+                $this->assertStringContainsString('"Fluffy Wolf"', $mailMessage->subject);
+                $this->assertStringContainsString('ready to collect', $mailMessage->subject);
+
+                // Every badge mail renders one shared view, so the assertions are on its data.
+                $this->assertEquals('mail.badge', $mailMessage->markdown);
+
+                // One greeting across every attendee mail. The seven notifications used to disagree
+                // four ways: no greeting at all (so Laravel's bare "Hello!"), "Hello {name},",
+                // "Hello {name}!" and a greeting used as a headline.
+                $this->assertEquals('Hi John Doe!', $mailMessage->viewData['greeting']);
+                $this->assertEquals('Ready for pickup', $mailMessage->viewData['band']);
+
+                /*
+                 * Rendered rather than inspected line by line: this is what catches a broken blade,
+                 * and it is the only assertion that proves the band, the answers and the button all
+                 * survive into the message the attendee opens.
+                 */
+                $html = $mailMessage->render();
+
+                $this->assertStringContainsString('Ready for pickup', $html);
+                $this->assertStringContainsString('Fursuit Lounge', $html);
+                $this->assertStringContainsString('Pickup information', $html);
+
+                // No booth or queue detail: that split exists on day one only, so it reads as
+                // nonsense in a mail opened on day three.
+                $this->assertStringNotContainsString('booth', strtolower($html));
+
                 return true;
             }
         );
