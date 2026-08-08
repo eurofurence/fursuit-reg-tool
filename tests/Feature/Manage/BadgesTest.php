@@ -495,8 +495,9 @@ test('the table offers Edit and Print Badge and nothing else, and no create acti
             ->where('rows.0.actions.0.name', 'edit')
             ->where('rows.0.actions.0.label', 'Edit')
             ->where('rows.0.actions.1.name', 'printBadge')
-            ->count('bulkActions', 1)
+            ->count('bulkActions', 2)
             ->where('bulkActions.0.name', 'printBadgeBulk')
+            ->where('bulkActions.1.name', 'setFulfillmentStatus')
             // The Create page is not ported: it has never been able to save (audit 25).
             ->where('pageActions', fn ($actions) => ! collect($actions)->contains(fn ($action) => $action['name'] === 'create'))
         );
@@ -811,4 +812,98 @@ test('a save with no list visited first falls back to the bare index', function 
             'status_fulfillment' => $badge->status_fulfillment->getValue(),
         ])
         ->assertRedirect(route('admin.badges.index'));
+});
+
+test('the bulk fulfillment write sets the status past the state machine', function () {
+    // ReadyForPickup -> Processing is not a legal transition in either direction the graph
+    // runs, which is exactly the correction this endpoint exists to make.
+    $badge = ($this->badge)(['status_fulfillment' => 'ready_for_pickup']);
+
+    expect($badge->status_fulfillment->canTransitionTo(Processing::class))->toBeFalse();
+
+    actingAs($this->admin)
+        ->post(route('admin.badges.bulk.status'), [
+            'ids' => [$badge->id],
+            'status_fulfillment' => 'processing',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($badge->fresh()->status_fulfillment)->toBeInstanceOf(Processing::class);
+});
+
+test('the bulk fulfillment write leaves the transition side effects alone', function () {
+    $badge = ($this->badge)(['status_fulfillment' => 'pending', 'custom_id' => null]);
+
+    actingAs($this->admin)->post(route('admin.badges.bulk.status'), [
+        'ids' => [$badge->id],
+        'status_fulfillment' => 'picked_up',
+    ])->assertRedirect();
+
+    $badge->refresh();
+
+    // The status moves and nothing else does: no id allocation, no stamping. That is the
+    // documented cost of skipping the state machine, and it is what makes this a repair
+    // tool rather than a second way to hand a badge over.
+    expect($badge->status_fulfillment->getValue())->toBe('picked_up')
+        ->and($badge->custom_id)->toBeNull()
+        ->and($badge->picked_up_at)->toBeNull()
+        // The write still goes through the model, so the change is in the activity log.
+        ->and($badge->activities()->exists())->toBeTrue();
+});
+
+test('the bulk fulfillment write counts the badges already in the target status', function () {
+    $already = ($this->badge)(['status_fulfillment' => 'picked_up']);
+    $moved = ($this->badge)(['status_fulfillment' => 'pending']);
+
+    actingAs($this->admin)->post(route('admin.badges.bulk.status'), [
+        'ids' => [$already->id, $moved->id],
+        'status_fulfillment' => 'picked_up',
+    ])->assertSessionHas('inertia.flash_data.toast.body', '1 badge set to Picked Up. 1 already were.');
+});
+
+test('the bulk fulfillment write refuses an unknown status and a non-admin', function () {
+    $badge = ($this->badge)(['status_fulfillment' => 'pending']);
+
+    actingAs($this->admin)
+        ->post(route('admin.badges.bulk.status'), [
+            'ids' => [$badge->id],
+            'status_fulfillment' => 'shipped',
+        ])
+        ->assertSessionHasErrors('status_fulfillment');
+
+    // A reviewer reads badges but does not move them. Same gate as the single-badge PUT.
+    actingAs($this->reviewer)
+        ->post(route('admin.badges.bulk.status'), [
+            'ids' => [$badge->id],
+            'status_fulfillment' => 'picked_up',
+        ])
+        ->assertForbidden();
+
+    expect($badge->fresh()->status_fulfillment->getValue())->toBe('pending');
+});
+
+test('the badge list offers the bulk fulfillment write to admins only', function () {
+    ($this->badge)();
+
+    $version = app(HandleInertiaRequests::class)->version(request());
+
+    $keys = fn (User $actor) => collect(
+        actingAs($actor)->withSession([
+            EventScope::SESSION_ID => null,
+            EventScope::SESSION_CHOSEN => true,
+        ])
+            ->withHeaders([
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) $version,
+                'X-Inertia-Partial-Component' => 'Manage/Badges/Index',
+                'X-Inertia-Partial-Data' => 'bulkActions',
+            ])
+            ->get(route('admin.badges.index'))
+            ->assertSuccessful()
+            ->json('props.bulkActions')
+    )->pluck('name')->all();
+
+    expect($keys($this->admin))->toContain('setFulfillmentStatus')
+        ->and($keys($this->reviewer))->not->toContain('setFulfillmentStatus');
 });

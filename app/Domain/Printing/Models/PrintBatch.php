@@ -162,24 +162,80 @@ class PrintBatch extends Model
         ?int $createdById = null,
         ?int $createdByStaffId = null,
     ): self {
+        return DB::transaction(function () use ($name, $badges, $printer, $eventId, $createdById, $createdByStaffId) {
+            $batch = self::open(
+                name: $name,
+                printer: $printer,
+                eventId: $eventId,
+                createdById: $createdById,
+                createdByStaffId: $createdByStaffId,
+                expectedJobs: $badges->count(),
+            );
+
+            $batch->commitBadges($badges);
+
+            return $batch->fresh();
+        });
+    }
+
+    /**
+     * Create the empty batch a run will be filled into.
+     *
+     * Split out of `build()` because rendering the artwork happens on a queue now, and
+     * the row has to exist before that work starts: it is what the operator watches, it
+     * is what a failed preparation is recorded against, and it is what the toast can name
+     * the moment the button is pressed. A batch with no jobs is inert - `scopeSelectable`
+     * and `isClaimable()` both ignore Draft - so nothing can print out of one by accident
+     * while it is still being prepared.
+     *
+     * `$expectedJobs` is what the run is expected to end up holding. It is only a
+     * placeholder for the progress display; `commitBadges()` replaces it with the count
+     * that was actually committed.
+     */
+    public static function open(
+        string $name,
+        ?Printer $printer = null,
+        ?int $eventId = null,
+        ?int $createdById = null,
+        ?int $createdByStaffId = null,
+        int $expectedJobs = 0,
+    ): self {
+        return self::create([
+            'name' => $name,
+            'event_id' => $eventId,
+            'printer_id' => $printer?->id,
+            'created_by_id' => $createdById,
+            'created_by_staff_id' => $createdByStaffId,
+            'status' => PrintBatchStatusEnum::Draft,
+            'total_jobs' => $expectedJobs,
+        ]);
+    }
+
+    /**
+     * Freeze a set of badges into this batch: one job each, in print order.
+     *
+     * Refuses a batch that already holds jobs. Batches are immutable once filled, and the
+     * preparation job that calls this can in principle be retried, so a second pass must
+     * never double the run.
+     *
+     * @param  Collection<int, Badge>  $badges
+     *
+     * @throws StalePrintFileException when any badge's artwork is missing or out of date
+     */
+    public function commitBadges(Collection $badges): void
+    {
+        if ($this->isSealed()) {
+            throw new \RuntimeException("Print batch {$this->id} already holds jobs and cannot be filled again.");
+        }
+
         self::assertPrintFilesAreCurrent($badges);
 
-        return DB::transaction(function () use ($name, $badges, $printer, $eventId, $createdById, $createdByStaffId) {
+        DB::transaction(function () use ($badges) {
             $ordered = self::sortBadgesForPrinting($badges);
 
-            $batch = self::create([
-                'name' => $name,
-                'event_id' => $eventId,
-                'printer_id' => $printer?->id,
-                'created_by_id' => $createdById,
-                'created_by_staff_id' => $createdByStaffId,
-                'status' => PrintBatchStatusEnum::Draft,
-                'total_jobs' => $ordered->count(),
-            ]);
-
             foreach ($ordered->values() as $position => $badge) {
-                $batch->printJobs()->create([
-                    'printer_id' => $printer?->id ?? $badge->printJobs()->value('printer_id'),
+                $this->printJobs()->create([
+                    'printer_id' => $this->printer_id ?? $badge->printJobs()->value('printer_id'),
                     'printable_type' => $badge->getMorphClass(),
                     'printable_id' => $badge->id,
                     'type' => PrintJobTypeEnum::Badge,
@@ -196,7 +252,7 @@ class PrintBatch extends Model
                 $badge->forceFill(['printing_locked_at' => now()])->saveQuietly();
             }
 
-            return $batch->fresh();
+            $this->update(['total_jobs' => $ordered->count()]);
         });
     }
 

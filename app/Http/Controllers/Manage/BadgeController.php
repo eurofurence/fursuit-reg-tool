@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manage;
 
 use App\Enum\PrintJobStatusEnum;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Manage\BadgeBulkStatusRequest;
 use App\Http\Requests\Manage\BadgeRequest;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\BadgeFulfillmentStatusState;
@@ -25,6 +26,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Response;
@@ -66,6 +68,22 @@ class BadgeController extends Controller
      * Filament's model label for this resource, as its delete modal renders it.
      */
     private const MODEL_LABEL = 'badge';
+
+    /**
+     * Filament's labels for the four fulfillment states, verbatim (audit 4.2).
+     *
+     * One copy, read by the list filter, the edit form's transition picker and the bulk
+     * write's toast. It was three copies of the same four strings, which is three places
+     * to miss when a state is renamed.
+     *
+     * @var array<string, string>
+     */
+    public const FULFILLMENT_LABELS = [
+        'pending' => 'Pending',
+        'processing' => 'Processing',
+        'ready_for_pickup' => 'Ready for Pickup',
+        'picked_up' => 'Picked Up',
+    ];
 
     /**
      * The three date formats BadgeResource used, verbatim (audit 7.6).
@@ -149,6 +167,125 @@ class BadgeController extends Controller
     }
 
     /**
+     * The bulk fulfillment write, or null when this operator may not change badges.
+     *
+     * Every status is offered, not just the ones the selection could legally transition
+     * to: the selection is many badges in possibly many states, so there is no single set
+     * of legal targets to offer, and reaching an "illegal" one is the point.
+     */
+    private static function bulkStatusAction(): ?Action
+    {
+        if (! Gate::allows('manage-admin')) {
+            return null;
+        }
+
+        return Action::post('setFulfillmentStatus', 'Set Fulfillment', route('admin.badges.bulk.status'))
+            ->icon('flag')
+            ->tone(Status::WARN)
+            ->confirm(
+                'Set Fulfillment Status',
+                'Writes the status directly to the selected badges. No badge IDs are allocated, no timestamps are set and no attendees are notified. For fixing bad data, not for normal handling.',
+            )
+            ->fields([
+                [
+                    'key' => 'status_fulfillment',
+                    'label' => 'Fulfillment Status',
+                    'type' => 'select',
+                    'options' => collect(self::FULFILLMENT_LABELS)
+                        ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+                        ->values()
+                        ->all(),
+                    'required' => true,
+                ],
+            ]);
+    }
+
+    /**
+     * Set the fulfillment status of a selection, straight into the column.
+     *
+     * This is a repair tool, and it is the one write in the panel that deliberately does
+     * not go through the state machine. The graph only runs forward -
+     * `Pending → Processing → ReadyForPickup ⇄ PickedUp` - so a badge left in the wrong
+     * state by a bug has no legal way back, and `transitionTo()` would refuse exactly the
+     * corrections this exists to make.
+     *
+     * What that costs, stated plainly because it is invisible from the UI: no `custom_id`
+     * allocation, no `printed_at` / `ready_for_pickup_at` / `picked_up_at` stamping, and no
+     * notification to the attendee. The status column moves and nothing else does. Use
+     * BadgeController::update() for a normal, single-badge state change; this is for
+     * putting data back where it should have been.
+     *
+     * Written through the model rather than a mass `update()` on the query so each badge
+     * gets its own activity entry - Badge logs `['*']` - which is the only record that a
+     * status moved without a transition behind it. `$badges` is therefore iterated, not
+     * bulk-updated; these selections are one page of the list, so the row count is small.
+     */
+    public function bulkStatus(BadgeBulkStatusRequest $request): RedirectResponse
+    {
+        $target = $request->validated('status_fulfillment');
+
+        $badges = Badge::whereIn('id', $request->validated('ids'))->orderBy('id')->get();
+
+        if ($badges->isEmpty()) {
+            Toast::flashDanger('Nothing updated', 'None of the selected badges still exist.');
+
+            return back();
+        }
+
+        $changed = $badges->reject(
+            fn (Badge $badge) => $badge->status_fulfillment->getValue() === $target
+        );
+
+        foreach ($changed as $badge) {
+            // Assignment rather than transitionTo: the cast resolves the name to its state
+            // class and writes it, and the transition graph is never consulted.
+            $badge->status_fulfillment = $target;
+            $badge->save();
+        }
+
+        Log::warning('Badge fulfillment status set in bulk, bypassing the state machine', [
+            'badge_ids' => $changed->pluck('id')->all(),
+            'status_fulfillment' => $target,
+            'actor_id' => auth()->id(),
+        ]);
+
+        Toast::flashSuccess(
+            $changed->isEmpty() ? 'Nothing to change' : 'Fulfillment status updated',
+            $this->bulkStatusBody($badges->count(), $changed->count(), $target),
+        );
+
+        return back();
+    }
+
+    /**
+     * What the bulk write reports back, including the badges it left alone.
+     *
+     * The skipped count is named rather than folded into the total: selecting fifty badges
+     * and being told fifty changed, when forty were already in that state, reads as a much
+     * bigger write than it was.
+     */
+    private function bulkStatusBody(int $selected, int $changed, string $target): string
+    {
+        $label = self::FULFILLMENT_LABELS[$target] ?? $target;
+
+        if ($changed === 0) {
+            return $selected === 1
+                ? 'That badge is already '.$label.'.'
+                : 'All '.$selected.' selected badges are already '.$label.'.';
+        }
+
+        $body = $changed === 1
+            ? '1 badge set to '.$label.'.'
+            : $changed.' badges set to '.$label.'.';
+
+        $skipped = $selected - $changed;
+
+        return $skipped === 0
+            ? $body
+            : $body.' '.$skipped.' already were.';
+    }
+
+    /**
      * Soft delete, which is what Filament's DeleteAction did on a model using
      * SoftDeletes. The panel exposes no trashed filter and no restore, exactly as today
      * (audit 136); that stays a recorded gap rather than a silent change here.
@@ -210,6 +347,7 @@ class BadgeController extends Controller
             // the bulk print inherits it.
             ->bulkActions(array_values(array_filter([
                 BadgePrintController::bulkAction(),
+                self::bulkStatusAction(),
             ])))
             // ListBadges offers a CreateAction labelled `New badge`. It is not ported: the
             // page it opens has never been able to save (plan 2.10 #6, audit 25).
@@ -399,12 +537,7 @@ class BadgeController extends Controller
             Filter::select('status_fulfillment', 'Fulfillment Status')
                 ->multiple()
                 ->placeholder('All Statuses')
-                ->options([
-                    'pending' => 'Pending',
-                    'processing' => 'Processing',
-                    'ready_for_pickup' => 'Ready for Pickup',
-                    'picked_up' => 'Picked Up',
-                ])
+                ->options(self::FULFILLMENT_LABELS)
                 // Qualified: `fursuits` and `event_users` are joined in, so an
                 // unqualified column name is only unambiguous by luck.
                 ->apply(fn (Builder $query, array $value) => $query->whereIn('badges.status_fulfillment', $value)),
@@ -580,13 +713,7 @@ class BadgeController extends Controller
         return self::options(
             $badge->status_fulfillment->getValue(),
             $badge->status_fulfillment->transitionableStates(),
-            fn (string $name) => match ($name) {
-                'pending' => 'Pending',
-                'processing' => 'Processing',
-                'ready_for_pickup' => 'Ready for Pickup',
-                'picked_up' => 'Picked Up',
-                default => ucfirst($name),
-            },
+            fn (string $name) => self::FULFILLMENT_LABELS[$name] ?? ucfirst($name),
         );
     }
 

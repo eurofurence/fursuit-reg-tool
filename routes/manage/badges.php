@@ -40,6 +40,7 @@ Route::prefix('badges')->name('badges.')->group(function () {
 
     Route::middleware('can:manage-admin')->group(function () {
         Route::post('bulk/print', [BadgePrintController::class, 'bulk'])->name('bulk.print');
+        Route::post('bulk/status', [BadgeController::class, 'bulkStatus'])->name('bulk.status');
         Route::post('{badge}/print', [BadgePrintController::class, 'store'])->whereNumber('badge')->name('print');
         Route::put('{badge}', [BadgeController::class, 'update'])->whereNumber('badge')->name('update');
         Route::delete('{badge}', [BadgeController::class, 'destroy'])->whereNumber('badge')->name('destroy');

@@ -6,6 +6,7 @@ use App\Domain\Printing\Exceptions\StalePrintFileException;
 use App\Domain\Printing\Models\PrintBatch;
 use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Services\BadgePrintQueue;
+use App\Enum\PrintBatchStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\BadgePrintRequest;
@@ -89,20 +90,20 @@ class BadgePrintController extends Controller
     /**
      * `printBadge`, the row action (audit 4.2, row action 2).
      *
-     * The transition to Processing happens first and through the state machine, never as
-     * a write: it is what allocates `custom_id`, and the artwork is rendered from it.
-     * `BadgePrintQueue::queue()` makes the same move for every badge it is handed, so
-     * this is the same edge asked for twice and the second ask is a no-op; it is spelled
-     * out because the Filament helper spelled it out, and because a badge that cannot
-     * reach Processing must still be printable (a reprint of a picked-up card).
+     * The request does not move the badge to Processing, and must not. That transition is
+     * what allocates `custom_id`, so it belongs with the render that puts the id on the
+     * card, and both now happen in `PrepareBadgePrintBatchJob`. Doing it here as well
+     * would put the badge in Processing before the run exists, and a preparation that
+     * then failed could not undo it: the job only returns badges *it* moved, precisely so
+     * it cannot revert one that belongs to some other run.
      *
      * No printer is passed, exactly as `printBadge()` passed none: the queue falls back
      * to the first active badge printer.
      *
-     * The two log lines are `printBadge()`'s own, keys included. They are the only record
-     * of who put a single card through a printer and what state it was in when they did:
-     * the batch log below them names the batch but not the badge it came from, and a
-     * reprint of a card that cannot reach Processing writes no activity entry either.
+     * The log line is `printBadge()`'s own, keys included. It is the only record of who
+     * put a single card through a printer and what state it was in when they did: the
+     * batch log names the batch but not the badge it came from, and a reprint of a card
+     * that cannot reach Processing writes no activity entry either.
      */
     public function store(Badge $badge): RedirectResponse
     {
@@ -115,18 +116,6 @@ class BadgePrintController extends Controller
             'before_fulfillment' => $badge->status_fulfillment->getValue(),
             'before_payment' => $badge->status_payment->getValue(),
             'can_transition' => $badge->status_fulfillment->canTransitionTo(Processing::class),
-        ]);
-
-        if ($badge->status_fulfillment->canTransitionTo(Processing::class)) {
-            $badge->status_fulfillment->transitionTo(Processing::class);
-        }
-
-        $badge->refresh();
-
-        Log::info('printBadge after transition', [
-            'badge_id' => $badge->id,
-            'after_fulfillment' => $badge->status_fulfillment->getValue(),
-            'after_payment' => $badge->status_payment->getValue(),
         ]);
 
         $batch = $this->queue(collect([$badge]), null);
@@ -231,11 +220,12 @@ class BadgePrintController extends Controller
     /**
      * The one call into the print pipeline, plus the two refusals it can produce.
      *
-     * `PrintBatch::build()` throws `StalePrintFileException` when a badge's artwork is
-     * missing or no longer matches the order, and nothing in the printing UI has ever
-     * surfaced that (audit 93). The queue renders anything stale synchronously first, so
-     * reaching this catch means the render itself did not produce a usable file - which
-     * is a refusal the operator standing at the printer has to be told about, not a 500.
+     * `StalePrintFileException` is a refusal to batch artwork that is missing or no longer
+     * matches the order (audit 93). It is raised where the run is committed, which is on
+     * the worker now, so this catch only still fires under the `sync` queue driver - the
+     * test suite, and a console run. Kept rather than dropped because it is the same
+     * refusal either way, and an operator is better told than shown a 500. On a real queue
+     * the same failure cancels the batch with the message on it instead.
      *
      * @param  Collection<int, Badge>  $badges
      */
@@ -265,17 +255,22 @@ class BadgePrintController extends Controller
 
     /**
      * What the success toast says under its title: the batch the agent will claim from,
-     * and how many cards are in it. A batch name carries the attendee range, which is how
-     * the cards are filed, so it is the one string that tells an operator which pile they
-     * are about to be handed.
+     * and how many cards are in it.
+     *
+     * A run is prepared on a queue, so at the moment this is written the artwork is still
+     * being rendered and the batch is a Draft no agent can claim. Saying "ready to print"
+     * there would be a lie that sends an operator to a printer that has nothing to do
+     * yet, so the copy depends on where the batch actually is: Ready under the `sync`
+     * driver, where preparation has already finished, and preparing anywhere else.
      */
     private function queuedBody(PrintBatch $batch): string
     {
         $name = $batch->name ?? 'Batch #'.$batch->id;
+        $cards = $batch->total_jobs === 1 ? '' : ' ('.$batch->total_jobs.' cards)';
 
-        return $batch->total_jobs === 1
-            ? $name.' is ready to print.'
-            : $name.' is ready to print ('.$batch->total_jobs.' cards).';
+        return $batch->status === PrintBatchStatusEnum::Ready
+            ? $name.' is ready to print'.$cards.'.'
+            : $name.' is being prepared'.$cards.'. It will show as ready to print once the artwork is rendered.';
     }
 
     /**

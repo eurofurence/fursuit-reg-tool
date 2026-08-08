@@ -957,9 +957,13 @@ test('the bulk delete carries Filament default copy and is admin only', function
 
     $bulk = ($this->props)()['bulkActions'];
 
-    expect($bulk)->toHaveCount(1)
-        ->and($bulk[0]['label'])->toBe('Delete selected')
-        ->and($bulk[0]['confirm'])->toBe([
+    // Reset sits first, delete second: the recoverable verb before the destructive one.
+    $delete = collect($bulk)->firstWhere('name', 'delete');
+
+    expect($bulk)->toHaveCount(2)
+        ->and($bulk[0]['name'])->toBe('reset')
+        ->and($delete['label'])->toBe('Delete selected')
+        ->and($delete['confirm'])->toBe([
             'heading' => 'Delete selected print jobs',
             'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
             'submit' => 'Delete',

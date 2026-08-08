@@ -812,19 +812,28 @@ class PrintJobController extends Controller
      */
     private function bulkActions(): array
     {
-        // A bare class name would reach PrintJobPolicy::delete() as its $printJob
-        // argument and fail the type hint, so the question "may this operator delete print
-        // jobs at all" is asked with a throwaway instance.
-        if (! Gate::allows('delete', new PrintJob)) {
-            return [];
-        }
+        // A bare class name would reach the policy as its $printJob argument and fail the
+        // type hint, so the question "may this operator do this to print jobs at all" is
+        // asked with a throwaway instance.
+        return array_values(array_filter([
+            Gate::allows('retry', new PrintJob)
+                ? Action::post('reset', 'Reset to pending', route('admin.print-jobs.bulk.reset'))
+                    ->icon('refresh-cw')
+                    ->tone(Status::WARN)
+                    ->confirm(
+                        'Reset selected print jobs to pending',
+                        'They go back into their run as unclaimed cards, keeping their sequence and batch, and will print again. Jobs that have already printed or been cancelled cannot be reset.',
+                        'Reset',
+                    )
+                : null,
 
-        return [
-            Action::delete('delete', 'Delete selected', route('admin.print-jobs.bulk.destroy'))
-                ->icon('trash-2')
-                ->tone(Status::DANGER)
-                ->confirm('Delete selected print jobs', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete'),
-        ];
+            Gate::allows('delete', new PrintJob)
+                ? Action::delete('delete', 'Delete selected', route('admin.print-jobs.bulk.destroy'))
+                    ->icon('trash-2')
+                    ->tone(Status::DANGER)
+                    ->confirm('Delete selected print jobs', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete')
+                : null,
+        ]));
     }
 
     /**
