@@ -141,7 +141,7 @@ class AgentApp(tk.Tk):
         self.telegram_poller = None
 
         self.title("Badge Print Agent" + (" [demo]" if demo else ""))
-        self.geometry("940x660")
+        self.geometry("1008x744")
         self.minsize(860, 600)
 
         self._build_style()
@@ -171,8 +171,8 @@ class AgentApp(tk.Tk):
         self.update_idletasks()
         self.lift()
 
-        width = self.winfo_width() or 940
-        height = self.winfo_height() or 660
+        width = self.winfo_width() or 1008
+        height = self.winfo_height() or 744
 
         self.geometry("%dx%d" % (width, height + 1))
         self.update_idletasks()
@@ -241,6 +241,7 @@ class AgentApp(tk.Tk):
 
         self._build_run_tab()
         self._build_setup_tab()
+        self._build_printers_tab()
         self._build_camera_tab()
         self._build_history_tab()
         self._build_diagnostics_tab()
@@ -510,18 +511,32 @@ class AgentApp(tk.Tk):
         tab = ttk.Frame(self.tabs, padding=14)
         self.tabs.add(tab, text="  Setup  ")
 
-        server = ttk.LabelFrame(tab, text="Server", padding=12)
+        # Two columns. Stacked, these four boxes ran to 916 pixels in a window
+        # that has 523 to give on the station's 1024x768 screen, so the lower
+        # half was permanently below the fold.
+        columns = ttk.Frame(tab)
+        columns.pack(fill="both", expand=True)
+
+        left = ttk.Frame(columns)
+        left.pack(side="left", fill="y")
+
+        right = ttk.Frame(columns, padding=(14, 0, 0, 0))
+        right.pack(side="left", fill="y")
+
+        server = ttk.LabelFrame(left, text="Server", padding=12)
         server.pack(fill="x")
 
-        self.server_url = self._field(server, "Server URL", self.config_data.server_url, 0)
-        self.api_token = self._field(server, "API token", self.config_data.api_token, 1, secret=True)
+        self.server_url = self._field(
+            server, "Server URL", self.config_data.server_url, 0, width=30)
+        self.api_token = self._field(
+            server, "API token", self.config_data.api_token, 1, secret=True, width=30)
         ttk.Button(server, text="Test connection",
                    command=self._test_server).grid(row=2, column=1, sticky="w", pady=(8, 0))
 
         # Pushover was configurable only by hand-editing the config file, which
         # meant in practice it was never on, and the one channel that reaches a
         # phone when the run stops was the one nobody had set up.
-        pushover_box = ttk.LabelFrame(tab, text="Pushover alerts", padding=12)
+        pushover_box = ttk.LabelFrame(left, text="Pushover alerts", padding=12)
         pushover_box.pack(fill="x", pady=(12, 0))
 
         self.pushover_enabled = tk.BooleanVar(value=self.config_data.pushover.enabled)
@@ -532,27 +547,28 @@ class AgentApp(tk.Tk):
         ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
 
         self.pushover_user = self._field(
-            pushover_box, "User key", self.config_data.pushover.user_key, 1, secret=True)
+            pushover_box, "User key", self.config_data.pushover.user_key, 1,
+            secret=True, width=30)
         self.pushover_token = self._field(
-            pushover_box, "API token", self.config_data.pushover.api_token, 2, secret=True)
+            pushover_box, "API token", self.config_data.pushover.api_token, 2,
+            secret=True, width=30)
         self.pushover_cooldown = self._field(
-            pushover_box, "Repeat after (seconds)",
-            str(self.config_data.pushover.cooldown_seconds), 3)
+            pushover_box, "Repeat after (s)",
+            str(self.config_data.pushover.cooldown_seconds), 3, width=8)
 
         ttk.Label(
             pushover_box,
-            text=("The user key is on your Pushover dashboard; the API token comes from "
-                  "an application you create there. Only faults reach this: a stopped "
-                  "printer, a jam, or the card stock running low. Everything else goes "
-                  "to Telegram, so the phone alert stays worth reading."),
-            wraplength=560, style="Sub.TLabel", justify="left",
+            text=("User key from your Pushover dashboard, API token from an application "
+                  "you create there. Only a stopped printer, a jam or low card stock "
+                  "reach this; everything else goes to Telegram."),
+            wraplength=300, style="Sub.TLabel", justify="left",
         ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
         ttk.Button(pushover_box, text="Send a test alert",
                    command=self._test_pushover).grid(row=5, column=1, sticky="w", pady=(8, 0))
 
-        cards_box = ttk.LabelFrame(tab, text="Card stock", padding=12)
-        cards_box.pack(fill="x", pady=(12, 0))
+        cards_box = ttk.LabelFrame(right, text="Card stock", padding=12)
+        cards_box.pack(fill="x")
 
         self.cards_enabled = tk.BooleanVar(value=self.config_data.card_stock.enabled)
         ttk.Checkbutton(
@@ -563,20 +579,19 @@ class AgentApp(tk.Tk):
 
         self.cards_threshold = self._field(
             cards_box, "Warn with this many left",
-            str(self.config_data.card_stock.low_threshold), 1)
+            str(self.config_data.card_stock.low_threshold), 1, width=8)
         self.cards_refill = self._field(
             cards_box, "Refill button adds",
-            str(self.config_data.card_stock.refill_size), 2)
+            str(self.config_data.card_stock.refill_size), 2, width=8)
 
         ttk.Label(
             cards_box,
-            text=("The count lives on the Console, where it is set and refilled. The "
-                  "printer only reports empty once it already is, which strands a run "
-                  "mid-batch."),
-            wraplength=560, style="Sub.TLabel", justify="left",
+            text=("Set and refilled on the Console. The printer only reports empty once "
+                  "it already is, which strands a run mid-batch."),
+            wraplength=300, style="Sub.TLabel", justify="left",
         ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
-        telegram_box = ttk.LabelFrame(tab, text="Telegram channel", padding=12)
+        telegram_box = ttk.LabelFrame(right, text="Telegram channel", padding=12)
         telegram_box.pack(fill="x", pady=(12, 0))
 
         self.telegram_enabled = tk.BooleanVar(value=self.config_data.telegram.enabled)
@@ -587,96 +602,30 @@ class AgentApp(tk.Tk):
         ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
 
         self.telegram_token = self._field(
-            telegram_box, "Bot token", self.config_data.telegram.bot_token, 1, secret=True)
+            telegram_box, "Bot token", self.config_data.telegram.bot_token, 1,
+            secret=True, width=30)
         self.telegram_chat = self._field(
-            telegram_box, "Chat ID", self.config_data.telegram.chat_id, 2)
+            telegram_box, "Chat ID", self.config_data.telegram.chat_id, 2, width=16)
 
         ttk.Label(
             telegram_box,
             text=("Create the bot with @BotFather, add it to the channel as an "
-                  "administrator so it can post, then put the numeric chat ID here. "
-                  "Pause and Resume buttons appear under every photo."),
-            wraplength=560, style="Sub.TLabel", justify="left",
+                  "administrator, then put the numeric chat ID here."),
+            wraplength=300, style="Sub.TLabel", justify="left",
         ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
         ttk.Button(telegram_box, text="Send a test message",
                    command=self._test_telegram).grid(row=4, column=1, sticky="w",
                                                      pady=(8, 0))
 
-        # A station can drive several printers: two card printers for throughput
-        # plus a thermal receipt printer. Each is configured separately.
-        printers = ttk.LabelFrame(tab, text="Printers on this station", padding=12)
-        printers.pack(fill="both", expand=True, pady=(12, 0))
 
-        listing = ttk.Frame(printers)
-        listing.pack(side="left", fill="y")
-
-        self.printer_list = tk.Listbox(listing, height=7, width=34, exportselection=False)
-        self.printer_list.pack()
-        self.printer_list.bind("<<ListboxSelect>>", lambda _: self._on_printer_selected())
-
-        list_buttons = ttk.Frame(listing)
-        list_buttons.pack(fill="x", pady=(6, 0))
-        ttk.Button(list_buttons, text="Add", width=8,
-                   command=self._add_printer).pack(side="left")
-        ttk.Button(list_buttons, text="Remove", width=9,
-                   command=self._remove_printer).pack(side="left", padx=4)
-
-        detail = ttk.Frame(printers, padding=(16, 0, 0, 0))
-        detail.pack(side="left", fill="both", expand=True)
-
-        installed = printing.list_printers()
-        note = "" if installed else "  (no Windows spooler here)"
-
-        ttk.Label(detail, text="Windows printer").grid(row=0, column=0, sticky="w", pady=4)
-        self.binding_name = ttk.Combobox(detail, width=36, values=installed)
-        self.binding_name.grid(row=0, column=1, sticky="w")
-        ttk.Label(detail, text=note, style="Sub.TLabel").grid(row=0, column=2, sticky="w")
-
-        self.binding_label = self._field(detail, "Name staff use", "", 1, width=36)
-
-        ttk.Label(detail, text="Type").grid(row=2, column=0, sticky="w", pady=4)
-        self.binding_role = ttk.Combobox(detail, width=20, state="readonly",
-                                         values=["card", "receipt"])
-        self.binding_role.grid(row=2, column=1, sticky="w")
-        self.binding_role.bind("<<ComboboxSelected>>", lambda _: self._on_role_changed())
-
-        self.binding_snmp = self._field(detail, "Printer IP (SNMP)", "", 3, width=36)
-        self.binding_community = self._field(detail, "SNMP community", "public", 4, width=36)
-
-        self.snmp_hint = ttk.Label(
-            detail, text="Card printers report jams and ribbon level over SNMP.",
-            style="Sub.TLabel")
-        self.snmp_hint.grid(row=5, column=1, sticky="w")
-
-        ttk.Label(detail, text="Two-sided flip").grid(row=6, column=0, sticky="w", pady=4)
-        self.binding_flip = ttk.Combobox(detail, width=20, state="readonly",
-                                         values=[config_module.FLIP_SHORT_EDGE,
-                                                 config_module.FLIP_LONG_EDGE])
-        self.binding_flip.grid(row=6, column=1, sticky="w")
-        ttk.Label(detail,
-                  text="Change this if the back of a badge prints upside down.",
-                  style="Sub.TLabel").grid(row=7, column=1, sticky="w")
-
-        self.binding_rotate_back = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            detail,
-            text="Turn the back of the card upside down before printing",
-            variable=self.binding_rotate_back,
-        ).grid(row=8, column=1, sticky="w", pady=(4, 0))
-
-        actions = ttk.Frame(detail)
-        actions.grid(row=9, column=1, sticky="w", pady=(10, 0))
-        ttk.Button(actions, text="Apply to printer",
-                   command=self._apply_binding).pack(side="left")
-        ttk.Button(actions, text="Test SNMP",
-                   command=self._test_snmp).pack(side="left", padx=6)
-
+        # Tight pads: the tab lands within a handful of pixels of the window's
+        # usable height, and this row is what decides which side of it.
         ttk.Button(tab, text="Save settings", style="Big.TButton",
-                   command=self._save_config).pack(anchor="w", pady=(14, 0))
+                   command=self._save_config).pack(anchor="w", pady=(10, 0))
 
         ttk.Label(tab, text="Settings are stored in " + str(config_dir()),
-                  style="Sub.TLabel").pack(anchor="w", pady=(8, 0))
+                  style="Sub.TLabel").pack(anchor="w", pady=(4, 0))
 
         # Populating the list touches the camera tab's widgets, so it happens
         # once every tab exists rather than here. See _build_tabs.
@@ -784,6 +733,90 @@ class AgentApp(tk.Tk):
 
         if names and not self.printer_selector.get():
             self.printer_selector.set(names[0])
+
+    def _build_printers_tab(self) -> None:
+        """The printer bindings, on a page of their own.
+
+        These used to sit under the settings boxes on Setup, which made that tab
+        916 pixels tall in a window with 523 to give on the station's 1024x768
+        screen. The printer list is the thing anybody actually opens this for,
+        and it was the part below the fold.
+        """
+        tab = ttk.Frame(self.tabs, padding=14)
+        self.tabs.add(tab, text="  Printers  ")
+
+        # A station can drive several printers: two card printers for throughput
+        # plus a thermal receipt printer. Each is configured separately.
+        printers = ttk.LabelFrame(tab, text="Printers on this station", padding=12)
+        printers.pack(fill="both", expand=True)
+
+        listing = ttk.Frame(printers)
+        listing.pack(side="left", fill="y")
+
+        self.printer_list = tk.Listbox(listing, height=7, width=34, exportselection=False)
+        self.printer_list.pack()
+        self.printer_list.bind("<<ListboxSelect>>", lambda _: self._on_printer_selected())
+
+        list_buttons = ttk.Frame(listing)
+        list_buttons.pack(fill="x", pady=(6, 0))
+        ttk.Button(list_buttons, text="Add", width=8,
+                   command=self._add_printer).pack(side="left")
+        ttk.Button(list_buttons, text="Remove", width=9,
+                   command=self._remove_printer).pack(side="left", padx=4)
+
+        detail = ttk.Frame(printers, padding=(16, 0, 0, 0))
+        detail.pack(side="left", fill="both", expand=True)
+
+        installed = printing.list_printers()
+        note = "" if installed else "  (no Windows spooler here)"
+
+        ttk.Label(detail, text="Windows printer").grid(row=0, column=0, sticky="w", pady=4)
+        self.binding_name = ttk.Combobox(detail, width=36, values=installed)
+        self.binding_name.grid(row=0, column=1, sticky="w")
+        ttk.Label(detail, text=note, style="Sub.TLabel").grid(row=0, column=2, sticky="w")
+
+        self.binding_label = self._field(detail, "Name staff use", "", 1, width=36)
+
+        ttk.Label(detail, text="Type").grid(row=2, column=0, sticky="w", pady=4)
+        self.binding_role = ttk.Combobox(detail, width=20, state="readonly",
+                                         values=["card", "receipt"])
+        self.binding_role.grid(row=2, column=1, sticky="w")
+        self.binding_role.bind("<<ComboboxSelected>>", lambda _: self._on_role_changed())
+
+        self.binding_snmp = self._field(detail, "Printer IP (SNMP)", "", 3, width=36)
+        self.binding_community = self._field(detail, "SNMP community", "public", 4, width=36)
+
+        self.snmp_hint = ttk.Label(
+            detail, text="Card printers report jams and ribbon level over SNMP.",
+            style="Sub.TLabel")
+        self.snmp_hint.grid(row=5, column=1, sticky="w")
+
+        ttk.Label(detail, text="Two-sided flip").grid(row=6, column=0, sticky="w", pady=4)
+        self.binding_flip = ttk.Combobox(detail, width=20, state="readonly",
+                                         values=[config_module.FLIP_SHORT_EDGE,
+                                                 config_module.FLIP_LONG_EDGE])
+        self.binding_flip.grid(row=6, column=1, sticky="w")
+        ttk.Label(detail,
+                  text="Change this if the back of a badge prints upside down.",
+                  style="Sub.TLabel").grid(row=7, column=1, sticky="w")
+
+        self.binding_rotate_back = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            detail,
+            text="Turn the back of the card upside down before printing",
+            variable=self.binding_rotate_back,
+        ).grid(row=8, column=1, sticky="w", pady=(4, 0))
+
+        actions = ttk.Frame(detail)
+        actions.grid(row=9, column=1, sticky="w", pady=(10, 0))
+        ttk.Button(actions, text="Apply to printer",
+                   command=self._apply_binding).pack(side="left")
+        ttk.Button(actions, text="Test SNMP",
+                   command=self._test_snmp).pack(side="left", padx=6)
+
+        ttk.Label(tab, text="Saved with everything else, by Save settings on Setup.",
+                  style="Sub.TLabel").pack(anchor="w", pady=(10, 0))
+
 
     def _build_camera_tab(self) -> None:
         tab = ttk.Frame(self.tabs, padding=14)
