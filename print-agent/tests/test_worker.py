@@ -209,6 +209,11 @@ class FakeNotifier:
         self.alerts = []
         self.urgent = []
 
+        # Keys whose cooldown the worker has dropped. The real notifier sends
+        # one alert per key per cooldown window, so a fault that recurs is only
+        # heard about twice if somebody clears it in between.
+        self.cleared = []
+
     def alert(self, key, title, message, priority=0, stops_printing=True):
         self.alerts.append((key, title, message))
 
@@ -219,6 +224,9 @@ class FakeNotifier:
             self.urgent.append(key)
 
         return True
+
+    def clear(self, key):
+        self.cleared.append(key)
 
 
 class Binding:
@@ -355,6 +363,44 @@ class GateTest(WorkerTestCase):
 
         self.assertTrue(self.notifier.alerts)
         self.assertIn("jam", self.notifier.alerts[0][2].lower())
+
+    def test_a_fault_that_recurs_is_alerted_again(self):
+        """The one that went wrong on the floor.
+
+        A printer reported service_required, was dealt with, printed three
+        cards and faulted again a minute later. The second stop was silent:
+        the notifier suppresses one key for five minutes and nothing ever told
+        it the first fault was over, so the alert that proved the fix had not
+        held was the one nobody got.
+        """
+        self.api.queue.append(job(11, "24-0031"))
+        printer = self.build()
+
+        self.printer.jam()
+        printer.print_next()
+
+        self.assertEqual(len(self.notifier.alerts), 1)
+
+        # Dealt with, and a card goes through.
+        self.printer.clear()
+        self.assertEqual(printer.print_next().kind, worker.PRINTED)
+
+        # Which is the only moment anything knows the fault is over.
+        self.assertIn("printer:ZXP9-Left:card_jam", self.notifier.cleared)
+
+        self.printer.jam()
+        printer.print_next()
+
+        self.assertEqual(len(self.notifier.alerts), 2)
+        self.assertEqual(self.notifier.alerts[0][0], self.notifier.alerts[1][0])
+
+    def test_a_healthy_pass_clears_nothing_it_did_not_raise(self):
+        self.api.queue.append(job(11, "24-0031"))
+        printer = self.build()
+
+        self.assertEqual(printer.print_next().kind, worker.PRINTED)
+
+        self.assertEqual(self.notifier.cleared, [])
 
 
 class HappyPathTest(WorkerTestCase):
