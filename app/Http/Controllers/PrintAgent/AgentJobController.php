@@ -112,7 +112,7 @@ class AgentJobController extends AgentController
     public function printed(Request $request, int $job): JsonResponse
     {
         $data = $request->validate([
-            'completion_source' => ['required', 'string', 'in:firmware,spooler_only,operator'],
+            'completion_source' => ['required', 'string', 'in:firmware,spooler_only,operator,recovered'],
             'firmware_job_id' => 'nullable|string|max:64',
             'firmware_job_uuid' => 'nullable|string|max:64',
         ]);

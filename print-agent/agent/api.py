@@ -43,6 +43,11 @@ COMPLETION_FIRMWARE = "firmware"
 COMPLETION_SPOOLER_ONLY = "spooler_only"
 COMPLETION_OPERATOR = "operator"
 
+# The agent's own records showed the card had already printed here, on a job the
+# server handed back after a lease lapsed. Second-hand evidence, so it is named
+# rather than passed off as a fresh firmware confirmation.
+COMPLETION_RECOVERED = "recovered"
+
 # Accepted by POST /jobs/{job}/verify. See PrintVerificationSourceEnum.
 VERIFY_CAMERA = "camera"
 VERIFY_OPERATOR = "operator"

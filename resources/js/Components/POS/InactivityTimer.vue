@@ -64,8 +64,16 @@ const isTimerActive = computed(() => {
         return false;
     }
 
-    // Timer is active on all POS routes except auth routes
-    const isActive = currentRoute.value && currentRoute.value.startsWith('pos.') && !currentRoute.value.startsWith('pos.auth.');
+    // Timer is active on all POS routes except auth routes, and except the
+    // verification screen. Checking a crate off is minutes of handling cards
+    // with no keyboard or mouse in between, and locking there throws away the
+    // list of what was already checked - the one thing the clerk is reading
+    // off the screen. That screen holds no attendee data and no till, so the
+    // lock buys nothing there; it polls the server itself to hold the session.
+    const isActive = currentRoute.value
+        && currentRoute.value.startsWith('pos.')
+        && !currentRoute.value.startsWith('pos.auth.')
+        && !currentRoute.value.startsWith('pos.verification.');
     console.log('[InactivityTimer] Route check:', {
         currentRoute: currentRoute.value,
         isActive,
