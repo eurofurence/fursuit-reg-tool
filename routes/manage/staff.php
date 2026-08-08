@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Route;
  * as part of that page.
  *
  * `setup-code` is a POST that writes nothing. It proposes an unused code back into the
- * form, because the Filament suffix action persisted one the moment it was pressed
- * (plan 2.10 #23). It is declared twice: the plan's table names the record-scoped route,
+ * form, because the old panel suffix action persisted one the moment it was pressed
+ *. It is declared twice: the plan's table names the record-scoped route,
  * and the button is offered on the create screen too, where there is no record to scope
  * to. Both hit the same controller.
  *

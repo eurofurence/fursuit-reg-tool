@@ -23,8 +23,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The two endpoints that put badges through a printer (audit 4.2, `printBadge` and
- * `printBadgeBulk`).
+ * The two endpoints that put badges through a printer.
  *
  * They live apart from BadgeController for the same reason PrintJobRetryController lives
  * apart from PrintJobController: the CRUD controller owns pages and props, this owns a
@@ -39,13 +38,13 @@ use Illuminate\Support\Facades\Log;
  *    printing lock. Even one badge gets its own, which is why the row action queues
  *    rather than creating a job.
  *  - the **order** is `PrintBatch::sortBadgesForPrinting()`, called from `build()`:
- *    attendee ascending, badge number descending inside an attendee. The Filament bulk
+ *    attendee ascending, badge number descending inside an attendee. The old panel bulk
  *    action pre-sorted its selection by attendee id and its own comment says the batch
  *    does the ordering anyway, so that sort is not reproduced here. A second ordering
  *    could only ever disagree with the one that is actually frozen into the jobs.
  *
  * **Authorisation is `viewAny` on Badge, not `manage-admin`.** That is the gate the two
- * Filament actions inherited from the resource (`is_admin || is_reviewer`) and neither
+ * the old panel actions inherited from the resource (`is_admin || is_reviewer`) and neither
  * declared one of its own, so this is exactly the audience that can print today.
  * Narrowing printing to admins is a live-convention decision the plan's risk register
  * parks on the operators rather than on this PR ("confirm with the operators who actually
@@ -57,7 +56,7 @@ use Illuminate\Support\Facades\Log;
 class BadgePrintController extends Controller
 {
     /**
-     * `printBadge`'s confirm heading is its own label, because the Filament action called
+     * `printBadge`'s confirm heading is its own label, because the old panel action called
      * a bare `requiresConfirmation(true)`.
      */
     private const ROW_LABEL = 'Print Badge';
@@ -88,7 +87,7 @@ class BadgePrintController extends Controller
     private const NOTHING_QUEUED = 'Nothing was queued';
 
     /**
-     * `printBadge`, the row action (audit 4.2, row action 2).
+     * `printBadge`, the row action.
      *
      * The request does not move the badge to Processing, and must not. That transition is
      * what allocates `custom_id`, so it belongs with the render that puts the id on the
@@ -124,7 +123,7 @@ class BadgePrintController extends Controller
             return back();
         }
 
-        // New: the Filament action gave no feedback at all (plan 2.10 #45, audit 7.2).
+        // New: the old panel action gave no feedback at all.
         Toast::flashSuccess(
             'Badge queued for printing',
             $this->queuedBody($batch),
@@ -134,10 +133,10 @@ class BadgePrintController extends Controller
     }
 
     /**
-     * `printBadgeBulk`, the bulk action (audit 4.2, bulk action 1).
+     * `printBadgeBulk`, the bulk action.
      *
      * The selection can never cross a page, which is `->selectCurrentPageOnly()` and a
-     * deliberate operational cap the panel keeps (plan 2.3).
+     * deliberate operational cap the panel keeps.
      *
      * The badges are read in a single query ordered by id, only so the request is
      * deterministic. The print order is `PrintBatch::build()`'s and nothing here competes
@@ -221,7 +220,7 @@ class BadgePrintController extends Controller
      * The one call into the print pipeline, plus the two refusals it can produce.
      *
      * `StalePrintFileException` is a refusal to batch artwork that is missing or no longer
-     * matches the order (audit 93). It is raised where the run is committed, which is on
+     * matches the order. It is raised where the run is committed, which is on
      * the worker now, so this catch only still fires under the `sync` queue driver - the
      * test suite, and a console run. Kept rather than dropped because it is the same
      * refusal either way, and an operator is better told than shown a 500. On a real queue
@@ -276,7 +275,7 @@ class BadgePrintController extends Controller
     /**
      * The row action, or null when this operator may not print.
      *
-     * Visibility is `always` in Filament, meaning "whoever can see the table", which is
+     * Visibility is `always` in the old panel, meaning "whoever can see the table", which is
      * the same question `viewAny` answers at the endpoint.
      */
     public static function rowAction(Badge $badge): ?Action
@@ -327,10 +326,10 @@ class BadgePrintController extends Controller
     }
 
     /**
-     * Active badge printers, exactly the Filament select's query.
+     * Active badge printers, exactly the old panel select's query.
      *
      * Resolved on every request that builds the badge list rather than once per table
-     * build (audit 100). The list re-reads its bulk actions on the same five-second poll
+     * build. The list re-reads its bulk actions on the same five-second poll
      * as its rows, so a printer switched off mid-shift leaves the picker within a tick
      * instead of lingering until somebody reloads the page.
      *

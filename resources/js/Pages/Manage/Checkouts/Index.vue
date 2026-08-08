@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The checkout list, successor to CheckoutResource's table and its ListCheckouts page.
+ * The checkout list, successor to the old checkout list's table and its ListCheckouts page.
  *
  * The envelope arrives as top-level props rather than one nested object, because
  * useTableQuery reloads rows/meta/filters/sort/search as an Inertia partial visit and
@@ -8,7 +8,7 @@
  * are gathered back up here.
  *
  * All five server-declared filters ride in that envelope and DataTable puts them on its
- * toolbar. `created_from` and `created_until`, the custom date form Filament rendered as two
+ * toolbar. `created_from` and `created_until`, the custom date form the old panel rendered as two
  * DatePickers inside one filter, used to be drawn here as a second filter row because the
  * bar had no date shape; they are declared as Filter::date now and the bar renders each as a
  * chip with its own date picker.
@@ -63,7 +63,7 @@ const table = computed(() => ({
     <PageHeader title="Checkouts" :actions="pageActions" />
 
     <DataTable :table="table" searchable>
-      <!-- Filament's Sum summariser row, under the column it totals. -->
+      <!-- the old panel's Sum summariser row, under the column it totals. -->
       <template #summary>
         <div
           v-if="meta.summary"

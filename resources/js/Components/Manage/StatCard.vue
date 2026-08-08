@@ -2,7 +2,7 @@
 /**
  * One dashboard stat: label, value, and a described comparison underneath.
  *
- * The successor to a `Filament\Widgets\StatsOverviewWidget\Stat`. Everything it shows is
+ * The successor to a `the old panel\Widgets\StatsOverviewWidget\Stat`. Everything it shows is
  * server-decided, tone included, exactly like a Status triple or a declared Action: the
  * card never derives a colour from a number, so the dashboard, the table and the status
  * strip cannot end up disagreeing about what "warning" looks like.

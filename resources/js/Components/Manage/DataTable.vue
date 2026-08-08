@@ -382,7 +382,7 @@ const open = (row, event) => {
             >
               <template v-if="column.type === 'badge'">
                 <!--
-                  A cell that carries a `url` renders as a link. Filament put a URL on
+                  A cell that carries a `url` renders as a link. the old panel put a URL on
                   several plain columns (the badge list's Fursuit, Owner and Print Jobs
                   cells); the type stays what it was and the link is an extra key on the
                   cell, so nothing that sends a bare value changes.
@@ -397,7 +397,7 @@ const open = (row, event) => {
                 </a>
                 <StatusBadge v-else :status="cell(row, column.key)" />
                 <!--
-                  Filament's TextColumn->badge()->description(). The batch list's Progress
+                  the old panel's TextColumn->badge()->description(). The batch list's Progress
                   column is the one cell that needs a second line under the chip; every
                   other badge cell sends no description and renders exactly as before.
                 -->
@@ -433,7 +433,7 @@ const open = (row, event) => {
                 Two shapes, both fixed here: a rounded rectangle for thumbnails of
                 things (badge artwork) and a round avatar for thumbnails of someone
                 (the fursuit list's image, the badge list's fursuit.image), which is
-                what Filament's ImageColumn->circular() drew. The column declares which
+                what the old panel's ImageColumn->circular() drew. The column declares which
                 with Column::image(...)->circular(); the client picks no geometry of its
                 own, so every image cell in the panel is one of these two.
               -->
@@ -553,7 +553,7 @@ const open = (row, event) => {
     <!--
       Between the rows and the pager, which is the only place a running total belongs: under
       the column it totals, above the control that changes which rows were counted. The
-      checkout list is the one caller, for Filament's Sum summariser.
+      checkout list is the one caller, for the old panel's Sum summariser.
     -->
     <slot name="summary" />
 

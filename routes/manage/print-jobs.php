@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
  *
  * `?printer=` is gone. It was a resource-wide getEloquentQuery() scope that applied to the
  * view and edit pages as well and had no chip to clear it; it is `filter[printer]` now
- * (plan 2.3, audit 88), and the list still renames itself `Print Jobs - {name}` while it
+ *, and the list still renames itself `Print Jobs - {name}` while it
  * is on.
  *
  * The bulk routes are declared before {print_job}, or DELETE /admin/print-jobs/bulk would

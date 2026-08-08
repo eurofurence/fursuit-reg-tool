@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The batch list, successor to PrintBatchResource's table and its ListPrintBatches page.
+ * The batch list, successor to the old batch list's table and its ListPrintBatches page.
  *
  * Batch oversight for staff who are not standing at the printer: everything here is read
  * only apart from the three run controls, which arrive as server-declared row actions with
@@ -45,7 +45,7 @@ const table = computed(() => ({
   pageActions: props.pageActions,
 }));
 
-// PrintBatchResource polls this table every 10 seconds (audit 7.1). Only the data props
+// the old batch list polls this table every 10 seconds. Only the data props
 // are reloaded: columns, filters and actions do not change under an operator's hands, and
 // a poll must never be able to pause, resume or cancel a run.
 usePoll(10000, { only: ['rows', 'meta'] });

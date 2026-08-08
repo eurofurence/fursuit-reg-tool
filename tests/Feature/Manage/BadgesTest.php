@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Badges (plan phase 4, audit 4.2).
+ * Badges.
  *
  * The biggest resource in the old panel and the one carrying the money. Four things get
  * more attention than the rest, because all four are broken today:
  *
- *  - the Total column rendered 100x too high (audit 1) and the Total form field turned
- *    300 cents into 3 on an unchanged save (audit 3),
+ *  - the Total column rendered 100x too high and the Total form field turned
+ *    300 cents into 3 on an unchanged save,
  *  - the attendee-id sort and both halves of the attendee range used
  *    CAST(x AS UNSIGNED), which does not exist on the SQLite database this suite runs on
- *    (audit 16),
+ *   ,
  *  - the two status selects wrote raw state strings and skipped every transition side
- *    effect (audit 20),
- *  - a badge whose fursuit or user is soft-deleted took the whole table down (audit 113).
+ *    effect,
+ *  - a badge whose fursuit or user is soft-deleted took the whole table down.
  *
  * The rest is parity, transcribed from the audit: fourteen columns in order, four filters,
- * five form sections, and Filament's own delete copy.
+ * five form sections, and the old panel's own delete copy.
  */
 
 use App\Domain\Printing\Models\Printer;
@@ -46,7 +46,7 @@ use function Pest\Laravel\get;
 use function Pest\Laravel\put;
 
 beforeEach(function () {
-    // The image column reads the private s3 disk, as BadgeResource's ImageColumn does.
+    // The image column reads the private s3 disk, as the old badge list's ImageColumn does.
     Storage::fake('s3');
 
     $this->event = Event::factory()->create(['name' => 'Eurofurence 29', 'starts_at' => now()->addDays(30)]);
@@ -310,7 +310,7 @@ test('the Owner cell links at the users list pre-filtered by that name', functio
         ->and(is_array($fursuit) ? $fursuit['display'] : $fursuit)->toBe('Nibbles')
         ->and($row['cells']['fursuit.species.name'])->toBe('Blue Fox')
         // The image column reads the private s3 disk, and a fursuit with no image gets
-        // BadgeResource's defaultImageUrl rather than a broken cell.
+        // the old badge list's defaultImageUrl rather than a broken cell.
         ->and($row['cells']['fursuit.image'])->toBeString();
 });
 
@@ -346,7 +346,7 @@ test('the list declares its filters with their labels, placeholders and option s
             ->where('filters.2.falseLabel', 'Paid Badges Only')
             ->where('filters.3.key', 'attendee_id_range')
             ->where('filters.3.type', 'range')
-            // No label is set in Filament, so it renders its auto label.
+            // No label is set in the old panel, so it renders its auto label.
             ->where('filters.3.label', 'Attendee id range')
             // The print cutoff, as two datetime bounds rather than dates: several runs go
             // out in a day and a date-only bound cannot separate them.
@@ -482,7 +482,7 @@ test('the list is scoped by the global event selector through the fursuit', func
 });
 
 test('the table offers Edit and Print Badge and nothing else, and no create action at all', function () {
-    // BadgeResource passes bulkActions() an explicit array, so there is no bulk delete,
+    // the old badge list passes bulkActions() an explicit array, so there is no bulk delete,
     // no export and no dissociate. Its one bulk action is printBadgeBulk, which shipped in
     // phase 7 with the rest of the print pipeline alongside the printBadge row action;
     // both are covered in full by BadgePrintTest, and asserted here only as the shape of
@@ -498,7 +498,7 @@ test('the table offers Edit and Print Badge and nothing else, and no create acti
             ->count('bulkActions', 2)
             ->where('bulkActions.0.name', 'printBadgeBulk')
             ->where('bulkActions.1.name', 'setFulfillmentStatus')
-            // The Create page is not ported: it has never been able to save (audit 25).
+            // The Create page is not ported: it has never been able to save.
             ->where('pageActions', fn ($actions) => ! collect($actions)->contains(fn ($action) => $action['name'] === 'create'))
         );
 });
@@ -557,7 +557,7 @@ test('the status pickers offer only the transitions the state machine allows', f
         );
 
     // The POS error correction picked_up -> ready_for_pickup is a real transition and is
-    // therefore offered (plan 2.10 #8).
+    // therefore offered.
     $picked = ($this->badge)(['status_fulfillment' => 'picked_up', 'status_payment' => 'paid']);
 
     actingAs($this->admin)->get(route('admin.badges.edit', $picked))
@@ -659,7 +659,7 @@ test('no write path can put a euro string into a cents column', function () {
         ->and($badge->custom_id)->toBeNull();
 });
 
-test('a badge is soft deleted from the edit page with Filament default copy', function () {
+test('a badge is soft deleted from the edit page with the old panel default copy', function () {
     $badge = ($this->badge)();
 
     actingAs($this->admin)
@@ -682,7 +682,7 @@ test('the list offers no page actions', function () {
 });
 
 test('the module admits admins and reviewers to read, and shuts everyone else out', function () {
-    // BadgePolicy: viewAny/view = is_admin || is_reviewer (audit 3).
+    // BadgePolicy: viewAny/view = is_admin || is_reviewer.
     $badge = ($this->badge)();
 
     // Guests first: `auth` pushes them into the Identity SSO flow, and the panel owns no
@@ -696,8 +696,8 @@ test('the module admits admins and reviewers to read, and shuts everyone else ou
     actingAs($this->nobody)->get(route('admin.badges.edit', $badge))->assertForbidden();
 });
 
-test('an admin may edit any badge without the panel being Filament', function () {
-    // audit 52: BadgePolicy::update required request()->routeIs('filament.*','livewire.*'),
+test('an admin may edit any badge regardless of which panel serves the route', function () {
+    // BadgePolicy::update used to require a route check against the old panel's names,
     // so moving the panel would silently flip every admin to owner-rules-only and every
     // /admin/badges/{badge}/edit would 403. Answered on the actor now.
     $badge = ($this->badge)();
@@ -732,7 +732,7 @@ test('a reviewer may read but not write, and a stranger not even that', function
     actingAs($this->nobody)->delete(route('admin.badges.destroy', $badge))->assertForbidden();
 
     // BadgePolicy::delete is is_admin or owner-with-conditions, so a reviewer is not a
-    // deleter (audit 3) even though update is open to every access-manage holder.
+    // deleter even though update is open to every access-manage holder.
     actingAs($this->reviewer)->delete(route('admin.badges.destroy', $badge))->assertForbidden();
 
     expect(Badge::whereKey($badge->id)->exists())->toBeTrue();

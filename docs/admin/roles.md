@@ -56,7 +56,7 @@ rebuilt and are not any more:
 | Queue print, bulk queue print | write | admin | Sending cards to a printer is desk work |
 
 This reverses parity checklist line 83, which kept Badge Preview and the PDF Generator
-open to reviewers because the Filament pages they replaced had no `canAccess()`. That was
+open to reviewers because the pages they replaced had no access check at all. That was
 parity with an accident, not with a decision.
 
 ## How a surface is guarded

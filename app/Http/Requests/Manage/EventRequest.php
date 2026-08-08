@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 /**
  * Create and update for /admin/settings/events.
  *
- * The rules are EventResource's form schema (audit 4.1) with four deliberate departures.
+ * The rules are the old event list's form schema with four deliberate departures.
  * `cost` is gone: nothing ever read it, so the form no longer offers it. And
  * `free_badge_deadline` is required rather than nullable, because it is the date the free
  * registration badge is honoured until and an event without one silently honours nothing.
@@ -81,7 +81,7 @@ class EventRequest extends FormRequest
     }
 
     /**
-     * Filament's labels, so a validation message names the field the way the form does.
+     * the old panel's labels, so a validation message names the field the way the form does.
      * The five auto-labelled fields are left to Laravel, which produces the same words.
      *
      * @return array<string, string>

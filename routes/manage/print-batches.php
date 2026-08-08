@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
  * Two GETs and four POSTs, and the split between them is the point. A batch is immutable
  * once built: there is no create, no store, no edit, no update and no destroy, because the
  * only thing that can populate one is PrintBatch::build(), which freezes the print order
- * and locks every badge in it at the same moment. The Filament resource says the same with
+ * and locks every badge in it at the same moment. The old panel resource says the same with
  * `canCreate(): false`.
  *
  * The four mutations live on PrintBatchRunController rather than on the read controller, so
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Route;
  * a chat. There is no GET form of any of them.
  *
  * `verify` is nested under its batch on purpose. The card belongs to the run, the ability
- * is asked of the run (PrintBatchPolicy::verify, mirroring what a Filament relation manager
+ * is asked of the run (PrintBatchPolicy::verify, mirroring what an old panel relation manager
  * did), and the controller refuses a job that belongs to a different batch rather than
  * trusting the id pair.
  *

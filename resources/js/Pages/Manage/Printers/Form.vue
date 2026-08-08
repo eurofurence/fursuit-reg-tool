@@ -2,14 +2,13 @@
 /**
  * Create and edit for a printer, plus the condition panel of plan 2.10 #27.
  *
- * The field order is PrinterResource's flat schema. Two things behave differently and both
+ * The field order is the old printer list's flat schema. Two things behave differently and both
  * are in the plan.
  *
  * `default_paper_size` offers the sizes this printer has reported, and only those. The
- * Filament closure type-hinted a non-nullable `Printer $record`, so on the create page it
+ * the old panel closure type-hinted a non-nullable `Printer $record`, so on the create page it
  * was handed null and threw a TypeError; nobody saw it because ListPrinters removed the
- * Create button while leaving the page and its route registered (plan 2.10 #7, audit
- * landmines 27 and 39). A printer that has never checked in has no sizes yet, so the
+ * Create button while leaving the page and its route registered. A printer that has never checked in has no sizes yet, so the
  * select is empty and says why.
  *
  * The condition block is read-only and edit-only. `condition`, `condition_message`,
@@ -126,7 +125,7 @@ const submit = () => {
           />
 
           <!--
-            Read-only, and rows rather than the JSON document Filament printed into a
+            Read-only, and rows rather than the JSON document the old panel printed into a
             disabled Textarea: it is a short list of named sizes, which is a table, and the
             braces were never information. The print agent owns this reading, so the panel
             shows it and never writes it; PrinterRequest does not accept the field either,

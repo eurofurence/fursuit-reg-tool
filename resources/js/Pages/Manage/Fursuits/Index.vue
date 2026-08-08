@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The fursuit list, successor to FursuitResource's table and its ListFursuits page.
+ * The fursuit list, successor to the old fursuit list's table and its ListFursuits page.
  *
  * The envelope arrives as top-level props rather than one nested object, because
  * useTableQuery reloads rows/meta/filters/sort/search as an Inertia partial visit and
@@ -8,11 +8,11 @@
  * are gathered back up here.
  *
  * The status filter opens on Pending and always has: this list has never shown the full
- * set on first load (audit 135). Clearing it is an explicit request carrying the cleared
+ * set on first load. Clearing it is an explicit request carrying the cleared
  * token, not an empty value, which is why FilterBar and App\Support\Manage\Table share
  * one constant for it.
  *
- * No header action: FursuitPolicy::create() is false, so the Filament create button was
+ * No header action: FursuitPolicy::create() is false, so the old panel create button was
  * hidden in practice and no create route exists.
  */
 import { computed } from 'vue';

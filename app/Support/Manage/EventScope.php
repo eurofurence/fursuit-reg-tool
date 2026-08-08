@@ -8,13 +8,13 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * The global event filter for /manage, and the one reader of the selection.
  *
- * Successor to App\Filament\Middleware\-adjacent FilamentEventSelector plus
- * App\Filament\Traits\HasEventFilter. Two session keys instead of one:
+ * Successor to App\the old panel\Middleware\-adjacent the old event-selector middleware plus
+ * App\the old panel\Traits\HasEventFilter. Two session keys instead of one:
  *
  *   manage.event_id      int|null. null means "all events".
  *   manage.event_chosen  bool. true once the operator has made an explicit choice.
  *
- * The second key is the whole bug fix. FilamentEventSelector forgot the id when the
+ * The second key is the whole bug fix. the old event-selector middleware forgot the id when the
  * request asked for "all events" and then, in the same handle() call, re-seeded it with
  * the newest event because the key was missing. Forgetting the id and having chosen all
  * events were the same state, so "all events" could never survive a single request and
@@ -135,7 +135,7 @@ final class EventScope
     /**
      * A stored id whose event has since been deleted resolves to "all events" rather
      * than to a filter nothing can match. The raw session value is never trusted as an
-     * int: FilamentEventSelector stored whatever the query string carried and its
+     * int: the old event-selector middleware stored whatever the query string carried and its
      * ?int return type would have thrown on a non-numeric value.
      */
     private function resolve(): ?Event

@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Gate;
  *
  * Both are explicit. Nothing here runs on page load and nothing here is reachable from
  * the 15s poll, which is a GET that reloads `rows` and `meta` only. `is_active` was a
- * Filament CheckboxColumn that wrote straight to the database on a single click with no
- * confirm, no notification and no audit trail (audit 92); it now goes through a real
+ * the old panel CheckboxColumn that wrote straight to the database on a single click with no
+ * confirm, no notification and no audit trail; it now goes through a real
  * authorized endpoint that says what it did.
  */
 class PrinterStateController extends Controller
@@ -89,7 +89,7 @@ class PrinterStateController extends Controller
      * Put a paused or offline printer back to Ready, once whatever stopped it is fixed.
      *
      * Built on Printer::clearPrinterError(), which has existed since the state columns
-     * landed and which the Filament panel never called (audit 94, plan 2.10 #27). It
+     * landed and which the old panel never called. It
      * clears the held job and the error message, stamps last_state_update and broadcasts
      * PrinterStatusUpdated, so the POS learns immediately - which is why it is used here
      * rather than a local update().

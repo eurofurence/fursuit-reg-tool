@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
  * The instance is bound into the container so the controllers, the shared Inertia prop
  * and the table queries all read the same resolved event once per request.
  *
- * Successor to App\Http\Middleware\FilamentEventSelector, deleted with the Filament panel.
+ * Successor to App\Http\Middleware\the old event-selector middleware, deleted with the old panel.
  * The session keys differ on purpose: the two panels ran side by side for the whole
  * migration and were not allowed to fight over one selection.
  */

@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The machine list, successor to MachineResource's table and its ListMachines page.
+ * The machine list, successor to the old machine list's table and its ListMachines page.
  *
  * The envelope arrives as top-level props rather than one nested object, because
  * useTableQuery reloads rows/meta/filters/sort/search as an Inertia partial visit and
@@ -8,7 +8,7 @@
  * are gathered back up here.
  *
  * The archived filter opens blank, which means Active machines. Nothing scopes archived
- * machines at query level (audit 43), so that blank branch is the only thing keeping
+ * machines at query level, so that blank branch is the only thing keeping
  * retired tills out of the list; the server applies it whether the filter is unset or
  * explicitly cleared.
  *

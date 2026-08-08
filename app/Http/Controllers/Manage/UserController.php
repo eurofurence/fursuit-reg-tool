@@ -18,15 +18,15 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Response;
 
 /**
- * Users, the successor to UserResource plus its ManageUsers page (audit 4.13).
+ * Users, the successor to the old user list plus its ManageUsers page.
  *
- * Two shapes change and neither is a parity gap. Create, edit and delete were Filament
+ * Two shapes change and neither is a parity gap. Create, edit and delete were the old panel
  * modals on a ManageRecords page, so the resource had no create or edit URL at all; they
- * become real pages (plan 1.2). And `valid_registration` is gone from both the table and
+ * become real pages. And `valid_registration` is gone from both the table and
  * the form: the column was dropped from `users` by
  * 2025_08_03_195303_remove_old_columns_from_users_table and moved to `event_users`, so
  * every save of this form throws SQL 1054 today and Create and Edit are both broken
- * (plan 2.10 change 4, audit landmine 26). The field is not ported.
+ *. The field is not ported.
  *
  * The list is deliberately not event-scoped: plan 2.9 lists Users among the surfaces that
  * stay unscoped, matching today.
@@ -34,7 +34,7 @@ use Inertia\Response;
 class UserController extends Controller
 {
     /**
-     * Filament's default table date-time format, kept so the column reads the same after
+     * the old panel's default table date-time format, kept so the column reads the same after
      * the move. Rendered on the server; the ISO string rides along as the cell title.
      */
     private const DATETIME_FORMAT = 'M j, Y H:i:s';
@@ -64,8 +64,8 @@ class UserController extends Controller
     {
         User::create($request->validated());
 
-        // Filament's built-in Created toast; UserResource defines none of its own
-        // (audit 7.2).
+        // the old panel's built-in Created toast; the old user list defines none of its own
+        // .
         Toast::flashSuccess('Created');
 
         return redirect()->route('admin.settings.users.index');
@@ -105,7 +105,7 @@ class UserController extends Controller
     }
 
     /**
-     * All-or-nothing (plan 2.5): if any selected record fails the policy nothing is
+     * All-or-nothing: if any selected record fails the policy nothing is
      * deleted and a danger toast says why, rather than half a selection disappearing.
      *
      * The endpoint authorizes the same question the bulk button is offered on, so an
@@ -134,7 +134,7 @@ class UserController extends Controller
         }
 
         // Per record rather than a mass delete, so model events still fire, which is
-        // what Filament's DeleteBulkAction did.
+        // what the old panel's DeleteBulkAction did.
         $users->each->delete();
 
         Toast::flashSuccess('Deleted');
@@ -150,7 +150,7 @@ class UserController extends Controller
         return Table::make(User::query())
             ->name('users')
             ->columns($this->columns())
-            // UserResource declares no defaultSort and falls back to primary-key order.
+            // the old user list declares no defaultSort and falls back to primary-key order.
             // Stated rather than left implicit, so the order does not depend on whatever
             // the driver happens to return.
             ->defaultSort('id')
@@ -176,7 +176,7 @@ class UserController extends Controller
                     ? Action::delete('delete', 'Delete', route('admin.settings.users.destroy', $user))
                         ->icon('trash-2')
                         ->tone('danger')
-                        // Filament's DeleteAction copy, never overridden in this
+                        // the old panel's DeleteAction copy, never overridden in this
                         // resource: heading `Delete :label` with the model label.
                         ->confirmDelete('user')
                     : null,
@@ -220,7 +220,7 @@ class UserController extends Controller
     }
 
     /**
-     * The audit's table, minus `valid_registration`. Labels are Filament's own auto
+     * The audit's table, minus `valid_registration`. Labels are the old panel's own auto
      * labels, verbatim, so nothing reads differently after the move.
      *
      * @return array<int, Column>

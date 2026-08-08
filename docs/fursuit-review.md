@@ -39,7 +39,7 @@ and edit form all go through it).
   row carries a `restore` snapshot. Undo is refused once `notified_at` is set.
 - **There is no claim lock.** `App\Services\FursuitPresence` (cache, 45s TTL, refreshed by the review
   page's own poll) makes `next` skip records somebody is on and names other viewers, but never
-  refuses a verdict. The old Filament lock did refuse them, so a shared link was useless and a dead
+  refuses a verdict. The old panel's lock did refuse them, so a shared link was useless and a dead
   browser froze a record for five minutes. `Fursuit::claim()` is now unused by any screen.
 - **Submission history**: `FursuitObserver` writes a `fursuit_submission_revisions` row whenever
   `name`, `species_id` or `image` changes, and the attendee editor no longer deletes the photo it

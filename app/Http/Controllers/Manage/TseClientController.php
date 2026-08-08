@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
- * TSE clients, the successor to TseClientResource and its three pages (audit 4.12).
+ * TSE clients, the successor to the old TSE client list and its three pages.
  *
  * A TSE client is the identity a Technical Security System signs fiscal transactions
  * under. `serial_number` is the number KassenSichV requires to stay traceable from every
@@ -28,7 +28,7 @@ use Inertia\Response;
  *
  * Identity is still read-only, and that is the point of the module.
  *
- *  - `remote_id` and `serial_number` are never edited (plan 2.10 #14, audit landmine 8):
+ *  - `remote_id` and `serial_number` are never edited:
  *    rewriting them silently changes the identity that past checkouts were signed under.
  *    There is no PUT and no delete - a client whose serial receipts still point at has to
  *    stay readable for as long as those records are kept.
@@ -39,10 +39,9 @@ use Inertia\Response;
  *
  * ## Registration
  *
- * Filament's `createnew` was dropped for what it did, not for what it was. It minted a
+ * the old panel's `createnew` was dropped for what it did, not for what it was. It minted a
  * random UUID as both `remote_id` and `serial_number`, hardcoded `state` to the raw
- * string `'REGISTERED'`, and never spoke to Fiskaly at all (plan 2.10 #13, audit landmine
- * 7) - so every checkout signed against that row carried a serial the TSS had never
+ * string `'REGISTERED'`, and never spoke to Fiskaly at all - so every checkout signed against that row carried a serial the TSS had never
  * issued. `store()` does the same job the other way round: the row is created inside a
  * transaction, the observer's PUT to the TSS happens inside it too, and a refusal from
  * Fiskaly rolls the row back rather than leaving a client that exists only here.
@@ -61,7 +60,7 @@ use Inertia\Response;
  * the outgoing client and register the previous one again, which is why `register()`
  * exists as its own endpoint rather than being folded into `store()`.
  *
- * `state` is read through `TseClientStateEnum`, never as a hand-typed string. The Filament
+ * `state` is read through `TseClientStateEnum`, never as a hand-typed string. The old panel
  * side kept three copies of the same vocabulary - the fabricator's `'REGISTERED'`, the
  * Select's hand-duplicated option list, and the enum itself - so renaming a case broke two
  * of them at runtime with nothing failing first. Here the list cell is the enum case's own
@@ -75,7 +74,7 @@ use Inertia\Response;
 class TseClientController extends Controller
 {
     /**
-     * Filament's default table date-time format, kept so timestamps read the same across
+     * the old panel's default table date-time format, kept so timestamps read the same across
      * the panel.
      */
     private const DATETIME_FORMAT = 'M j, Y H:i:s';
@@ -93,7 +92,7 @@ class TseClientController extends Controller
     }
 
     /**
-     * The detail page the Filament resource never had: it declared no view page and no
+     * The detail page old resource never had: it declared no view page and no
      * infolist, so the only way to look at a client was the edit form that this module
      * does not ship.
      *
@@ -139,7 +138,7 @@ class TseClientController extends Controller
      * The whole operation is one transaction, and `TseClientsObserver::created()` runs
      * inside it: a refusal from Fiskaly throws out of the observer, the transaction rolls
      * back, and nothing is left behind. That is the difference between this and the
-     * Filament action it replaces, which wrote the row first and never called anyone.
+     * the old panel action it replaces, which wrote the row first and never called anyone.
      *
      * The id is generated here and Fiskaly is asked to take it as the serial too, which is
      * what `FiskalyService::createClient()` sends. Nothing is typed in, so nothing can
@@ -236,11 +235,11 @@ class TseClientController extends Controller
         return Table::make(TseClient::query())
             ->name('tse-clients')
             ->columns($this->columns())
-            // TseClientResource declares no defaultSort and falls back to primary-key
+            // the old TSE client list declares no defaultSort and falls back to primary-key
             // order. Stated rather than left implicit, so the order does not depend on
             // whatever the driver happens to return.
             ->defaultSort('id')
-            // TseClientResource declares `->filters([])`.
+            // the old TSE client list declares `->filters([])`.
             ->filters([])
             ->rows(fn (TseClient $client) => [
                 'remote_id' => $client->remote_id,
@@ -328,10 +327,10 @@ class TseClientController extends Controller
 
     /**
      * The audit's three columns, in order. All three are searchable and none of them is
-     * sortable or toggleable in Filament, and none of them becomes so here.
+     * sortable or toggleable in the old panel, and none of them becomes so here.
      *
      * `state` renders the raw stored value, `REGISTERED` or `DEREGISTERED`, exactly as the
-     * Filament TextColumn did: no badge, no colour. Search hits the same string, which is
+     * the old panel TextColumn did: no badge, no colour. Search hits the same string, which is
      * what makes searching this column work at all.
      *
      * @return array<int, Column>

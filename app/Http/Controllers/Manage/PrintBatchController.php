@@ -23,8 +23,8 @@ use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
- * Print batches, the successor to PrintBatchResource, ListPrintBatches, ViewPrintBatch and
- * PrintJobsRelationManager (audit 4.8 and 4.8.1).
+ * Print batches, the successor to the old batch list, ListPrintBatches, ViewPrintBatch and
+ * PrintJobsRelationManager.
  *
  * A batch is a live convention print run, so this controller reads and nothing else. Every
  * mutation - pause, resume, cancel, verify - is an explicit POST on PrintBatchRunController.
@@ -32,26 +32,25 @@ use Inertia\Response;
  * batch, a card, a printer or a badge.
  *
  * Batches are immutable once built. There is no create, no edit and no delete here, exactly
- * as `canCreate(): false` and the missing edit page say in Filament: the only thing that can
+ * as `canCreate(): false` and the missing edit page say in the old panel: the only thing that can
  * populate a batch is `PrintBatch::build()`, which freezes the print order and locks every
  * badge in it at once.
  *
- * Three differences from Filament, all of them decisions the plan already made.
+ * Three differences from the old panel, all of them decisions the plan already made.
  *
  *  - The three run controls require `is_admin` through the new PrintBatchPolicy. There is
  *    no policy on the model today, so a reviewer can halt or cancel a run in progress while
- *    needing `is_admin` merely to look at a printer (audit 51, plan 2.10 #18). Reading the
+ *    needing `is_admin` merely to look at a printer. Reading the
  *    list stays open to every `access-manage` holder.
  *  - The controls are reachable from the batch detail page as well as from the row.
  *    `ViewPrintBatch::getHeaderActions()` returns `[]` deliberately, so an operator who
- *    opened a batch to see which card jammed had to navigate back to stop it (audit 84,
- *    plan phase 7).
+ *    opened a batch to see which card jammed had to navigate back to stop it.
  *  - A control that cannot fire is offered disabled with the reason rather than hidden,
- *    which is what PrinterController's `clear-error` already does (plan 2.5). Filament hid
+ *    which is what PrinterController's `clear-error` already does. the old panel hid
  *    actions, which leaves an operator staring at a paused run wondering where Resume went.
  *
  * The card list on the detail page polls at 10s. It is the screen staff watch during a run
- * and it never refreshed itself (plan 2.10 #26).
+ * and it never refreshed itself.
  */
 class PrintBatchController extends Controller
 {
@@ -61,7 +60,7 @@ class PrintBatchController extends Controller
     private const LIST_DATETIME_FORMAT = 'M j, H:i';
 
     /**
-     * Filament's app-default `->dateTime()`, which is what the infolist's Timing entries
+     * the old panel's app-default `->dateTime()`, which is what the infolist's Timing entries
      * render with.
      */
     private const DATETIME_FORMAT = 'M j, Y H:i:s';
@@ -72,7 +71,7 @@ class PrintBatchController extends Controller
     private const REASON_LIMIT = 40;
 
     /**
-     * The tooltip on an unverified card, verbatim (audit 4.8.1 column 6).
+     * The tooltip on an unverified card, verbatim.
      */
     private const UNVERIFIED_TOOLTIP = 'Nobody has confirmed this card came out';
 
@@ -119,7 +118,7 @@ class PrintBatchController extends Controller
         return Table::make($this->query())
             ->name('print-batches')
             ->columns($this->columns())
-            // PrintBatchResource: ->defaultSort('id', 'desc').
+            // the old batch list: ->defaultSort('id', 'desc').
             ->defaultSort('id', 'desc')
             ->filters($this->filters())
             ->rows(fn (PrintBatch $batch) => $this->row($batch))
@@ -147,7 +146,7 @@ class PrintBatchController extends Controller
     }
 
     /**
-     * The audit's eleven columns, in order, with Filament's own labels.
+     * The audit's eleven columns, in order, with the old panel's own labels.
      *
      * `printer.name`, `event.name` and `createdBy.name` are keyed without the dot: a dot in
      * a cell key is read as a path by every data_get consumer, including Inertia's own prop
@@ -213,7 +212,7 @@ class PrintBatchController extends Controller
      *
      * Read off the denormalised counters, as the column does. They are what every progress
      * badge in the printing slice reads, which is why phase 6 made the print-job deletes
-     * recalculate them (plan 2.10 #11).
+     * recalculate them.
      *
      * @return array{label: string, tone: string, icon: string|null, description: string}
      */
@@ -238,7 +237,7 @@ class PrintBatchController extends Controller
      *
      * `printed_count - verified_count` verbatim, including that it can read negative:
      * `verified_count` counts any job carrying a `verified_print_at`, cancelled and failed
-     * ones included, so the subtraction is not bounded below (audit 80). A negative reads
+     * ones included, so the subtraction is not bounded below. A negative reads
      * idle rather than warning, which is the ladder the column already declares, and the
      * number is left as it is rather than quietly clamped - a batch showing -1 is a counter
      * problem somebody should see.
@@ -323,7 +322,7 @@ class PrintBatchController extends Controller
     /**
      * Pause, Resume and Cancel, with the resource's copy word for word.
      *
-     * Built once and rendered in two places: the row, where Filament put them, and the
+     * Built once and rendered in two places: the row, where the old panel put them, and the
      * detail page, where audit 84 says an operator could not reach them at all.
      *
      * An operator without the ability sees nothing; an operator with it always sees all
@@ -349,8 +348,7 @@ class PrintBatchController extends Controller
                 /*
                  * The resource sets no requiresConfirmation() here, but the form itself
                  * opens a modal whose heading is the action label and whose submit is the
-                 * framework default (audit 4.8, landmine 82 notes there is no separate
-                 * confirmation step).
+                 * framework default.
                  */
                 ->confirm('Pause', null, 'Confirm')
                 ->fields([
@@ -448,7 +446,7 @@ class PrintBatchController extends Controller
     }
 
     /**
-     * The card list, successor to PrintJobsRelationManager (audit 4.8.1). Title `Cards`.
+     * The card list, successor to PrintJobsRelationManager. Title `Cards`.
      *
      * @return array<string, mixed>
      */
@@ -463,7 +461,7 @@ class PrintBatchController extends Controller
             ->filters($this->cardFilters())
             ->rows(fn (PrintJob $job) => $this->cardRow($job))
             ->rowActions(fn (PrintJob $job) => $this->cardActions($batch, $job))
-            // ->bulkActions([]) explicitly: no bulk verify (audit 86). Verifying a card
+            // ->bulkActions([]) explicitly: no bulk verify. Verifying a card
             // means holding it, so there is nothing to do in bulk.
             ->bulkActions([])
             ->pageActions([])
@@ -541,7 +539,7 @@ class PrintBatchController extends Controller
             'badge' => $badge?->custom_id,
             'fursuit' => $badge?->fursuit?->name,
             // Status::printJob, the same mapping the print-job list uses, so `queued` reads
-            // `Claimed` on both screens rather than one of each (audit 7.9).
+            // `Claimed` on both screens rather than one of each.
             'status' => Status::printJob($job->status),
             'completion_source' => $job->completion_source?->label(),
             'verified_print_at' => $this->verifiedCell($job),
@@ -585,7 +583,7 @@ class PrintBatchController extends Controller
                     ->whereNull('verified_print_at')),
 
             // All seven cases, `cancelled` included, which is what this filter already
-            // offered and the print-job resource's own did not (audit 87).
+            // offered and the print-job resource's own did not.
             Filter::select('status', 'Status')
                 ->placeholder('All statuses')
                 ->options(collect(PrintJobStatusEnum::cases())

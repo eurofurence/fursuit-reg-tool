@@ -75,7 +75,7 @@ class MachinePolicy
      *
      * Its own ability rather than a reuse of `update`: the link authenticates as the
      * till, so "may edit this record" and "may hand out a credential for it" have to be
-     * answerable separately even though both say is_admin today (plan 2.10 #15).
+     * answerable separately even though both say is_admin today.
      */
     public function loginLink(User $user, Machine $machine): bool
     {

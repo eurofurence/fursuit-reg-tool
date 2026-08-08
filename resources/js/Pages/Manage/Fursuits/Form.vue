@@ -1,21 +1,21 @@
 <script setup>
 /**
  * Edit a fursuit. There is no create counterpart: FursuitPolicy::create() returns false
- * and no create route exists (plan 2.2, audit 38).
+ * and no create route exists.
  *
- * Three fields differ from the Filament form, all of them plan decisions:
+ * Three fields differ from the old panel form, all of them plan decisions:
  *
  *  - `status` is a picker over the transitions the state machine allows from where this
  *    record stands, not a free TextInput writing straight through the cast. Choosing
  *    Rejected asks for the reason that is mailed to the owner, because that is an
- *    argument the transition takes (plan 2.10 #9).
+ *    argument the transition takes.
  *  - `approved_at` and `rejected_at` are gone. They were hand-editable and could
  *    contradict `status`; the transitions stamp them now.
- *  - `event_id` is a relation select rather than a numeric TextInput (plan 2.6).
+ *  - `event_id` is a relation select rather than a numeric TextInput.
  *
  * The image uploads through POST /admin/uploads, which stores it on s3 with private
- * visibility. The Filament FileUpload had no ->disk() while the table, the infolist and
- * DbService all read s3 (plan 2.10 #5).
+ * visibility. The old panel FileUpload had no ->disk() while the table, the infolist and
+ * DbService all read s3.
  */
 import { computed, ref } from 'vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * The badge print pipeline, phase 7 (plan part 3). Transcribed from audit 4.2, the
+ * The badge print pipeline, phase 7. Transcribed from audit 4.2, the
  * `printBadge` row action and the `printBadgeBulk` bulk action.
  *
  * This is the highest-risk slice in the migration: it drives real hardware at a live
@@ -44,7 +44,7 @@ use function Pest\Laravel\post;
 const MANAGE_BADGE_PRINT_TOAST = 'inertia.flash_data.toast.title';
 
 beforeEach(function () {
-    // The badge list's image column reads the private s3 disk, as BadgeResource does.
+    // The badge list's image column reads the private s3 disk, as the old badge list does.
     Storage::fake('s3');
 
     $this->event = Event::factory()->create([
@@ -245,7 +245,7 @@ test('a bulk selection that includes an already queued badge queues only the res
         ->and(PrintJob::where('printable_id', $queued->id)->count())->toBe(1);
 });
 
-test('the row action flashes a toast, which the Filament action never did', function () {
+test('the row action flashes a toast, which the old panel action never did', function () {
     $badge = ($this->badge)();
 
     actingAs($this->admin)->post(route('admin.badges.print', $badge))
@@ -345,7 +345,7 @@ test('the bulk action says so when the selection queued nothing', function () {
 });
 
 /*
- * Access. Both endpoints ask the same question the Filament actions inherited from the
+ * Access. Both endpoints ask the same question the old panel actions inherited from the
  * resource: may this actor see badges at all.
  */
 
@@ -378,7 +378,7 @@ test('a user who cannot see badges cannot print, and nothing is queued', functio
 });
 
 /*
- * The Filament actions were offered to reviewers as well as admins. They are admin-only
+ * The old panel actions were offered to reviewers as well as admins. They are admin-only
  * now: a reviewer reads badges to work the fursuit queue, and sending cards to a printer
  * is desk work. Both endpoints and both action declarations are asserted, because the
  * button and the write have to answer the same question. See docs/admin/roles.md.
@@ -483,7 +483,7 @@ test('the printer select defaults to the first active badge printer', function (
 test('the printer options follow the hardware rather than freezing at table build', function () {
     ($this->badge)();
 
-    // Audit 100: Filament evaluated the option list once when the table was built, so a
+    // Audit 100: the old panel evaluated the option list once when the table was built, so a
     // printer switched off mid-shift stayed on offer. The list re-reads its bulk actions
     // on the same poll as its rows.
     $this->printer->update(['is_active' => false]);

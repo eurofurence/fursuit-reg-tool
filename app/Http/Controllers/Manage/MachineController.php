@@ -21,16 +21,16 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Response;
 
 /**
- * Machines, the successor to MachineResource and its three pages (audit 4.6).
+ * Machines, the successor to the old machine list and its three pages.
  *
  * Two shapes change and neither is a parity gap.
  *
- *  - The table gets a search box and a pager. Filament called ->searchable(false) and
+ *  - The table gets a search box and a pager. the old panel called ->searchable(false) and
  *    ->paginated(false), so `name`'s own searchable() was unreachable and every machine
  *    rendered on one page; the list becomes perPage 200 with the pager visible and the
- *    search box working (plan 2.3).
+ *    search box working.
  *  - Archive and restore are endpoints rather than closures on a row, and they flash a
- *    toast. Both were completely silent (plan 2.10 #45).
+ *    toast. Both were completely silent.
  *
  * The login link lives in MachineLoginLinkController: it mints a credential, so it gets
  * its own route, its own policy ability and its own audit entry rather than riding along
@@ -39,8 +39,8 @@ use Inertia\Response;
  * Nothing here is event-scoped. Plan 2.9 lists Machines among the surfaces that stay
  * unscoped, matching today, and a till belongs to the hall rather than to an event.
  *
- * There is no delete of any kind, single or bulk. There is none in the Filament resource
- * either (audit 131) and archiving is the retirement path.
+ * There is no delete of any kind, single or bulk. There is none in old resource
+ * either and archiving is the retirement path.
  */
 class MachineController extends Controller
 {
@@ -71,8 +71,8 @@ class MachineController extends Controller
     {
         Machine::create($request->validated());
 
-        // Filament's built-in Created toast; MachineResource defines none of its own
-        // (audit 7.2).
+        // the old panel's built-in Created toast; the old machine list defines none of its own
+        // .
         Toast::flashSuccess('Created');
 
         return redirect()->to(Table::returnUrl('machines', route('admin.machines.index')));
@@ -105,7 +105,7 @@ class MachineController extends Controller
      * Hide the machine from the default list and from POS login.
      *
      * Machine::$timestamps is false, so `archived_at` is the only trace this leaves;
-     * that is what the Filament action did too (audit 131) and changing it is not this
+     * that is what the old panel action did too and changing it is not this
      * phase's business.
      */
     public function archive(Machine $machine): RedirectResponse
@@ -141,7 +141,7 @@ class MachineController extends Controller
     }
 
     /**
-     * All-or-nothing (plan 2.5): if any selected machine fails the policy nothing moves
+     * All-or-nothing: if any selected machine fails the policy nothing moves
      * and a danger toast says why, rather than half a selection changing state.
      *
      * The endpoint authorizes the same question the bulk button is offered on, so an
@@ -188,13 +188,13 @@ class MachineController extends Controller
         return Table::make($this->baseQuery($request))
             ->name('machines')
             ->columns($this->columns())
-            // MachineResource declares no defaultSort and falls back to primary-key
+            // the old machine list declares no defaultSort and falls back to primary-key
             // order. Stated rather than left implicit, so the order does not depend on
             // whatever the driver happens to return.
             ->defaultSort('id')
             ->filters($this->filters())
             // ->paginated(false) today; 200 a page with the pager visible, so a hall
-            // full of tills cannot become an unbounded page render (plan 2.3).
+            // full of tills cannot become an unbounded page render.
             ->perPage(200)
             ->perPageOptions([25, 50, 100, 200])
             ->rows(fn (Machine $machine) => [
@@ -215,8 +215,8 @@ class MachineController extends Controller
      * The list query, already carrying the blank branch of the archived filter.
      *
      * Nothing scopes archived machines at model level - there is no global scope and
-     * `withArchived()` is a no-op that returns the query untouched (audit 43) - so the
-     * Filament ternary's blank branch, `notArchived()`, is the only thing keeping retired
+     * `withArchived()` is a no-op that returns the query untouched - so the
+     * the old panel ternary's blank branch, `notArchived()`, is the only thing keeping retired
      * tills out of the list. A blank filter value is inactive by design in
      * App\Support\Manage\Filter, because an unset filter must not narrow anything, so the
      * blank branch cannot live in the filter's apply(). It lives here, where clearing the
@@ -237,11 +237,11 @@ class MachineController extends Controller
     }
 
     /**
-     * The audit's table, in order. Labels are MachineResource's own, verbatim.
+     * The audit's table, in order. Labels are the old machine list's own, verbatim.
      *
-     * `name` is the one searchable column the resource declared. Filament's
+     * `name` is the one searchable column the resource declared. the old panel's
      * ->searchable(false) at table level made it unreachable; the box works here
-     * (plan 2.3).
+     *.
      *
      * @return array<int, Column>
      */
@@ -265,7 +265,7 @@ class MachineController extends Controller
                 ->trueLabel('Archived machines')
                 ->falseLabel('All machines')
                 // Blank is the default and is applied by baseQuery(); see the note there.
-                // `false` is Filament's `withArchived()`, a scope that returns the query
+                // `false` is the old panel's `withArchived()`, a scope that returns the query
                 // unchanged, so "All machines" narrows nothing.
                 ->apply(function (Builder $query, string $value) {
                     if ($value === '1') {
@@ -312,7 +312,7 @@ class MachineController extends Controller
     }
 
     /**
-     * Both bulk actions, unconditionally, exactly as the Filament table offered them:
+     * Both bulk actions, unconditionally, exactly as the old panel table offered them:
      * neither carried a visibility predicate, and a selection can hold archived and
      * unarchived machines at once.
      *
@@ -375,7 +375,7 @@ class MachineController extends Controller
         }
 
         return [
-            // The raw action name is what Filament rendered as the label, so the button
+            // The raw action name is what the old panel rendered as the label, so the button
             // still reads `Login Link`.
             Action::post('login-link', 'Login Link', route('admin.machines.login-link', $machine))
                 ->icon('key')
@@ -395,7 +395,7 @@ class MachineController extends Controller
     }
 
     /**
-     * Neither Select is required, so both carry the empty option Filament rendered for a
+     * Neither Select is required, so both carry the empty option the old panel rendered for a
      * nullable relation.
      *
      * @param  Collection<int, Model>  $records

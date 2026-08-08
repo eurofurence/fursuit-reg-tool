@@ -171,8 +171,8 @@ final class Table
     }
 
     /**
-     * The four tables Filament ran with ->paginated(false) become perPage 200 with the
-     * pager still visible (plan 2.3), which needs an option the stock list does not carry.
+     * The four tables the old panel ran with ->paginated(false) become perPage 200 with the
+     * pager still visible, which needs an option the stock list does not carry.
      *
      * @param  array<int, int>  $options
      */
@@ -387,7 +387,7 @@ final class Table
 
     /**
      * A filter absent from the request falls back to its declared default, which is how
-     * the fursuit list keeps opening on "pending" the way the Filament table did.
+     * the fursuit list keeps opening on "pending" the way the old panel table did.
      *
      * Filter::CLEARED is the third state: the operator picked the "all" placeholder or
      * hit Clear, and the filter must stay off rather than be re-defaulted. Without it

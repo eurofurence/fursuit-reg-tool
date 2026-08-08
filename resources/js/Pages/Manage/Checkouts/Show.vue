@@ -2,7 +2,7 @@
 /**
  * The checkout detail page, successor to ViewCheckout and its ItemsRelationManager.
  *
- * CheckoutResource defined no infolist, so its view page rendered the form schema with
+ * the old checkout list defined no infolist, so its view page rendered the form schema with
  * every field disabled. The same four sections are here as read-only rows, in the same
  * order, with the same section titles and the same two collapsed by default.
  *
@@ -13,13 +13,13 @@
  * rather than touching the checkout.
  *
  * The money figures are euros formatted once on the server from integer cents, by the same
- * formatter the list column uses. The Filament page rendered raw cents behind a euro prefix
+ * formatter the list column uses. The old panel page rendered raw cents behind a euro prefix
  * while its own table column divided by 100, so one fiscal record read two different ways
- * on one screen (plan 2.10 #1).
+ * on one screen.
  *
  * The TSE block shows the columns that exist. `tse_signature` never did: the migration
- * created `tse_start_signature` and `tse_end_signature`, so the Filament field was
- * permanently blank (plan 2.10 #38).
+ * created `tse_start_signature` and `tse_end_signature`, so the old panel field was
+ * permanently blank.
  *
  * The items table is the ordinary list envelope, arriving as top-level props for the same
  * partial-visit reason every list does, so searching and paging it uses the shared code

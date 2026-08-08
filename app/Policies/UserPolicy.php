@@ -7,11 +7,11 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 
 /**
  * Every ability is `is_admin`, which is what the auto-discovered policy already returned
- * (audit 4.13). Reviewers hold `access-manage` and therefore reach the panel, but not the
+ *. Reviewers hold `access-manage` and therefore reach the panel, but not the
  * user list: this is the one module in the rebuild where the two gates diverge by design.
  *
  * `restore` and `forceDelete` describe operations that cannot happen - User carries no
- * SoftDeletes. Filament was their only caller and is gone; they stay because deleting them
+ * SoftDeletes. the old panel was their only caller and is gone; they stay because deleting them
  * would flip the answer from false-by-policy to false-by-absence, which is a behaviour
  * change and not part of the removal.
  */

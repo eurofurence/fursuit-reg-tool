@@ -18,7 +18,7 @@ use Illuminate\Validation\Rule;
  * unauthorised write with a 422 about its payload instead of a 403.
  *
  * `catch_url` is deliberately absent. It is a preview built from `code`, never stored
- * (`dehydrated(false)` in the Filament form), so it must not reach the model, which has
+ * (`dehydrated(false)` in the old panel form), so it must not reach the model, which has
  * `$guarded = []`.
  *
  * `constructor_data` is absent for the same reason, and this is the change that removed
@@ -49,7 +49,7 @@ class SpecialCodeRequest extends FormRequest
         $rules = [
             'event_id' => ['required', 'integer', 'exists:events,id'],
             // Not required, matching the form today. The list renders a missing class
-            // as an empty cell rather than crashing on it (audit 30).
+            // as an empty cell rather than crashing on it.
             'class_name' => ['nullable', 'string', Rule::in(array_keys(SpecialCodeActionRegistry::options()))],
             'data' => ['nullable', 'array'],
             'code' => [
@@ -58,7 +58,7 @@ class SpecialCodeRequest extends FormRequest
                 'size:5',
                 Rule::unique('special_codes', 'code')->ignore($specialCode),
                 /*
-                 * Verbatim from SpecialCodeResource: a catch code and a special code are
+                 * Verbatim from the old special-code list: a catch code and a special code are
                  * consumed by the same endpoint, so one may never shadow the other.
                  */
                 function (string $attribute, mixed $value, callable $fail) {

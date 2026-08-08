@@ -26,7 +26,7 @@ button on the authoritative `canCreate` (`Gate::allows('create', Badge::class)`)
 `WelcomeController`, not on `prepaidBadgesLeft`. `PrepaidBadgePriceConsistencyTest` locks in the
 pricing; `DbServiceController` (admin → Maintenance → DB Service) repairs already-wrongly-charged
 badges. It replaces `App\Services\FreeBadgeRepairService`, which was deleted in `5aa2148` together
-with the Filament page it served; the repair now lives in the controller that owns the screen, and
+with the old admin page it served; the repair now lives in the controller that owns the screen, and
 zeroing the badge total *is* the correction since the wallet credit went with the wallet package
 (`fa0554e`). See `docs/bugfix-01-result.md`, `docs/bugfix-03-fix.md`, and `docs/handoff.md`.
 

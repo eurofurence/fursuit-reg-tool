@@ -7,17 +7,17 @@ use Illuminate\Support\Facades\Route;
 /*
  * Badges (phase 4, audit 4.2). The biggest resource in the old panel.
  *
- * Two of BadgeResource's pages are missing here on purpose. There is no create route:
+ * Two of the old badge list's pages are missing here on purpose. There is no create route:
  * `fursuit_id` was disabled on that form, disabled fields do not dehydrate, and
  * `badges.fursuit_id` is NOT NULL with a foreign key, so creating a badge from admin has
- * always thrown an integrity error (plan 2.10 #6). And there is no `print` or
+ * always thrown an integrity error. And there is no `print` or
  * `bulk/print`: the badge print pipeline lands in phase 7 against BadgePrintQueue, so the
- * whole print path is reviewed in one PR (plan part 3).
+ * whole print path is reviewed in one PR.
  *
  * The `{badge}` parameter is constrained to digits, so a stray word never reaches the
  * binder and a literal segment can never bind as a record id.
  *
- * The two print endpoints land in phase 7 (plan part 3), against `BadgePrintQueue`. Both
+ * The two print endpoints land in phase 7, against `BadgePrintQueue`. Both
  * are POSTs on BadgePrintController, never GETs and never a side effect of the list's
  * five-second poll: queueing a card is an explicit, authorised gesture. `bulk/print` is a
  * literal segment and is declared before `{badge}` so it can never bind "bulk" as a badge.

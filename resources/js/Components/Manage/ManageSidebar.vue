@@ -24,7 +24,7 @@
  * 220px against a 240px token, which is the drift that removes.
  *
  * Groups and badges come from App\Support\Manage\Navigation, which declares the group
- * order the Filament panel never had and drops items whose route does not exist yet -
+ * order the old panel never had and drops items whose route does not exist yet -
  * that is how rebuild phases add modules without touching this component.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';

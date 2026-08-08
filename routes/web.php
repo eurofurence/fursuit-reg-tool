@@ -48,7 +48,7 @@ Route::middleware(EventEndedMiddleware::class)->group(function () {
 // registered in routes/manage/tools.php beside the badge-preview PDF routes and keep both
 // their URLs and their names. See docs/admin/rebuild-plan.md part 5 step 14.
 
-// The Filament panel used to sit here. It is gone; the Inertia panel owns /admin.
+// The old panel used to sit here. It is gone; the Inertia panel owns /admin.
 // Kept for one release so bookmarked deep links land on the new panel instead of a 404.
 Route::redirect('/admin-legacy/{path?}', '/admin', 301)->where('path', '.*');
 

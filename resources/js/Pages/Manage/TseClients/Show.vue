@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The TSE client detail page. It has no Filament counterpart: the resource declared no
+ * The TSE client detail page. It has no the old panel counterpart: the resource declared no
  * view page and no infolist, so the only way to look at a client was the edit form, and
  * that form is exactly what does not come across (rebuild-plan 2.10 #14).
  *
@@ -11,7 +11,7 @@
  *
  * The bound machine is the one thing the old screen could not answer at all.
  * `TseClient::machine()` exists but nothing surfaced it, so there was no way to see which
- * POS terminal a client was signing for (audit 4.12).
+ * POS terminal a client was signing for.
  *
  * The header carries the two lifecycle actions and nothing else. There is no edit and no
  * delete: the identity is what receipts were signed under, and only `state` may move.

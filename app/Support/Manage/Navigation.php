@@ -28,10 +28,10 @@ use Illuminate\Support\Facades\Route;
  *
  * Items whose route does not exist yet are dropped, so each rebuild phase can add a
  * module without touching this file, and items the current user cannot open are dropped
- * too, which is what Filament's policies did to its nav. Badge counts are cached briefly
+ * too, which is what the old panel's policies did to its nav. Badge counts are cached briefly
  * because the status strip polls.
  *
- * Two count changes are deliberate (plan 2.8). The fursuit chip showed the total fursuit
+ * Two count changes are deliberate. The fursuit chip showed the total fursuit
  * count coloured by the pending count, two different numbers behind one chip; it becomes
  * the pending count, which is the number a reviewer acts on. The printer chip is new and
  * counts what PrinterConditionEnum::isStop() says has stopped, which admin has never
@@ -55,7 +55,7 @@ final class Navigation
         $badges = $this->badges();
 
         /*
-         * Six groups, down from the Filament seven. Four of them existed only because a
+         * Six groups, down from the old panel seven. Four of them existed only because a
          * single page needed a heading to sit under - Sales held Checkouts, User Management
          * held Users, Maintenance held DB Service - and a group of one is a heading that
          * says the row's name twice. Each of those moved to the subject it belongs to:
@@ -237,7 +237,7 @@ final class Navigation
     }
 
     /**
-     * The top strip's own segments: the numbers staff act on (plan 1.2).
+     * The top strip's own segments: the numbers staff act on.
      *
      * Same counts as the rail, from the same cached read, so the chip beside "Fursuits"
      * and the "pending reviews" segment three elements to its left can never disagree.
@@ -337,7 +337,7 @@ final class Navigation
     }
 
     /**
-     * A model with no policy registered yet is treated as visible, the way Filament
+     * A model with no policy registered yet is treated as visible, the way the old panel
      * treated a resource with no policy, so a rail item does not silently vanish between
      * the phase that adds its routes and the phase that adds its policy. A named gate
      * that is not defined is treated the same way.
@@ -359,7 +359,7 @@ final class Navigation
     }
 
     /**
-     * Mirrors the Filament navigation badges, with the two corrections from plan 2.8.
+     * Mirrors the old panel navigation badges, with the two corrections from plan 2.8.
      *
      * @return array<string, array{label: string, tone: string}|null>
      */

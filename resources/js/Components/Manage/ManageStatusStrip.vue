@@ -22,7 +22,7 @@
  * lead the strip, jammed against the sidebar edge and wide enough to overflow.
  *
  * Polls on its own interval and reloads only its own prop, so it keeps ticking while a
- * list page is being filtered or a form is being filled in (plan 2.4, 15s).
+ * list page is being filtered or a form is being filled in.
  */
 import { computed } from 'vue';
 import { Link, usePoll } from '@inertiajs/vue3';

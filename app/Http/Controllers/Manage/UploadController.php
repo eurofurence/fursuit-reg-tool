@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
  * field value, so uploads stay inside the Inertia request cycle. No JSON API.
  *
  * The disk is s3 with private visibility, which is what every read site in the panel
- * already assumes. FursuitResource's FileUpload::make('image') has no ->disk() call, so
+ * already assumes. the old fursuit list's FileUpload::make('image') has no ->disk() call, so
  * it writes to the default filesystem disk while the table column, the infolist entry
  * and DbService all read from s3; the two only coincide because config/filesystems.php
  * currently defaults to s3. This endpoint names the disk instead of inheriting it.

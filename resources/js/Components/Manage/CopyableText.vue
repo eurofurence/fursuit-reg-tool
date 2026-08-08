@@ -1,7 +1,7 @@
 <script setup>
 /**
  * Click-to-copy value, replacing the inline `onclick="navigator.clipboard..."` HTML the
- * Filament source form rendered through a Placeholder.
+ * the old panel source form rendered through a Placeholder.
  *
  * `masked` hides the value until asked for, so a pairing code is not readable over
  * someone's shoulder while the form is open.

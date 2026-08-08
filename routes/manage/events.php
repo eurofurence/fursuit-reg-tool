@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
  * Events (phase 2). ManageEvents was a ManageRecords page with create and edit in modals,
- * so neither had a URL; both are real pages here (plan 1.2).
+ * so neither had a URL; both are real pages here.
  *
  * UNDER /admin/settings, NOT /admin. Events is edited a handful of times per convention and
  * every field on it configures the convention rather than running it, which is exactly the

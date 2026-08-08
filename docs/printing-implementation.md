@@ -22,7 +22,7 @@ extend or debug it. Branch: `printing-rework`.
 | Agent HTTP client, SQLite outbox, Pushover | done |
 | Windows spooler path and PDF rasterisation | written, **never run on hardware** |
 | Receipt lane in claim API | done |
-| Filament batch UI | done |
+| Admin batch UI | done |
 | QZ removal | done |
 | Camera blank-card check, Telegram channel | done |
 
@@ -77,7 +77,7 @@ the request where somebody saved a form, and an attendee adjusting their badge f
 should not queue five renders. The next `badges:generate-print-files` pass picks it up.
 
 **This means a batch must be built from freshly generated files.** Run the generation command before
-building a batch; wiring that into the Filament batch action is outstanding work.
+building a batch; wiring that into the admin batch action is outstanding work.
 
 ### Images
 

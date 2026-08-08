@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Response;
 
 /**
- * Badge Preview, the successor to App\Filament\Pages\BadgePreview (audit 5.2).
+ * Badge Preview, the successor to App\the old panel\Pages\BadgePreview.
  *
  * A read-only tool page: look a badge up by custom id, read back the six details the
  * blade showed, then open or download its PDF. No table, no filters, no writes.
@@ -24,14 +24,14 @@ use Inertia\Response;
  * The lookup POSTs, flashes its toast and redirects to `?custom_id=…`, so the details
  * panel is a plain GET that survives a reload, and the two PDF buttons are ordinary
  * links a browser can genuinely open in a new tab. `target="_blank"` on a Livewire
- * `redirect()` never opened one (plan 2.10 change 34, audit landmine 49).
+ * `redirect()` never opened one.
  *
  * Two more things the same change 34 settles: the default badge class is `EF30_Badge`,
  * which is what BadgePdfController actually renders, rather than the blade's
  * `EF28_Badge`, so the screen can no longer label a badge one class and hand you
- * another (audit 48); and every detail is read null-safely, because the blade walked
+ * another; and every detail is read null-safely, because the blade walked
  * `->species->name`, `->user->name` and `->event->name` unguarded through relations that
- * soft-delete (audit 113).
+ * soft-delete.
  *
  * Not event-scoped. Plan 2.9 lists the scoped surfaces and this is not one of them: a
  * custom id is looked up wherever it lives, as today.
@@ -44,7 +44,7 @@ class BadgePreviewController extends Controller
 {
     /**
      * What BadgePdfController falls back to for an event with no `badge_class`, and now
-     * what the details panel reports (plan 2.10 change 34).
+     * what the details panel reports.
      */
     public const DEFAULT_BADGE_CLASS = 'EF30_Badge';
 
@@ -97,7 +97,7 @@ class BadgePreviewController extends Controller
 
         /*
          * The fursuit name, straight through. `mb_convert_encoding($name, 'UTF-8',
-         * 'UTF-8')` was a no-op, not sanitization (audit landmine 118), so dropping it
+         * 'UTF-8')` was a no-op, not sanitization, so dropping it
          * changes no byte of this body. A badge whose fursuit is soft-deleted has no
          * name to report and says so with an empty one rather than throwing.
          */
@@ -123,7 +123,7 @@ class BadgePreviewController extends Controller
 
     /**
      * `downloadPdf()`, as an attachment. Kept a separate route from the view: they are
-     * two distinct actions and collapsing them loses the download (plan 2.1).
+     * two distinct actions and collapsing them loses the download.
      */
     public function downloadPdf(string $customId, BadgePdfController $pdf): HttpResponse|RedirectResponse
     {
@@ -177,7 +177,7 @@ class BadgePreviewController extends Controller
      * `custom_id` lost its global unique index in
      * 2024_12_24_000001_fix_badge_custom_id_uniqueness_constraint, so two events can hold
      * the same id and this returns whichever the driver hands back first, exactly as the
-     * Filament page did. Parity, not an endorsement.
+     * the old panel page did. Parity, not an endorsement.
      */
     private function find(string $customId): ?Badge
     {
@@ -194,7 +194,7 @@ class BadgePreviewController extends Controller
     /**
      * The blade's six rows, in its order. Every relation is optional: `Fursuit` and
      * `Badge` both soft-delete, and a deleted fursuit is exactly the row that took the
-     * old page down (audit 113).
+     * old page down.
      *
      * @return array<string, string|null>
      */
@@ -235,7 +235,7 @@ class BadgePreviewController extends Controller
                 route('admin.tools.badge-preview.pdf.view', ['customId' => $customId])
             )->icon('eye')->newTab()->toArray(),
 
-            // Filament's `color('success')`, which is Status::OK here.
+            // the old panel's `color('success')`, which is Status::OK here.
             Action::link(
                 'download-pdf',
                 'Download PDF',

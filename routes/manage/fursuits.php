@@ -13,23 +13,23 @@ use Illuminate\Support\Facades\Route;
  * Four shapes worth knowing before reading the controllers.
  *
  * There is no create route. FursuitPolicy::create() returns false and stays false
- * (plan 2.2, audit 38), so the Filament create page was unreachable and is not ported.
+ *, so the old panel create page was unreachable and is not ported.
  *
  * `review` is the queue surface and lives beside the record pages rather than replacing
  * them: /admin/fursuits/{id} is the record - infolist, activity log, every action - and
  * /admin/fursuits/review/{id} is the one-at-a-time page a reviewer works an afternoon in.
  * The bare `review` is a redirect that answers "which record now".
  *
- * There is no claim route. The Filament page took a five-minute cache lock on page load
+ * There is no claim route. The old panel page took a five-minute cache lock on page load
  * and refused every verdict unless the caller held it, so a reviewer who opened a record
  * by link could do nothing with it and a dead browser froze the record for five minutes
- * (plan 2.10 #41, audit 69/71). App\Services\FursuitPresence replaced it: the queue skips
+ *. App\Services\FursuitPresence replaced it: the queue skips
  * records somebody is on and the page says who else is there, but nothing is ever refused.
  * Presence needs no endpoint of its own - the review page refreshes it, so the client's
  * poll is the heartbeat.
  *
  * `next` is a GET that answers with a redirect rather than a page. It is a query over the
- * queue - ordered, event-scoped, skipping records somebody is on (plan 2.10 #42) - and its
+ * queue - ordered, event-scoped, skipping records somebody is on - and its
  * answer is "which record do you work on now", so it belongs on the verb that navigates.
  * The three verdicts redirect the same way, and carry `queue=1` when they came from the
  * queue so a reviewer working it keeps working it.

@@ -17,34 +17,34 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * The one write the panel makes on the checkout side: queue this checkout's receipt for
- * the receipt printer (audit 4.5, table row action 3 and ViewCheckout header action 2).
+ * the receipt printer.
  *
  * It lives apart from CheckoutController for the same reason PrintJobRetryController does:
  * the CRUD controller owns pages and props, and this owns a hardware-facing verb. A POST,
  * never a GET, so nothing sends paper as a side effect of a page being opened or a link
  * being followed.
  *
- * One method, not two. In Filament the body is written out twice, byte for byte, once on
+ * One method, not two. In the old panel the body is written out twice, byte for byte, once on
  * the list action and once on ViewCheckout, so every fix had to be applied in both places
- * and the raw-string type below was wrong in both (plan 2.10 #37, audit 4).
+ * and the raw-string type below was wrong in both.
  *
- * Four things change from the Filament body, all of them plan decisions.
+ * Four things change from the old panel body, all of them plan decisions.
  *
  *  - The type is `PrintJobTypeEnum::Receipt`, and the printer lookup asks for the same
- *    enum. Filament wrote `'type' => 'receipt'` as a raw string in the same array where
+ *    enum. the old panel wrote `'type' => 'receipt'` as a raw string in the same array where
  *    `status` used `PrintJobStatusEnum::Pending`, and looked the printer up with
  *    `where('type', 'receipt')`. `Printer::$casts` already casts the column to the enum,
- *    so the string worked only by coincidence of the enum's own value (audit landmine 4).
+ *    so the string worked only by coincidence of the enum's own value.
  *  - Rendering is queued, not `dispatchSync`. mPDF and the Fiskaly QR ran inside the web
- *    request, so any failure there was a 500 instead of a toast (plan 2.10 #37, audit 14).
+ *    request, so any failure there was a 500 instead of a toast.
  *  - It is idempotent per checkout, in both halves. The PDF is rendered only when it is
  *    not on disk already, and a checkout that still has an outstanding receipt job does
- *    not get a second one. Filament re-rendered and re-queued on every click, which is how
+ *    not get a second one. the old panel re-rendered and re-queued on every click, which is how
  *    one fiscal record could be spammed into a stack of identical receipts.
  *  - Every queue attempt is written to the activity log against the checkout, with the
  *    operator as the causer. There was no log entry at all.
  *
- * The notification copy is untouched: both titles and both bodies are the Filament strings
+ * The notification copy is untouched: both titles and both bodies are the old panel strings
  * verbatim, including the `#{id}` in the success body.
  *
  * What this does NOT do is mutate the checkout. Not a column, not a state, not a
@@ -52,7 +52,7 @@ use Illuminate\Support\Facades\Storage;
  *
  * Known ordering caveat, carried over rather than introduced: the print job is created
  * pointing at `checkouts/{id}.pdf` whether or not the render has finished, exactly as the
- * Filament body did with its hardcoded path. Queueing the render moves the mPDF failure
+ * the old panel body did with its hardcoded path. Queueing the render moves the mPDF failure
  * out of the request but does not order the two, so an agent that claims the job before
  * the render lands sees no file. Ordering them needs a job that owns both halves, which is
  * a new write path into the printing domain and belongs to that module, not here.
@@ -72,14 +72,14 @@ class CheckoutReceiptPrintController extends Controller
     {
         Gate::authorize('printReceipt', $checkout);
 
-        // Filament looked the printer up with the raw string. Same question, asked with
+        // the old panel looked the printer up with the raw string. Same question, asked with
         // the enum the column is cast to.
         $receiptPrinter = Printer::where('is_active', true)
             ->where('type', PrintJobTypeEnum::Receipt)
             ->first();
 
         if (! $receiptPrinter) {
-            // CheckoutResource's danger notification, verbatim.
+            // the old checkout list's danger notification, verbatim.
             Toast::flashDanger(
                 'No receipt printer found',
                 'Please configure an active receipt printer first.',
@@ -121,7 +121,7 @@ class CheckoutReceiptPrintController extends Controller
             ])
             ->log('Receipt queued for printing');
 
-        // CheckoutResource's success notification, verbatim, including the `#`.
+        // the old checkout list's success notification, verbatim, including the `#`.
         Toast::flashSuccess(
             'Receipt added to print queue',
             "Receipt for checkout #{$checkout->id} has been queued for printing.",

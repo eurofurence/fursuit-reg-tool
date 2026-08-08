@@ -14,7 +14,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
  * lifecycle, and all of it through Fiskaly. `delete` is never asked: a client's serial is
  * on every receipt it signed, so a row is retired, not removed.
  *
- * The identity itself is still not editable (plan 2.10 #14). `update` here means `state`
+ * The identity itself is still not editable. `update` here means `state`
  * and nothing else; there is no PUT in the module for the two columns that matter.
  *
  * The TSS the clients live on is driven separately, by `php artisan tse:update-state` and
@@ -46,8 +46,8 @@ class TseClientPolicy
      *
      * Asked by `TseClientController::store()`, which creates the row inside a transaction
      * with the observer's outbound PUT so a refusal upstream leaves nothing behind. That
-     * is the part Filament's `createnew` skipped: it minted a random UUID and never called
-     * anyone (plan 2.10 #13).
+     * is the part the old panel's `createnew` skipped: it minted a random UUID and never called
+     * anyone.
      */
     public function create(User $user): bool
     {
@@ -58,7 +58,7 @@ class TseClientPolicy
      * Determine whether the user can register or deregister the TSE client.
      *
      * `state` only. `remote_id` and `serial_number` are the signing identity past
-     * checkouts were signed under (plan 2.10 #14), and no route writes them.
+     * checkouts were signed under, and no route writes them.
      */
     public function update(User $user, TseClient $tseClient): bool
     {

@@ -1,13 +1,13 @@
 <script setup>
 /**
- * The SumUp reader list, successor to SumUpReaderResource's table and ListSumUpReaders.
+ * The SumUp reader list, successor to the old reader list's table and ListSumUpReaders.
  *
  * The envelope arrives as top-level props rather than one nested object, because
  * useTableQuery reloads rows/meta/filters/sort/search as an Inertia partial visit and
  * partials are filtered by top-level key. DataTable still wants one object, so the props
  * are gathered back up here.
  *
- * There is no filter set, no searchable column and no toggleable one: SumUpReaderResource
+ * There is no filter set, no searchable column and no toggleable one: the old reader list
  * declares `->filters([ // ])` and marks nothing `->searchable()`. So DataTable is mounted
  * without `searchable` and draws no toolbar at all, which is the same nothing the page
  * showed before the toolbar moved inside it.

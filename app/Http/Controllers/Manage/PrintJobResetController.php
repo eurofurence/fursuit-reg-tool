@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\Log;
  * it is a hardware-facing verb, not a page, and a Pending job is one an agent will pick up
  * and print. A POST, so nothing resets a run by being opened or polled.
  *
- * **All or nothing, in one transaction** (plan 2.5). A selection containing a card that
+ * **All or nothing, in one transaction**. A selection containing a card that
  * has already printed resets nothing at all. Half a run moved back to Pending is worse
  * than none of it: the operator has no way of telling which half, and the ones that did
  * move will print again.

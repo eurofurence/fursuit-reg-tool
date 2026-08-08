@@ -6,7 +6,7 @@
  * as text like the other twelve fields and the save bar is gone, because the page is the
  * record rather than a form they can submit. The PUT refuses them independently.
  *
- * Almost every field is read-only, which is what BadgeResource's form already was: twelve
+ * Almost every field is read-only, which is what the old badge list's form already was: twelve
  * of its fourteen fields were `->disabled()`. The two differences are both money-safety.
  *
  *  - `total` joins them. It rendered euros and had no inverse on write, so saving an

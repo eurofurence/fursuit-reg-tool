@@ -3,19 +3,17 @@
 /*
  * PDF Generator (parity checklist 21, audit 5.1).
  *
- * The biggest custom page in the Filament panel, 483 lines, ported as two GET downloads
+ * The biggest custom page in the old panel, 483 lines, ported as two GET downloads
  * over one form. What is asserted below is the parity contract - the five notifications
  * verbatim, the option labels, the defaults - plus the three things the plan fixes rather
  * than ports:
  *
  *  - the event comes from the one event scope. The page read
- *    `session('filament.admin.selected_event_id')`, which nothing writes, so it silently
- *    used the newest event and its "no event selected" branch was unreachable (plan 2.9,
- *    audit 63);
+ *    a session key that nothing writes, so it silently
+ *    used the newest event and its "no event selected" branch was unreachable;
  *  - the badge-list filename is slugged, so a free-text event name cannot break or inject
- *    into `Content-Disposition` (plan 2.10 #31, audit 15);
- *  - badges numbered outside every declared range are reported instead of dropped (plan
- *    2.10 #33, audit 47).
+ *    into `Content-Disposition`;
+ *  - badges numbered outside every declared range are reported instead of dropped.
  *
  * And the property that holds the whole page together: generating a PDF is a read, so a
  * generation writes nothing.
@@ -106,7 +104,7 @@ test('a reviewer is refused the form and both downloads', function () {
     actingAs($this->reviewer)->get(route('admin.tools.pdf.box-labels', ['title' => 'x']))->assertForbidden();
 });
 
-test('the form opens on the Filament defaults', function () {
+test('the form opens on the old panel defaults', function () {
     ($this->scoped)($this->event->id)
         ->get(route('admin.tools.pdf'))
         ->assertInertia(fn (Assert $page) => $page
@@ -123,7 +121,7 @@ test('the form opens on the Filament defaults', function () {
         );
 });
 
-test('the selects carry their Filament labels, with the box-label count corrected', function () {
+test('the selects carry their original labels, with the box-label count corrected', function () {
     ($this->scoped)($this->event->id)
         ->get(route('admin.tools.pdf'))
         ->assertInertia(fn (Assert $page) => $page
@@ -183,7 +181,7 @@ test('the No Data body names the payment filter that found nothing', function ()
         ->assertOk();
 });
 
-test('an unparsable range list is refused with the Filament copy', function () {
+test('an unparsable range list is refused with the old panel copy', function () {
     ($this->badge)('10-1');
 
     ($this->scoped)($this->event->id)
@@ -194,7 +192,7 @@ test('an unparsable range list is refused with the Filament copy', function () {
         ->assertSessionHas(MANAGE_PDF_TOAST.'.body', 'Please enter valid badge ranges in the format: 1-1699,1700-2400');
 });
 
-test('a range list no badge falls into is refused with the Filament copy', function () {
+test('a range list no badge falls into is refused with the old panel copy', function () {
     ($this->badge)('10-1');
 
     ($this->scoped)($this->event->id)
@@ -275,7 +273,7 @@ test('a range list that covers every badge reports nothing out of range', functi
     // One range, one page, and no leftovers page behind it.
     expect(pdfPages($response->streamedContent()))->toBe(1);
 
-    // No range list at all keeps Filament's fallback to computed 1000-wide buckets, which
+    // No range list at all keeps the old panel's fallback to computed 1000-wide buckets, which
     // cover every number there is, so nothing can fall outside them.
     ($this->scoped)($this->event->id)
         ->get(route('admin.tools.pdf.badge-list'))
@@ -383,7 +381,7 @@ test('the layout numbers are integers with a ceiling', function () {
         ->assertSessionHasErrors('payment_status');
 });
 
-test('box labels refuse an empty title with the Filament copy', function () {
+test('box labels refuse an empty title with the old panel copy', function () {
     ($this->scoped)($this->event->id)
         ->get(route('admin.tools.pdf.box-labels'))
         ->assertRedirect(route('admin.tools.pdf'))

@@ -1,11 +1,11 @@
 <script setup>
 /**
- * Create and edit for a user, as a page rather than the Filament modal a ManageRecords
- * page gave it (plan 1.2).
+ * Create and edit for a user, as a page rather than the old panel modal a ManageRecords
+ * page gave it.
  *
- * The field order is UserResource's schema, minus `valid_registration`: it was a Toggle
+ * The field order is the old user list's schema, minus `valid_registration`: it was a Toggle
  * for a column that no longer exists on `users`, and it is why saving this form throws
- * SQL 1054 today (plan 2.10 change 4). It is not here, and UserRequest does not accept it
+ * SQL 1054 today. It is not here, and UserRequest does not accept it
  * either, so a stale client cannot resurrect it.
  *
  * Inside SettingsLayout, like the list it is reached from: Users is a Settings pane, so the

@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The badge list, successor to BadgeResource's table and its ListBadges page.
+ * The badge list, successor to the old badge list's table and its ListBadges page.
  *
  * The envelope arrives as top-level props rather than one nested object, because
  * useTableQuery reloads rows/meta/filters/sort/search as an Inertia partial visit and
@@ -51,13 +51,13 @@ const table = computed(() => ({
 }));
 
 /*
- * BadgeResource polls this table every 5 seconds (audit 7.1).
+ * the old badge list polls this table every 5 seconds.
  *
  * `bulkActions` rides along with the data props, which the other lists do not do. The
  * only bulk action here is `printBadgeBulk`, and the printer select inside its dialog is
- * built from the printers that are active *now*; Filament evaluated that option list once
+ * built from the printers that are active *now*; the old panel evaluated that option list once
  * when the table was built and never again, so a printer switched off mid-shift stayed on
- * offer until somebody reloaded the page (audit 100). Reloading the action with the rows
+ * offer until somebody reloaded the page. Reloading the action with the rows
  * resolves the options on the tick before the modal opens instead.
  *
  * The poll is a GET and stays one. It reads the printer list; it queues nothing. Printing

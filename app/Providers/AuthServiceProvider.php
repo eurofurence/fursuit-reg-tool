@@ -45,23 +45,22 @@ class AuthServiceProvider extends ServiceProvider
          * The audit trail, read-only. Registered explicitly because the model lives in
          * the Spatie package namespace, where discovery looks for
          * Spatie\Activitylog\Policies\ActivityPolicy - a class that does not exist - so
-         * without this line every ability on the log silently falls open (plan 2.10 #12).
+         * without this line every ability on the log silently falls open.
          */
         Activity::class => ActivityPolicy::class,
         /*
          * New, and registered explicitly because auto-discovery would look for it under
          * App\Domain\Checkout\Models\Policies, a directory that does not exist. The model
          * had no policy at all, so the only thing refusing a reviewer a checkout rewrite
-         * was CheckoutResource's own canCreate/canEdit/canDelete (audit 51, plan 2.10
-         * #19). Those three answers now live on the model's policy, where nothing routes
+         * was the old checkout list's own canCreate/canEdit/canDelete. Those three answers now live on the model's policy, where nothing routes
          * around them.
          */
         Checkout::class => CheckoutPolicy::class,
         // Auto-discovery already finds this one; named here for the same reason as User,
-        // so every policy the manage panel relies on is visible in one list (plan 2.2).
+        // so every policy the manage panel relies on is visible in one list.
         Event::class => EventPolicy::class,
         // Also found by discovery; named for the same reason. `create()` is false and
-        // stays false (audit 38), which is why no create route exists for fursuits.
+        // stays false, which is why no create route exists for fursuits.
         Fursuit::class => FursuitPolicy::class,
         Machine::class => MachinePolicy::class,
         Printer::class => PrinterPolicy::class,
@@ -69,16 +68,16 @@ class AuthServiceProvider extends ServiceProvider
          * New, and registered explicitly because auto-discovery would look for it under
          * App\Domain\Printing\Policies, a directory that does not exist. The model had no
          * policy at all, so pause / resume / cancel of a live print run were open to
-         * every reviewer (audit 51, plan 2.10 #18).
+         * every reviewer.
          */
         PrintBatch::class => PrintBatchPolicy::class,
         PrintJob::class => PrintJobPolicy::class,
         // Registered explicitly because auto-discovery would look for the policy under
-        // App\Domain\CatchEmAll\Policies, a directory that does not exist (plan 2.2).
+        // App\Domain\CatchEmAll\Policies, a directory that does not exist.
         SpecialCode::class => SpecialCodePolicy::class,
         /*
          * New. The model had no policy at all and was protected only by living inside
-         * the admin-only Staff edit page (audit 54, plan 2.2). Discovery would find this
+         * the admin-only Staff edit page. Discovery would find this
          * one on its own; named here so the tags cannot silently fall open again the way
          * they did the first time.
          */
@@ -102,7 +101,7 @@ class AuthServiceProvider extends ServiceProvider
          * The /manage panel gate. Direct successor to User::canAccessPanel(), which
          * returned is_admin || is_reviewer and was the only panel-level gate, so nobody
          * lost access at cutover. It is now the only place the rule is expressed:
-         * canAccessPanel() went with Filament.
+         * canAccessPanel() went with the old panel.
          *
          * Both flags are cast bool on the model since phase 1; the explicit bool stays
          * so the gate does not depend on that.

@@ -26,7 +26,7 @@ use Inertia\Response;
  * so it carries only what a verdict needs: the photo big enough to judge, the name and
  * species, three buttons, and the reason picker that appears when a verdict needs one.
  *
- * Three things it does that the Filament page could not.
+ * Three things it does that the old panel page could not.
  *
  * **It never blocks.** Opening a record does not lock it. The queue skips records another
  * reviewer is on (FursuitPresence), and if a reviewer arrives by link anyway the page says

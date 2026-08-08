@@ -14,17 +14,17 @@ use Illuminate\Validation\Rule;
 
 /**
  * The fursuit edit form. There is no create counterpart: FursuitPolicy::create() returns
- * false and stays false (plan 2.2, audit 38), so no create route exists.
+ * false and stays false, so no create route exists.
  *
  * Authorisation happens here rather than in the controller body, because a FormRequest
  * validates before the action runs: gating in the controller would answer an
  * unauthorised write with a 422 about its payload instead of a 403.
  *
- * Three fields the Filament form carried are deliberately absent from the payload:
+ * Three fields the old panel form carried are deliberately absent from the payload:
  *
  *  - `status` is still accepted, but as a transition name rather than a value to write.
  *    payload() never contains it; the controller runs transitionTo() instead
- *    (plan 2.10 #9, audit 21).
+ *   .
  *  - `approved_at` and `rejected_at` are gone entirely. They were hand-editable
  *    DateTimePickers that could contradict `status`; the transitions own them now.
  */
@@ -47,16 +47,16 @@ class FursuitRequest extends FormRequest
             'species_id' => ['required', 'integer', 'exists:species,id'],
             /*
              * A relation select rather than the free numeric TextInput it replaces
-             * (plan 2.6), so the id has to name an event that exists instead of any
+             *, so the id has to name an event that exists instead of any
              * number the operator typed.
              */
             'event_id' => ['required', 'integer', 'exists:events,id'],
             'name' => ['required', 'string', 'max:255'],
             /*
              * The stored object key on s3, produced by POST /admin/uploads with purpose
-             * `fursuit_image`. The Filament FileUpload had no ->disk(), so it wrote to
+             * `fursuit_image`. The old panel FileUpload had no ->disk(), so it wrote to
              * the default filesystem disk while the table, the infolist and DbService
-             * all read from s3 (plan 2.10 #5, audit 7.4). Required, as it is today.
+             * all read from s3. Required, as it is today.
              */
             'image' => ['required', 'string', 'max:2048'],
             'published' => ['required', 'boolean'],

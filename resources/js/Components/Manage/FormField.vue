@@ -6,7 +6,7 @@
  * label/control rows reads straight down and keeps every helper text directly under the
  * thing it explains. The label column is a fixed width so controls line up down the form.
  *
- * A read-only field renders as text rather than a disabled input: Filament used
+ * A read-only field renders as text rather than a disabled input: the old panel used
  * Placeholder for exactly these (created_at, badge totals) and a greyed-out box invites
  * clicking something that can never change.
  */
@@ -86,7 +86,7 @@ const control =
         </span>
 
         <!--
-          The switch Filament's Toggle renders. Still a real checkbox underneath, so it
+          The switch the old panel's Toggle renders. Still a real checkbox underneath, so it
           keeps the label association, the keyboard behaviour and the form semantics a
           styled div would throw away; only the box is swapped for the track and knob.
 

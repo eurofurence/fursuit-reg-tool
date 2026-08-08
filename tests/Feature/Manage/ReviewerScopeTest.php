@@ -175,7 +175,7 @@ test('a reviewer keeps the three screens the role exists for', function () {
 
 test('the badge PDF routes no longer answer a reviewer', function () {
     // The reason these exist at all is that they once sat behind `auth` alone and any
-    // signed-in attendee could pull any badge PDF by custom id (audit landmine 60). The
+    // signed-in attendee could pull any badge PDF by custom id. The
     // fix stopped at the panel door; this takes it to the admin one.
     $this->actingAs($this->reviewer);
 

@@ -100,6 +100,15 @@ leaving it stranded. Past three attempts it fails and pauses the batch.
 **Claims are atomic.** `PrintBatch::claimNextJob()` locks the row, so two agents can never be handed
 the same card.
 
+**Reset to pending.** The bulk action on `/admin/print-jobs` returns a selection of unfinished jobs
+to `Pending` in place, keeping sequence and batch, and clearing whatever the previous state left
+behind: the lease and the machine on a claimed or mid-card job, the error text and attempt count on
+a failed one. It is the repair for a run that stopped moving - a dead agent whose lease has not
+expired yet, or a batch of cards that failed for a reason the operator has since fixed - where
+`Retry` is the wrong shape because it makes a *new* job per card. Printed and cancelled jobs cannot
+be reset, and one of them in a selection resets nothing at all. It does not resume a paused batch;
+the toast says so.
+
 **Completion needs evidence.** `Printed` is unreachable without a `completion_source`:
 
 | Source | Meaning |

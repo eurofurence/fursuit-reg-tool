@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * The RFID tags of one staff member, successor to RfidTagsRelationManager (audit 4.10.1).
+ * The RFID tags of one staff member, successor to RfidTagsRelationManager.
  *
  * There is no index route. The relation manager only ever rendered on the Staff edit page
  * and these tags only mean anything next to the member they log in, so the table is built
@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Gate;
  * the action that writes it cannot drift apart.
  *
  * Every endpoint is nested under the owning member and authorized twice: on RfidTagPolicy,
- * which is new (plan 2.2, audit 54), and on the staff member itself. A tag's `content` is
+ * which is new, and on the staff member itself. A tag's `content` is
  * the entire credential a reader presents at the till, so read and write are gated
  * identically; nothing here is reachable by anyone StaffPolicy would not let edit the
  * member.
@@ -68,7 +68,7 @@ class RfidTagController extends Controller
                     ? Action::delete('delete', 'Delete', route('admin.staff.rfid-tags.destroy', [$staff, $tag]))
                         ->icon('trash-2')
                         ->tone('danger')
-                        // Filament's DeleteAction copy, never overridden here: heading
+                        // the old panel's DeleteAction copy, never overridden here: heading
                         // `Delete :label` with the model label.
                         ->confirmDelete('rfid tag')
                     : null,
@@ -81,8 +81,8 @@ class RfidTagController extends Controller
     {
         $staff->rfidTags()->create($request->validated());
 
-        // Filament's built-in CreateAction toast; the relation manager defines none of
-        // its own (audit 4.10.1 notifications).
+        // the old panel's built-in CreateAction toast; the relation manager defines none of
+        // its own.
         Toast::flashSuccess('Created');
 
         return back();
@@ -98,7 +98,7 @@ class RfidTagController extends Controller
     }
 
     /**
-     * Hard delete: `rfid_tags` carries no SoftDeletes (audit 7.7).
+     * Hard delete: `rfid_tags` carries no SoftDeletes.
      */
     public function destroy(Staff $staff, RfidTag $rfidTag): RedirectResponse
     {
@@ -113,7 +113,7 @@ class RfidTagController extends Controller
     }
 
     /**
-     * All-or-nothing (plan 2.5), and confined to the member in the URL: a selection that
+     * All-or-nothing, and confined to the member in the URL: a selection that
      * names a tag belonging to somebody else deletes nothing at all, rather than reaching
      * across the nesting.
      */
@@ -150,7 +150,7 @@ class RfidTagController extends Controller
         }
 
         // Per record rather than a mass delete, so model events still fire, which is
-        // what Filament's DeleteBulkAction did.
+        // what the old panel's DeleteBulkAction did.
         $tags->each->delete();
 
         Toast::flashSuccess('Deleted');

@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Gate;
  * The `Generate` button on the staff form's Setup Code field. It proposes a code; it does
  * not write one.
  *
- * That is the whole point of this controller existing (plan 2.10 #23, audit 36). The
- * Filament suffix action called `$record->generateSetupCode()`, and `Staff::
+ * That is the whole point of this controller existing. The
+ * the old panel suffix action called `$record->generateSetupCode()`, and `Staff::
  * generateSetupCode()` ends with `$this->update(['setup_code' => $code])` - so pressing
  * Generate on an existing member wrote a new setup code to the database immediately,
  * before the form was submitted. Generate and then navigate away and the member is
@@ -34,7 +34,7 @@ class StaffSetupCodeController extends Controller
 
     /**
      * How many candidates to draw before giving up. The pool is 36^6, so a collision is a
-     * broken assumption rather than bad luck; the Filament loop had no bound at all.
+     * broken assumption rather than bad luck; the old panel loop had no bound at all.
      */
     private const ATTEMPTS = 20;
 

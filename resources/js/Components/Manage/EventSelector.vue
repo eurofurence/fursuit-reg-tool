@@ -2,7 +2,7 @@
 /**
  * The global event filter, this panel's defining cross-cutting control.
  *
- * Not a port. The Filament original navigated the whole page with
+ * Not a port. The old panel original navigated the whole page with
  * `?selected_event_id=`, had no "All events" option in its markup, and its middleware
  * forgot the session key and re-seeded it in the same request, so the one branch that
  * meant "all events" could never be reached. Here the choice is an explicit

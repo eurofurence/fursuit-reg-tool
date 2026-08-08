@@ -1,7 +1,7 @@
 <?php
 
 /*
- * TSE clients, phase 8 (plan part 4.4). Transcribed from audit 4.12.
+ * TSE clients, phase 8. Transcribed from audit 4.12.
  *
  * A TSE client is the identity a Technical Security System signs fiscal transactions
  * under, and KassenSichV requires its serial to stay traceable from every signed receipt
@@ -13,14 +13,14 @@
  * rewrote them does not exist and neither does a destroy route. `state` is the one thing
  * that moves, through register and deregister, and both go through Fiskaly.
  *
- * Registration is back, but not the way Filament had it. `createnew` minted a random UUID
+ * Registration is back, but not the way the old panel had it. `createnew` minted a random UUID
  * and never called anyone (2.10 #13), so the row named a client the TSS had never issued.
  * `store` runs the creation inside a transaction with the observer's outbound PUT, so a
  * refusal upstream leaves nothing behind - and it is refused outright while another client
  * is registered, because only one may sign at a time.
  *
  * The third theme is the enum. Audit landmine 7 records that the fabricator wrote the raw
- * string `'REGISTERED'` and that the Filament Select duplicated the vocabulary by hand, so
+ * string `'REGISTERED'` and that the old panel Select duplicated the vocabulary by hand, so
  * renaming a `TseClientStateEnum` case broke both at runtime with nothing failing first
  * and no test anywhere. Every state assertion below is written against the enum case
  * rather than a literal, and `FiskalyService::updateClient()` reads `$tseClient->state->value`,
@@ -58,7 +58,7 @@ beforeEach(function () {
     Http::fake();
 
     // ManageEventScope runs on every /admin request whether or not the page is scoped,
-    // and this list deliberately is not (plan 2.9).
+    // and this list deliberately is not.
     Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -158,7 +158,7 @@ test('the search box covers each of the three columns', function () {
     expect($found('SERIAL-AAA111'))->toBe([$this->client->id])
         ->and($found('client-0002'))->toHaveCount(1)
         ->and($found('client-0002'))->not->toContain($this->client->id)
-        // The state column is searchable in Filament too, and it searches the raw stored
+        // The state column is searchable in the old panel too, and it searches the raw stored
         // string, which is why the cell renders that string rather than a label.
         ->and($found(TseClientStateEnum::DEREGISTERED->value))->toHaveCount(1);
 });
@@ -348,7 +348,7 @@ test('no action anywhere in the module deletes or edits the identity', function 
         ->all();
 
     // Audit 133: only an empty getHeaderActions() kept the stock DeleteAction off the
-    // Filament edit page. Nothing in this payload points at an edit or a destroy; the one
+    // the old panel edit page. Nothing in this payload points at an edit or a destroy; the one
     // DELETE here is deregistration, which changes `state` and nothing else.
     foreach ($urls as $url) {
         expect($url)->not->toContain('/edit');
@@ -377,7 +377,7 @@ test('the module registers the lifecycle writes and nothing that edits or delete
 });
 
 test('the policy is untouched, so the legacy panel keeps the screens it still has', function () {
-    // TseClientPolicy is shared: Filament consults the same class, and /admin-legacy keeps
+    // TseClientPolicy is shared: the old panel consults the same class, and /admin-legacy keeps
     // its create page and its row EditAction until cutover. Closing an ability here would
     // take two screens the parity contract documents as working off a panel the plan says
     // keeps running. The new module carries neither screen and routes neither verb, which
@@ -391,7 +391,7 @@ test('the policy is untouched, so the legacy panel keeps the screens it still ha
         ->and(Gate::forUser($this->reviewer)->allows('update', $this->client))->toBeFalse();
 });
 
-test('an admin cannot write to a client through the URLs the Filament resource had', function () {
+test('an admin cannot write to a client through the URLs old resource had', function () {
     actingAs($this->admin);
 
     $payload = [
@@ -400,7 +400,7 @@ test('an admin cannot write to a client through the URLs the Filament resource h
         'state' => TseClientStateEnum::DEREGISTERED->value,
     ];
 
-    // /admin/tse-clients/create and /{record}/edit were real Filament URLs, and the
+    // /admin/tse-clients/create and /{record}/edit were real the old panel URLs, and the
     // create page was reachable by typing it even though no button led there.
     get('/admin/tse-clients/create')->assertNotFound();
     get('/admin/tse-clients/'.$this->client->id.'/edit')->assertNotFound();
@@ -439,7 +439,7 @@ test('rendering the list or a record writes nothing and calls Fiskaly not at all
 });
 
 /*
- * Show. The Filament resource had no view page and no infolist at all.
+ * Show. The old panel resource had no view page and no infolist at all.
  */
 
 test('the show page carries the identity, the state and the bound machine', function () {
@@ -462,7 +462,7 @@ test('the show page carries the identity, the state and the bound machine', func
             // renamed case is a type error rather than an unstyled cell.
             ->where('client.state', Status::tseClient(TseClientStateEnum::REGISTERED))
             // TseClient::machine() exists but the old screen surfaced it nowhere, so
-            // there was no way to see which POS terminal a client signs for (audit 4.12).
+            // there was no way to see which POS terminal a client signs for.
             ->where('client.machine', $machine->name)
             ->has('client.created_at')
             ->has('client.updated_at')

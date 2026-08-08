@@ -11,13 +11,13 @@ use Illuminate\Validation\Rule;
 /**
  * Create and update for /admin/printers.
  *
- * The rules are PrinterResource's form schema (audit 4.7), with two things settled that
- * the Filament form left open.
+ * The rules are the old printer list's form schema, with two things settled that
+ * the old panel form left open.
  *
  * `default_paper_size` is checked against the sizes this printer actually reported. The
- * Filament Select built its options from `collect($record->paper_sizes)` through a closure
+ * the old panel Select built its options from `collect($record->paper_sizes)` through a closure
  * that type-hinted a non-nullable `Printer $record`, so the create page threw a TypeError
- * before anyone could pick anything (plan 2.10 #7, landmine 27). On create there is no
+ * before anyone could pick anything. On create there is no
  * record and therefore no size to choose: the field has to be empty, and it is enforced
  * here rather than trusted to the client.
  *
@@ -52,14 +52,14 @@ class PrinterRequest extends FormRequest
             'type' => ['required', Rule::in(array_column(PrintJobTypeEnum::cases(), 'value'))],
             'machine_id' => ['required', 'integer', 'exists:machines,id'],
             'default_paper_size' => ['nullable', 'string', 'max:255', Rule::in($this->paperSizeNames())],
-            // Filament's Checkbox: not required, so an absent value is simply off.
+            // the old panel's Checkbox: not required, so an absent value is simply off.
             'is_active' => ['nullable', 'boolean'],
         ];
     }
 
     /**
      * `is_active` reaches the model as a real boolean even when the client leaves it out,
-     * which is what an unchecked Filament Checkbox did.
+     * which is what an unchecked the old panel Checkbox did.
      *
      * @return array<string, mixed>
      */
@@ -94,7 +94,7 @@ class PrinterRequest extends FormRequest
     }
 
     /**
-     * Filament's labels, so a validation message names the field the way the form does.
+     * the old panel's labels, so a validation message names the field the way the form does.
      *
      * @return array<string, string>
      */

@@ -18,14 +18,14 @@ use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
- * Events, the successor to EventResource plus its ManageEvents page (audit 4.1).
+ * Events, the successor to the old event list plus its ManageEvents page.
  *
- * Create, edit and delete were Filament modals on a ManageRecords page, so the resource had
- * no create or edit URL at all; they become real pages (plan 1.2).
+ * Create, edit and delete were the old panel modals on a ManageRecords page, so the resource had
+ * no create or edit URL at all; they become real pages.
  *
  * Event state is computed from the three date fields by `Event::state()` and there is no
  * `state` column anywhere in the schema, so nothing here stores, filters or sorts one. The
- * dates are the only levers, exactly as today (audit 4.1, landmine 105).
+ * dates are the only levers, exactly as today.
  *
  * The list is deliberately not event-scoped: plan 2.9 lists Events among the surfaces that
  * stay unscoped, matching today. Scoping the event list by the selected event would leave
@@ -35,7 +35,7 @@ class EventController extends Controller
 {
     /**
      * The badge renderer classes the form offers, hardcoded per convention year exactly as
-     * EventResource had them. Landmine 110 (a new event year needs a code change) is
+     * the old event list had them. Landmine 110 (a new event year needs a code change) is
      * recorded but not fixed here: the plan sanctions no change, and the value is validated
      * against this list so nothing outside it can reach `badge_class`.
      */
@@ -46,14 +46,14 @@ class EventController extends Controller
     ];
 
     /**
-     * Filament's model label for this resource, as its delete modals render it.
+     * the old panel's model label for this resource, as its delete modals render it.
      */
     private const MODEL_LABEL = 'event';
 
     private const PLURAL_LABEL = 'events';
 
     /**
-     * Filament's `->date()` default, `config('tables.date_format')`, kept so `starts_at`
+     * the old panel's `->date()` default, `config('tables.date_format')`, kept so `starts_at`
      * and `ends_at` read the same after the move.
      */
     private const DATE_FORMAT = 'M j, Y';
@@ -100,8 +100,8 @@ class EventController extends Controller
         $event = new Event;
         $this->write($event, $request->payload());
 
-        // Filament's built-in Created toast; EventResource defines none of its own
-        // (audit 4.1: no custom notifications).
+        // the old panel's built-in Created toast; the old event list defines none of its own
+        // .
         Toast::flashSuccess('Created');
 
         return redirect()->route('admin.settings.events.index');
@@ -126,7 +126,7 @@ class EventController extends Controller
     /**
      * Hard delete: Event carries no SoftDeletes, and audit 7.7 lists events among the
      * tables that stay hard deletes. It is also why EventPolicy gains no `restore` or
-     * `forceDelete` (plan 2.2, landmine 53).
+     * `forceDelete`.
      *
      * An event that still owns fursuits is refused. `fursuits.event_id` and
      * `badges.fursuit_id` are both `ON DELETE CASCADE`, so a hard delete here removes
@@ -153,7 +153,7 @@ class EventController extends Controller
     }
 
     /**
-     * All-or-nothing (plan 2.5): if any selected record fails the policy nothing is
+     * All-or-nothing: if any selected record fails the policy nothing is
      * deleted and a danger toast says why, rather than half a selection disappearing.
      *
      * The endpoint authorizes the same question the bulk button is offered on, so an
@@ -192,7 +192,7 @@ class EventController extends Controller
         }
 
         // Per record rather than a mass delete, so model events still fire, which is
-        // what Filament's DeleteBulkAction did.
+        // what the old panel's DeleteBulkAction did.
         $events->each->delete();
 
         Toast::flashSuccess('Deleted');
@@ -222,7 +222,7 @@ class EventController extends Controller
             ->name('events')
             ->columns($this->columns())
             ->defaultSort('starts_at', 'desc')
-            // EventResource declares `->filters([ // ])`, and no column is searchable
+            // the old event list declares `->filters([ // ])`, and no column is searchable
             // either, so the list carries neither.
             ->filters([])
             ->rows(fn (Event $event) => [
@@ -249,7 +249,7 @@ class EventController extends Controller
                     ? Action::delete('delete', 'Delete', route('admin.settings.events.destroy', $event))
                         ->icon('trash-2')
                         ->tone('danger')
-                        // Filament's DeleteAction copy, never overridden in this
+                        // the old panel's DeleteAction copy, never overridden in this
                         // resource: heading `Delete :label` with the model label.
                         ->confirmDelete(self::MODEL_LABEL)
                     : null,
@@ -260,11 +260,11 @@ class EventController extends Controller
     }
 
     /**
-     * The audit's nine columns, in order, with Filament's own labels verbatim: five of
+     * The audit's nine columns, in order, with the old panel's own labels verbatim: five of
      * them are auto labels and four are declared, and both kinds are transcribed so
      * nothing reads differently after the move.
      *
-     * `name` loses its `->numeric()`. The column holds a string, and Filament's numeric
+     * `name` loses its `->numeric()`. The column holds a string, and the old panel's numeric
      * formatter returns a non-numeric state untouched, so the rendered value is the same
      * one either way (landmine 111).
      *
@@ -367,7 +367,7 @@ class EventController extends Controller
 
     /**
      * `->limit(50)` with the full value as the `->tooltip()`. Both halves are computed
-     * here rather than in the client, so the truncation point is the one Filament used.
+     * here rather than in the client, so the truncation point is the one the old panel used.
      *
      * @return array{display: string, title: string}|null
      */
@@ -388,7 +388,7 @@ class EventController extends Controller
      *
      * `forceFill` rather than `fill`, for one field: `archival_notice` is in the form and
      * in the table but not in `Event::$fillable`, so every save of it is silently dropped
-     * today (audit 107). The request is the allow-list here, and it accepts exactly the
+     * today. The request is the allow-list here, and it accepts exactly the
      * thirteen attributes the form declares, so nothing else can round-trip through this.
      * Going through `$fillable` instead would mean editing a model four other surfaces
      * mass-assign.
@@ -424,8 +424,7 @@ class EventController extends Controller
      *
      * The two `DatePicker` fields go out as `Y-m-d` and the five `DateTimePicker` fields
      * as `Y-m-d\TH:i`, which are the value formats the native date and datetime-local
-     * controls read; anything else silently renders an empty control (plan 2.6 keeps the
-     * granularity of each of the seven fields).
+     * controls read; anything else silently renders an empty control.
      *
      * @return array<string, mixed>
      */

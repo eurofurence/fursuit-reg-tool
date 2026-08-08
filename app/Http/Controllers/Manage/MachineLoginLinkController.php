@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 
 /**
- * Mints the POS login link for one machine (plan 2.10 #15, audit landmine 9).
+ * Mints the POS login link for one machine.
  *
  * Whoever holds this URL authenticates as the till: it lands on
  * pos.auth.machine.login, which logs the machine in on the `machine` guard with
- * remember set. The Filament panel rendered it with URL::signedRoute() into a copyable
+ * remember set. The old panel rendered it with URL::signedRoute() into a copyable
  * infolist entry on the edit page, so the credential existed the moment the page was
  * opened, never expired and left no trace of who took it.
  *

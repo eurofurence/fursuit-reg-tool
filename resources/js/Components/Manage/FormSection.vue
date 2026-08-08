@@ -1,12 +1,12 @@
 <script setup>
 /**
- * A titled block of fields, the equivalent of Filament's Section.
+ * A titled block of fields, the equivalent of the old panel's Section.
  *
  * One column of label/control rows by default (see FormField): the form is read top to
  * bottom rather than scanned in a grid. `columns` is kept for the few blocks that are
  * genuinely a row of short read-only values, e.g. statistics.
  *
- * `collapsed` covers the five Filament sections that open collapsed today.
+ * `collapsed` covers the five the old panel sections that open collapsed today.
  */
 import { ref } from 'vue';
 import ManageIcon from './ManageIcon.vue';
@@ -25,7 +25,7 @@ const gridClass = {
   1: 'md:grid-cols-1',
   2: 'md:grid-cols-2',
   3: 'md:grid-cols-3',
-  // The batch infolist's Progress section is four across (audit 4.8).
+  // The batch infolist's Progress section is four across.
   4: 'md:grid-cols-4',
 };
 </script>
