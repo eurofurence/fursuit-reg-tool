@@ -40,6 +40,9 @@ KNOWN_PRINTER_STATES = {
     # Mid-card, observed on the real unit.
     "feeding", "feed", "transfer_wait", "transfer", "transferring",
     "encoding", "flipping", "ejecting", "cleaning",
+    # Seen in the field and journalled as unrecognised. All three are ordinary
+    # ZXP9 vocabulary; only the last one is a fault.
+    "xfer_rollers_heating", "receive_ok", "cancelled_by_user",
 }
 
 

@@ -33,6 +33,7 @@ CARD_JAM = "card_jam"
 COVER_OPEN = "cover_open"
 REJECT_BIN_FULL = "reject_bin_full"
 SERVICE_REQUIRED = "service_required"
+CANCELLED_AT_PRINTER = "cancelled_at_printer"
 OFFLINE = "offline"
 INITIALIZING = "initializing"
 UNKNOWN = "unknown"
@@ -68,9 +69,24 @@ def is_stop(condition: str) -> bool:
 OID_HR_PRINTER_STATUS = "1.3.6.1.2.1.25.3.5.1.1.1"
 OID_HR_ERROR_STATE = "1.3.6.1.2.1.25.3.5.1.2.1"
 
+# prtMarkerSuppliesTable, indexed (device, supply). Supply 1 is the colour
+# ribbon and describes itself as "YMCK".
 OID_SUPPLY_LEVEL = "1.3.6.1.2.1.43.11.1.1.9.1.1"
 OID_SUPPLY_MAX = "1.3.6.1.2.1.43.11.1.1.8.1.1"
 OID_SUPPLY_DESCRIPTION = "1.3.6.1.2.1.43.11.1.1.6.1.1"
+
+# Supply 2 exists and looks like the transfer film -- same type (7, ink ribbon)
+# and unit (8, sheets) as the ribbon, no description -- but it does not report
+# anything usable. Walked three times inside a few minutes on an idle ZXP9 that
+# printed nothing in between, it gave 626, then 2, then 1, against a max that
+# moved with it. Classifying on that produced film_low on a healthy printer and
+# would have gone on to stop the queue outright.
+#
+# Zebra's own media table (1.3.6.1.4.1.10642.8.6) has a single entry, the YMCK
+# ribbon, so there is no private OID for the film either. Read for the record
+# only; nothing decides anything on it.
+OID_FILM_LEVEL = "1.3.6.1.2.1.43.11.1.1.9.1.2"
+OID_FILM_MAX = "1.3.6.1.2.1.43.11.1.1.8.1.2"
 
 OID_ZEBRA_STATE = "1.3.6.1.4.1.10642.8.4.1.1.1"
 OID_ZEBRA_ALARMS = (
@@ -208,6 +224,8 @@ class Reading:
     supply_level: Optional[int] = None
     supply_max: Optional[int] = None
     supply_description: str = ""
+    film_level: Optional[int] = None
+    film_max: Optional[int] = None
     jobs: List[JobRow] = field(default_factory=list)
     raw: Dict[str, str] = field(default_factory=dict)
 
@@ -277,6 +295,9 @@ BUSY_STATES = (
     "feeding", "feed",
     "transfer_wait", "transfer", "transferring",
     "encoding", "flipping", "ejecting", "cleaning",
+    # The firmware acknowledging the job it was sent. Observed on the real unit
+    # and reported as an unknown state, which stopped a working printer.
+    "receive_ok",
 )
 
 
@@ -317,6 +338,9 @@ def classify(reading: Reading, ribbon_warn_threshold: int = 50) -> str:
         return UNKNOWN
 
     # 3. Consumables. Exhausted is a stop, low is only a warning.
+    #
+    # Only the ribbon. See OID_FILM_LEVEL for why the second supply row this
+    # printer publishes is not trusted to mean anything.
     if reading.supply_level is not None:
         # Thresholds are quoted in cards, because that is what an operator
         # counts and what the queue length is measured in.
@@ -334,12 +358,23 @@ def classify(reading: Reading, ribbon_warn_threshold: int = 50) -> str:
     # printing_<phase> words besides. They all mean a card is in progress.
     if state in BUSY_STATES or state.startswith("printing"):
         return PRINTING
-    if state in ("initializing", "initialising", "warming_up", "warmup"):
+    # WARMING on the front panel. A cold ZXP9 spends around ten minutes bringing
+    # its transfer rollers up to temperature, and it is not ready in that time.
+    # Classifying it as printing paused the batch and called an operator to a
+    # printer that needed nothing but patience.
+    if state in ("initializing", "initialising", "warming_up", "warmup",
+                 "xfer_rollers_heating"):
         return INITIALIZING
     # `standby` is what a ZXP Series 9 actually reports when it is powered,
     # healthy and waiting for work. Observed on the real unit, which until it
     # was added here classified a perfectly good printer as `unknown` and
     # stopped the queue.
+    # Somebody pressed cancel on the printer's own panel, so the card that was
+    # in progress does not exist and nothing further should be sent until a
+    # person says what happened to it. Reported as an unknown state before,
+    # which stopped the queue correctly but told the operator nothing.
+    if state.startswith("cancelled") or state.startswith("canceled"):
+        return CANCELLED_AT_PRINTER
     if state in ("idle", "ready", "ok", "standby"):
         return OK
     if state:
@@ -400,7 +435,10 @@ class ZebraPoller:
         reading.sensor_fault = values.get(OID_ZEBRA_SENSOR_FAULT, "")
         reading.supply_description = values.get(OID_SUPPLY_DESCRIPTION, "")
 
-        for attribute, oid in (("supply_level", OID_SUPPLY_LEVEL), ("supply_max", OID_SUPPLY_MAX)):
+        for attribute, oid in (("supply_level", OID_SUPPLY_LEVEL),
+                               ("supply_max", OID_SUPPLY_MAX),
+                               ("film_level", OID_FILM_LEVEL),
+                               ("film_max", OID_FILM_MAX)):
             try:
                 setattr(reading, attribute, int(values[oid]))
             except (KeyError, TypeError, ValueError):
