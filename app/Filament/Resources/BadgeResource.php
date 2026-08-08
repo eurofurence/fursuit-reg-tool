@@ -14,6 +14,7 @@ use App\Models\Badge\State_Fulfillment\Processing;
 use App\Models\Badge\State_Payment\BadgePaymentStatusState;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -40,6 +41,15 @@ class BadgeResource extends Resource
         }
 
         return (string) Badge::whereHas('fursuit', fn ($q) => $q->where('event_id', $eventId))->count();
+    }
+
+    /** Active badge printers, lowest id first so the default pick is stable. */
+    protected static function badgePrinters(): \Illuminate\Database\Eloquent\Builder
+    {
+        return Printer::query()
+            ->where('type', PrintJobTypeEnum::Badge)
+            ->where('is_active', true)
+            ->orderBy('id');
     }
 
     public static function form(Form $form): Form
@@ -229,7 +239,8 @@ class BadgeResource extends Resource
                             ->on('fursuits.event_id', '=', 'event_users.event_id');
                     })
                     ->select('badges.*')
-                    ->addSelect('event_users.attendee_id as sort_attendee_id');
+                    ->addSelect('event_users.attendee_id as sort_attendee_id')
+                    ->addSelect('fursuits.approved_at as fursuit_approved_at');
             })
             ->columns([
                 // Fursuit Image as first column
@@ -349,6 +360,13 @@ class BadgeResource extends Resource
                     ->dateTime('M j, Y')
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                Tables\Columns\TextColumn::make('fursuit_approved_at')
+                    ->label('Approved At')
+                    ->dateTime('M j, Y H:i')
+                    ->placeholder('Not approved')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('printed_at')
                     ->label('Printed At')
                     ->dateTime('M j, Y H:i')
@@ -425,6 +443,44 @@ class BadgeResource extends Resource
 
                         return $indicators;
                     }),
+
+                // Print cutoff. Everything approved up to the last print run is already
+                // filed in the box, so the next run should only pick up what was approved
+                // after it. `approved_from` is filled in automatically by the bulk print
+                // action below and persists in the session.
+                Tables\Filters\Filter::make('approved_at_range')
+                    ->label('Approval Cutoff')
+                    ->form([
+                        Forms\Components\DateTimePicker::make('approved_from')
+                            ->label('Approved from')
+                            ->helperText('Set automatically after each bulk print. Clear it to show every badge again.'),
+                        Forms\Components\DateTimePicker::make('approved_until')
+                            ->label('Approved until'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['approved_from'] ?? null, function ($query, $from) {
+                                return $query->whereHas('fursuit', function ($q) use ($from) {
+                                    $q->where('approved_at', '>=', $from);
+                                });
+                            })
+                            ->when($data['approved_until'] ?? null, function ($query, $until) {
+                                return $query->whereHas('fursuit', function ($q) use ($until) {
+                                    $q->where('approved_at', '<=', $until);
+                                });
+                            });
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['approved_from'] ?? null) {
+                            $indicators[] = 'Approved from '.\Carbon\Carbon::parse($data['approved_from'])->format('M j, H:i');
+                        }
+                        if ($data['approved_until'] ?? null) {
+                            $indicators[] = 'Approved until '.\Carbon\Carbon::parse($data['approved_until'])->format('M j, H:i');
+                        }
+
+                        return $indicators;
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -445,18 +501,15 @@ class BadgeResource extends Resource
                     ->form([
                         Forms\Components\Select::make('printer_id')
                             ->label('Select Printer')
-                            ->options(
-                                Printer::where('type', PrintJobTypeEnum::Badge)
-                                    ->where('is_active', true)
-                                    ->pluck('name', 'id')
-                            )
+                            ->options(fn () => static::badgePrinters()->pluck('name', 'id'))
+                            ->default(fn () => static::badgePrinters()->value('id'))
                             ->required()
                             ->helperText('Select a specific printer for all selected badges.'),
                     ])
                     ->requiresConfirmation()
                     ->modalHeading('Print Selected Badges')
                     ->modalDescription('This will print all selected badges to the specified printer.')
-                    ->action(function (Collection $records, array $data) {
+                    ->action(function (Collection $records, array $data, $livewire) {
                         $printerId = $data['printer_id'];
                         // sort by attendee id numerically
                         $sortedRecords = $records->sortBy(fn (Badge $badge) => (int) $badge->sort_attendee_id);
@@ -482,6 +535,28 @@ class BadgeResource extends Resource
                             ->onQueue('batch-print')
                             ->allowFailures()
                             ->dispatch();
+
+                        // This run is now filed in the box. Move the approval cutoff up to
+                        // the newest badge in it so the next run only offers what came in
+                        // afterwards, instead of re-listing everything already printed.
+                        $latestApprovedAt = $sortedRecords
+                            ->pluck('fursuit_approved_at')
+                            ->filter()
+                            ->max();
+
+                        if ($latestApprovedAt) {
+                            $filters = $livewire->tableFilters ?? [];
+                            $filters['approved_at_range']['approved_from'] = (string) $latestApprovedAt;
+
+                            $livewire->tableFilters = $filters;
+                            $livewire->updatedTableFilters();
+
+                            Notification::make()
+                                ->title('Approval cutoff moved to '.\Carbon\Carbon::parse($latestApprovedAt)->format('M j, H:i'))
+                                ->body('Badges approved before this run are hidden. Clear the Approval Cutoff filter to see them again.')
+                                ->success()
+                                ->send();
+                        }
 
                         return true;
                     }),

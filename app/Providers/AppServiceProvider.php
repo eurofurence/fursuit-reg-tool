@@ -7,6 +7,7 @@ use App\Models\Badge\Badge;
 use App\Models\Fursuit\Fursuit;
 use App\Models\SumUpReader;
 use App\Providers\Socialite\SocialiteIdentityProvider;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Socialite\Contracts\Factory;
@@ -26,6 +27,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Keep table filters/search/sort when navigating away from a list page
+        // (e.g. editing a record and returning) instead of resetting them.
+        Table::configureUsing(function (Table $table): void {
+            $table
+                ->persistFiltersInSession()
+                ->persistSearchInSession()
+                ->persistColumnSearchesInSession()
+                ->persistSortInSession();
+        });
+
         Fursuit::observe(\App\Observers\FursuitObserver::class);
         Badge::observe(\App\Observers\BadgeObserver::class);
         TseClient::observe(\App\Observers\TseClientsObserver::class);
