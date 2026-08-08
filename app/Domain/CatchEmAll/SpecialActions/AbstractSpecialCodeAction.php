@@ -2,10 +2,9 @@
 
 namespace App\Domain\CatchEmAll\SpecialActions;
 
-use App\Domain\CatchEmAll\Interface\ConfigurableSpecialCodeAction;
 use App\Domain\CatchEmAll\Interface\SpecialCodeAction;
 
-abstract class AbstractSpecialCodeAction implements ConfigurableSpecialCodeAction, SpecialCodeAction
+abstract class AbstractSpecialCodeAction implements SpecialCodeAction
 {
     protected int $eventId;
 
@@ -25,10 +24,5 @@ abstract class AbstractSpecialCodeAction implements ConfigurableSpecialCodeActio
         $this->eventId = $eventId;
         $this->code = $code;
         $this->constructorData = $constructorData;
-    }
-
-    public static function getConfigData(): ?array
-    {
-        return null;
     }
 }

@@ -83,6 +83,7 @@ final class Navigation
              */
             ['label' => 'Catch-Em-All', 'items' => [
                 $this->item('Special Codes', 'qr-code', 'admin.special-codes.index', null, $this->permits('viewAny', SpecialCode::class)),
+                $this->item('Cache', 'database', 'admin.tools.catch-em-all-cache', null, $this->permits('manage-admin')),
             ]],
             /*
              * Checkouts is first in POS, not a "Sales" group of its own. Every checkout in
@@ -206,6 +207,9 @@ final class Navigation
                 'Badge lists and box labels for the print run, as PDFs to hand out.'),
             $this->pane('badge-preview', 'Badge Preview', 'eye', 'admin.tools.badge-preview',
                 'Look a badge up by custom id and see the card it prints as.'),
+            $this->pane('catch-em-all-cache', 'Catch-Em-All Cache', 'circle-stack', 'admin.tools.catch-em-all-cache',
+                'Inspect and clear Catch-Em-All cache entries for achievements and leaderboards.',
+                $this->permits('manage-admin')),
             $this->pane('db-service', 'DB Service', 'wrench', 'admin.maintenance.db-service',
                 'Repair badges charged the fee although prepaid entitlement was left.',
                 $this->permits('manage-admin')),

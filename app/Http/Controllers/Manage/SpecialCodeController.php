@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Manage;
 
+use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Models\SpecialCode;
+use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Domain\CatchEmAll\SpecialActions\SpecialCodeActionRegistry;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\SpecialCodeRequest;
@@ -149,6 +151,11 @@ class SpecialCodeController extends Controller
         return SpecialCodeActionRegistry::labelFor($className);
     }
 
+    public static function typeLabel(?SpecialCodeType $type): ?string
+    {
+        return $type ? SpecialActionsRegister::getDisplayNameForSpecialCodeType($type) ?? $type->name : null;
+    }
+
     /**
      * `constructor_data` as text. The attribute is cast to `object`, so the raw column
      * value is re-encoded rather than printed through a string cast that would render
@@ -203,7 +210,7 @@ class SpecialCodeController extends Controller
             ->name('special-codes')
             ->columns([
                 Column::text('code', 'Code')->sortable(),
-                Column::text('class_name', 'Class')->sortable(),
+                Column::text('type', 'Type')->sortable(),
                 Column::text('constructor_data', 'Data')->sortable(),
                 Column::text('event_id', 'Event')->sortable(),
             ])
@@ -211,7 +218,7 @@ class SpecialCodeController extends Controller
             ->filters([])
             ->rows(fn (SpecialCode $specialCode) => [
                 'code' => $specialCode->code,
-                'class_name' => self::classLabel($specialCode->class_name),
+                'type' => self::typeLabel($specialCode->type),
                 'constructor_data' => self::dataPreview($specialCode->constructor_data),
                 // Null when the event row is gone. Events are hard-deleted, so this
                 // is a state the list has to survive rather than one it can rule out.
@@ -269,7 +276,16 @@ class SpecialCodeController extends Controller
      */
     private function formProps(?SpecialCode $specialCode): array
     {
-        $className = $specialCode?->class_name ?? '';
+        $className = '';
+
+        if ($specialCode?->type instanceof SpecialCodeType) {
+            $className = SpecialActionsRegister::getClassForSpecialCodeType($specialCode->type) ?? '';
+        }
+
+        if ($className === '' && $specialCode?->class_name !== null) {
+            $className = $specialCode->class_name;
+        }
+
         $residue = $specialCode
             ? SpecialCodeActionRegistry::residue($className, $specialCode->constructor_data)
             : null;
@@ -278,7 +294,7 @@ class SpecialCodeController extends Controller
             'specialCode' => $specialCode ? [
                 'id' => $specialCode->id,
                 'event_id' => $specialCode->event_id,
-                'class_name' => $specialCode->class_name,
+                'type' => $specialCode?->type?->value ?? null,
                 'data' => SpecialCodeActionRegistry::declaredValues($className, $specialCode->constructor_data),
                 'storedData' => self::dataPreview($specialCode->constructor_data),
                 // Non-null exactly when the stored document holds something the fields do
@@ -290,37 +306,44 @@ class SpecialCodeController extends Controller
                 ->get()
                 ->map(fn (Event $event) => ['value' => $event->id, 'label' => $event->name])
                 ->all(),
-            'classOptions' => $this->classOptions($specialCode),
-            'actionSchemas' => SpecialCodeActionRegistry::schemas(),
+            'manageEventId' => app(EventScope::class)->id(),
+            'typeOptions' => $this->typeOptions(),
+            'actionSchemas' => $this->actionSchemas(),
             'catchUrlBase' => self::catchUrlBase(),
         ];
     }
 
-    /**
-     * The Select options, plus the record's own class when that class is no longer one of
-     * them.
-     *
-     * A row can name a class that has since been removed, and the Select would otherwise
-     * silently show the first option instead, so an operator opening the page to change
-     * the code would rewire the action without noticing. The stored class is shown,
-     * labelled unavailable, and `Rule::in` still refuses it on save: the operator has to
-     * pick a class the redeem path can instantiate before the record can be written.
-     *
-     * @return array<int, array{value: string, label: string}>
-     */
-    private function classOptions(?SpecialCode $specialCode): array
+    private function typeOptions(): array
     {
-        $options = collect(SpecialCodeActionRegistry::options())
-            ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+        return collect(SpecialActionsRegister::getFillamentOptions())
+            ->map(fn (?string $label, int $value) => ['value' => $value, 'label' => $label ?? 'Unknown'])
             ->values()
             ->all();
+    }
 
-        $className = $specialCode?->class_name;
+    private function actionSchemas(): array
+    {
+        $schemas = [
+            '' => [
+                'label' => null,
+                'description' => null,
+                'fields' => [],
+            ],
+        ];
 
-        if ($className !== null && $className !== '' && ! SpecialCodeActionRegistry::has($className)) {
-            $options[] = ['value' => $className, 'label' => $className.' (unavailable)'];
+        foreach (SpecialCodeType::cases() as $type) {
+            $className = SpecialActionsRegister::getClassForSpecialCodeType($type) ?? '';
+
+            $schemas[$type->value] = [
+                'label' => $className !== '' ? SpecialCodeActionRegistry::labelFor($className) : null,
+                'description' => $className !== '' ? SpecialCodeActionRegistry::descriptionFor($className) : null,
+                'fields' => array_map(
+                    fn ($field) => $field->toArray(),
+                    SpecialCodeActionRegistry::fieldsFor($className),
+                ),
+            ];
         }
 
-        return $options;
+        return $schemas;
     }
 }
