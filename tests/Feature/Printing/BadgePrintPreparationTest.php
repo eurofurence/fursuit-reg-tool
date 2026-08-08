@@ -104,6 +104,32 @@ it('renders on the badge-render queue rather than beside the panel', function ()
     );
 });
 
+/*
+ * The second half of that bug. Moving the work to a queue stopped the request dying, but
+ * the connection carrying it re-served the job after 90 seconds while it was still
+ * rendering: a second worker found attempts past tries = 1 and failed it with
+ * "App\Jobs\Printing\PrepareBadgePrintBatchJob has been attempted too many times", whose
+ * failed() hook cancelled the batch and returned the badges under the run still building
+ * them. A hundred cards is minutes of work, so retry_after has to clear the job's timeout.
+ */
+it('reserves a run for longer than it can take to prepare', function (string $connection) {
+    $timeout = (new ReflectionClass(PrepareBadgePrintBatchJob::class))
+        ->getDefaultProperties()['timeout'];
+
+    expect(config("queue.connections.{$connection}.retry_after"))->toBeGreaterThan($timeout);
+})->with(['database-long-running', 'redis-long-running']);
+
+it('prepares runs on the long-running connection, not the shared one', function () {
+    Queue::fake();
+
+    BadgePrintQueue::queue(preparableBadges(), Printer::factory()->badge()->create());
+
+    Queue::assertPushed(
+        PrepareBadgePrintBatchJob::class,
+        fn (PrepareBadgePrintBatchJob $job) => $job->connection === config('queue.long_running')
+    );
+});
+
 it('makes the run ready once the job has prepared it', function () {
     $badges = preparableBadges(2);
 
