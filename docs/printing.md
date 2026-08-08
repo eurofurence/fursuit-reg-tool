@@ -174,6 +174,39 @@ different questions answered by different calls. `verified_print_at` and `verifi
 No camera images are ever uploaded to the server. Only the verdict. (The optional Telegram channel
 posts photos to a chat, which is a separate, opt-in channel; see below.)
 
+**The desk check-off** is the third way a card gets verified, and the only one that proves the card
+is in the building. `/pos/verification` (F8) is a numpad, a running list and an undo: somebody reads
+the number off every card in the crate and types it, and each entry stamps `verified_print_at`
+through `PrintJob::markVerified()` with `verification_source = operator`, exactly as the agent's own
+operator verdict does. What is left over at the end of the crate - printed, never checked off - is
+what never came out of the printer, and is found in `/admin` by filtering the badge list on
+**Print Verified = Not verified** plus the fulfillment status and the attendee range that crate
+covers.
+
+Two rules on that screen, both learned from cards going out twice:
+
+- A bare number is copy 1. `1234` checks off `1234-1`; a second copy has to be typed as `1234-2`,
+  because nothing on the screen can tell which copy is in the operator's hand.
+- The stamp is never cleared by a later reprint. It records that the card was seen once. The undo
+  button is the only thing that clears it, for the number typed off the wrong card.
+
+The counters read "printed" off the fulfillment state, never off `badges.printed_at`. Only the
+`ToPrinted` transition stamps that column and the print pipeline does not go through it - a finished
+job calls `promoteBadgeToReadyForPickup()` - so on live data the timestamp is null for every card the
+agent printed. The screen counted zero cards against a full crate until that was fixed. The list
+below the counters is deliberately wider than them: it shows every card checked off at this event,
+including ones outside the desk's crate, because anything the field accepts has to appear there.
+
+The screen is also shaped nothing like the dashboard, which is one keystroke away and is also a
+number field over a keypad. An attendee number typed into the wrong one would check a card off
+without anybody noticing, so this one wears a banner, puts the list where the dashboard puts the
+keypad, and shrinks the keypad to a touchscreen fallback.
+
+The auto-lock is suspended on that route alone. Working a crate is minutes of handling cards with no
+keyboard or mouse in between, and locking there discards the list of what was already checked; the
+page polls the server every minute to hold the session instead. The screen shows no attendee data
+and no till, so the lock protects nothing there.
+
 ## Printer condition
 
 The agent polls SNMP and reduces the reading to a `PrinterConditionEnum` case, which the POS shows

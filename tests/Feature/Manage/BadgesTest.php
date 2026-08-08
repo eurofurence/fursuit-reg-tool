@@ -16,6 +16,8 @@
  *  - a badge whose fursuit or user is soft-deleted took the whole table down.
  *
  * The rest is parity, transcribed from the audit: fourteen columns in order, four filters,
+ * plus what was added afterwards - the Verified column and the print_verified filter that
+ * the POS check-off screen is read through.
  * five form sections, and the old panel's own delete copy.
  */
 
@@ -104,7 +106,7 @@ beforeEach(function () {
     ]);
 });
 
-test('the list renders the fourteen columns in order, with their labels and types', function () {
+test('the list renders the fifteen columns in order, with their labels and types', function () {
     ($this->badge)();
 
     ($this->scoped)(null)->get(route('admin.badges.index'))
@@ -125,9 +127,12 @@ test('the list renders the fourteen columns in order, with their labels and type
             ->where('columns.11', fn ($c) => $c['key'] === 'created_at' && $c['label'] === 'Created' && $c['hiddenByDefault'])
             ->where('columns.12', fn ($c) => $c['key'] === 'printed_at' && $c['label'] === 'Printed At' && $c['fallback'] === 'Not printed' && $c['hiddenByDefault'])
             ->where('columns.13', fn ($c) => $c['key'] === 'picked_up_at' && $c['label'] === 'Picked Up' && $c['fallback'] === 'Not picked up' && $c['hiddenByDefault'])
-            ->count('columns', 14)
-            // The five isToggledHiddenByDefault: true flags, and only those five.
-            ->where('hiddenColumns', ['extra_copy', 'total', 'created_at', 'printed_at', 'picked_up_at'])
+            // Column 15 is not the audit's: it is the desk check-off, added with the POS
+            // verification screen so the printed-but-never-seen cards can be listed.
+            ->where('columns.14', fn ($c) => $c['key'] === 'verified_print_at' && $c['label'] === 'Verified' && $c['fallback'] === 'Not verified' && $c['hiddenByDefault'])
+            ->count('columns', 15)
+            // The five isToggledHiddenByDefault: true flags from the audit, plus Verified.
+            ->where('hiddenColumns', ['extra_copy', 'total', 'created_at', 'printed_at', 'picked_up_at', 'verified_print_at'])
         );
 });
 
@@ -184,7 +189,7 @@ test('the attendee-id sort flips through the partial reload the client actually 
         // The five requested keys have to carry data, not null.
         ->and($descending->json('props.meta.page'))->toBe(1)
         ->and($descending->json('props.search'))->toBe('')
-        ->and($descending->json('props.filters'))->toHaveCount(6);
+        ->and($descending->json('props.filters'))->toHaveCount(7);
 
     expect($partial(['sort' => 'sort_attendee_id', 'dir' => 'asc'])->json('props.rows.0.id'))->toBe($ninth->id);
 });
@@ -319,7 +324,7 @@ test('the list declares its filters with their labels, placeholders and option s
 
     ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->count('filters', 6)
+            ->count('filters', 7)
             ->where('filters.0.key', 'status_fulfillment')
             ->where('filters.0.label', 'Fulfillment Status')
             ->where('filters.0.placeholder', 'All Statuses')
@@ -358,6 +363,14 @@ test('the list declares its filters with their labels, placeholders and option s
             ->where('filters.5.type', 'datetime')
             ->where('filters.5.label', 'Approved until')
             ->where('filters.5.chipLabel', 'Approved before')
+            // Not the audit's either: the reprint list. Printed, and never checked off
+            // at the desk or seen by the print agent's camera.
+            ->where('filters.6.key', 'print_verified')
+            ->where('filters.6.type', 'ternary')
+            ->where('filters.6.label', 'Print Verified')
+            ->where('filters.6.placeholder', 'Verified or not')
+            ->where('filters.6.trueLabel', 'Verified')
+            ->where('filters.6.falseLabel', 'Not verified')
             // Nothing is filtered on first load; every filter opens blank.
             ->where('filters.0.value', [])
             ->where('filters.1.value', [])
@@ -365,6 +378,7 @@ test('the list declares its filters with their labels, placeholders and option s
             ->where('filters.3.value', ['min' => '', 'max' => ''])
             ->where('filters.4.value', '')
             ->where('filters.5.value', '')
+            ->where('filters.6.value', '')
         );
 });
 

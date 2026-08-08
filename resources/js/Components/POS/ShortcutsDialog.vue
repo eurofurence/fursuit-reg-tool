@@ -14,6 +14,7 @@
       <div><b>Print Queue:</b> <kbd>F4</kbd></div>
       <div><b>Statistics:</b> <kbd>F6</kbd></div>
       <div><b>My Print Jobs:</b> <kbd>F7</kbd></div>
+      <div><b>Badge Verification:</b> <kbd>F8</kbd></div>
       <div><b>This dialog:</b> <kbd>F1</kbd></div>
 
       <h4 class="pos-label mb-2 mt-4">Keyboard</h4>
