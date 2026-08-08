@@ -15,7 +15,15 @@ enum PrintJobStatusEnum: string
     public function canTransitionTo(self $newStatus): bool
     {
         return match ($this) {
-            self::Pending => in_array($newStatus, [self::Queued, self::Cancelled], true),
+            // Printed and Failed are reachable from Pending because a reaped job is
+            // not necessarily a job nobody printed. The agent holds the card, and if
+            // its lease lapsed while the network was down it must still be able to
+            // say what happened when it comes back. Refusing that left a printed card
+            // sitting in the queue to be handed out and printed a second time, which
+            // is the exact failure this pipeline exists to prevent. Who may say it is
+            // decided at the endpoint: only the machine that owns the printer, and
+            // only while nobody else holds the job.
+            self::Pending => in_array($newStatus, [self::Queued, self::Printed, self::Failed, self::Cancelled], true),
             // Back to Pending covers an expired lease: the agent that claimed the
             // job died, so it returns to the queue rather than being lost.
             self::Queued => in_array($newStatus, [self::Printing, self::Pending, self::Failed, self::Cancelled], true),

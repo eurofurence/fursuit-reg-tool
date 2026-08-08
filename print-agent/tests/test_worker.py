@@ -11,6 +11,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -1224,6 +1225,329 @@ class WaitingForWorkTest(WorkerTestCase):
         printer.pause("something went wrong")
 
         self.assertFalse(printer.waiting_for_work)
+
+
+class HeatingCycleTest(WorkerTestCase):
+    """A card that takes minutes, because the printer heats up first.
+
+    A cold ZXP9 brings the transfer roller up to temperature before it prints
+    anything, and the whole card can take the better part of ten minutes. The
+    fixed firmware timeout gave up at three: the job was reported on the
+    spooler's word alone while the card was still in the machine, the camera was
+    then asked about a bin with nothing in it yet, and the run moved on.
+    """
+
+    def heats_for(self, seconds, job_id="9095"):
+        """A printer that warms up for `seconds`, then produces the card."""
+        started = self.clock.now
+        read = self.printer.read
+
+        def heat():
+            if self.clock.now - started >= seconds and not self.printer.jobs:
+                self.printer.finish(job_id=job_id, uuid="uuid-%s" % job_id)
+                self.printer.reading_kwargs["printer_state"] = "idle"
+
+            return read()
+
+        self.printer.read = heat
+
+    def sender_that_heats(self, job_payload, path, binding):
+        self.sent.append((job_payload["id"], path))
+        # What the firmware actually reports while the roller comes up.
+        self.printer.reading_kwargs["printer_state"] = "printing_heating"
+
+        return worker.SpoolResult(True, "spool id 42")
+
+    def test_a_six_minute_card_is_still_confirmed_by_the_firmware(self):
+        self.api.queue.append(job(95))
+        self.heats_for(360)
+
+        outcome = self.build(sender=self.sender_that_heats,
+                             firmware_timeout=180.0,
+                             poll_seconds=5.0).print_next()
+
+        self.assertEqual(outcome.kind, worker.PRINTED)
+        self.assertEqual(self.api.printed[0]["completion_source"], api.COMPLETION_FIRMWARE)
+        self.assertGreaterEqual(self.clock.slept, 360.0,
+                                "the card must not be given up on while it is printing")
+
+    def test_the_lease_is_renewed_across_the_whole_wait(self):
+        self.api.queue.append(job(96))
+        self.heats_for(360, job_id="9096")
+
+        self.build(sender=self.sender_that_heats,
+                   firmware_timeout=180.0,
+                   heartbeat_seconds=45.0,
+                   poll_seconds=5.0).print_next()
+
+        # Six minutes at a beat every forty-five seconds. Anything much less
+        # means a window where the reaper could take the card back.
+        self.assertGreaterEqual(len(self.api.heartbeats), 6)
+        self.assertEqual(set(self.api.heartbeats), {96})
+
+    def test_a_printer_stuck_in_printing_still_ends(self):
+        # The extension is bounded. A machine that claims to be printing for
+        # ever must not hold the queue for ever with it.
+        self.api.queue.append(job(97))
+        self.confirm_in_firmware = False
+
+        outcome = self.build(sender=self.sender_that_heats,
+                             firmware_timeout=180.0,
+                             max_print_seconds=900.0,
+                             poll_seconds=15.0).print_next()
+
+        self.assertEqual(outcome.kind, worker.PRINTED)
+        self.assertEqual(self.api.printed[0]["completion_source"], api.COMPLETION_SPOOLER_ONLY)
+        self.assertGreaterEqual(self.clock.slept, 900.0)
+        self.assertLess(self.clock.slept, 1200.0)
+
+    def test_a_quiet_printer_still_gives_up_at_the_silence_timeout(self):
+        # Nothing in the job table and nothing in the state word: the card is
+        # not visibly in progress, so the old behaviour is exactly right.
+        self.api.queue.append(job(98))
+        self.confirm_in_firmware = False
+
+        self.build(firmware_timeout=60.0, max_print_seconds=900.0, poll_seconds=5.0).print_next()
+
+        self.assertEqual(self.api.printed[0]["completion_source"], api.COMPLETION_SPOOLER_ONLY)
+        self.assertLess(self.clock.slept, 120.0)
+
+
+class AlreadyHandledTest(WorkerTestCase):
+    """A card this agent has already put through the printer.
+
+    The server can hand the same job out twice: a lease that lapsed while the
+    network was down is returned to the queue by the reaper, and the next claim
+    picks it up. Without a check against what we did locally, an outage turns
+    into the same badge printed over and over for as long as it lasts.
+    """
+
+    def test_a_reported_card_is_not_printed_again(self):
+        payload = job(70)
+        self.store.save_job(payload, "ZXP9-Left", 77, worker.JOB_REPORTED)
+        self.api.queue.append(payload)
+
+        outcome = self.build().print_next()
+
+        self.assertEqual(outcome.kind, worker.PRINTED)
+        self.assertEqual(self.sent, [], "nothing may be sent for a card we already printed")
+
+    def test_a_card_that_was_mid_print_goes_to_the_operator(self):
+        # Sent to the spooler, and we never learned what came of it. Neither
+        # reprinting nor recording it is safe without somebody looking.
+        payload = job(71, custom_id="24-0071")
+        self.store.save_job(payload, "ZXP9-Left", 77, worker.JOB_PRINTING)
+        self.api.queue.append(payload)
+
+        outcome = self.build().print_next()
+
+        self.assertEqual(outcome.kind, worker.WAITING)
+        self.assertEqual(self.sent, [])
+        self.assertTrue(self.decisions, "the operator has to be asked")
+        self.assertIn("24-0071", self.decisions[0].reason)
+
+    def test_the_operator_can_confirm_the_card_is_in_the_stack(self):
+        payload = job(72)
+        self.store.save_job(payload, "ZXP9-Left", 77, worker.JOB_PRINTING)
+        self.api.queue.append(payload)
+
+        printer = self.auto_answer(self.build(), worker.CHOICE_PRINTED)
+        outcome = printer.print_next()
+
+        self.assertEqual(outcome.kind, worker.PRINTED)
+        self.assertEqual(self.sent, [])
+        self.assertEqual([entry["completion_source"] for entry in self.api.printed],
+                         [worker.COMPLETION_OPERATOR])
+
+    def test_the_operator_can_say_no_card_came_out(self):
+        payload = job(73)
+        self.store.save_job(payload, "ZXP9-Left", 77, worker.JOB_PRINTING)
+        self.api.queue.append(payload)
+
+        printer = self.auto_answer(self.build(), worker.CHOICE_REPRINT)
+        outcome = printer.print_next()
+
+        self.assertEqual(outcome.kind, worker.PRINTED)
+        self.assertEqual([sent_id for sent_id, _path in self.sent], [73],
+                         "a card the operator could not find must still be printed")
+
+    def test_a_claimed_but_unsent_card_prints_normally(self):
+        # Claimed and no further: the file never reached the spooler, so there
+        # is no card and nothing to ask about.
+        payload = job(74)
+        self.store.save_job(payload, "ZXP9-Left", 77, worker.JOB_CLAIMED)
+        self.api.queue.append(payload)
+
+        outcome = self.build().print_next()
+
+        self.assertEqual(outcome.kind, worker.PRINTED)
+        self.assertEqual([sent_id for sent_id, _path in self.sent], [74])
+
+
+class SpoolLeaseTest(WorkerTestCase):
+    """The lease has to survive the spooler blocking.
+
+    A ZXP9 warming up leaves the sender blocked for minutes with the card
+    already committed. Nothing renewed the lease in that window, so the reaper
+    handed the job back to the queue while it was physically printing.
+    """
+
+    def test_a_slow_spool_keeps_the_lease_alive(self):
+        self.api.queue.append(job(80))
+
+        def slow_sender(job_payload, path, binding):
+            time.sleep(0.25)
+            return self.sender(job_payload, path, binding)
+
+        self.build(sender=slow_sender, heartbeat_seconds=0.05).print_next()
+
+        self.assertIn(80, self.api.heartbeats)
+
+
+class TrayFullBlankTest(WorkerTestCase):
+    """A blank verdict read off a full tray is not evidence of a blank card.
+
+    The ink points are calibrated for a card lying where cards normally land.
+    Once the stack has risen they read the bin, the rim, or a card standing half
+    out of the chute -- bright and colourless, which is what bare stock looks
+    like. Failing the job on that loses a card that is sitting in the tray.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.camera = FakeCamera(blank=True)
+
+    def fills_the_tray(self, job_payload, path, binding):
+        """A sender whose card is the one that fills the tray up."""
+        self.camera._tray_full = True
+
+        return self.sender(job_payload, path, binding)
+
+    def test_the_card_is_reported_rather_than_failed(self):
+        self.api.queue.append(job(85))
+
+        outcome = self.build(sender=self.fills_the_tray).print_next()
+
+        self.assertEqual(outcome.kind, worker.TRAY_FULL)
+        self.assertEqual([entry["job_id"] for entry in self.api.printed], [85])
+        self.assertEqual(self.api.failed, [],
+                         "a card in a full tray must not be failed as blank")
+
+    def test_it_is_reported_unverified(self):
+        # The camera could not speak for this card, which is honest. Claiming a
+        # verification off a reading we have just called untrustworthy is not.
+        self.api.queue.append(job(86))
+
+        self.build(sender=self.fills_the_tray).print_next()
+
+        self.assertEqual(self.api.verified, [])
+
+    def test_the_run_stops_for_the_tray(self):
+        self.api.queue.extend([job(87), job(88)])
+
+        printer = self.build(sender=self.fills_the_tray)
+        printer.print_next()
+
+        self.assertTrue(printer.tray_full)
+        self.assertEqual(printer.print_next().kind, worker.TRAY_FULL)
+        self.assertEqual(len(self.sent), 1)
+
+    def test_a_blank_card_with_an_empty_tray_still_fails(self):
+        self.camera._tray_full = False
+        self.api.queue.append(job(89))
+
+        outcome = self.build().print_next()
+
+        self.assertEqual(outcome.kind, worker.JOB_FAILED)
+        self.assertEqual([entry["job_id"] for entry in self.api.failed], [89])
+
+
+class RefusedResultTest(WorkerTestCase):
+    """A 200 that says the job was not recorded is not a delivery.
+
+    It used to count as one: the agent forgot the card, the server kept the job
+    queued, and the next claim printed it a second time.
+    """
+
+    def test_a_refused_completion_is_kept_locally(self):
+        self.api.queue.append(job(90))
+        self.api.mark_printed = lambda *args, **kwargs: {"marked": False}
+
+        self.build().print_next()
+
+        self.assertTrue(self.store.pending_outbox(), "the result must be kept for retry")
+        self.assertIsNotNone(self.store.job(90),
+                             "the local record is what stops a second card")
+
+    def test_the_operator_is_told(self):
+        self.api.queue.append(job(91))
+        self.api.mark_printed = lambda *args, **kwargs: {"marked": False}
+
+        self.build().print_next()
+
+        self.assertTrue(any("not recorded" in title.lower()
+                            for _key, title, _message in self.notifier.alerts))
+
+
+class AutoResumeTest(WorkerTestCase):
+    """A fault that can be seen to be fixed clears itself.
+
+    Standing at a printer to press Resume after emptying the tray is a step
+    nobody should have to take, and one that leaves the station idle until
+    somebody notices. Faults nothing can observe still wait for a human.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.camera = FakeCamera()
+
+    def test_a_pause_with_no_check_stays_paused(self):
+        printer = self.build()
+        printer.pause("Card 24-0001 came out blank.")
+
+        self.assertFalse(printer._resume_if_cleared())
+        self.assertTrue(printer.is_paused())
+
+    def test_an_emptied_tray_resumes_the_run(self):
+        self.camera._tray_full = True
+        printer = self.build()
+
+        outcome = printer.print_next()
+        printer.pause(outcome.detail, resume_when=printer._recheck)
+
+        self.assertFalse(printer._resume_if_cleared(), "a full tray is still full")
+
+        self.camera._tray_full = False
+
+        self.assertTrue(printer._resume_if_cleared())
+        self.assertFalse(printer.is_paused())
+        self.assertFalse(printer.tray_full, "the latch goes with the pause")
+
+    def test_a_cleared_jam_resumes_the_run(self):
+        self.printer.jam()
+        printer = self.build()
+
+        outcome = printer.print_next()
+        printer.pause(outcome.detail, resume_when=printer._recheck)
+
+        self.assertEqual(outcome.kind, worker.BLOCKED)
+        self.assertFalse(printer._resume_if_cleared())
+
+        self.printer.clear()
+
+        self.assertTrue(printer._resume_if_cleared())
+        self.assertEqual(self.api.resumed_batches, [77],
+                         "the server has to hear the batch is running again")
+
+    def test_a_jam_cleared_onto_a_full_tray_stays_paused(self):
+        self.printer.jam()
+        self.camera._tray_full = True
+        printer = self.build()
+
+        printer.pause(printer.print_next().detail, resume_when=printer._recheck)
+        self.printer.clear()
+
+        self.assertFalse(printer._resume_if_cleared())
 
 
 if __name__ == "__main__":

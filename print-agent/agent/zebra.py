@@ -113,6 +113,12 @@ BIT_CONDITIONS = [
 # Substrings seen in the Zebra alarm slots and sensor fault field. The healthy
 # value is the literal string "none"; the fault vocabulary is filled in from
 # real faults captured with tools/snmp_probe.py.
+#
+# Order is the whole design here: the first needle that matches wins, so every
+# exhausted-consumable spelling has to come before the bare "ribbon" / "film"
+# catch-all underneath it. The ZXP9 says RIBBON EMPTY when it runs out, which
+# matched only the catch-all and was reported as a low ribbon -- a warning the
+# queue prints straight through, on a printer that cannot print.
 ALARM_CONDITIONS = [
     ("jam", CARD_JAM),
     ("cover", COVER_OPEN),
@@ -120,16 +126,43 @@ ALARM_CONDITIONS = [
     ("ribbon_out", RIBBON_OUT),
     ("ribbon out", RIBBON_OUT),
     ("out_of_ribbon", RIBBON_OUT),
+    ("out of ribbon", RIBBON_OUT),
+    ("ribbon_empty", RIBBON_OUT),
+    ("ribbon empty", RIBBON_OUT),
+    ("empty_ribbon", RIBBON_OUT),
+    ("empty ribbon", RIBBON_OUT),
+    ("no_ribbon", RIBBON_OUT),
+    ("no ribbon", RIBBON_OUT),
     ("ribbon", RIBBON_LOW),
     ("film_out", FILM_OUT),
     ("out_of_film", FILM_OUT),
+    ("out of film", FILM_OUT),
+    ("film_empty", FILM_OUT),
+    ("film empty", FILM_OUT),
+    ("empty_film", FILM_OUT),
+    ("empty film", FILM_OUT),
+    ("no_film", FILM_OUT),
+    ("no film", FILM_OUT),
     ("film", FILM_LOW),
     ("empty_feeder", CARDS_OUT),
     ("out_of_cards", CARDS_OUT),
+    ("out of cards", CARDS_OUT),
     ("no_cards", CARDS_OUT),
+    ("no cards", CARDS_OUT),
+    ("cards_empty", CARDS_OUT),
+    ("cards empty", CARDS_OUT),
+    ("feeder_empty", CARDS_OUT),
+    ("feeder empty", CARDS_OUT),
     ("hopper", CARDS_OUT),
     ("reject", REJECT_BIN_FULL),
+    ("output_full", REJECT_BIN_FULL),
+    ("output full", REJECT_BIN_FULL),
     ("service", SERVICE_REQUIRED),
+    ("mechanical_error", SERVICE_REQUIRED),
+    ("mechanical error", SERVICE_REQUIRED),
+    ("head_open", COVER_OPEN),
+    ("head open", COVER_OPEN),
+    ("lid", COVER_OPEN),
 ]
 
 # Job states from 10642.8.5.1.4. done_ok is the only one that means a finished

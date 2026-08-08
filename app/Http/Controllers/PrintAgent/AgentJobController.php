@@ -22,8 +22,18 @@ use Illuminate\Support\Facades\Storage;
  */
 class AgentJobController extends AgentController
 {
-    /** How long a claim is good for before the reaper takes it back. */
-    private const LEASE_SECONDS = 180;
+    /**
+     * How long a claim is good for before the reaper takes it back.
+     *
+     * Deliberately long. The lease exists to recover a card from an agent that
+     * has died, and nothing else; it is not a print timeout. A ZXP9 warming up
+     * can leave the Windows spooler holding the bytes for minutes with no
+     * heartbeat getting out, and at three minutes the reaper handed the card
+     * back to the queue while it was physically printing. One station prints
+     * one card at a time, so a fifteen minute wait to recover a genuinely dead
+     * agent costs nothing next to a duplicate card.
+     */
+    private const LEASE_SECONDS = 900;
 
     /**
      * Hand out the next job for the agent to print.
@@ -120,6 +130,22 @@ class AgentJobController extends AgentController
         $printJob = $this->jobForMachine($job);
         $this->touchAgent($request);
 
+        // Repeating a confirmation is not a second card. The agent's outbox
+        // resends anything it never got a reply to, so a delivery that crossed
+        // with a network drop arrives twice; treating the repeat as a refusal
+        // made the agent alert about a card that is recorded perfectly well.
+        if ($printJob->status === PrintJobStatusEnum::Printed) {
+            return response()->json([
+                'marked' => true,
+                'already_recorded' => true,
+                'status' => $printJob->status->value,
+            ]);
+        }
+
+        if ($conflict = $this->heldElsewhere($printJob)) {
+            return $conflict;
+        }
+
         $marked = $printJob->markPrinted(
             PrintCompletionSourceEnum::from($data['completion_source']),
             $data['firmware_job_id'] ?? null,
@@ -130,6 +156,29 @@ class AgentJobController extends AgentController
             'marked' => $marked,
             'status' => $printJob->fresh()->status->value,
         ]);
+    }
+
+    /**
+     * Refuse a result for a job some other machine is holding.
+     *
+     * The lease no longer decides whether a result is accepted - an agent that
+     * printed a card may report it late, after the reaper handed the job back -
+     * so this is what stops a late result overwriting work somebody else has
+     * since picked up. A job with no holder is fair game: that is the reaped
+     * card the reporting agent still has in its hand.
+     */
+    private function heldElsewhere(PrintJob $job): ?JsonResponse
+    {
+        $holder = $job->processing_machine_id;
+
+        if ($holder === null || $holder === $this->machine()->id) {
+            return null;
+        }
+
+        return response()->json([
+            'error' => 'Print job '.$job->id.' is held by another machine.',
+            'status' => $job->status->value,
+        ], 409);
     }
 
     /**
@@ -144,6 +193,21 @@ class AgentJobController extends AgentController
 
         $printJob = $this->jobForMachine($job);
         $this->touchAgent($request);
+
+        // A card that is already recorded as printed is not failed by a late
+        // message about it. Printed is terminal because the card physically
+        // exists, and the agent is told so rather than left thinking the
+        // failure was recorded.
+        if ($printJob->status === PrintJobStatusEnum::Printed) {
+            return response()->json([
+                'error' => 'Print job '.$printJob->id.' is already recorded as printed.',
+                'status' => $printJob->status->value,
+            ], 409);
+        }
+
+        if ($conflict = $this->heldElsewhere($printJob)) {
+            return $conflict;
+        }
 
         $printJob->markFailed($data['reason']);
 

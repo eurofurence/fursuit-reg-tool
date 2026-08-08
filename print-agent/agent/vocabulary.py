@@ -70,8 +70,15 @@ def unknown_strings(reading: zebra.Reading) -> List[Dict[str, str]]:
     if sensor.lower() not in EMPTY_VALUES and not is_explained(sensor):
         findings.append({"field": "sensor_fault", "value": sensor})
 
+    # A fault word in the state field is not an unknown state. The ZXP9 puts
+    # COVER OPEN and SERVICE REQUIRED here as well as in an alarm slot, and the
+    # alarm vocabulary already knows exactly what both mean -- but this list
+    # holds only healthy states, so every recognised fault was also announced to
+    # the operator as something nobody understood. Ask the vocabulary first.
     state = (reading.printer_state or "").strip()
-    if state.lower() not in EMPTY_VALUES and state.lower() not in KNOWN_PRINTER_STATES:
+    if (state.lower() not in EMPTY_VALUES
+            and state.lower() not in KNOWN_PRINTER_STATES
+            and not is_explained(state)):
         findings.append({"field": "printer_state", "value": state})
 
     for row in reading.jobs:

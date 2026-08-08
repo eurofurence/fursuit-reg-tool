@@ -61,6 +61,27 @@ LABELS = {
 }
 
 
+def _unknown_line(findings) -> str:
+    """The log line for a reading the vocabulary could not explain.
+
+    Names the strings. The whole point of the journal is to turn an unknown
+    fault into a mapped one, and that only happens if whoever is standing at the
+    printer can read what the printer said without opening a file on it.
+    """
+    values = []
+
+    for finding in findings or []:
+        value = (finding.get("value") or "").strip()
+
+        if value and value not in values:
+            values.append(value)
+
+    if not values:
+        return "Unrecognised printer state written to the journal"
+
+    return "Unrecognised printer state written to the journal: %s" % ", ".join(values)
+
+
 def _positive_int(raw: str, fallback: int) -> int:
     """Parse a settings box, keeping the old value when it is not a number.
 
@@ -1364,8 +1385,12 @@ class AgentApp(tk.Tk):
         # existed and was never called: conditions were shown on this screen
         # and nowhere else.
         self.monitor.on_change.append(self._report_condition)
+        # Carries the strings themselves. "Something was unrecognised" sent the
+        # operator to a file on the print station to find out what; the values
+        # are two words long and belong in the line that mentions them.
         self.monitor.on_unknown.append(
-            lambda _: self.events.put(("unknown", None)))
+            lambda reading: self.events.put(
+                ("unknown", vocabulary.unknown_strings(reading))))
 
         thread = threading.Thread(target=self._monitor_loop, daemon=True)
         thread.start()
@@ -1479,7 +1504,7 @@ class AgentApp(tk.Tk):
                 elif kind == "reading":
                     self._apply_reading()
                 elif kind == "unknown":
-                    self._log("Unrecognised printer state written to the journal")
+                    self._log(_unknown_line(payload))
                     self._refresh_journal()
                 elif kind == "progress":
                     step, state, detail = payload

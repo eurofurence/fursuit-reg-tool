@@ -126,6 +126,42 @@ class ClassifyTest(unittest.TestCase):
     def test_alarm_text_is_matched(self):
         self.assertEqual(zebra.classify(reading(alarms=["card_jam_at_flipper"])), zebra.CARD_JAM)
 
+    def test_an_empty_ribbon_is_a_stop_however_it_is_spelled(self):
+        # Observed on the real ZXP9: "RIBBON EMPTY". It matched only the bare
+        # "ribbon" catch-all and came out as a low ribbon, which is a warning
+        # the queue prints straight through -- on a printer that cannot print.
+        for text in ("RIBBON EMPTY", "ribbon_empty", "out of ribbon", "no ribbon"):
+            result = zebra.classify(reading(alarms=[text]))
+
+            self.assertEqual(result, zebra.RIBBON_OUT, text)
+            self.assertTrue(zebra.is_stop(result), text)
+
+    def test_an_empty_film_is_a_stop_however_it_is_spelled(self):
+        for text in ("FILM EMPTY", "film_empty", "out of film", "no film"):
+            result = zebra.classify(reading(alarms=[text]))
+
+            self.assertEqual(result, zebra.FILM_OUT, text)
+            self.assertTrue(zebra.is_stop(result), text)
+
+    def test_a_low_ribbon_still_reads_as_low(self):
+        # The catch-all underneath the exhausted spellings still has to work.
+        self.assertEqual(zebra.classify(reading(alarms=["ribbon low"])), zebra.RIBBON_LOW)
+
+    def test_more_spellings_of_a_stop(self):
+        cases = [
+            ("SERVICE REQUIRED", zebra.SERVICE_REQUIRED),
+            ("mechanical error", zebra.SERVICE_REQUIRED),
+            ("COVER OPEN", zebra.COVER_OPEN),
+            ("head open", zebra.COVER_OPEN),
+            ("lid_open", zebra.COVER_OPEN),
+            ("feeder empty", zebra.CARDS_OUT),
+            ("out of cards", zebra.CARDS_OUT),
+            ("output full", zebra.REJECT_BIN_FULL),
+        ]
+
+        for text, expected in cases:
+            self.assertEqual(zebra.classify(reading(alarms=[text])), expected, text)
+
     def test_none_alarms_are_ignored(self):
         # "none" in all three slots is the healthy reading on real hardware.
         self.assertEqual(zebra.classify(reading(alarms=["none", "none", "none"])), zebra.OK)
