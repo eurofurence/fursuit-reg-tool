@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The event-comparison bars (audit 6.3), successor to EventComparisonChart.
+ * The event-comparison bars, successor to EventComparisonChart.
  *
  * Two fixed bars, `Badges` and `Fursuits`, and one dataset per event: the selected one,
  * then the one before it when there is one. Registers only what a bar chart needs.

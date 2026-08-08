@@ -5,8 +5,8 @@ use App\Http\Controllers\Manage\MachineLoginLinkController;
 use Illuminate\Support\Facades\Route;
 
 /*
- * Machines (phase 5). MachineResource had index, create and edit pages and no delete of
- * any kind; that is kept (audit 131).
+ * Machines (phase 5). the old machine list had index, create and edit pages and no delete of
+ * any kind; that is kept.
  *
  * Archive and restore are the same URI under two verbs, POST to hide and DELETE to bring
  * back, single and bulk. The bulk pair is declared before {machine}, or POST

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Print jobs, phase 6 (plan part 4). Transcribed from audit 4.9.
+ * Print jobs, phase 6. Transcribed from audit 4.9.
  *
  * This module drives real hardware, so three groups of cases get more weight than the
  * parity transcription:
@@ -11,11 +11,11 @@
  *    is a POST with its own ability and its own confirm modal.
  *  - the status field is a transition, not a write. Marking a job Printed from /admin has
  *    to release the printer, promote the badge to ReadyForPickup and recalculate the batch
- *    counters, which the Filament form did none of (audit 22).
- *  - deleting jobs recalculates the parent batch's counters, single and bulk (audit 23).
+ *    counters, which the old panel form did none of.
+ *  - deleting jobs recalculates the parent batch's counters, single and bulk.
  *
  * The rest is parity: twelve columns in order, six filters, the retry copy verbatim, and
- * Filament's own delete copy.
+ * the old panel's own delete copy.
  */
 
 use App\Domain\Printing\Models\PrintBatch;
@@ -63,7 +63,7 @@ beforeEach(function () {
     Storage::fake('s3');
 
     // ManageEventScope runs on every /admin request whether or not the page is scoped,
-    // and this list deliberately is not (plan 2.9).
+    // and this list deliberately is not.
     $this->event = Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -153,7 +153,7 @@ test('the list renders the twelve columns in order, with their labels and types'
 });
 
 test('the status column speaks one vocabulary, so queued reads Claimed', function () {
-    // audit 7.9: PrintJobResource printed the raw ->value and PrintJobsRelationManager
+    // audit 7.9: the old print-job list printed the raw ->value and PrintJobsRelationManager
     // printed ->label(), so the same job read `queued` on one screen and `Claimed` on the
     // next. Status::printJob is the one mapping now.
     ($this->job)(['status' => PrintJobStatusEnum::Queued]);
@@ -247,14 +247,14 @@ test('the error column truncates to fifty characters and keeps the full text as 
 
     $cell = ($this->props)()['rows'][0]['cells']['error_message'];
 
-    // Filament's ->limit(50) keeps fifty characters and appends the ellipsis, as Str::limit
+    // the old panel's ->limit(50) keeps fifty characters and appends the ellipsis, as Str::limit
     // does, so the rendered cell is 53 characters long.
     expect($cell['title'])->toBe($message)
         ->and($cell['display'])->toBe(str_repeat('a', 50).'...');
 });
 
 test('the batch cell names the run and the sequence in it', function () {
-    // The Filament resource surfaced neither print_batch_id nor sequence anywhere, so a
+    // The old panel resource surfaced neither print_batch_id nor sequence anywhere, so a
     // failed card could not be traced back to its run from this list at all.
     $batch = PrintBatch::factory()->create(['name' => 'Friday morning', 'printer_id' => $this->printer->id]);
 
@@ -457,7 +457,7 @@ test('Retry queues a new pending job and leaves the original failed', function (
 });
 
 test('Retry flashes the audit notification title', function () {
-    // PrintJobResource's only notification: success, title only, no body.
+    // the old print-job list's only notification: success, title only, no body.
     $job = ($this->job)(['status' => PrintJobStatusEnum::Failed]);
 
     $response = actingAs($this->admin)->post(route('admin.print-jobs.retry', $job));
@@ -606,7 +606,7 @@ test('a claimed job sent back to Pending drops its lease and its machine', funct
 });
 
 test('a status the machine would refuse is rejected by the request', function () {
-    // audit 20 and 22: the Filament select offered every state unconditionally and wrote
+    // audit 20 and 22: the old panel select offered every state unconditionally and wrote
     // it through the cast, so admin could put a job somewhere no transition leads.
     $job = ($this->job)(['status' => PrintJobStatusEnum::Pending]);
 
@@ -622,7 +622,7 @@ test('a status the machine would refuse is rejected by the request', function ()
 });
 
 test('marking a job printed from admin promotes the badge and recalculates the batch', function () {
-    // audit 22: the Filament form wrote the column, so the badge stayed in Processing,
+    // audit 22: the old panel form wrote the column, so the badge stayed in Processing,
     // the printer kept its current_job_id and the batch counters never moved.
     $badge = ($this->badge)(['status_fulfillment' => 'processing']);
     $batch = PrintBatch::factory()->printing()->create(['printer_id' => $this->printer->id]);
@@ -780,7 +780,7 @@ test('a created job always starts pending, whatever the request asks for', funct
 });
 
 test('the receipt type is written as the enum, never as a raw string', function () {
-    // audit landmine 4: CheckoutResource writes 'type' => 'receipt' as a raw string next
+    // audit landmine 4: the old checkout list writes 'type' => 'receipt' as a raw string next
     // to a PrintJobStatusEnum. Nothing in this module does.
     $badge = ($this->badge)();
 
@@ -952,14 +952,18 @@ test('the bulk delete recalculates every batch it touched', function () {
         ->and(PrintJob::whereKey($kept->id)->exists())->toBeTrue();
 });
 
-test('the bulk delete carries Filament default copy and is admin only', function () {
+test('the bulk delete carries the old panel default copy and is admin only', function () {
     ($this->job)();
 
     $bulk = ($this->props)()['bulkActions'];
 
-    expect($bulk)->toHaveCount(1)
-        ->and($bulk[0]['label'])->toBe('Delete selected')
-        ->and($bulk[0]['confirm'])->toBe([
+    // Reset sits first, delete second: the recoverable verb before the destructive one.
+    $delete = collect($bulk)->firstWhere('name', 'delete');
+
+    expect($bulk)->toHaveCount(2)
+        ->and($bulk[0]['name'])->toBe('reset')
+        ->and($delete['label'])->toBe('Delete selected')
+        ->and($delete['confirm'])->toBe([
             'heading' => 'Delete selected print jobs',
             'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
             'submit' => 'Delete',
@@ -1006,7 +1010,7 @@ test('an unbatched card gets no Back to batch action', function () {
         );
 });
 
-test('the edit page carries View and Delete with Filament delete copy', function () {
+test('the edit page carries View and Delete with the old panel delete copy', function () {
     $job = ($this->job)();
 
     actingAs($this->admin)->get(route('admin.print-jobs.edit', $job))

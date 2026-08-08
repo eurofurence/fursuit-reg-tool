@@ -56,7 +56,7 @@ class FursuitReviewService
      * body is the paragraph the attendee receives. Before the split, the queue showed the full
      * paragraphs, which made the picker a wall of text.
      *
-     * Slugs, not list indexes. The Filament array was a list, so the persisted select value was
+     * Slugs, not list indexes. The old panel array was a list, so the persisted select value was
      * the integer index: clearing the select threw "Undefined array key", and reordering the
      * array silently rewired every prefill. A slug is stable under reordering, survives an edit
      * to the wording, and means something in a request log.

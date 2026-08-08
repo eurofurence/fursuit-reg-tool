@@ -69,8 +69,19 @@ export function usePopover({ panelWidth = 0 } = {}) {
 
   const toggle = () => (open.value ? close() : openPopover());
 
+  /**
+   * Only a focusout that names where focus went closes the panel.
+   *
+   * A null relatedTarget is not "focus left the popover", it is "focus landed on
+   * something unfocusable" - and clicking the text of a `<label>` is exactly that. The
+   * checkbox blurs on mousedown, and treating that as a dismissal unmounted the panel
+   * before the forwarded click reached the input, so clicking a multi-select option's
+   * label did nothing while clicking its box worked. Outside clicks are already closed by
+   * onPointerDown in the capture phase, so nothing is lost by ignoring the null case;
+   * Tab-out always names its target and still closes.
+   */
   const onFocusOut = (event) => {
-    if (!root.value?.contains(event.relatedTarget)) {
+    if (event.relatedTarget && !root.value?.contains(event.relatedTarget)) {
       close({ refocus: false });
     }
   };

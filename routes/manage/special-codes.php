@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
  * Special codes (phase 1). Same shape and the same reason: ManageSpecialCodes was an
- * index page with create and edit in modals, so neither had a URL (plan 1.2).
+ * index page with create and edit in modals, so neither had a URL.
  *
  * `bulk` is declared before `{code}` for the same reason as in users.php, and the parameter
  * is constrained to digits so a stray word cannot reach the binder at all.

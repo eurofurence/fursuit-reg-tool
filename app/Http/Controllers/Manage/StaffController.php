@@ -22,23 +22,23 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Response;
 
 /**
- * POS staff, the successor to StaffResource and its three pages (audit 4.10).
+ * POS staff, the successor to the old staff list and its three pages.
  *
  * These rows are login credentials for the till: a `Staff` row has no `is_admin` column
  * and no user link, so whoever holds the PIN or one of the member's RFID tags is that
  * cashier as far as the POS is concerned. StaffPolicy answers `is_admin` for every
  * ability and stays exactly as it is; this module reads it, it does not widen it.
  *
- * The PIN never reaches a list payload. Filament's table declared
+ * The PIN never reaches a list payload. the old panel's table declared
  * `TextColumn::make('pin_code')->formatStateUsing(fn ($state) => $state ? 'Set' : 'Not Set')`,
  * which renders the right two words but loads the plaintext PIN of every staff member
- * into the page payload first and only formats it on the way out (audit 4.10 column 2).
+ * into the page payload first and only formats it on the way out.
  * The row transformer here computes `Set` / `Not Set` on the server, so the column is
  * the same two words and the PIN is not in the response at all. Nor does it reach the
  * edit form: that payload gets a fixed sentinel, PIN_UNCHANGED, and StaffRequest drops
- * the sentinel before validation (plan 2.10 #66). It is still plaintext in the database
- * and POS login still compares it plaintext (audit 11); that is a POS change, not an
- * admin one, and the form says so out loud (plan 2.10 #24).
+ * the sentinel before validation. It is still plaintext in the database
+ * and POS login still compares it plaintext; that is a POS change, not an
+ * admin one, and the form says so out loud.
  *
  * The list is deliberately not event-scoped: plan 2.9 lists Staff among the surfaces that
  * stay unscoped, matching today.
@@ -56,13 +56,13 @@ use Inertia\Response;
 class StaffController extends Controller
 {
     /**
-     * Filament's default table date-time format, kept so the column reads the same after
+     * the old panel's default table date-time format, kept so the column reads the same after
      * the move.
      */
     private const DATETIME_FORMAT = 'M j, Y H:i:s';
 
     /**
-     * `->paginated(false)` becomes a real page size with the pager visible (plan 2.3), so
+     * `->paginated(false)` becomes a real page size with the pager visible, so
      * an unbounded staff table cannot become an unbounded page render. Every convention
      * this has ever run at fits in one page of 200.
      */
@@ -98,7 +98,7 @@ class StaffController extends Controller
         return inertia('Manage/Staff/Form', [
             'staff' => null,
             // The Generate button proposes a code into form state; it never writes
-            // (plan 2.10 #23). Null until the operator asks for one.
+            // . Null until the operator asks for one.
             'generatedSetupCode' => session('admin.staff.generated_setup_code'),
             'headerActions' => [],
         ]);
@@ -108,15 +108,15 @@ class StaffController extends Controller
     {
         Staff::create($this->writable($request));
 
-        // Filament's built-in Created toast; StaffResource defines none of its own
-        // (audit 4.10 notifications).
+        // the old panel's built-in Created toast; the old staff list defines none of its own
+        // .
         Toast::flashSuccess('Created');
 
-        return redirect()->route('admin.staff.index');
+        return redirect()->to(Table::returnUrl('staff', route('admin.staff.index')));
     }
 
     /**
-     * The edit page carries the RFID tag table, which the Filament panel rendered as a
+     * The edit page carries the RFID tag table, which the old panel rendered as a
      * relation manager on this same page and nowhere else.
      *
      * Its envelope is spread flat for the same reason the list's is: the nested table
@@ -159,7 +159,7 @@ class StaffController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('admin.staff.index');
+        return redirect()->to(Table::returnUrl('staff', route('admin.staff.index')));
     }
 
     /**
@@ -231,7 +231,7 @@ class StaffController extends Controller
     }
 
     /**
-     * All-or-nothing (plan 2.5): if any selected record fails the policy nothing moves
+     * All-or-nothing: if any selected record fails the policy nothing moves
      * and a danger toast says why, rather than half a selection changing state.
      */
     private function bulk(Request $request, bool $archive): RedirectResponse
@@ -309,7 +309,7 @@ class StaffController extends Controller
         return Table::make($this->baseQuery($request))
             ->name('staff')
             ->columns($this->columns())
-            // StaffResource declares no defaultSort and falls back to primary-key order.
+            // the old staff list declares no defaultSort and falls back to primary-key order.
             // Stated rather than left implicit, so the order does not depend on whatever
             // the driver happens to return.
             ->defaultSort('id')
@@ -357,7 +357,7 @@ class StaffController extends Controller
     }
 
     /**
-     * The audit's table, in order, with Filament's own labels verbatim.
+     * The audit's table, in order, with the old panel's own labels verbatim.
      *
      * @return array<int, Column>
      */
@@ -376,9 +376,9 @@ class StaffController extends Controller
                 ->fallback('')
                 ->toggleable(hiddenByDefault: true),
             // `->dateTime()->since()` renders as a human diff, and a member who never
-            // logged in gets a blank cell rather than a placeholder: StaffResource sets
+            // logged in gets a blank cell rather than a placeholder: the old staff list sets
             // none, and the RFID table's `Never used` is the inconsistency, not this
-            // (audit 122). Kept as it reads today; a formatted date here would change the
+            // . Kept as it reads today; a formatted date here would change the
             // display contract.
             Column::datetime('last_login_at', 'Last Login')->sortable()->fallback(''),
             Column::datetime('created_at', 'Created at')->sortable()->toggleable(hiddenByDefault: true),
@@ -546,7 +546,7 @@ class StaffController extends Controller
      * page props, in the DOM and in Inertia's history state for as long as the tab is
      * open, and reachable without the `reveal` gesture and activity entry the SumUp
      * pairing code gets. The round trip the field needs is a round trip of *something*,
-     * not of the credential: SecurePinRule now receives the record id (plan 2.10 #21), so
+     * not of the credential: SecurePinRule now receives the record id, so
      * an unchanged PIN no longer has to be resubmitted to validate against itself.
      *
      * @return array<string, mixed>

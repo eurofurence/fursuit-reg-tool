@@ -4,8 +4,8 @@ use App\Http\Controllers\Manage\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
- * Users (phase 1). Create, edit and delete were Filament modals on a ManageRecords page,
- * so the resource had no create or edit URL at all; they are real pages here (plan 1.2).
+ * Users (phase 1). Create, edit and delete were the old panel modals on a ManageRecords page,
+ * so the resource had no create or edit URL at all; they are real pages here.
  *
  * UNDER /admin/settings, NOT /admin, for the reason Events is (routes/manage/events.php):
  * an account is created a handful of times per convention and its fields decide who may

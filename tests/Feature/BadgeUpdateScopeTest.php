@@ -3,7 +3,7 @@
 /*
  * The attendee badge editor answers to the owner rules, not to the panel override.
  *
- * `BadgePolicy::update` used to read `$user->is_admin && request()->routeIs('filament.*',
+ * `BadgePolicy::update` used to read `$user->is_admin && request()->routeIs('<old-panel>.*',
  * 'livewire.*')`, which is false on `Route::resource('badges')`, so every operator on the
  * public routes fell through to the owner rules. Rebuild-plan 2.2 made the override
  * request-independent, which is right for /admin and wrong here: the same ability guards
@@ -85,7 +85,7 @@ test('a reviewer cannot edit somebody else\'s badge through the attendee editor'
 });
 
 test('an admin cannot edit somebody else\'s badge through the attendee editor either', function () {
-    // The pre-2.2 behaviour: `routeIs('filament.*')` was false here, so an admin got the
+    // The earlier behaviour: that route check was false here, so an admin got the
     // owner rules, and the owner rules refuse a badge that is not theirs.
     $badge = ($this->lockedBadge)();
 

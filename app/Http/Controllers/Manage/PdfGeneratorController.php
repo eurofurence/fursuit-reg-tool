@@ -19,7 +19,7 @@ use Mpdf\Mpdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * PDF Generator, the successor to App\Filament\Pages\PdfGenerator (audit 5.1).
+ * PDF Generator, the successor to App\the old panel\Pages\PdfGenerator.
  *
  * Two PDFs over the same form: a badge list, grouped by range and one range per page,
  * and a box label. Both are reads. Nothing on this controller writes a row, queues a job
@@ -34,26 +34,26 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Four things the plan fixes rather than ports:
  *
  *  - the event comes from App\Support\Manage\EventScope, the one event filter. The
- *    Filament page read `session('filament.admin.selected_event_id')`, a key nothing ever
- *    writes - FilamentEventSelector writes `filament_selected_event_id` - so the header
+ *    the old page read one session key for the selected event while the middleware wrote
+ *    another, so the header
  *    selection has never reached this page and it has always silently used the newest
- *    event (plan 2.9, audit 63). The `No event selected in the header.` notification was
+ *    event. The `No event selected in the header.` notification was
  *    dead code for the same reason and is now reachable, meaning what it says;
  *  - the badge-list filename is slugged. `$selectedEvent->name` went straight into
  *    `Content-Disposition` (PdfGenerator.php:308) and an event name is free-text admin
  *    input, so a quote, a slash or a newline broke or injected into the header. The
- *    box-label filename already used `Str::slug()`; now both do (plan 2.10 #31, audit 15);
+ *    box-label filename already used `Str::slug()`; now both do;
  *  - badges numbered outside every configured range are reported instead of dropped. The
  *    default ranges stop at 4999 and everything above it silently vanished from the PDF
- *    (plan 2.10 #33, audit 47). See `groupBadges()`;
+ *   . See `groupBadges()`;
  *  - a range holding more badges than one page fits is paged instead of truncated. The
  *    view kept the first `rows_per_column * columns` numbers and threw the rest away under
- *    a header that had counted them all (plan 2.10 #74). See `paginateSections()`.
+ *    a header that had counted them all. See `paginateSections()`.
  *
  * `pdfs/badge-list-range.blade.php` is the one blade this module changes, in the two
  * places that lost or refused data: the truncating slice above, and a `str_repeat()` with
  * a negative count that killed the whole document on any attendee id longer than four
- * characters (plan 2.10 #74).
+ * characters.
  */
 class PdfGeneratorController extends Controller
 {
@@ -69,7 +69,7 @@ class PdfGeneratorController extends Controller
     /**
      * The heading the leftover badges are listed under, rendered by the same
      * `pdfs.badge-list-range` view as every other section, so the count reads back as
-     * `Outside configured ranges (n attendees)` (plan 2.10 #33).
+     * `Outside configured ranges (n attendees)`.
      */
     public const OUT_OF_RANGE_LABEL = 'Outside configured ranges';
 
@@ -82,7 +82,7 @@ class PdfGeneratorController extends Controller
 
     /**
      * What a range's second and later pages are headed with, so a page carries the range it
-     * belongs to and still counts only the badges printed on it (plan 2.10 #74).
+     * belongs to and still counts only the badges printed on it.
      */
     public const CONTINUED_SUFFIX = '(continued)';
 
@@ -107,8 +107,8 @@ class PdfGeneratorController extends Controller
             'pdfTypes' => [
                 ['value' => 'badge_list', 'label' => 'Badge List (Badges by Range)'],
                 /*
-                 * Filament said `Box Labels (3 per A4 page)`. The code renders exactly one
-                 * label on a 210x94mm page and always has (plan 2.10 #32, audit 45).
+                 * the old panel said `Box Labels (3 per A4 page)`. The code renders exactly one
+                 * label on a 210x94mm page and always has.
                  */
                 ['value' => 'box_labels', 'label' => 'Box Labels (1 per page)'],
             ],
@@ -159,7 +159,7 @@ class PdfGeneratorController extends Controller
         }
 
         /*
-         * An empty range list is not a parse failure: Filament only parsed when the field
+         * An empty range list is not a parse failure: the old panel only parsed when the field
          * had a value and otherwise fell back to computed 1000-wide buckets, which is the
          * one path where no badge can be out of range. That fallback is kept as it was.
          *
@@ -197,7 +197,7 @@ class PdfGeneratorController extends Controller
         $sections = $this->orderSections($grouped, $customRanges);
 
         /*
-         * The leftovers go last, as their own page. Filament dropped them on the floor;
+         * The leftovers go last, as their own page. the old panel dropped them on the floor;
          * this is the whole of plan 2.10 #33: the operator gets the same PDF plus one
          * page saying which badges the range list did not cover.
          */
@@ -281,8 +281,7 @@ class PdfGeneratorController extends Controller
      * `rows_per_column` and then sliced the chunks down to `columns`, so with the shipped
      * defaults a 1000-wide range printed its first 600 numbers and dropped the rest, under
      * a header that had already counted all of them. Nothing reported the loss - the
-     * badges were inside a declared range, so `OUT_OF_RANGE_HEADER` counted zero (plan
-     * 2.10 #74).
+     * badges were inside a declared range, so `OUT_OF_RANGE_HEADER` counted zero.
      *
      * Later pages of the same range keep the range in their heading and carry
      * `CONTINUED_SUFFIX`, so the count each page prints is the count of what is on it.
@@ -318,7 +317,7 @@ class PdfGeneratorController extends Controller
 
     /**
      * The printable area of a box label in millimetres, derived from the page format and
-     * the margins rather than restated (plan 2.10 #32).
+     * the margins rather than restated.
      *
      * @return array{float, float} width, height
      */
@@ -335,7 +334,7 @@ class PdfGeneratorController extends Controller
      * The scope does the `whereHas('fursuit', event_id)` the page did by hand, so this
      * page and every list in the panel ask the same question of the same selection.
      *
-     * Filament also eager-loaded `fursuit.user.eventUsers`; nothing downstream reads a
+     * the old panel also eager-loaded `fursuit.user.eventUsers`; nothing downstream reads a
      * user, an event user or even a fursuit - the PDF is built from `custom_id` alone -
      * so the load is gone. No rendered byte changes.
      *
@@ -430,7 +429,7 @@ class PdfGeneratorController extends Controller
      * Everything else is filed. With custom ranges a badge outside all of them used to
      * fall out of the loop and out of the document, so a default range list ending at
      * 4999 quietly omitted badge 5000 and up, and the only warning fired when *every*
-     * range was empty (plan 2.10 #33, audit 47). Those badges come back as their own
+     * range was empty. Those badges come back as their own
      * bucket. Without custom ranges the computed 1000-wide buckets cover every number, so
      * the bucket is always empty there.
      *
@@ -546,7 +545,7 @@ class PdfGeneratorController extends Controller
      *
      * `pdfs/box-labels.blade.php` restates the size as a hardcoded `200mm x 84mm`, which
      * is today's format and margins worked out by hand and left to drift the next time
-     * either changes (audit 45). The rule appended here is the same two numbers derived
+     * either changes. The rule appended here is the same two numbers derived
      * from `BOX_LABEL_FORMAT` and `MARGIN`, and it is last in the document, so the format
      * is the single source of truth and the blade's copy can no longer disagree with it.
      */

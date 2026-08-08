@@ -20,10 +20,10 @@ use Spatie\ModelStates\State;
  * looks that up in the CSS token map, so the table, the badges and the status strip
  * cannot drift apart.
  *
- * This replaces two divergences the Filament panel carried (audit 7.9, 7.10). The same
+ * This replaces two divergences the old panel carried. The same
  * PrintJobStatusEnum printed its raw value in one table and its label() in another, so a
  * job read `queued` on one screen and `Claimed` on the next; and the same enum was coloured
- * through two APIs, one of which used 'secondary', which is not a valid Filament v3 colour
+ * through two APIs, one of which used 'secondary', which is not a valid the old panel colour
  * and rendered unstyled. One vocabulary, one tone set.
  *
  * Where an enum already owns its wording, the wording is taken from the enum rather than
@@ -73,7 +73,7 @@ final class Status
     /**
      * Badge fulfillment, from App\Models\Badge\State_Fulfillment.
      *
-     * Labels are the ones BadgeResource's formatStateUsing produced, verbatim.
+     * Labels are the ones the old badge list's formatStateUsing produced, verbatim.
      *
      * @return array{label: string, tone: string, icon: string|null}
      */
@@ -121,7 +121,7 @@ final class Status
     /**
      * Checkout, from App\Domain\Checkout\Models\Checkout\States.
      *
-     * The stored values are the states' own uppercase $name strings. CheckoutResource's
+     * The stored values are the states' own uppercase $name strings. the old checkout list's
      * status filter keyed its options by FQCN instead and therefore matched zero rows
      * (landmine 6); matching on the name is what makes the filter work.
      *
@@ -132,7 +132,7 @@ final class Status
         return match (self::value($status)) {
             'ACTIVE' => self::make('Active', self::WARN, 'circle-dot'),
             'FINISHED' => self::make('Finished', self::OK, 'circle-check'),
-            // danger, as CheckoutResource's column had it. A cancelled fiscal record is
+            // danger, as the old checkout list's column had it. A cancelled fiscal record is
             // not a neutral one, and idle is what an unknown status renders as.
             'CANCELLED' => self::make('Cancelled', self::DANGER, 'circle-x'),
             default => self::unknown($status),
@@ -142,7 +142,7 @@ final class Status
     /**
      * A card's own status.
      *
-     * The two Filament maps disagreed about Queued (`info` on the print-job list, `primary`
+     * The two the old panel maps disagreed about Queued (`info` on the print-job list, `primary`
      * alongside Printing on the batch card list) and this keeps the finer of the two: a
      * claimed card reads `info` and a card actually in the printer reads `live`. Both stay
      * apart from the `warn` that Pending and Retrying share, which is the distinction the
@@ -226,7 +226,7 @@ final class Status
     }
 
     /**
-     * The printer's own reported status. Null-safe on purpose: PrinterResource read
+     * The printer's own reported status. Null-safe on purpose: the old printer list read
      * `$record->status->value` with no null-safe operator, so one printer row with a null
      * status 500'd the whole table (landmine 28).
      *
@@ -336,7 +336,7 @@ final class Status
     }
 
     /**
-     * Machines carry a bespoke archived_at column rather than SoftDeletes (audit 7.7).
+     * Machines carry a bespoke archived_at column rather than SoftDeletes.
      *
      * @return array{label: string, tone: string, icon: string|null}
      */

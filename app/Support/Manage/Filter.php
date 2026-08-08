@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
  *  text     one free string; value is a string
  *  number   one free number, kept as a string so an empty bound stays distinguishable
  *  date     one ISO date; value is a string
+ *  datetime one ISO local date and time; value is a string
  *
  * text, number and date exist because three modules were declaring an optionless
  * `select` and then rendering the control themselves on the page - the checkout list's
@@ -111,6 +112,17 @@ final class Filter implements Arrayable
     public static function date(string $key, ?string $label = null): self
     {
         return new self($key, $label ?? str($key)->headline()->toString(), 'date');
+    }
+
+    /**
+     * One local date *and time*, for a bound a whole day is too coarse for.
+     *
+     * The badge list's print cutoff is the user: several print runs go out in a day, and a
+     * date-only bound cannot separate the run before lunch from the one after it.
+     */
+    public static function datetime(string $key, ?string $label = null): self
+    {
+        return new self($key, $label ?? str($key)->headline()->toString(), 'datetime');
     }
 
     /**
@@ -249,7 +261,7 @@ final class Filter implements Arrayable
             // typed, and `filter[printable_type][]=x` would otherwise be an array cast
             // to string. A non-scalar is not a value anyone can have meant, so it is the
             // same as not setting the filter.
-            'text', 'number', 'date' => is_scalar($value) ? (string) $value : '',
+            'text', 'number', 'date', 'datetime' => is_scalar($value) ? (string) $value : '',
             'range' => [
                 'min' => is_numeric($value['min'] ?? null) ? (string) $value['min'] : '',
                 'max' => is_numeric($value['max'] ?? null) ? (string) $value['max'] : '',
@@ -272,7 +284,7 @@ final class Filter implements Arrayable
                 : $query->where($this->key, $value),
             'ternary' => $query->where($this->key, $value === '1'),
             'range' => $this->applyRange($query, $value),
-            'text', 'number', 'date' => $query->where($this->key, $value),
+            'text', 'number', 'date', 'datetime' => $query->where($this->key, $value),
             default => null,
         };
     }

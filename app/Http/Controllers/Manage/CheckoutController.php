@@ -30,8 +30,8 @@ use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
- * Checkouts, the successor to CheckoutResource, ListCheckouts, ViewCheckout and
- * ItemsRelationManager (audit 4.5 and 4.5.1).
+ * Checkouts, the successor to the old checkout list, ListCheckouts, ViewCheckout and
+ * ItemsRelationManager.
  *
  * A checkout is a German fiscal record: signed by a Fiskaly TSE, exported under DSFinV-K,
  * and legally required to be tamper-evident. The whole module is therefore read-only. There
@@ -43,26 +43,25 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
  * read; `receipt()` renders a PDF of a record that can no longer change, which is a derived
  * artifact rather than a mutation, and only when it is not on disk already.
  *
- * Four things differ from Filament, all of them plan decisions.
+ * Four things differ from the old panel, all of them plan decisions.
  *
- *  - Money is rendered once, from cents. The Filament resource showed the same three
+ *  - Money is rendered once, from cents. The old panel resource showed the same three
  *    numbers two contradictory ways on one screen: the table column divided by 100 and the
  *    `Financial Details` section rendered raw cents in a TextInput with a euro prefix
- *    (plan 2.10 #1, audit landmine 2). `Column::money()` takes cents everywhere here, on
+ *   . `Column::money()` takes cents everywhere here, on
  *    the list, on the detail page, on the items table and in the summary, and there is no
  *    variant that skips the division.
  *  - The status filter matches on the stored state names. Its options were keyed by FQCN
- *    while the column holds Spatie's `$name` strings, and Filament's SelectFilter issues a
+ *    while the column holds Spatie's `$name` strings, and the old panel's SelectFilter issues a
  *    plain `whereIn('status', ...)`, so it matched zero rows and looked like it worked
- *    (plan 2.10 #35, audit landmine 6).
+ *   .
  *  - The receipt link is served here rather than by `pos.checkout.receipt`, which sits
  *    behind `pos-auth:machine` plus `pos-auth:machine-user`. An admin browsing /admin
- *    without an active till session was bounced instead of shown the receipt (plan 2.10
- *    #36, audit 13).
+ *    without an active till session was bounced instead of shown the receipt.
  *  - The TSE section shows the columns that exist. `tse_signature` is not one of them: the
- *    migration created `tse_start_signature` and `tse_end_signature`, so the Filament field
+ *    migration created `tse_start_signature` and `tse_end_signature`, so the old panel field
  *    was permanently blank and the actual signatures were invisible everywhere in admin
- *    (plan 2.10 #38, audit landmine 5). The serial and transaction numbers come with them,
+ *   . The serial and transaction numbers come with them,
  *    for the same reason.
  *
  * Deliberately not event-scoped: plan 2.9 lists checkouts among the surfaces that stay
@@ -71,7 +70,7 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 class CheckoutController extends Controller
 {
     /**
-     * Filament's default table date-time format, so the timestamps read the same after the
+     * the old panel's default table date-time format, so the timestamps read the same after the
      * move (checklist 978).
      */
     private const DATETIME_FORMAT = 'M j, Y H:i:s';
@@ -102,7 +101,7 @@ class CheckoutController extends Controller
     /**
      * The read-only detail page, successor to ViewCheckout.
      *
-     * CheckoutResource defined no infolist, so Filament fell back to rendering the form
+     * the old checkout list defined no infolist, so the old panel fell back to rendering the form
      * schema with every field `disabled()`. The same fields are here as read-only rows.
      * ItemsRelationManager becomes the second half of the same page and arrives as the
      * ordinary list envelope, so the items table sorts, searches and pages through exactly
@@ -129,7 +128,7 @@ class CheckoutController extends Controller
      *
      * Same document `pos.checkout.receipt` serves and the same storage path
      * `CreateReceiptFromCheckoutJob` writes; the only thing that changes is which guard
-     * stands in front of it (plan 2.10 #36).
+     * stands in front of it.
      *
      * The render is synchronous here, unlike the print action, and that is the difference
      * between the two verbs rather than an oversight: this request exists to hand back a
@@ -178,7 +177,7 @@ class CheckoutController extends Controller
         $envelope = Table::make($query)
             ->name('checkouts')
             ->columns($this->columns())
-            // CheckoutResource: ->defaultSort('created_at', 'desc').
+            // the old checkout list: ->defaultSort('created_at', 'desc').
             ->defaultSort('created_at', 'desc')
             ->filters($this->filters())
             ->rows(fn (Checkout $checkout) => $this->cells($checkout))
@@ -186,7 +185,7 @@ class CheckoutController extends Controller
                 ? route('admin.checkouts.show', $checkout)
                 : null)
             ->rowActions(fn (Checkout $checkout) => $this->rowActions($checkout))
-            // CheckoutResource: `// No bulk actions for checkouts` and
+            // the old checkout list: `// No bulk actions for checkouts` and
             // `// No create action - checkouts are created through POS only`.
             ->bulkActions([])
             ->pageActions([])
@@ -201,7 +200,7 @@ class CheckoutController extends Controller
      * The list query.
      *
      * The three relations are eager-loaded because all three are read on every row, and
-     * `items_count` is Filament's `->counts('items')`: one subquery for the page rather
+     * `items_count` is the old panel's `->counts('items')`: one subquery for the page rather
      * than a count per row.
      */
     private function query(): Builder
@@ -212,7 +211,7 @@ class CheckoutController extends Controller
     }
 
     /**
-     * The Sum summarizer on `total` (audit 4.5, table column 7 line 162).
+     * The Sum summarizer on `total`.
      *
      * It rides inside `meta` rather than beside it, because `meta` is one of the five keys
      * useTableQuery reloads on a partial visit. A top-level `summary` prop would be correct
@@ -220,7 +219,7 @@ class CheckoutController extends Controller
      * the total underneath them reading the previous set, which on a fiscal screen is worse
      * than having no total at all.
      *
-     * Filament summarises the whole filtered set, not the visible page, so the paginator's
+     * the old panel summarises the whole filtered set, not the visible page, so the paginator's
      * own limit and offset are lifted off the clone before the aggregate runs. Locked in by
      * CheckoutsTest, which asserts the figure follows a filter and ignores the page.
      *
@@ -242,7 +241,7 @@ class CheckoutController extends Controller
     }
 
     /**
-     * The audit's nine columns, in order, with Filament's own labels.
+     * The audit's nine columns, in order, with the old panel's own labels.
      *
      * `user.name`, `cashier.name` and `machine.name` are keyed with underscores: a dot in a
      * cell key is read as a path by every data_get consumer, including Inertia's own prop
@@ -317,7 +316,7 @@ class CheckoutController extends Controller
     /**
      * The customer, linking to the users list pre-filtered by their name.
      *
-     * Filament linked to `UserResource::getUrl('index').'?tableSearch='.urlencode(name)`,
+     * the old panel linked to `the old user list::getUrl('index').'?tableSearch='.urlencode(name)`,
      * which is the users index with its search box filled in rather than the user record.
      * Same destination, same shape, in this panel's own query-string vocabulary.
      *
@@ -346,7 +345,7 @@ class CheckoutController extends Controller
      * labels (`Cash` / `Card`) rather than the raw column value the badge printed, which is
      * the same normalisation phase 6 made for the print-job enums: one vocabulary per value
      * across the panel, decided server-side. A method the map does not know still renders,
-     * as itself. No glyph, because the Filament badge carried none.
+     * as itself. No glyph, because the old panel badge carried none.
      *
      * @return array{label: string, tone: string, icon: string|null}
      */
@@ -365,10 +364,10 @@ class CheckoutController extends Controller
      *
      * `status` is the one that changes. Its options were keyed by FQCN while the column
      * stores the states' own uppercase `$name` strings, so the whereIn matched nothing
-     * (plan 2.10 #35, audit landmine 6). The names are read off the state classes rather
+     *. The names are read off the state classes rather
      * than retyped, so renaming a state moves the filter with it.
      *
-     * `created_from` and `created_until` are the custom date form Filament rendered as two
+     * `created_from` and `created_until` are the custom date form the old panel rendered as two
      * DatePickers inside one filter. They are declared as selects with no options because
      * that is the shape Filter offers for a single free value, and the Index page renders
      * them as the date inputs they are - the same arrangement PrintJobController uses for
@@ -400,7 +399,7 @@ class CheckoutController extends Controller
                     ->mapWithKeys(fn (Machine $machine) => [(string) $machine->id => $machine->name])
                     ->all()),
 
-            // Declared as dates rather than as optionless selects. Filament rendered these
+            // Declared as dates rather than as optionless selects. the old panel rendered these
             // two as DatePickers inside one filter form; as selects they were a dropdown
             // with nothing in it, so ListCheckouts drew its own date inputs on the page.
             // The filter bar renders a declared date itself, and the page no longer has a
@@ -418,10 +417,10 @@ class CheckoutController extends Controller
     }
 
     /**
-     * View, Receipt and Print, as CheckoutResource declared them.
+     * View, Receipt and Print, as the old checkout list declared them.
      *
      * Print is offered only to an operator the policy allows, because it puts paper through
-     * a printer. Filament offered it to every reviewer.
+     * a printer. the old panel offered it to every reviewer.
      *
      * @return array<int, Action>
      */
@@ -454,8 +453,8 @@ class CheckoutController extends Controller
     /**
      * ViewCheckout's own header: Download Receipt and Print Receipt, in that order.
      *
-     * The print body is the same endpoint the row action posts to. In Filament the two were
-     * byte-identical copies of one another (plan 2.10 #37, audit landmine 4).
+     * The print body is the same endpoint the row action posts to. In the old panel the two were
+     * byte-identical copies of one another.
      *
      * @return array<int, Action>
      */
@@ -481,12 +480,12 @@ class CheckoutController extends Controller
      * The detail page's fields, in the order the form schema declares them.
      *
      * Money is three integers of cents formatted by the one formatter, so the detail page
-     * and the list column can no longer disagree (plan 2.10 #1).
+     * and the list column can no longer disagree.
      *
      * The TSE block is the audit's, corrected: `tse_signature` does not exist as a column,
      * so it is replaced by the two signatures that do plus the serial and transaction
      * numbers, which are fiscally load-bearing and surfaced nowhere in admin today
-     * (plan 2.10 #38).
+     *.
      *
      * @return array<string, mixed>
      */
@@ -515,12 +514,12 @@ class CheckoutController extends Controller
     }
 
     /**
-     * ItemsRelationManager, as the ordinary list envelope (audit 4.5.1).
+     * ItemsRelationManager, as the ordinary list envelope.
      *
      * Six columns, no filters, no row actions, no bulk actions, no header actions: the
      * relation manager hard-refuses create, edit and delete, and so does everything here.
      *
-     * `->paginated(false)` becomes perPage 200 with the pager visible (plan 2.3), so a
+     * `->paginated(false)` becomes perPage 200 with the pager visible, so a
      * checkout with an unexpected number of lines cannot render an unbounded table.
      *
      * @return array<string, mixed>
@@ -564,7 +563,7 @@ class CheckoutController extends Controller
     }
 
     /**
-     * `description` is an array cast. Filament joined it with `, ` and rendered `-` when it
+     * `description` is an array cast. the old panel joined it with `, ` and rendered `-` when it
      * was empty or not an array.
      */
     private function features(CheckoutItem $item): string
@@ -585,7 +584,7 @@ class CheckoutController extends Controller
      * Two corrections inside the same shape. The type test goes through the model's morph
      * class as well as the literal, so a registered morph map does not silently turn every
      * badge line into `-`. And a soft-deleted fursuit no longer takes the page down: the
-     * Filament closure read `$badge->fursuit->name` with no null guard, and `fursuit` is a
+     * the old panel closure read `$badge->fursuit->name` with no null guard, and `fursuit` is a
      * soft-deleting relation, so one deleted suit was a 500 on a fiscal document
      * (checklist 3a, audit 113).
      *

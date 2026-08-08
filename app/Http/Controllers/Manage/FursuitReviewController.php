@@ -11,6 +11,7 @@ use App\Services\FursuitPresence;
 use App\Services\FursuitReviewService;
 use App\Support\Manage\EventScope;
 use App\Support\Manage\Status;
+use App\Support\Manage\Table;
 use App\Support\Manage\Toast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ use Inertia\Response;
  * so it carries only what a verdict needs: the photo big enough to judge, the name and
  * species, three buttons, and the reason picker that appears when a verdict needs one.
  *
- * Three things it does that the Filament page could not.
+ * Three things it does that the old panel page could not.
  *
  * **It never blocks.** Opening a record does not lock it. The queue skips records another
  * reviewer is on (FursuitPresence), and if a reviewer arrives by link anyway the page says
@@ -65,7 +66,7 @@ class FursuitReviewController extends Controller
                 'No pending fursuits are waiting in the selected event.',
             );
 
-            return redirect()->route('admin.fursuits.index');
+            return redirect()->to(Table::returnUrl('fursuits', route('admin.fursuits.index')));
         }
 
         return redirect()->route('admin.fursuits.review.show', $next);

@@ -1,13 +1,13 @@
 <script setup>
 /**
- * The TSE client list, successor to TseClientResource's table and ListTseClients.
+ * The TSE client list, successor to the old TSE client list's table and ListTseClients.
  *
  * The envelope arrives as top-level props rather than one nested object, because
  * useTableQuery reloads rows/meta/filters/sort/search as an Inertia partial visit and
  * partials are filtered by top-level key. DataTable still wants one object, so the props
  * are gathered back up here.
  *
- * There is no filter set: TseClientResource declares an empty `->filters([])`. All three
+ * There is no filter set: the old TSE client list declares an empty `->filters([])`. All three
  * columns are declared searchable on the server, and this page has nonetheless never
  * mounted the search box - it did not render FilterBar before the toolbar moved into
  * DataTable, and it does not pass `searchable` now. That is left exactly as it was rather

@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 /**
  * Persists which columns an operator has hidden, per table, for the session.
  *
- * 17 of the panel's 23 toggleable columns are hidden by default today and Filament
+ * 17 of the panel's 23 toggleable columns are hidden by default today and the old panel
  * remembered the operator's choice; losing that on every navigation is one of the
  * easiest regressions to ship in a rewrite.
  *

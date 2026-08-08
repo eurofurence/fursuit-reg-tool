@@ -3,13 +3,13 @@
  * Create and edit a special code. One component for both: the field list is identical
  * and only the target route and the button copy differ.
  *
- * The three things the Filament form could not do are all here, and all for the same
+ * The three things the old panel form could not do are all here, and all for the same
  * reason: `class_name` was never `->live()`, so nothing downstream of it ever
- * re-evaluated while the modal was open (audit 33).
+ * re-evaluated while the modal was open.
  *
  *  - the action's data is editable. Its `disabled()` matcher compared the selected class
  *    against the literal 'EXAMPLE', which is not one of the options, so the only
- *    configurable knob on the action class was permanently locked (audit 32).
+ *    configurable knob on the action class was permanently locked.
  *  - the fields swap when the class changes, instead of a dead placeholder.
  *  - `catch_url` is computed as you type instead of once at render, which is why a
  *    create modal used to show the link for an empty code.
@@ -80,7 +80,7 @@ watch(
   },
 );
 
-// Filament renders an empty option until one is picked; a required select keeps it too.
+// the old panel renders an empty option until one is picked; a required select keeps it too.
 const eventOptions = computed(() => [{ value: '', label: 'Select an option' }, ...props.events]);
 const classSelectOptions = computed(() => [{ value: '', label: 'Select an option' }, ...props.classOptions]);
 

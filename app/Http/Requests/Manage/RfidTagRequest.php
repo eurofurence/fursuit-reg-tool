@@ -9,13 +9,13 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * Create and update for the RFID tags nested under a staff member (audit 4.10.1).
+ * Create and update for the RFID tags nested under a staff member.
  *
  * The rules are the relation manager's form schema verbatim: `content` required and
  * unique on `rfid_tags.content` ignoring the record being edited, `name` optional, and
  * the `is_active` toggle.
  *
- * The asymmetry with POS self-service is left alone (audit 120). MachineUserAuthController
+ * The asymmetry with POS self-service is left alone. MachineUserAuthController
  * enforces `min:8`, `max:20` and digits only on a tag an attendee registers at the till;
  * this form accepts any string up to 255, so an admin can enter a tag whose reader output
  * the POS validator would refuse. Tightening it here is a behaviour change nobody asked
@@ -26,7 +26,7 @@ class RfidTagRequest extends FormRequest
 {
     /**
      * Both abilities are asked, because both are real: the tag has its own policy now
-     * (plan 2.2), and the staff member it hangs off has to be writable too. Read
+     *, and the staff member it hangs off has to be writable too. Read
      * RfidTagPolicy before loosening either - a tag value is a POS credential.
      */
     public function authorize(): bool

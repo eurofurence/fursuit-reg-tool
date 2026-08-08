@@ -1,6 +1,6 @@
 <script setup>
 /**
- * Badge Preview, the successor to App\Filament\Pages\BadgePreview (audit 5.2).
+ * Badge Preview, the successor to App\the old panel\Pages\BadgePreview.
  *
  * Look a badge up by custom id, read the six details back, then open or download its
  * PDF. No table, no writes.
@@ -8,12 +8,12 @@
  * The loaded badge is URL state, not component state: the lookup POSTs and the server
  * redirects to `?custom_id=…`, so the details panel survives a reload and the two PDF
  * buttons are real anchors. `target="_blank"` on a Livewire redirect never opened a tab
- * (plan 2.10 #34, audit 49); ActionButton renders a GET action declared `newTab()` as an
+ *; ActionButton renders a GET action declared `newTab()` as an
  * `<a target="_blank">`, which does. Only `View PDF in Browser` declares it, matching the
  * blade, which put the attribute on that button alone.
  *
  * Every detail row falls back to an em-dash, because a fursuit whose species, owner or
- * event is soft-deleted is exactly the record that took the old page down (audit 113).
+ * event is soft-deleted is exactly the record that took the old page down.
  * The server already resolved every value null-safely; this is the display half.
  */
 import { useForm, Head } from '@inertiajs/vue3';
@@ -82,7 +82,7 @@ const submit = () => form.post(route('admin.tools.badge-preview.lookup'), { pres
               class="h-8 rounded bg-state-live px-3 text-[13px] font-medium text-mg-surface-0 transition-opacity disabled:opacity-50"
               :disabled="form.processing"
             >
-              <!-- The blade's label, unchanged while submitting: Filament's button kept
+              <!-- The blade's label, unchanged while submitting: the old panel's button kept
                    its own label too and only greyed itself out. -->
               Load Badge
             </button>

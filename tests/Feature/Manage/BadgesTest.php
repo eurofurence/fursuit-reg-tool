@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Badges (plan phase 4, audit 4.2).
+ * Badges.
  *
  * The biggest resource in the old panel and the one carrying the money. Four things get
  * more attention than the rest, because all four are broken today:
  *
- *  - the Total column rendered 100x too high (audit 1) and the Total form field turned
- *    300 cents into 3 on an unchanged save (audit 3),
+ *  - the Total column rendered 100x too high and the Total form field turned
+ *    300 cents into 3 on an unchanged save,
  *  - the attendee-id sort and both halves of the attendee range used
  *    CAST(x AS UNSIGNED), which does not exist on the SQLite database this suite runs on
- *    (audit 16),
+ *   ,
  *  - the two status selects wrote raw state strings and skipped every transition side
- *    effect (audit 20),
- *  - a badge whose fursuit or user is soft-deleted took the whole table down (audit 113).
+ *    effect,
+ *  - a badge whose fursuit or user is soft-deleted took the whole table down.
  *
  * The rest is parity, transcribed from the audit: fourteen columns in order, four filters,
- * five form sections, and Filament's own delete copy.
+ * five form sections, and the old panel's own delete copy.
  */
 
 use App\Domain\Printing\Models\Printer;
@@ -46,7 +46,7 @@ use function Pest\Laravel\get;
 use function Pest\Laravel\put;
 
 beforeEach(function () {
-    // The image column reads the private s3 disk, as BadgeResource's ImageColumn does.
+    // The image column reads the private s3 disk, as the old badge list's ImageColumn does.
     Storage::fake('s3');
 
     $this->event = Event::factory()->create(['name' => 'Eurofurence 29', 'starts_at' => now()->addDays(30)]);
@@ -184,7 +184,7 @@ test('the attendee-id sort flips through the partial reload the client actually 
         // The five requested keys have to carry data, not null.
         ->and($descending->json('props.meta.page'))->toBe(1)
         ->and($descending->json('props.search'))->toBe('')
-        ->and($descending->json('props.filters'))->toHaveCount(4);
+        ->and($descending->json('props.filters'))->toHaveCount(6);
 
     expect($partial(['sort' => 'sort_attendee_id', 'dir' => 'asc'])->json('props.rows.0.id'))->toBe($ninth->id);
 });
@@ -310,16 +310,16 @@ test('the Owner cell links at the users list pre-filtered by that name', functio
         ->and(is_array($fursuit) ? $fursuit['display'] : $fursuit)->toBe('Nibbles')
         ->and($row['cells']['fursuit.species.name'])->toBe('Blue Fox')
         // The image column reads the private s3 disk, and a fursuit with no image gets
-        // BadgeResource's defaultImageUrl rather than a broken cell.
+        // the old badge list's defaultImageUrl rather than a broken cell.
         ->and($row['cells']['fursuit.image'])->toBeString();
 });
 
-test('the list declares the four filters with their labels, placeholders and option sets', function () {
+test('the list declares its filters with their labels, placeholders and option sets', function () {
     ($this->badge)();
 
     ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->count('filters', 4)
+            ->count('filters', 6)
             ->where('filters.0.key', 'status_fulfillment')
             ->where('filters.0.label', 'Fulfillment Status')
             ->where('filters.0.placeholder', 'All Statuses')
@@ -346,14 +346,56 @@ test('the list declares the four filters with their labels, placeholders and opt
             ->where('filters.2.falseLabel', 'Paid Badges Only')
             ->where('filters.3.key', 'attendee_id_range')
             ->where('filters.3.type', 'range')
-            // No label is set in Filament, so it renders its auto label.
+            // No label is set in the old panel, so it renders its auto label.
             ->where('filters.3.label', 'Attendee id range')
+            // The print cutoff, as two datetime bounds rather than dates: several runs go
+            // out in a day and a date-only bound cannot separate them.
+            ->where('filters.4.key', 'approved_from')
+            ->where('filters.4.type', 'datetime')
+            ->where('filters.4.label', 'Approved from')
+            ->where('filters.4.chipLabel', 'Approved after')
+            ->where('filters.5.key', 'approved_until')
+            ->where('filters.5.type', 'datetime')
+            ->where('filters.5.label', 'Approved until')
+            ->where('filters.5.chipLabel', 'Approved before')
             // Nothing is filtered on first load; every filter opens blank.
             ->where('filters.0.value', [])
             ->where('filters.1.value', [])
             ->where('filters.2.value', '')
             ->where('filters.3.value', ['min' => '', 'max' => ''])
+            ->where('filters.4.value', '')
+            ->where('filters.5.value', '')
         );
+});
+
+test('the approval cutoff narrows to badges approved inside the bound', function () {
+    $early = ($this->badge)();
+    $late = ($this->badge)();
+
+    $early->fursuit->update(['approved_at' => now()->subHours(3)]);
+    $late->fursuit->update(['approved_at' => now()->subMinutes(5)]);
+
+    $version = app(HandleInertiaRequests::class)->version(request());
+
+    $ids = fn (array $filter) => collect(
+        ($this->scoped)(null)
+            ->withHeaders([
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) $version,
+                'X-Inertia-Partial-Component' => 'Manage/Badges/Index',
+                'X-Inertia-Partial-Data' => 'rows',
+            ])
+            ->get(route('admin.badges.index', ['filter' => $filter]))
+            ->assertSuccessful()
+            ->json('props.rows')
+    )->pluck('id')->all();
+
+    // The cutoff is what keeps a print run off the backlog it already printed.
+    expect($ids(['approved_from' => now()->subHour()->format('Y-m-d\TH:i')]))->toBe([$late->id])
+        ->and($ids(['approved_until' => now()->subHour()->format('Y-m-d\TH:i')]))->toBe([$early->id]);
+
+    // A hand-edited bound that is not a datetime narrows nothing rather than throwing.
+    expect($ids(['approved_from' => 'not-a-date']))->toHaveCount(2);
 });
 
 test('the fulfillment and payment filters narrow the row set', function () {
@@ -440,7 +482,7 @@ test('the list is scoped by the global event selector through the fursuit', func
 });
 
 test('the table offers Edit and Print Badge and nothing else, and no create action at all', function () {
-    // BadgeResource passes bulkActions() an explicit array, so there is no bulk delete,
+    // the old badge list passes bulkActions() an explicit array, so there is no bulk delete,
     // no export and no dissociate. Its one bulk action is printBadgeBulk, which shipped in
     // phase 7 with the rest of the print pipeline alongside the printBadge row action;
     // both are covered in full by BadgePrintTest, and asserted here only as the shape of
@@ -453,9 +495,10 @@ test('the table offers Edit and Print Badge and nothing else, and no create acti
             ->where('rows.0.actions.0.name', 'edit')
             ->where('rows.0.actions.0.label', 'Edit')
             ->where('rows.0.actions.1.name', 'printBadge')
-            ->count('bulkActions', 1)
+            ->count('bulkActions', 2)
             ->where('bulkActions.0.name', 'printBadgeBulk')
-            // The Create page is not ported: it has never been able to save (audit 25).
+            ->where('bulkActions.1.name', 'setFulfillmentStatus')
+            // The Create page is not ported: it has never been able to save.
             ->where('pageActions', fn ($actions) => ! collect($actions)->contains(fn ($action) => $action['name'] === 'create'))
         );
 });
@@ -514,7 +557,7 @@ test('the status pickers offer only the transitions the state machine allows', f
         );
 
     // The POS error correction picked_up -> ready_for_pickup is a real transition and is
-    // therefore offered (plan 2.10 #8).
+    // therefore offered.
     $picked = ($this->badge)(['status_fulfillment' => 'picked_up', 'status_payment' => 'paid']);
 
     actingAs($this->admin)->get(route('admin.badges.edit', $picked))
@@ -616,7 +659,7 @@ test('no write path can put a euro string into a cents column', function () {
         ->and($badge->custom_id)->toBeNull();
 });
 
-test('a badge is soft deleted from the edit page with Filament default copy', function () {
+test('a badge is soft deleted from the edit page with the old panel default copy', function () {
     $badge = ($this->badge)();
 
     actingAs($this->admin)
@@ -639,7 +682,7 @@ test('the list offers no page actions', function () {
 });
 
 test('the module admits admins and reviewers to read, and shuts everyone else out', function () {
-    // BadgePolicy: viewAny/view = is_admin || is_reviewer (audit 3).
+    // BadgePolicy: viewAny/view = is_admin || is_reviewer.
     $badge = ($this->badge)();
 
     // Guests first: `auth` pushes them into the Identity SSO flow, and the panel owns no
@@ -653,8 +696,8 @@ test('the module admits admins and reviewers to read, and shuts everyone else ou
     actingAs($this->nobody)->get(route('admin.badges.edit', $badge))->assertForbidden();
 });
 
-test('an admin may edit any badge without the panel being Filament', function () {
-    // audit 52: BadgePolicy::update required request()->routeIs('filament.*','livewire.*'),
+test('an admin may edit any badge regardless of which panel serves the route', function () {
+    // BadgePolicy::update used to require a route check against the old panel's names,
     // so moving the panel would silently flip every admin to owner-rules-only and every
     // /admin/badges/{badge}/edit would 403. Answered on the actor now.
     $badge = ($this->badge)();
@@ -689,7 +732,7 @@ test('a reviewer may read but not write, and a stranger not even that', function
     actingAs($this->nobody)->delete(route('admin.badges.destroy', $badge))->assertForbidden();
 
     // BadgePolicy::delete is is_admin or owner-with-conditions, so a reviewer is not a
-    // deleter (audit 3) even though update is open to every access-manage holder.
+    // deleter even though update is open to every access-manage holder.
     actingAs($this->reviewer)->delete(route('admin.badges.destroy', $badge))->assertForbidden();
 
     expect(Badge::whereKey($badge->id)->exists())->toBeTrue();
@@ -724,4 +767,143 @@ test('the fulfillment states this app can reach are exactly the ones the machine
     expect((new Processing($badge))->transitionableStates())->toBe(['ready_for_pickup', 'picked_up'])
         ->and((new PickedUp($badge))->transitionableStates())->toBe(['ready_for_pickup'])
         ->and((new ReadyForPickup($badge))->transitionableStates())->toBe(['picked_up']);
+});
+
+test('saving a badge returns to the filtered list rather than the bare one', function () {
+    $badge = ($this->badge)();
+
+    // The operator narrows the list, opens a badge from it, and saves.
+    $list = route('admin.badges.index', [
+        'filter' => ['status_payment' => ['paid']],
+        'sort' => 'sort_attendee_id',
+        'dir' => 'desc',
+        'page' => 2,
+    ]);
+
+    ($this->scoped)(null)->get($list)->assertSuccessful();
+
+    $target = ($this->scoped)(null)
+        ->put(route('admin.badges.update', $badge), [
+            'status_payment' => $badge->status_payment->getValue(),
+            'status_fulfillment' => $badge->status_fulfillment->getValue(),
+        ])
+        ->headers->get('Location');
+
+    parse_str(parse_url($target, PHP_URL_QUERY) ?: '', $query);
+
+    // Filters, sort and page all live in the query string, so a redirect to the bare index
+    // route is what used to drop every one of them. Compared as parameters rather than as
+    // a string: fullUrl() normalises the query into alphabetical order.
+    expect(parse_url($target, PHP_URL_PATH))->toBe('/admin/badges')
+        ->and($query)->toBe([
+            'dir' => 'desc',
+            'filter' => ['status_payment' => ['paid']],
+            'page' => '2',
+            'sort' => 'sort_attendee_id',
+        ]);
+});
+
+test('a save with no list visited first falls back to the bare index', function () {
+    $badge = ($this->badge)();
+
+    ($this->scoped)(null)
+        ->put(route('admin.badges.update', $badge), [
+            'status_payment' => $badge->status_payment->getValue(),
+            'status_fulfillment' => $badge->status_fulfillment->getValue(),
+        ])
+        ->assertRedirect(route('admin.badges.index'));
+});
+
+test('the bulk fulfillment write sets the status past the state machine', function () {
+    // ReadyForPickup -> Processing is not a legal transition in either direction the graph
+    // runs, which is exactly the correction this endpoint exists to make.
+    $badge = ($this->badge)(['status_fulfillment' => 'ready_for_pickup']);
+
+    expect($badge->status_fulfillment->canTransitionTo(Processing::class))->toBeFalse();
+
+    actingAs($this->admin)
+        ->post(route('admin.badges.bulk.status'), [
+            'ids' => [$badge->id],
+            'status_fulfillment' => 'processing',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($badge->fresh()->status_fulfillment)->toBeInstanceOf(Processing::class);
+});
+
+test('the bulk fulfillment write leaves the transition side effects alone', function () {
+    $badge = ($this->badge)(['status_fulfillment' => 'pending', 'custom_id' => null]);
+
+    actingAs($this->admin)->post(route('admin.badges.bulk.status'), [
+        'ids' => [$badge->id],
+        'status_fulfillment' => 'picked_up',
+    ])->assertRedirect();
+
+    $badge->refresh();
+
+    // The status moves and nothing else does: no id allocation, no stamping. That is the
+    // documented cost of skipping the state machine, and it is what makes this a repair
+    // tool rather than a second way to hand a badge over.
+    expect($badge->status_fulfillment->getValue())->toBe('picked_up')
+        ->and($badge->custom_id)->toBeNull()
+        ->and($badge->picked_up_at)->toBeNull()
+        // The write still goes through the model, so the change is in the activity log.
+        ->and($badge->activities()->exists())->toBeTrue();
+});
+
+test('the bulk fulfillment write counts the badges already in the target status', function () {
+    $already = ($this->badge)(['status_fulfillment' => 'picked_up']);
+    $moved = ($this->badge)(['status_fulfillment' => 'pending']);
+
+    actingAs($this->admin)->post(route('admin.badges.bulk.status'), [
+        'ids' => [$already->id, $moved->id],
+        'status_fulfillment' => 'picked_up',
+    ])->assertSessionHas('inertia.flash_data.toast.body', '1 badge set to Picked Up. 1 already were.');
+});
+
+test('the bulk fulfillment write refuses an unknown status and a non-admin', function () {
+    $badge = ($this->badge)(['status_fulfillment' => 'pending']);
+
+    actingAs($this->admin)
+        ->post(route('admin.badges.bulk.status'), [
+            'ids' => [$badge->id],
+            'status_fulfillment' => 'shipped',
+        ])
+        ->assertSessionHasErrors('status_fulfillment');
+
+    // A reviewer reads badges but does not move them. Same gate as the single-badge PUT.
+    actingAs($this->reviewer)
+        ->post(route('admin.badges.bulk.status'), [
+            'ids' => [$badge->id],
+            'status_fulfillment' => 'picked_up',
+        ])
+        ->assertForbidden();
+
+    expect($badge->fresh()->status_fulfillment->getValue())->toBe('pending');
+});
+
+test('the badge list offers the bulk fulfillment write to admins only', function () {
+    ($this->badge)();
+
+    $version = app(HandleInertiaRequests::class)->version(request());
+
+    $keys = fn (User $actor) => collect(
+        actingAs($actor)->withSession([
+            EventScope::SESSION_ID => null,
+            EventScope::SESSION_CHOSEN => true,
+        ])
+            ->withHeaders([
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) $version,
+                'X-Inertia-Partial-Component' => 'Manage/Badges/Index',
+                'X-Inertia-Partial-Data' => 'bulkActions',
+            ])
+            ->get(route('admin.badges.index'))
+            ->assertSuccessful()
+            ->json('props.bulkActions')
+    )->pluck('name')->all();
+
+    expect($keys($this->admin))->toContain('setFulfillmentStatus')
+        ->and($keys($this->reviewer))->not->toContain('setFulfillmentStatus');
 });

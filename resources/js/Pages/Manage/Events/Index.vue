@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The event list, successor to EventResource's table and its ManageEvents page.
+ * The event list, successor to the old event list's table and its ManageEvents page.
  *
  * Rendered inside SettingsLayout, not ManageLayout: Events is a Settings pane rather than a
  * rail entry of its own (see routes/manage/events.php), so the settings submenu stays beside
@@ -12,7 +12,7 @@
  * partials are filtered by top-level key. DataTable still wants one object, so the props
  * are gathered back up here.
  *
- * DataTable is mounted without `searchable`: EventResource declares `->filters([ // ])`
+ * DataTable is mounted without `searchable`: the old event list declares `->filters([ // ])`
  * and no column is searchable either, so a search box here would be one the server
  * ignores. The toolbar still appears, carrying the column toggle for the three toggleable
  * columns and nothing else. Users passes `searchable`; this table has nothing to put in

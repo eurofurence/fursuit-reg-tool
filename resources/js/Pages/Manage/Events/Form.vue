@@ -1,12 +1,12 @@
 <script setup>
 /**
  * Create and edit an event, as a page rather than the modal a ManageRecords page gave it
- * (plan 1.2). One component for both: the field list is identical and only the target
+ *. One component for both: the field list is identical and only the target
  * route and the button copy differ.
  *
- * The section headings started as EventResource's `Group::make([...])->label(...)` wrappers.
- * `Group` is an invisible layout component in Filament v3, so those labels rendered
- * nowhere (audit 108); they are shipped as real headings here. Two departures from that
+ * The section headings started as the old event list's `Group::make([...])->label(...)` wrappers.
+ * `Group` is an invisible layout component in the old panel, so those labels rendered
+ * nowhere; they are shipped as real headings here. Two departures from that
  * schema: the "Financial Tracking" group is gone (the `cost` field it held was never read
  * by anything), and Catch-Em-All is its own card rather than a sub-part of the gallery,
  * because the game and the public gallery are separate features.
@@ -20,7 +20,7 @@
  * are not self-explanatory from their labels.
  *
  * `starts_at` and `ends_at` are date-only controls and the other five date fields are
- * date-and-time, which is the granularity each one has today (plan 2.6).
+ * date-and-time, which is the granularity each one has today.
  *
  * There is no state field. Event state is computed from the dates by `Event::state()`, so
  * the order window fields below are the only lever over it.
@@ -68,7 +68,7 @@ const form = useForm({
   archival_notice: props.event?.archival_notice ?? '',
 });
 
-// Filament renders an empty option until one is picked, and this Select was never required.
+// the old panel renders an empty option until one is picked, and this Select was never required.
 const badgeClasses = computed(() => [
   { value: '', label: 'Select an option' },
   ...props.badgeClassOptions,

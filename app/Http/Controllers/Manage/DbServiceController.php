@@ -21,9 +21,9 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Response;
 
 /**
- * DB Service, the successor to App\Filament\Pages\DbService (audit 5.3).
+ * DB Service, the successor to App\the old panel\Pages\DbService.
  *
- * One repair lives here, the one the Filament page carried: badges that were charged the
+ * One repair lives here, the one the old panel page carried: badges that were charged the
  * badge fee although their owner still had unused prepaid entitlement for the event. The
  * audit's method table names exactly that one repair plus its preview, its cancel, its
  * reset and the two formatters, and nothing else is added here.
@@ -44,19 +44,18 @@ use Inertia\Response;
  *
  * `cancelFreeBadgeFix()` and `resetFreeBadgeFix()` were wire:click handlers that cleared
  * component state; here they are plain GET links back to the page, so neither touches the
- * server's state at all (plan rule: nothing mutates as a side effect of rendering).
+ * server's state at all.
  *
  * Not event-scoped. It operates on `Event::getActiveEvent()`, the newest event by
- * `starts_at`, not the header selection, exactly as the Filament page did (plan 2.9, audit
- * landmine 123). The page names the event it is about to touch on screen rather than
+ * `starts_at`, not the header selection, exactly as the old panel page did. The page names the event it is about to touch on screen rather than
  * leaving "the current event" to be guessed at.
  *
  * Admin only, through `manage-admin`. This is the successor to `DbService::canAccess()`,
- * the one page-level gate in the Filament panel: the panel admits reviewers too, so the
+ * the one page-level gate in the old panel: the panel admits reviewers too, so the
  * extra gate is required on every one of the three endpoints, not only on the GET.
  *
  * The analysis and the write below are `App\Services\FreeBadgeRepairService`, which was
- * deleted from the repository in commit 5aa2148 together with the Filament page it served.
+ * deleted from the repository in commit 5aa2148 together with the old panel page it served.
  * They are reproduced here, in the module that owns the screen, rather than by restoring
  * the deleted file. Two things differ from the audit's description of that service, both
  * of them consequences of the wallet package being removed in fa0554e:
@@ -129,7 +128,7 @@ class DbServiceController extends Controller
             Toast::flashSuccess('Nothing to fix', 'No wrongly-charged prepaid badges were found for the current event.');
         }
 
-        // Filament set `reviewingFreeBadges = true` whether or not anything was found, so
+        // the old panel set `reviewingFreeBadges = true` whether or not anything was found, so
         // the empty report is shown with its three zeroed stat cards rather than swallowed.
         return redirect()->route('admin.maintenance.db-service', ['review' => 1]);
     }
@@ -195,7 +194,7 @@ class DbServiceController extends Controller
         if ($report['affected_badge_count'] > 0) {
             $actions[] = Action::post('apply', 'Confirm & apply fix', route('admin.maintenance.db-service.apply'))
                 ->icon('check')
-                // Filament's color('success').
+                // the old panel's color('success').
                 ->tone(Status::OK)
                 /*
                  * The wire:confirm string from db-service.blade.php:112, verbatim, with its
@@ -272,7 +271,7 @@ class DbServiceController extends Controller
                     'should_be_paid' => $analysis['should_be_paid'],
                     'current_total_cents' => (int) $badge->total,
                     // One server-side formatter for every money surface in the panel
-                    // (plan 2.10 #1). Column::euros() is the same '€'.number_format($c / 100, 2)
+                    // . Column::euros() is the same '€'.number_format($c / 100, 2)
                     // DbService::formatEuro() was.
                     'refund' => Column::euros($badge->total),
                 ];
@@ -422,7 +421,7 @@ class DbServiceController extends Controller
      *    gone nothing gave the money back: the confirm dialog promised a refund the write
      *    could not make, `paid_at` was overwritten with `now()`, and the checkout still
      *    recorded the original amount. Only a badge still owing its fee is converted, and
-     *    zeroing that really is the correction (plan 2.10 #75);
+     *    zeroing that really is the correction;
      *  - the lowest ids are converted first, so a rerun of the same data converts the same
      *    badges.
      *
@@ -487,9 +486,9 @@ class DbServiceController extends Controller
     /**
      * `imageUrl()`: a 15-minute signed URL for a private S3 object, best effort.
      *
-     * Same mechanism as every other private image read in the panel (plan 2.7). Null when
+     * Same mechanism as every other private image read in the panel. Null when
      * there is no path or the disk cannot answer; the client falls back to the placeholder,
-     * which now exists in `public/images/` (audit landmine 50).
+     * which now exists in `public/images/`.
      */
     private function imageUrl(?string $path): ?string
     {

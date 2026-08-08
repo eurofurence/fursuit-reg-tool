@@ -1,16 +1,16 @@
 <?php
 
 /*
- * POS staff and their RFID tags, phase 5 (plan part 4). Transcribed from audit 4.10 and
+ * POS staff and their RFID tags, phase 5. Transcribed from audit 4.10 and
  * 4.10.1.
  *
  * These rows are login credentials for the till, so this file asserts two things beyond
- * parity. The PIN never appears in a list payload - Filament's table loaded the plaintext
+ * parity. The PIN never appears in a list payload - the old panel's table loaded the plaintext
  * PIN of every member into the page and only formatted it to `Set` / `Not Set` on the way
  * out - and every tag endpoint is closed to anyone the policy would not let write it,
  * because a tag's `content` is the whole credential a reader presents.
  *
- * The three fixes the plan mandates each get a test that fails on the Filament behaviour:
+ * The three fixes the plan mandates each get a test that fails on the old panel behaviour:
  * the SecurePinRule record id (2.10 #21), the blank setup code (2.10 #22), and the
  * Generate button that wrote to the database before the form was submitted (2.10 #23).
  *
@@ -118,7 +118,7 @@ function manageRfidPayload(array $overrides = []): array
 
 beforeEach(function () {
     // ManageEventScope runs on every /admin request whether or not the page is scoped,
-    // and this list deliberately is not (plan 2.9).
+    // and this list deliberately is not.
     Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -136,7 +136,7 @@ beforeEach(function () {
 /*
  * Access. StaffPolicy answers is_admin for every ability and is not touched by this
  * module; RfidTagPolicy is new and answers the same question, so the tags are no longer
- * protected only by the page they sit on (audit 54).
+ * protected only by the page they sit on.
  */
 
 test('a guest is redirected to login', function () {
@@ -214,7 +214,7 @@ test('the PIN column is the two literal words and the PIN itself never reaches t
     expect($rows->firstWhere('id', $withPin->id)['cells']['pin_code'])->toBe('Set')
         ->and($rows->firstWhere('id', $withoutPin->id)['cells']['pin_code'])->toBe('Not Set');
 
-    // Filament loaded the plaintext PIN into the page and formatted it on the way out.
+    // the old panel loaded the plaintext PIN into the page and formatted it on the way out.
     // This one is never serialised, hidden column or not.
     $response->assertDontSee('408271', false);
 });
@@ -318,7 +318,7 @@ test('the RFID tag count column counts the member tags', function () {
 });
 
 test('a member who never logged in gets a blank cell, not a placeholder', function () {
-    // Audit 122: StaffResource sets no placeholder on `last_login_at` while the RFID
+    // Audit 122: the old staff list sets no placeholder on `last_login_at` while the RFID
     // table sets `Never used`. The inconsistency is kept rather than silently unified,
     // because a formatted or placeholdered cell changes what the column reads as.
     actingAs($this->admin);
@@ -406,7 +406,7 @@ test('the list is not scoped to the selected event', function () {
 });
 
 /*
- * Actions, with the Filament default copy the audit records verbatim.
+ * Actions, with the old panel default copy the audit records verbatim.
  */
 
 test('the page action is New staff', function () {
@@ -551,7 +551,7 @@ test('the create page renders with no record', function () {
             ->etc());
 });
 
-test('a member is created and the toast is Filaments Created', function () {
+test('a member is created and the toast is the old panel Created', function () {
     actingAs($this->admin);
 
     post(route('admin.staff.store'), manageStaffPayload(['pin_code' => '408271']))
@@ -574,8 +574,8 @@ test('the name is required and the PIN must be exactly six digits', function () 
     post(route('admin.staff.store'), manageStaffPayload(['pin_code' => '4082']))
         ->assertSessionHasErrors('pin_code');
 
-    // A leading zero survives: `digits:6` measures the string, where Filament's
-    // numeric + length(6) measured the number (audit 121).
+    // A leading zero survives: `digits:6` measures the string, where the old panel's
+    // numeric + length(6) measured the number.
     post(route('admin.staff.store'), manageStaffPayload(['name' => 'Zero Fox', 'pin_code' => '048271']))
         ->assertSessionHasNoErrors();
 
@@ -646,7 +646,7 @@ test('a setup code is uppercased on save and cannot duplicate another one', func
 
     expect(Staff::where('name', 'Upper Otter')->value('setup_code'))->toBe('AB12CD');
 
-    // The UNIQUE index has always been there and the Filament form never validated it,
+    // The UNIQUE index has always been there and the old panel form never validated it,
     // so a collision surfaced as SQL 1062 rather than a field error.
     post(route('admin.staff.store'), manageStaffPayload(['name' => 'Copy Cat', 'setup_code' => 'AB12CD']))
         ->assertSessionHasErrors('setup_code');
@@ -663,7 +663,7 @@ test('Generate proposes a setup code without writing one', function () {
 
     post(route('admin.staff.setup-code', $staff))->assertRedirect();
 
-    // The Filament suffix action called Staff::generateSetupCode(), which ends in
+    // The old panel suffix action called Staff::generateSetupCode(), which ends in
     // $this->update([...]): pressing Generate rotated a live POS credential before the
     // form was ever submitted.
     expect($staff->fresh()->setup_code)->toBeNull();
@@ -791,7 +791,7 @@ test('the tag search covers the code and the tag name', function () {
         ->toBe([$byName->id]);
 });
 
-test('a tag row offers Delete with Filament default delete copy, and the bulk action names rfid tags', function () {
+test('a tag row offers Delete with the old panel default delete copy, and the bulk action names rfid tags', function () {
     actingAs($this->admin);
 
     $staff = Staff::factory()->create();

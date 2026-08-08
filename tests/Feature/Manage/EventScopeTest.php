@@ -1,10 +1,10 @@
 <?php
 
 /*
- * The global event filter (plan part 2.9 and 4.2, item 8).
+ * The global event filter.
  *
- * This file is the one place the FilamentEventSelector bug is locked out. That middleware
- * forgot `filament_selected_event_id` when the request asked for "all events" and then,
+ * This file is the one place the old event-selector middleware bug is locked out. That middleware
+ * forgot the selected-event session key when the request asked for "all events" and then,
  * in the same handle() call, re-seeded it with the newest event because the key was now
  * missing. Forgetting the id and having chosen all events were the same state, so
  * "all events" could not survive a single request, and every downstream "no event
@@ -91,7 +91,7 @@ test('selecting an event persists it across requests', function () {
 });
 
 test('selecting all events actually means all events and survives the next request', function () {
-    // This is the case FilamentEventSelector could never express. A null id is a
+    // This is the case the old event-selector middleware could never express. A null id is a
     // decision, not a missing value, and the seed has to leave it alone.
     from(route('admin.dashboard'))
         ->post(route('admin.event.select'), ['event_id' => null])
@@ -224,7 +224,7 @@ test('apply() narrows through a relationship, which is how badges are scoped', f
 });
 
 /*
- * Which lists the scope must not touch (plan 2.9, parity checklist line 58).
+ * Which lists the scope must not touch.
  *
  * Each module already asserts its own scoping in its own file where it has one, but the
  * ten lists below are defined by the absence of a behaviour, and an absence is exactly

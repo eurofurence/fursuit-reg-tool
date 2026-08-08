@@ -10,15 +10,15 @@ use Illuminate\Auth\Access\HandlesAuthorization;
  * Checkouts are fiscal records. This policy is the ceiling on what the panel may do to
  * one, and it is deliberately lower than "whatever the resource happened to allow".
  *
- * There is no policy at all today (audit landmine 51). Filament treats a model with no
+ * There is no policy at all today. the old panel treats a model with no
  * policy as allowed, so the only thing standing between an is_reviewer-only account and a
- * checkout rewrite is CheckoutResource's own hard `canCreate/canEdit/canDelete => false` -
+ * checkout rewrite is the old checkout list's own hard `canCreate/canEdit/canDelete => false` -
  * three lines in a UI class, on a record German KassenSichV requires to be tamper-evident.
  * Those three answers move here, where nothing that touches the model can route around
- * them (plan 2.2, plan 2.10 #19).
+ * them.
  *
  * Reading is `is_admin`. It was admin-or-reviewer at cutover, matching the unguarded
- * Filament resource, and that was wrong on its own terms: a checkout carries an
+ * old resource, and that was wrong on its own terms: a checkout carries an
  * attendee's payment history, and a reviewer approves fursuit images. Reviewers were
  * narrowed to Dashboard, Badges and Fursuits, and this is one of the screens that went;
  * see docs/admin/roles.md.
@@ -48,7 +48,7 @@ class CheckoutPolicy
     }
 
     /**
-     * Verbatim from CheckoutResource: `// Checkouts are created through POS only`.
+     * Verbatim from the old checkout list: `// Checkouts are created through POS only`.
      *
      * False for everyone, including an admin. There is no create route in
      * routes/manage/checkouts.php either, so this is the second of two locks rather than
@@ -60,7 +60,7 @@ class CheckoutPolicy
     }
 
     /**
-     * Verbatim from CheckoutResource: `// Checkouts should not be edited`.
+     * Verbatim from the old checkout list: `// Checkouts should not be edited`.
      */
     public function update(User $user, Checkout $checkout): bool
     {
@@ -68,7 +68,7 @@ class CheckoutPolicy
     }
 
     /**
-     * Verbatim from CheckoutResource: `// Checkouts should not be deleted`.
+     * Verbatim from the old checkout list: `// Checkouts should not be deleted`.
      */
     public function delete(User $user, Checkout $checkout): bool
     {
@@ -94,7 +94,7 @@ class CheckoutPolicy
      * Queue the receipt for this checkout on the active receipt printer.
      *
      * The only write the panel is allowed to make against a checkout, and the audit is the
-     * ceiling: it existed in Filament as the `print` row action and the `Print Receipt`
+     * ceiling: it existed in the old panel as the `print` row action and the `Print Receipt`
      * header action. It creates a print job, it does not change the checkout.
      */
     public function printReceipt(User $user, Checkout $checkout): bool

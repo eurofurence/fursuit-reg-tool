@@ -1,6 +1,6 @@
 <script setup>
 /**
- * DB Service, the successor to App\Filament\Pages\DbService (audit 5.3).
+ * DB Service, the successor to App\the old panel\Pages\DbService.
  *
  * One repair: badges charged the badge fee although their owner still had unused prepaid
  * entitlement for the event. Three screens, in the blade's order of precedence - the
@@ -12,8 +12,7 @@
  * review cannot be a request that changes data.
  *
  * The page is deliberately not scoped by the event selector in the topbar: it operates on
- * the active event, the newest by start date, exactly as the Filament page did (audit
- * landmine 123, plan 2.9). The blade said "the current event" and left the operator to
+ * the active event, the newest by start date, exactly as the old panel page did. The blade said "the current event" and left the operator to
  * guess which one that was; here the event is named on screen before anything runs.
  */
 import { computed } from 'vue';
@@ -63,7 +62,7 @@ const columns = [
 /*
  * The blade's fallback for a row whose fursuit, species or owner is soft-deleted. The
  * placeholder image it fell back to did not exist in public/images/ until the rebuild
- * shipped it (audit landmine 50).
+ * shipped it.
  */
 const PLACEHOLDER = '/images/placeholder.png';
 

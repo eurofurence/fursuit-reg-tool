@@ -10,6 +10,7 @@ use App\Models\Fursuit\States\Rejected;
 use App\Services\FursuitPresence;
 use App\Services\FursuitReviewService;
 use App\Support\Manage\EventScope;
+use App\Support\Manage\Table;
 use App\Support\Manage\Toast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,14 +20,14 @@ use Illuminate\Validation\Rule;
 /**
  * The verbs of a review: the three verdicts, the correction of one, and the queue step.
  *
- * All of them are gated on `view`, not `update`. That is what the Filament page did: its
+ * All of them are gated on `view`, not `update`. That is what the old panel page did: its
  * header actions carried no authorization of their own beyond the resource's view check,
  * so a reviewer - who fails `update`, which is admin-only - has always been able to
  * approve and reject. Moderating the queue is the reviewer role.
  *
  * Two shapes are worth knowing before reading the methods.
  *
- * **There is no claim.** The Filament page took a five-minute cache lock on load and then
+ * **There is no claim.** The old panel page took a five-minute cache lock on load and then
  * *refused* every verdict unless the caller held it, which meant a reviewer who opened a
  * record by link could do nothing with it and a dead browser froze the record for five
  * minutes. Presence replaced it (App\Services\FursuitPresence): the queue skips records
@@ -60,7 +61,7 @@ class FursuitModerationController extends Controller
      * Fine on both counts: the card prints and the fursuit may be published.
      *
      * No success toast: the move to the next record is the feedback, and in the queue the
-     * undo bar is. The refusal speaks, which the Filament action did not - it logged an
+     * undo bar is. The refusal speaks, which the old panel action did not - it logged an
      * error and returned with no operator feedback at all.
      */
     public function approve(Request $request, Fursuit $fursuit, EventScope $scope): RedirectResponse
@@ -245,7 +246,7 @@ class FursuitModerationController extends Controller
      * more - every one of them lives in the queue - so there is one destination and no flag to get
      * wrong.
      *
-     * The empty state is explicit: Filament redirected to the index and left the reviewer to work
+     * The empty state is explicit: the old panel redirected to the index and left the reviewer to work
      * out whether the queue was empty or its three-try walk had simply given up.
      */
     private function advance(Request $request, Fursuit $fursuit, EventScope $scope): RedirectResponse
@@ -262,7 +263,7 @@ class FursuitModerationController extends Controller
                 'No pending fursuits are waiting in the selected event.',
             );
 
-            return redirect()->route('admin.fursuits.index');
+            return redirect()->to(Table::returnUrl('fursuits', route('admin.fursuits.index')));
         }
 
         return redirect()->route('admin.fursuits.review.show', $next);

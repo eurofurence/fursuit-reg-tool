@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Printers, phase 6 (plan part 4.2). Transcribed from audit 4.7.
+ * Printers, phase 6. Transcribed from audit 4.7.
  *
  * This is the hardware screen: a live convention watches it to find out which printer has
  * stopped, and it carries the only inline write in the panel. So the cases below are less
@@ -13,7 +13,7 @@
  *    shape of damage. Both are asserted, not assumed away.
  *  - The toggle must be a deliberate, authorized write. It was a CheckboxColumn that wrote
  *    to the database on one click with no confirm, no notification and no audit trail
- *    (audit 92). It now posts the state it means, and the 15s poll - which is the only
+ *   . It now posts the state it means, and the 15s poll - which is the only
  *    thing that touches this page unattended - must never reach it.
  *  - A delete must not silently take print jobs with it. `print_jobs.printer_id` is
  *    cascadeOnDelete and nothing calls PrintBatch::recalculateCounters() afterwards
@@ -69,7 +69,7 @@ const MANAGE_PRINTER_TOAST_TITLE = 'inertia.flash_data.toast.title';
 
 beforeEach(function () {
     // ManageEventScope runs on every /admin request whether or not the page is scoped,
-    // and this list deliberately is not: printers belong to the hall (plan 2.9).
+    // and this list deliberately is not: printers belong to the hall.
     Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -213,10 +213,10 @@ test('the list ships the flat envelope with the audit columns in order', functio
 
     expect(collect($props['columns'])->pluck('key')->all())->toBe(MANAGE_PRINTER_COLUMNS);
 
-    // PrinterResource declares `->filters([//])`, and none are added.
+    // the old printer list declares `->filters([//])`, and none are added.
     expect($props['filters'])->toBe([]);
 
-    // `->paginated(false)` becomes 200 a page with the pager visible (plan 2.3).
+    // `->paginated(false)` becomes 200 a page with the pager visible.
     expect($props['meta']['perPage'])->toBe(200);
 });
 
@@ -263,8 +263,8 @@ test('status renders through PrinterStatusEnum, including the cases the resource
     Printer::factory()->create([
         'machine_id' => $this->machine->id,
         'name' => 'Jammed',
-        // MEDIA_JAM is one of the six cases PrinterResource's colour map left out
-        // entirely, so it rendered unstyled (audit 4.7 column 4).
+        // MEDIA_JAM is one of the six cases the old printer list's colour map left out
+        // entirely, so it rendered unstyled.
         'status' => PrinterStatusEnum::MEDIA_JAM,
     ]);
 
@@ -316,7 +316,7 @@ test('the condition columns surface the agent reading and its remedy', function 
     expect($cells['condition']['label'])->toBe('Out of cards')
         ->and($cells['condition']['tone'])->toBe('danger')
         // PrinterConditionEnum::remedy(), which until now only the POS ever showed
-        // (plan 2.10 #27).
+        // .
         ->and($cells['condition_message']['display'])->toBe('Refill the card hopper.')
         ->and($cells['cards']['display'])->toBe('0 / 200')
         ->and($cells['condition_reported_at'])->not->toBeNull();
@@ -393,7 +393,7 @@ test('a printer with no jobs counts zero on all three', function () {
  * sends, so a nested envelope would fail here rather than pass quietly.
  */
 
-test('the name search works under a partial visit even though Filament hid the box', function () {
+test('the name search works under a partial visit even though the old panel hid the box', function () {
     actingAs($this->admin);
 
     Printer::factory()->create(['machine_id' => $this->machine->id, 'name' => 'Zebra ZXP9']);
@@ -638,7 +638,7 @@ test('the bulk delete is all or nothing when one printer still has jobs', functi
     assertDatabaseHas('print_jobs', ['id' => $job->id]);
 });
 
-test('the bulk delete removes a clean selection with Filament copy', function () {
+test('the bulk delete removes a clean selection with the old panel copy', function () {
     actingAs($this->admin);
 
     $first = Printer::factory()->create(['machine_id' => $this->machine->id]);
@@ -665,7 +665,7 @@ test('the bulk delete removes a clean selection with Filament copy', function ()
 test('the create page renders instead of throwing on a null record', function () {
     actingAs($this->admin);
 
-    // Filament's default_paper_size closure type-hinted a non-nullable Printer $record,
+    // the old panel's default_paper_size closure type-hinted a non-nullable Printer $record,
     // so this page died with a TypeError the moment anyone reached it (landmine 27).
     $props = get(route('admin.printers.create'))->assertOk()->viewData('page')['props'];
 
@@ -675,7 +675,7 @@ test('the create page renders instead of throwing on a null record', function ()
         ->and(collect($props['types'])->pluck('label')->all())->toBe(['Receipt', 'Badge']);
 });
 
-test('the list offers the create button the Filament page removed', function () {
+test('the list offers the create button the old panel page removed', function () {
     actingAs($this->admin);
 
     $create = collect(($this->props)()['pageActions'])->firstWhere('name', 'create');
@@ -772,7 +772,7 @@ test('the form cannot overwrite the paper sizes the agent reported', function ()
     expect($printer->fresh()->paper_sizes)->toBe($reported);
 });
 
-test('the edit page carries the delete action Filament put on its header', function () {
+test('the edit page carries the delete action the old panel put on its header', function () {
     actingAs($this->admin);
 
     $printer = Printer::factory()->create(['machine_id' => $this->machine->id]);

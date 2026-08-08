@@ -2,7 +2,7 @@
 /**
  * Create and edit a print job, successor to CreatePrintJob and EditPrintJob.
  *
- * Three fields behave differently from the Filament form, and every one of them is here
+ * Three fields behave differently from the old panel form, and every one of them is here
  * because this record drives hardware.
  *
  *  - `status` is a transition picker, not a free select. It offers the state the job is in
@@ -13,7 +13,7 @@
  *    a create page that could fabricate a Printed card would say a card exists that nobody
  *    ever printed.
  *  - a badge job must name a batch. A batch-less badge job lands in the receipt-only
- *    unbatched lane and sits Pending forever (audit 89).
+ *    unbatched lane and sits Pending forever.
  *
  * Read-only fields render as text rather than greyed-out inputs, per FormField: a disabled
  * box invites clicking something that can never change.

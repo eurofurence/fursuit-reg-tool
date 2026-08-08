@@ -9,13 +9,13 @@
  * Four things beyond plain parity, all of them named in the plan:
  *
  *  - the loaded badge is URL state, not component state, so the details panel survives a
- *    reload and the PDF buttons are real GET links (plan 2.10 #34, audit 49);
+ *    reload and the PDF buttons are real GET links;
  *  - the badge class the panel reports is EF30_Badge, which is what BadgePdfController
- *    actually renders, rather than the blade's EF28_Badge (audit 48);
+ *    actually renders, rather than the blade's EF28_Badge;
  *  - every detail is read null-safely, because the blade walked ->species->name,
- *    ->user->name and ->event->name through relations that soft-delete (audit 113);
+ *    ->user->name and ->event->name through relations that soft-delete;
  *  - the two PDF routes sit behind can:access-manage, unlike admin.badge-pdf.* which is
- *    behind auth alone (audit landmine 60).
+ *    behind auth alone.
  */
 
 use App\Http\Controllers\Manage\BadgePreviewController;
@@ -101,7 +101,7 @@ test('the lookup is required and capped at 255', function () {
         ->assertSessionHasErrors('custom_id');
 });
 
-test('a found badge flashes the Filament copy and redirects to its own url', function () {
+test('a found badge flashes the old panel copy and redirects to its own url', function () {
     ($this->badge)();
 
     actingAs($this->admin)

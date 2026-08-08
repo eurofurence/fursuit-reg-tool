@@ -15,8 +15,7 @@ use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * The four verbs that change a print run: pause, resume, cancel and verify (audit 4.8 row
- * actions 2 to 4, audit 4.8.1 `verify`).
+ * The four verbs that change a print run: pause, resume, cancel and verify.
  *
  * They live apart from PrintBatchController for the same reason retry lives apart from
  * PrintJobController: the read controller owns pages and props, and this owns the verbs
@@ -38,7 +37,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * `pause()` is a bare transition and would refuse cleanly, but it is guarded the same way so
  * the three read alike and none of them can be the one that was left speculative.
  *
- * The refusal toasts are new. The Filament resource reports success for a pause or a resume
+ * The refusal toasts are new. The old panel resource reports success for a pause or a resume
  * that silently did nothing, which is the class of silence plan 2.10 #45 exists to end; the
  * cancel failure copy is the resource's own and is reproduced word for word.
  */
@@ -48,7 +47,7 @@ class PrintBatchRunController extends Controller
      * `->maxLength(1000)` on both reason inputs.
      *
      * One constant, two places: the validation rules below and the `maxLength` each action
-     * field declares, which ActionButton renders as the input's own `maxlength`. Filament's
+     * field declares, which ActionButton renders as the input's own `maxlength`. the old panel's
      * cap stopped the typing rather than rejecting the submission, and an operator at a
      * jammed printer should not meet a 422 after hitting Confirm.
      */
@@ -78,7 +77,7 @@ class PrintBatchRunController extends Controller
 
         $printBatch->pause($validated['reason']);
 
-        // PrintBatchResource's own notification, verbatim: success, title only, no body.
+        // the old batch list's own notification, verbatim: success, title only, no body.
         Toast::flashSuccess('Batch paused');
 
         return back();
@@ -142,7 +141,7 @@ class PrintBatchRunController extends Controller
      * card physically came out is a separate question, and this is the only place in the
      * panel that answers it.
      *
-     * The ability is asked of the batch rather than of the job, which is what Filament's
+     * The ability is asked of the batch rather than of the job, which is what the old panel's
      * relation manager did: a relation manager authorizes against the owner record.
      */
     public function verify(PrintBatch $printBatch, PrintJob $printJob): RedirectResponse

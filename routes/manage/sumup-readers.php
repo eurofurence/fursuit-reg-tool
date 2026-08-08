@@ -4,7 +4,7 @@ use App\Http\Controllers\Manage\SumUpReaderController;
 use Illuminate\Support\Facades\Route;
 
 /*
- * SumUp readers (phase 5). The Filament resource lived at /admin/sum-up-readers with
+ * SumUp readers (phase 5). The old panel resource lived at /admin/sum-up-readers with
  * index, create and edit pages; the single delete sat on the Edit page header and was
  * missing from the plan's route table, so it is registered here alongside the bulk one.
  *

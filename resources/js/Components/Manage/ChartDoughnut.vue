@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The badge-status doughnut (audit 6.2), successor to BadgeStatusChart.
+ * The badge-status doughnut, successor to BadgeStatusChart.
  *
  * Registers exactly the chart.js pieces a doughnut needs, so nothing else is pulled into
  * the bundle, then leaves the lifecycle to ChartCanvas. Every label, value and colour is

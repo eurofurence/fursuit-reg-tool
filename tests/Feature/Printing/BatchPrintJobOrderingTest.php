@@ -253,7 +253,7 @@ test('mass print uses single laravel batch with proper ordering', function () {
         }
     }
 
-    // Simulate the BadgeResource bulk action
+    // Simulate the badge list bulk action
     $printerId = 1;
     $sortedBadges = $allBadges->sort(function ($a, $b) {
         $aCustomId = $a->custom_id;

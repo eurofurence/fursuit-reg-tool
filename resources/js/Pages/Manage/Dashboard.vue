@@ -1,15 +1,15 @@
 <script setup>
 /**
- * The dashboard (audit 6): four stats, the badge-status doughnut and the event
+ * The dashboard: four stats, the badge-status doughnut and the event
  * comparison bars, everything scoped to the header's event selection.
  *
  * Nothing here computes a number, a colour or a label. DashboardController ships the
  * stats and both charts shaped, the way every action and column in the panel is shaped
  * server-side, so a parity test can assert a string without rendering a canvas.
  *
- * The poll reloads `stats` and `charts` and nothing else (plan 2.4). 15s, not the 5s all
+ * The poll reloads `stats` and `charts` and nothing else. 15s, not the 5s all
  * three widgets inherited from CanPoll: an open dashboard used to re-run four counts and
- * a GROUP BY over the whole badges table twelve times a minute per tab (plan 2.10 #28).
+ * a GROUP BY over the whole badges table twelve times a minute per tab.
  * usePoll stops while the tab is hidden, and this page has no form or dialog to guard.
  */
 import { computed } from 'vue';
@@ -49,7 +49,7 @@ const scope = computed(() => {
         <StatCard v-for="stat in stats" :key="stat.key" :stat="stat" />
       </div>
 
-      <!-- Bars first, doughnut second: the widgets sorted 2 then 3 (audit 6.2, 6.3). -->
+      <!-- Bars first, doughnut second: the widgets sorted 2 then 3. -->
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <ChartBar :chart="charts.eventComparison" />
         <ChartDoughnut :chart="charts.badgeStatus" />

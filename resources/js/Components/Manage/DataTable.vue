@@ -75,8 +75,46 @@ watch(
   (rows) => {
     const ids = rows.map((row) => row.id);
     selected.value = selected.value.filter((id) => ids.includes(id));
+    anchor.value = null;
   },
 );
+
+/**
+ * Where the last row-checkbox click landed, as the index shift-click extends from.
+ *
+ * Reset whenever the rows change, because it is an index into the page that is on screen:
+ * carrying it across a sort or a page change would extend from a row the operator never
+ * clicked.
+ */
+const anchor = ref(null);
+
+/**
+ * Row selection, including shift-click for a range.
+ *
+ * Selection is driven from `selected` with `:checked` rather than `v-model`, because the
+ * range case has to rewrite the whole array from inside the click handler and v-model's
+ * own change handler would land afterwards and undo part of it. The checkbox's new state
+ * is already applied by the time a click listener runs, so `event.target.checked` is what
+ * the operator asked for, and the whole range follows it - shift-clicking with the box
+ * going off clears the range the same way it sets it.
+ */
+const onSelectClick = (event, index) => {
+  const rows = props.table.rows;
+  const checked = event.target.checked;
+
+  const ids =
+    event.shiftKey && anchor.value !== null && anchor.value < rows.length
+      ? rows
+          .slice(Math.min(anchor.value, index), Math.max(anchor.value, index) + 1)
+          .map((row) => row.id)
+      : [rows[index].id];
+
+  selected.value = checked
+    ? [...new Set([...selected.value, ...ids])]
+    : selected.value.filter((id) => !ids.includes(id));
+
+  anchor.value = index;
+};
 
 const visibleColumns = computed(() => props.table.columns.filter((column) => !hidden.value.includes(column.key)));
 const toggleableColumns = computed(() => props.table.columns.filter((column) => column.toggleable));
@@ -319,7 +357,7 @@ const open = (row, event) => {
 
         <tbody>
           <tr
-            v-for="row in table.rows"
+            v-for="(row, rowIndex) in table.rows"
             :key="row.id"
             class="border-b border-hairline/60 transition-colors hover:bg-mg-surface-2"
             :class="row.url ? 'cursor-pointer' : ''"
@@ -327,11 +365,12 @@ const open = (row, event) => {
           >
             <td v-if="table.bulkActions.length" class="px-3">
               <input
-                v-model="selected"
                 type="checkbox"
-                :value="row.id"
+                :checked="selected.includes(row.id)"
                 class="cursor-pointer"
                 :aria-label="`Select row ${row.id}`"
+                :title="'Shift-click to select a range'"
+                @click="onSelectClick($event, rowIndex)"
               />
             </td>
 
@@ -343,7 +382,7 @@ const open = (row, event) => {
             >
               <template v-if="column.type === 'badge'">
                 <!--
-                  A cell that carries a `url` renders as a link. Filament put a URL on
+                  A cell that carries a `url` renders as a link. the old panel put a URL on
                   several plain columns (the badge list's Fursuit, Owner and Print Jobs
                   cells); the type stays what it was and the link is an extra key on the
                   cell, so nothing that sends a bare value changes.
@@ -358,7 +397,7 @@ const open = (row, event) => {
                 </a>
                 <StatusBadge v-else :status="cell(row, column.key)" />
                 <!--
-                  Filament's TextColumn->badge()->description(). The batch list's Progress
+                  the old panel's TextColumn->badge()->description(). The batch list's Progress
                   column is the one cell that needs a second line under the chip; every
                   other badge cell sends no description and renders exactly as before.
                 -->
@@ -394,7 +433,7 @@ const open = (row, event) => {
                 Two shapes, both fixed here: a rounded rectangle for thumbnails of
                 things (badge artwork) and a round avatar for thumbnails of someone
                 (the fursuit list's image, the badge list's fursuit.image), which is
-                what Filament's ImageColumn->circular() drew. The column declares which
+                what the old panel's ImageColumn->circular() drew. The column declares which
                 with Column::image(...)->circular(); the client picks no geometry of its
                 own, so every image cell in the panel is one of these two.
               -->
@@ -514,7 +553,7 @@ const open = (row, event) => {
     <!--
       Between the rows and the pager, which is the only place a running total belongs: under
       the column it totals, above the control that changes which rows were counted. The
-      checkout list is the one caller, for Filament's Sum summariser.
+      checkout list is the one caller, for the old panel's Sum summariser.
     -->
     <slot name="summary" />
 

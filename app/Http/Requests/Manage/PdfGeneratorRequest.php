@@ -7,18 +7,18 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * The query both PDF Generator downloads read (audit 5.1).
+ * The query both PDF Generator downloads read.
  *
  * One request for two routes, because the form is one form: the badge-list route reads
  * the badge-list half and the box-label route reads the box-label half, and every key is
  * optional so a route is never refused over a field it does not use. The five parity
  * notifications are not expressed here - "no event selected", "no data", an unparsable
- * range list, an empty range match and a missing box-label title are Filament
+ * range list, an empty range match and a missing box-label title are the old panel
  * notifications with verbatim copy, and they stay toasts on the page rather than turning
- * into 422s (audit 5.1, notification table).
+ * into 422s.
  *
  * What is expressed here is the shape. The three layout numbers were `->numeric()` in
- * Filament, which is a client-side hint and nothing more, so `columns=100000` reached
+ * the old panel, which is a client-side hint and nothing more, so `columns=100000` reached
  * mPDF and asked it to lay out a hundred thousand table cells per row inside the web
  * request. They are integers with a ceiling now. The ceilings sit far above anything the
  * page offers (the defaults are 50 / 12 / 6) so no input an operator can reach through

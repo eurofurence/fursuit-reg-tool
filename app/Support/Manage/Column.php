@@ -30,9 +30,9 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Money is the one type that is not passed through untouched. Every money column in this
  * database is an integer number of cents and the conversion used to be done by hand at each
- * render site: five of the six `->money(` calls in the Filament panel divided by 100 and the
+ * render site: five of the six `->money(` calls in the old panel divided by 100 and the
  * badge Total column did not, so badge totals rendered a hundred times too high while the
- * checkout view showed raw cents next to a divided column (audit 7.5, landmines 1 and 2).
+ * checkout view showed raw cents next to a divided column.
  * There is therefore no undivided variant here. A money column takes cents and Table hands
  * the client euros; the call site is not offered a choice it could get wrong.
  *
@@ -103,7 +103,7 @@ final class Column implements Arrayable
     }
 
     /**
-     * Filament's `ImageColumn->circular()`. The two image columns in the panel - the
+     * the old panel's `ImageColumn->circular()`. The two image columns in the panel - the
      * fursuit list's own image and the badge list's `fursuit.image` - are both circular
      * avatars there, and both read as one when the thumbnail is a head shot.
      *

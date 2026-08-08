@@ -6,13 +6,13 @@ use Illuminate\Support\Facades\Route;
 /*
  * TSE clients (phase 8). Two GETs and three lifecycle writes.
  *
- * The Filament resource's edit form does not come across, and neither does a delete.
+ * The old panel resource's edit form does not come across, and neither does a delete.
  * `remote_id` and `serial_number` are the signing identity past checkouts were signed
- * under (plan 2.10 #14), so nothing here rewrites them and nothing removes a client whose
+ * under, so nothing here rewrites them and nothing removes a client whose
  * serial receipts still point at. Only `state` moves, and it moves through Fiskaly.
  *
  * What is new is registration. `createnew` was dropped because it fabricated a row from a
- * random UUID and never called anyone (plan 2.10 #13, audit landmine 7) - not because
+ * random UUID and never called anyone - not because
  * issuing a client is something the panel may not do. `store` does the same job properly:
  * one button, no fields to get wrong, and the row only survives if the TSS accepted it.
  * `register` and `deregister` are the two ends of the yearly cycle, which is normally

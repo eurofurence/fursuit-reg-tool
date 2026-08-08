@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Events, phase 2 (plan part 4.2). Transcribed from audit 4.1.
+ * Events, phase 2. Transcribed from audit 4.1.
  *
  * The column list below is a literal array copied out of the audit rather than a
  * description of one, so a dropped column fails a test instead of quietly disappearing.
@@ -9,12 +9,12 @@
  * Three things this module has to get right beyond plain parity:
  *
  *  - `archival_notice` is in the form and in the table but not in `Event::$fillable`, so
- *    every save of it is silently dropped today (audit 107). It has to persist.
+ *    every save of it is silently dropped today. It has to persist.
  *  - `mass_printed_at` was `->required()` while its own helper text said "if applicable"
- *    (audit 106). It is nullable now, and an empty value means the pre-print run is still
+ *   . It is nullable now, and an empty value means the pre-print run is still
  *    ahead - the same reading as a future date, which is what the public copy needs.
  *  - event state is computed by `Event::state()` from the dates and is not stored, so
- *    nothing here may ship a state column, filter or field (audit 4.1, landmine 105).
+ *    nothing here may ship a state column, filter or field.
  */
 
 use App\Enum\EventStateEnum;
@@ -232,7 +232,7 @@ test('the list carries no filters and defaults to starts_at descending', functio
     actingAs($this->admin)
         ->get(route('admin.settings.events.index'))
         ->assertInertia(fn (Assert $page) => $page
-            // EventResource declares ->filters([ // ]).
+            // the old event list declares ->filters([ // ]).
             ->where('filters', [])
             ->where('sort.key', 'starts_at')
             ->where('sort.dir', 'desc')
@@ -311,7 +311,7 @@ test('the list is not scoped to the selected event', function () {
         ->assertInertia(fn (Assert $page) => $page->count('rows', 2));
 });
 
-test('the row, bulk and page actions carry Filament default copy', function () {
+test('the row, bulk and page actions carry the old panel default copy', function () {
     $event = ($this->event)();
 
     actingAs($this->admin)
@@ -644,7 +644,7 @@ test('an event is hard deleted, one at a time or in bulk', function () {
 
 test('deleting an event that still owns fursuits is refused, single and bulk', function () {
     /*
-     * The event delete is a hard delete (audit 7.7), and `fursuits.event_id` and
+     * The event delete is a hard delete, and `fursuits.event_id` and
      * `badges.fursuit_id` are both `ON DELETE CASCADE`. Without the guard, deleting a
      * past convention removes every fursuit and every badge of it physically: SoftDeletes
      * never runs, FursuitObserver never runs, no `deleted_at` is written, no activity
@@ -689,7 +689,7 @@ test('a soft-deleted fursuit still blocks the delete', function () {
 });
 
 test('a bulk selection spanning an empty and a populated event deletes neither', function () {
-    // All-or-nothing, the same rule the policy loop above follows (plan 2.5).
+    // All-or-nothing, the same rule the policy loop above follows.
     $empty = ($this->event)();
     $populated = ($this->event)(['name' => 'Eurofurence 28', 'starts_at' => now()->subYear()]);
     Fursuit::factory()->create(['event_id' => $populated->id]);
@@ -706,7 +706,7 @@ test('DELETE /admin/settings/events/bulk is not read as a record id', function (
 });
 
 test('bulk delete refuses an unauthorized caller even when the ids match nothing', function () {
-    // The all-or-nothing loop (plan 2.5) only speaks for rows it loaded, so an empty
+    // The all-or-nothing loop only speaks for rows it loaded, so an empty
     // result set would otherwise walk straight past it into the success toast.
     ($this->event)();
 

@@ -88,7 +88,7 @@ class FursuitNotificationController extends Controller
     public function store(Request $request, Fursuit $fursuit): RedirectResponse
     {
         // Gated on `view` like the rest of the moderation surface: the action carried no
-        // visibility predicate and no authorization of its own in Filament, so every
+        // visibility predicate and no authorization of its own in the old panel, so every
         // reviewer who could open the page could send it.
         Gate::authorize('view', $fursuit);
 

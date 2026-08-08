@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 | Admin panel routes
 |--------------------------------------------------------------------------
 |
-| The Inertia admin panel, and the only one: it serves /admin and the Filament
+| The Inertia admin panel, and the only one: it serves /admin and the old panel
 | panel that used to sit there is gone; see docs/admin/rebuild-plan.md. The
 | route names are admin.*, and this group is the only thing that registers
 | them. This file holds the panel shell only: the dashboard, the
@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Route;
 | this file.
 |
 | Guests are pushed into the existing Identity SSO flow by `auth`, which is
-| what the Filament panel did too since it declared no ->login(). There is no
+| what the old panel did too since it declared no ->login(). There is no
 | /admin/login. A signed-in user without `access-manage` gets a 403.
 |
 | Every mutation is a POST/PUT/DELETE that redirects back with a flash. No

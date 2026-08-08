@@ -9,10 +9,10 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 /**
  * Special codes are admin-only.
  *
- * There is no policy at all today, and Filament treats a model with no policy as
+ * There is no policy at all today, and the old panel treats a model with no policy as
  * allowed, so an is_reviewer-only account can create, edit and delete Catch-Em-All
  * codes that award points while needing is_admin merely to look at a printer
- * (audit landmine 51, plan 2.10 #19). Every ability is is_admin.
+ *. Every ability is is_admin.
  *
  * Registered explicitly in AuthServiceProvider: the model lives under App\Domain\**,
  * where Laravel's policy auto-discovery looks in a directory that does not exist.

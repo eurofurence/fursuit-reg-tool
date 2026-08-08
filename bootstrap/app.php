@@ -42,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/web.php'));
 
             // The admin panel: Inertia, and the only one. It owns /admin and the
-            // whole admin.* name prefix; the Filament panel that sat at
+            // whole admin.* name prefix; the old panel that sat at
             // /admin-legacy is gone. admin.badge-pdf.*, the last routes registered
             // outside this group, moved into routes/manage/tools.php with their
             // names and URLs intact. See docs/admin/rebuild-plan.md part 5 step 14.

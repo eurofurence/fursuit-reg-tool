@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Who is looking at a fursuit right now.
  *
- * Advisory, never blocking. The Filament panel used a five-minute cache lock that
+ * Advisory, never blocking. The old panel used a five-minute cache lock that
  * *refused* approvals: a reviewer who opened a record by link could not act on it, and a
  * reviewer whose browser died froze the record for five minutes. Presence answers the
  * question the lock was really for - "is somebody else already working this one?" - and

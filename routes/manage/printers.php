@@ -9,12 +9,12 @@ use Illuminate\Support\Facades\Route;
  * that are not the record form get their own endpoints on PrinterStateController.
  *
  * `active` is the inline toggle. It is a POST carrying the state it wants rather than a
- * table column that wrote to the database on click (audit 92), and it is deliberately not
+ * table column that wrote to the database on click, and it is deliberately not
  * a PUT on the record: it writes one column, it is not the form, and it must never be
  * confused with a full round-trip of a printer's configuration.
  *
  * `clear-error` sits on top of Printer::clearPrinterError(), which has always existed and
- * which the panel never called (plan 2.10 #27).
+ * which the panel never called.
  *
  * The bulk route is declared before {printer}, or DELETE /admin/printers/bulk would bind
  * "bulk" as a route model and 404 before the controller ever sees it.

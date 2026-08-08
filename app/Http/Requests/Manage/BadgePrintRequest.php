@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * The payload of `printBadgeBulk` (audit 4.2, bulk action 1).
+ * The payload of `printBadgeBulk`.
  *
  * Authorisation happens here rather than in the controller body, because a FormRequest
  * validates before the action runs: gating in the controller would answer an
@@ -17,7 +17,7 @@ use Illuminate\Validation\Rule;
  * `viewAny` question the row action asks, for the reason BadgePrintController's docblock
  * gives.
  *
- * `printer_id` is `->required()` on the Filament select, and the values accepted here are
+ * `printer_id` is `->required()` on the old panel select, and the values accepted here are
  * that select's own option set: active printers of type Badge. Read from
  * `BadgePrintController::printerIds()`, the one list the modal is built from, so a
  * printer the picker offers can never be one the rules refuse - or the other way round,
