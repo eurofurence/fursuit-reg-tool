@@ -2,6 +2,9 @@
 
 namespace App\Support\Manage;
 
+use Inertia\Inertia;
+use Inertia\SessionKey;
+
 /**
  * Flash payload for the toast host in ManageLayout.
  *
@@ -69,7 +72,8 @@ final class Toast
      */
     public static function put(string $key, mixed $value): void
     {
-        session()->flash('flash', [
+        session()->flash(SessionKey::FlashData->value, [
+            ...Inertia::getFlashed(),
             $key => $value,
         ]);
     }
