@@ -359,41 +359,75 @@ class FieldVocabularyTest(unittest.TestCase):
 
 
 class TransferFilmTest(unittest.TestCase):
-    """The second supply row is read but never acted on.
+    """Reading the transfer film, which nothing watched until now.
 
-    A ZXP9 publishes two supplies, both type 7 and unit 8, and the second has no
-    description -- which looks exactly like the transfer film. It is not usable:
-    walked three times inside a few minutes on an idle printer it gave 626, then
-    2, then 1. Deciding anything on that reports film_low on a healthy printer
-    and then stops the queue.
+    The standard MIB publishes a second supply that looks like the film and is
+    not: on an idle printer it gave 626, then 2, then 1, then 624, sometimes the
+    ribbon's remaining count and sometimes its panel counter. Acting on it
+    reported film_low on a healthy printer.
+
+    The real figures are in Zebra's private media table, and the XML document at
+    1.3.6.1.4.1.10642.8.12.0 names every column, so this is not guesswork.
     """
 
-    def reading(self, ribbon=None, film=None):
-        return zebra.Reading(reachable=True, printer_state="standby", alarms=[],
+    def reading(self, ribbon=None, initial=None, used=None, junk=None):
+        return zebra.Reading(reachable=True, printer_state="idle", alarms=[],
                              sensor_fault=None, error_bits=set(),
-                             supply_level=ribbon, film_level=film)
+                             supply_level=ribbon, film_level=junk,
+                             film_initial=initial, film_panel_used=used)
 
-    def test_a_zero_film_reading_does_not_stop_the_queue(self):
-        # The reading that would have stopped a healthy printer.
-        self.assertEqual(zebra.OK, zebra.classify(self.reading(ribbon=600, film=0)))
+    def test_what_is_left_is_initial_minus_used(self):
+        # Both counters count up as panels are consumed, measured mid-run.
+        reading = self.reading(ribbon=592, initial=627, used=578)
 
-    def test_a_low_film_reading_does_not_warn(self):
-        self.assertEqual(zebra.OK, zebra.classify(self.reading(ribbon=600, film=1)))
+        self.assertEqual(49, reading.film_panels_left())
+        self.assertEqual(49, reading.film_cards_left())
 
-    def test_the_ribbon_still_decides(self):
-        self.assertEqual(zebra.RIBBON_LOW, zebra.classify(self.reading(ribbon=20, film=1)))
+    def test_a_spent_film_stops_the_queue(self):
+        condition = zebra.classify(self.reading(ribbon=592, initial=627, used=627))
 
-    def test_the_value_is_still_recorded(self):
-        # Kept in the reading so the journal can show what the printer claims,
-        # which is what any future attempt at this will need.
+        self.assertEqual(zebra.FILM_OUT, condition)
+        self.assertTrue(zebra.is_stop(condition))
+
+    def test_a_low_film_only_warns(self):
+        condition = zebra.classify(self.reading(ribbon=592, initial=627, used=600))
+
+        self.assertEqual(zebra.FILM_LOW, condition)
+        self.assertFalse(zebra.is_stop(condition))
+
+    def test_film_is_named_ahead_of_the_ribbon(self):
+        # Both low. Naming the ribbon sends somebody for the wrong box, and the
+        # printer cannot print without film whatever the ribbon says.
+        condition = zebra.classify(self.reading(ribbon=20, initial=627, used=600))
+
+        self.assertEqual(zebra.FILM_LOW, condition)
+
+    def test_a_healthy_film_leaves_the_ribbon_to_it(self):
+        self.assertEqual(zebra.RIBBON_LOW,
+                         zebra.classify(self.reading(ribbon=20, initial=627, used=10)))
+
+    def test_a_printer_that_publishes_no_film_is_not_treated_as_empty(self):
+        # Absent is not zero, or every printer without the private table stops.
+        self.assertEqual(zebra.OK, zebra.classify(self.reading(ribbon=592)))
+
+    def test_a_used_count_past_the_roll_does_not_go_negative(self):
+        self.assertEqual(0, self.reading(initial=627, used=700).film_panels_left())
+
+    def test_the_untrustworthy_supply_row_decides_nothing(self):
+        # film_level is the standard MIB's supply 2, kept only for the journal.
+        # A zero there must not stop a printer with film left.
+        condition = zebra.classify(self.reading(ribbon=592, initial=627, used=10, junk=0))
+
+        self.assertEqual(zebra.OK, condition)
+
+    def test_the_figures_are_read_off_the_private_media_table(self):
         poller = zebra.ZebraPoller("printer.test")
         reading = poller._build({
-            "1.3.6.1.2.1.43.11.1.1.6.1.1": "YMCK",
-            "1.3.6.1.2.1.43.11.1.1.9.1.1": "626",
-            "1.3.6.1.2.1.43.11.1.1.8.1.1": "627",
-            "1.3.6.1.2.1.43.11.1.1.9.1.2": "412",
+            "1.3.6.1.2.1.43.11.1.1.9.1.1": "592",
+            "1.3.6.1.4.1.10642.8.6.1.9.1": "627",
+            "1.3.6.1.4.1.10642.8.6.1.10.1": "578",
         })
 
-        self.assertEqual(626, reading.supply_level)
-        self.assertEqual("YMCK", reading.supply_description)
-        self.assertEqual(412, reading.film_level)
+        self.assertEqual(627, reading.film_initial)
+        self.assertEqual(578, reading.film_panel_used)
+        self.assertEqual(49, reading.film_cards_left())

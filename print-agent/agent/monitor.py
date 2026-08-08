@@ -145,8 +145,17 @@ class PrinterMonitor:
         return zebra.cards_from_supply(self.reading.supply_level) if self.reading else None
 
     def film_remaining(self) -> Optional[int]:
-        """Cards left on the transfer film, in the same units as the ribbon."""
-        return zebra.cards_from_supply(self.reading.film_level) if self.reading else None
+        """Cards left on the transfer film."""
+        return self.reading.film_cards_left() if self.reading else None
+
+    def film_warning(self) -> Optional[str]:
+        """Warn early, the same as the ribbon. The film usually goes first."""
+        remaining = self.film_remaining()
+
+        if remaining is None or remaining > self.ribbon_warn_threshold:
+            return None
+
+        return "Transfer film has about %d cards left. Fetch a replacement." % remaining
 
     def ribbon_warning(self) -> Optional[str]:
         """Warn early so staff can fetch a ribbon before the queue stops."""
