@@ -112,7 +112,7 @@ class StaffController extends Controller
         // (audit 4.10 notifications).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('admin.staff.index');
+        return redirect()->to(Table::returnUrl('staff', route('admin.staff.index')));
     }
 
     /**
@@ -159,7 +159,7 @@ class StaffController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('admin.staff.index');
+        return redirect()->to(Table::returnUrl('staff', route('admin.staff.index')));
     }
 
     /**

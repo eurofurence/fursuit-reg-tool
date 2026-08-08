@@ -184,7 +184,7 @@ test('the attendee-id sort flips through the partial reload the client actually 
         // The five requested keys have to carry data, not null.
         ->and($descending->json('props.meta.page'))->toBe(1)
         ->and($descending->json('props.search'))->toBe('')
-        ->and($descending->json('props.filters'))->toHaveCount(4);
+        ->and($descending->json('props.filters'))->toHaveCount(6);
 
     expect($partial(['sort' => 'sort_attendee_id', 'dir' => 'asc'])->json('props.rows.0.id'))->toBe($ninth->id);
 });
@@ -314,12 +314,12 @@ test('the Owner cell links at the users list pre-filtered by that name', functio
         ->and($row['cells']['fursuit.image'])->toBeString();
 });
 
-test('the list declares the four filters with their labels, placeholders and option sets', function () {
+test('the list declares its filters with their labels, placeholders and option sets', function () {
     ($this->badge)();
 
     ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->count('filters', 4)
+            ->count('filters', 6)
             ->where('filters.0.key', 'status_fulfillment')
             ->where('filters.0.label', 'Fulfillment Status')
             ->where('filters.0.placeholder', 'All Statuses')
@@ -348,12 +348,54 @@ test('the list declares the four filters with their labels, placeholders and opt
             ->where('filters.3.type', 'range')
             // No label is set in Filament, so it renders its auto label.
             ->where('filters.3.label', 'Attendee id range')
+            // The print cutoff, as two datetime bounds rather than dates: several runs go
+            // out in a day and a date-only bound cannot separate them.
+            ->where('filters.4.key', 'approved_from')
+            ->where('filters.4.type', 'datetime')
+            ->where('filters.4.label', 'Approved from')
+            ->where('filters.4.chipLabel', 'Approved after')
+            ->where('filters.5.key', 'approved_until')
+            ->where('filters.5.type', 'datetime')
+            ->where('filters.5.label', 'Approved until')
+            ->where('filters.5.chipLabel', 'Approved before')
             // Nothing is filtered on first load; every filter opens blank.
             ->where('filters.0.value', [])
             ->where('filters.1.value', [])
             ->where('filters.2.value', '')
             ->where('filters.3.value', ['min' => '', 'max' => ''])
+            ->where('filters.4.value', '')
+            ->where('filters.5.value', '')
         );
+});
+
+test('the approval cutoff narrows to badges approved inside the bound', function () {
+    $early = ($this->badge)();
+    $late = ($this->badge)();
+
+    $early->fursuit->update(['approved_at' => now()->subHours(3)]);
+    $late->fursuit->update(['approved_at' => now()->subMinutes(5)]);
+
+    $version = app(HandleInertiaRequests::class)->version(request());
+
+    $ids = fn (array $filter) => collect(
+        ($this->scoped)(null)
+            ->withHeaders([
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) $version,
+                'X-Inertia-Partial-Component' => 'Manage/Badges/Index',
+                'X-Inertia-Partial-Data' => 'rows',
+            ])
+            ->get(route('admin.badges.index', ['filter' => $filter]))
+            ->assertSuccessful()
+            ->json('props.rows')
+    )->pluck('id')->all();
+
+    // The cutoff is what keeps a print run off the backlog it already printed.
+    expect($ids(['approved_from' => now()->subHour()->format('Y-m-d\TH:i')]))->toBe([$late->id])
+        ->and($ids(['approved_until' => now()->subHour()->format('Y-m-d\TH:i')]))->toBe([$early->id]);
+
+    // A hand-edited bound that is not a datetime narrows nothing rather than throwing.
+    expect($ids(['approved_from' => 'not-a-date']))->toHaveCount(2);
 });
 
 test('the fulfillment and payment filters narrow the row set', function () {
@@ -724,4 +766,49 @@ test('the fulfillment states this app can reach are exactly the ones the machine
     expect((new Processing($badge))->transitionableStates())->toBe(['ready_for_pickup', 'picked_up'])
         ->and((new PickedUp($badge))->transitionableStates())->toBe(['ready_for_pickup'])
         ->and((new ReadyForPickup($badge))->transitionableStates())->toBe(['picked_up']);
+});
+
+test('saving a badge returns to the filtered list rather than the bare one', function () {
+    $badge = ($this->badge)();
+
+    // The operator narrows the list, opens a badge from it, and saves.
+    $list = route('admin.badges.index', [
+        'filter' => ['status_payment' => ['paid']],
+        'sort' => 'sort_attendee_id',
+        'dir' => 'desc',
+        'page' => 2,
+    ]);
+
+    ($this->scoped)(null)->get($list)->assertSuccessful();
+
+    $target = ($this->scoped)(null)
+        ->put(route('admin.badges.update', $badge), [
+            'status_payment' => $badge->status_payment->getValue(),
+            'status_fulfillment' => $badge->status_fulfillment->getValue(),
+        ])
+        ->headers->get('Location');
+
+    parse_str(parse_url($target, PHP_URL_QUERY) ?: '', $query);
+
+    // Filters, sort and page all live in the query string, so a redirect to the bare index
+    // route is what used to drop every one of them. Compared as parameters rather than as
+    // a string: fullUrl() normalises the query into alphabetical order.
+    expect(parse_url($target, PHP_URL_PATH))->toBe('/admin/badges')
+        ->and($query)->toBe([
+            'dir' => 'desc',
+            'filter' => ['status_payment' => ['paid']],
+            'page' => '2',
+            'sort' => 'sort_attendee_id',
+        ]);
+});
+
+test('a save with no list visited first falls back to the bare index', function () {
+    $badge = ($this->badge)();
+
+    ($this->scoped)(null)
+        ->put(route('admin.badges.update', $badge), [
+            'status_payment' => $badge->status_payment->getValue(),
+            'status_fulfillment' => $badge->status_fulfillment->getValue(),
+        ])
+        ->assertRedirect(route('admin.badges.index'));
 });

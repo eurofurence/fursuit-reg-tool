@@ -78,6 +78,12 @@ const toggle = (option) => {
  */
 const anyLabel = computed(() => props.filter.placeholder ?? `Any ${props.filter.label.toLowerCase()}`);
 
+/** The native control behind the free-value branch, one per free-value type. */
+const inputType = computed(
+  () =>
+    ({ number: 'number', date: 'date', datetime: 'datetime-local' })[props.filter.type] ?? 'text',
+);
+
 const ternaryOptions = computed(() => [
   { value: '1', label: props.filter.trueLabel ?? 'Yes' },
   { value: '0', label: props.filter.falseLabel ?? 'No' },
@@ -159,7 +165,7 @@ const field =
     <span class="sr-only">{{ filter.label }}</span>
     <input
       v-model="draft"
-      :type="filter.type === 'number' ? 'number' : filter.type === 'date' ? 'date' : 'text'"
+      :type="inputType"
       :placeholder="filter.placeholder ?? filter.label"
       :class="field"
       @input="commitLater(draft)"

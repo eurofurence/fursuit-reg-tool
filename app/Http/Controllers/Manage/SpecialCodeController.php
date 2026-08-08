@@ -67,7 +67,7 @@ class SpecialCodeController extends Controller
         // Filament's stock create toast; this resource declares none of its own.
         Toast::flashSuccess('Created');
 
-        return redirect()->route('admin.special-codes.index');
+        return redirect()->to(Table::returnUrl('special-codes', route('admin.special-codes.index')));
     }
 
     public function edit(SpecialCode $code): Response
@@ -83,7 +83,7 @@ class SpecialCodeController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('admin.special-codes.index');
+        return redirect()->to(Table::returnUrl('special-codes', route('admin.special-codes.index')));
     }
 
     /**

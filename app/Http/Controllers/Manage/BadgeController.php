@@ -16,7 +16,9 @@ use App\Support\Manage\Filter;
 use App\Support\Manage\Status;
 use App\Support\Manage\Table;
 use App\Support\Manage\Toast;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -143,7 +145,7 @@ class BadgeController extends Controller
         // own anywhere (audit 4.2).
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('admin.badges.index');
+        return redirect()->to(Table::returnUrl('badges', route('admin.badges.index')));
     }
 
     /**
@@ -159,7 +161,7 @@ class BadgeController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('admin.badges.index');
+        return redirect()->to(Table::returnUrl('badges', route('admin.badges.index')));
     }
 
     /**
@@ -428,7 +430,42 @@ class BadgeController extends Controller
                 // rather than repeating the word range next to them.
                 ->chipLabel('Attendee')
                 ->apply(fn (Builder $query, array $value) => $this->applyAttendeeRange($query, $value, $scope)),
+
+            // The print cutoff. Everything approved before the last run is already printed
+            // and filed, so the next run only wants what came in after it; without this the
+            // list re-offers the whole backlog on every run. BadgePrintController::bulk()
+            // sets `approved_from` to the newest badge it just queued, and the redirect
+            // carries it back onto the list.
+            Filter::datetime('approved_from', 'Approved from')
+                ->chipLabel('Approved after')
+                ->apply(fn (Builder $query, string $value) => $this->applyApprovedBound($query, '>=', $value)),
+
+            Filter::datetime('approved_until', 'Approved until')
+                ->chipLabel('Approved before')
+                ->apply(fn (Builder $query, string $value) => $this->applyApprovedBound($query, '<=', $value)),
         ];
+    }
+
+    /**
+     * One end of the approval cutoff, as a `whereHas` on the badge's own fursuit.
+     *
+     * The bound is parsed rather than passed through: a `datetime-local` control sends
+     * `2026-08-08T14:30`, and the `T` is not something every driver reads as a datetime.
+     * An unparseable bound narrows nothing rather than throwing, because it can only come
+     * from a hand-edited URL.
+     */
+    private function applyApprovedBound(Builder $query, string $operator, string $value): void
+    {
+        try {
+            $bound = Carbon::parse($value);
+        } catch (InvalidFormatException) {
+            return;
+        }
+
+        $query->whereHas(
+            'fursuit',
+            fn (Builder $fursuits) => $fursuits->where('fursuits.approved_at', $operator, $bound),
+        );
     }
 
     /**

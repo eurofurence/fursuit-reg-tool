@@ -122,7 +122,7 @@ class PrinterController extends Controller
         // (audit 7.2).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('admin.printers.index');
+        return redirect()->to(Table::returnUrl('printers', route('admin.printers.index')));
     }
 
     public function edit(Printer $printer): Response
@@ -157,7 +157,7 @@ class PrinterController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('admin.printers.index');
+        return redirect()->to(Table::returnUrl('printers', route('admin.printers.index')));
     }
 
     /**
@@ -188,7 +188,7 @@ class PrinterController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('admin.printers.index');
+        return redirect()->to(Table::returnUrl('printers', route('admin.printers.index')));
     }
 
     /**

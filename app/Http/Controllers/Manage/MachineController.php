@@ -75,7 +75,7 @@ class MachineController extends Controller
         // (audit 7.2).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('admin.machines.index');
+        return redirect()->to(Table::returnUrl('machines', route('admin.machines.index')));
     }
 
     public function edit(Machine $machine): Response
@@ -98,7 +98,7 @@ class MachineController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('admin.machines.index');
+        return redirect()->to(Table::returnUrl('machines', route('admin.machines.index')));
     }
 
     /**

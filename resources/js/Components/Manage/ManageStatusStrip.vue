@@ -72,6 +72,13 @@ const segment
     aria-label="Manage status"
   >
     <!--
+      Where the layout hangs its menu button below md. A slot rather than a prop because
+      the button belongs to the shell that owns the drawer's open state, and this strip has
+      no business knowing the rail exists.
+    -->
+    <slot name="leading" />
+
+    <!--
       min-w-0 is what makes flex-1 able to shrink below its content, and overflow-hidden
       is what keeps the excess out of the document instead of widening the page. It is
       scoped to this group, never to the header, because the event popover overflows the

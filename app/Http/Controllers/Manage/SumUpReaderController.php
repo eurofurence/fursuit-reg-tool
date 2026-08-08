@@ -94,7 +94,7 @@ class SumUpReaderController extends Controller
         // (audit 4.11, 7.2).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('admin.sumup-readers.index');
+        return redirect()->to(Table::returnUrl('sumup-readers', route('admin.sumup-readers.index')));
     }
 
     public function edit(SumUpReader $reader): Response
@@ -126,7 +126,7 @@ class SumUpReaderController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('admin.sumup-readers.index');
+        return redirect()->to(Table::returnUrl('sumup-readers', route('admin.sumup-readers.index')));
     }
 
     /**
@@ -169,7 +169,7 @@ class SumUpReaderController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('admin.sumup-readers.index');
+        return redirect()->to(Table::returnUrl('sumup-readers', route('admin.sumup-readers.index')));
     }
 
     /**

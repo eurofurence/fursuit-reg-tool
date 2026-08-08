@@ -23,6 +23,7 @@ use App\Domain\Printing\Models\PrintBatch;
 use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Models\PrintJob;
 use App\Enum\PrintBatchStatusEnum;
+use App\Http\Controllers\Manage\BadgePrintController;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\PickedUp;
@@ -33,6 +34,7 @@ use App\Models\Fursuit\Fursuit;
 use App\Models\Species;
 use App\Models\User;
 use App\Support\Manage\EventScope;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 use function Pest\Laravel\actingAs;
@@ -448,9 +450,33 @@ test('the list declares the bulk print action with its modal copy and printer se
             'label' => 'Select Printer',
             'type' => 'select',
             'options' => [['value' => $this->printer->id, 'label' => 'Badge Printer 1']],
+            // Pre-picked so a one-printer desk never opens the select at all.
+            'default' => $this->printer->id,
             'required' => true,
             'helper' => 'Select a specific printer for all selected badges.',
         ]]);
+});
+
+test('the printer select defaults to the first active badge printer', function () {
+    ($this->badge)();
+
+    $second = Printer::factory()->badge()->create(['name' => 'Badge Printer 2', 'is_active' => true]);
+
+    // bulkAction() is gated, so it needs an actor to return anything at all.
+    actingAs($this->admin);
+
+    $default = fn () => collect(BadgePrintController::bulkAction()->toArray()['fields'])
+        ->firstWhere('key', 'printer_id')['default'];
+
+    // Options are ordered by name, so the default is the head of the list the operator
+    // sees rather than an arbitrary row.
+    expect($default())->toBe($this->printer->id);
+
+    // And it follows the hardware: switch the first one off and the default moves on
+    // rather than pre-selecting a printer the request would refuse.
+    $this->printer->update(['is_active' => false]);
+
+    expect($default())->toBe($second->id);
 });
 
 test('the printer options follow the hardware rather than freezing at table build', function () {
@@ -472,4 +498,51 @@ test('a user who cannot see badges is offered no print action at all', function 
     // The button and the endpoint answer the same question, so an action that is not
     // offered is also one that cannot be posted (asserted above).
     expect(actingAs($this->nobody)->get(route('admin.badges.index'))->status())->toBe(403);
+});
+
+test('the bulk action moves the approval cutoff past the run it just queued', function () {
+    $early = ($this->badge)('0100-1');
+    $late = ($this->badge)('0200-1');
+
+    $early->fursuit->update(['approved_at' => now()->subHours(2)]);
+    $late->fursuit->update(['approved_at' => now()->subMinutes(10)]);
+
+    // The operator is standing on a filtered list, and lands back on it.
+    $from = route('admin.badges.index', ['filter' => ['status_payment' => ['paid']]]);
+
+    $response = actingAs($this->admin)
+        ->from($from)
+        ->post(route('admin.badges.bulk.print'), [
+            'ids' => [$early->id, $late->id],
+            'printer_id' => $this->printer->id,
+        ]);
+
+    // The bound is the newest badge in the run, in the format the datetime-local control
+    // round-trips, and the rest of the query string survives.
+    $target = $response->headers->get('Location');
+
+    parse_str(parse_url($target, PHP_URL_QUERY) ?: '', $query);
+
+    // Parsed, because Fursuit does not cast `approved_at`: it comes back a raw string.
+    expect($query['filter']['approved_from'])
+        ->toBe(Carbon::parse($late->fursuit->fresh()->approved_at)->format('Y-m-d\TH:i'))
+        ->and($query['filter']['status_payment'])->toBe(['paid']);
+});
+
+test('a run with no approval timestamps leaves the cutoff alone', function () {
+    $badge = ($this->badge)();
+
+    $badge->fursuit->update(['approved_at' => null]);
+
+    // Overwriting a good cutoff with a blank would be worse than not moving it.
+    $from = route('admin.badges.index', ['filter' => ['approved_from' => '2026-08-08T09:00']]);
+
+    $response = actingAs($this->admin)
+        ->from($from)
+        ->post(route('admin.badges.bulk.print'), [
+            'ids' => [$badge->id],
+            'printer_id' => $this->printer->id,
+        ]);
+
+    $response->assertRedirect($from);
 });

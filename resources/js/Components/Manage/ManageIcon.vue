@@ -58,6 +58,7 @@ import {
   LogOut,
   Mail,
   MapPin,
+  Menu,
   Minus,
   Monitor,
   PackageCheck,
@@ -147,6 +148,7 @@ const icons = {
   mail: Mail,
   // Settings > On-Site Desk: the badge desk is a place attendees walk to.
   'map-pin': MapPin,
+  menu: Menu,
   minus: Minus,
   monitor: Monitor,
   'package-check': PackageCheck,

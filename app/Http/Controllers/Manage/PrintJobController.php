@@ -324,7 +324,7 @@ class PrintJobController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('admin.print-jobs.index');
+        return redirect()->to(Table::returnUrl('print-jobs', route('admin.print-jobs.index')));
     }
 
     /**

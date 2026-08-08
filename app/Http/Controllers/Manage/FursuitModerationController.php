@@ -10,6 +10,7 @@ use App\Models\Fursuit\States\Rejected;
 use App\Services\FursuitPresence;
 use App\Services\FursuitReviewService;
 use App\Support\Manage\EventScope;
+use App\Support\Manage\Table;
 use App\Support\Manage\Toast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -262,7 +263,7 @@ class FursuitModerationController extends Controller
                 'No pending fursuits are waiting in the selected event.',
             );
 
-            return redirect()->route('admin.fursuits.index');
+            return redirect()->to(Table::returnUrl('fursuits', route('admin.fursuits.index')));
         }
 
         return redirect()->route('admin.fursuits.review.show', $next);

@@ -183,7 +183,7 @@ class FursuitController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('admin.fursuits.index');
+        return redirect()->to(Table::returnUrl('fursuits', route('admin.fursuits.index')));
     }
 
     /**
