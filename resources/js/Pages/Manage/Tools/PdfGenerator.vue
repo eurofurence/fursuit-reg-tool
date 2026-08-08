@@ -1,6 +1,6 @@
 <script setup>
 /**
- * PDF Generator, the successor to App\Filament\Pages\PdfGenerator (audit 5.1).
+ * PDF Generator, the successor to App\the old panel\Pages\PdfGenerator.
  *
  * One form, two documents: a badge list grouped by range, one range per page, and a box
  * label. The form is entirely client state, because nothing here is saved - the two
@@ -10,12 +10,12 @@
  * anchor can, and it keeps the failure path working too, since a refused generation
  * redirects back to this page with its toast instead of stranding a blank tab.
  *
- * The event is the panel's own selection (the header selector), not a field. The Filament
+ * The event is the panel's own selection (the header selector), not a field. The old panel
  * page read a session key nothing ever wrote and so always used the newest event
- * regardless of what the header said (plan 2.9, audit 63); the banner below states which
+ * regardless of what the header said; the banner below states which
  * event the badge list will cover, so the answer is on screen rather than implied.
  *
- * Copy that is not verbatim from the Filament page is corrected on purpose, all of it
+ * Copy that is not verbatim from the old panel page is corrected on purpose, all of it
  * under plan 2.10 #32: the box-label option and callout said three labels per A4 page and
  * the code has only ever rendered one, and the badge-list callout said "all free badges"
  * and "3 columns" against a 12-column default over every badge the filter admits.
@@ -35,7 +35,7 @@ const props = defineProps({
   /** Server-declared select options, so the labels have one source. */
   pdfTypes: { type: Array, required: true },
   paymentStatuses: { type: Array, required: true },
-  /** The Filament page's mount() state, verbatim. */
+  /** The old panel page's mount() state, verbatim. */
   defaults: { type: Object, required: true },
 });
 
@@ -73,7 +73,7 @@ const button =
   <ManageLayout>
     <PageHeader title="PDF Generator" subtitle="Generate PDFs for badge management and box labeling">
       <template #actions>
-        <!-- Filament's two header actions, each visible for its own pdf_type. `primary`
+        <!-- the old panel's two header actions, each visible for its own pdf_type. `primary`
              is the panel's info tone, `success` its ok tone. The box-labels button
              carries `tag`, lucide's equivalent of the heroicon the original used;
              ManageIcon's map gained it in the phase-9 integration pass. -->
@@ -124,7 +124,7 @@ const button =
 
         <template v-if="isBadgeList">
           <!-- Which event the list covers is the header's answer, not a field. Stated
-               rather than implied, because this page used to ignore it (audit 63). -->
+               rather than implied, because this page used to ignore it. -->
           <FormField
             label="Event"
             :model-value="event ? event.name : null"

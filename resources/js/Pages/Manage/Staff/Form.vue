@@ -2,7 +2,7 @@
 /**
  * Create and edit for a POS staff member, plus the RFID tags hanging off them.
  *
- * The tags were a Filament relation manager, which only ever rendered on this page, so
+ * The tags were an old panel relation manager, which only ever rendered on this page, so
  * they stay on this page. Their envelope arrives as the same flat top-level props every
  * list uses (rows, columns, filters, sort, search, meta), because useTableQuery reloads
  * those five keys as an Inertia partial visit and partials are filtered by top-level key.
@@ -23,11 +23,11 @@
  *
  * Three fixes are visible from here. The `Generate` button asks the server for an unused
  * setup code and writes it into form state; it persists on save and not before
- * (plan 2.10 #23). The PIN field says out loud that the value is stored in plain text,
- * because the list column reading `Set` / `Not Set` suggests otherwise (plan 2.10 #24).
+ *. The PIN field says out loud that the value is stored in plain text,
+ * because the list column reading `Set` / `Not Set` suggests otherwise.
  * And the PIN it is prefilled with is a sentinel rather than the PIN: the plaintext is
  * never shipped to the browser, so it is not in this page's props, its DOM or Inertia's
- * history state (plan 2.10 #66). Submitting the sentinel unchanged keeps the stored PIN;
+ * history state. Submitting the sentinel unchanged keeps the stored PIN;
  * emptying the field still clears it.
  */
 import { computed, ref, watch } from 'vue';
@@ -107,7 +107,7 @@ const submit = () => {
 };
 
 /*
- * The suffix action Filament put inside the Setup Code field: offered while creating, and
+ * The suffix action the old panel put inside the Setup Code field: offered while creating, and
  * on an existing member only while they still have no PIN. Read off the persisted record
  * rather than the field, so typing a PIN does not make the button vanish mid-edit.
  */
@@ -400,7 +400,7 @@ const submitTag = () => {
 
           <!--
             A text input, not a number one: `->numeric()` made the browser coerce the
-            value, so a PIN with a leading zero lost it on the way in (audit 121). The
+            value, so a PIN with a leading zero lost it on the way in. The
             server validates `digits:6` on the string.
           -->
           <FormField

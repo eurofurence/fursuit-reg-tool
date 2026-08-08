@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Machines, phase 5 (plan part 4.2). Transcribed from audit 4.6.
+ * Machines, phase 5. Transcribed from audit 4.6.
  *
  * The audit is the baseline this repository does not otherwise have, so the column list,
  * the filter labels and all six confirm strings below are literal copies out of it rather
@@ -11,11 +11,11 @@
  * Two cases carry more weight than the rest.
  *
  *  - The archived filter's blank branch. Nothing scopes archived machines at query level
- *    (audit 43): no global scope, and `withArchived()` is a scope that returns the query
+ *   : no global scope, and `withArchived()` is a scope that returns the query
  *    untouched. So "blank means notArchived" is the only thing keeping a retired till out
  *    of the list, and it is asserted for the unset filter and for the explicitly cleared
  *    one, because the client can send either.
- *  - The login link. It authenticates as the till (plan 2.10 #15, audit landmine 9), so
+ *  - The login link. It authenticates as the till, so
  *    the tests say when it may be minted, that it expires, that minting is logged, and
  *    that no page payload carries one until somebody asks.
  */
@@ -90,7 +90,7 @@ beforeEach(function () {
     Http::fake();
 
     // ManageEventScope runs on every /admin request whether or not the page is scoped,
-    // and this list deliberately is not (plan 2.9).
+    // and this list deliberately is not.
     Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -216,7 +216,7 @@ test('a machine no longer names a TSE client: it signs under whichever one is re
             ->etc());
 });
 
-test('the search box narrows on name, which the Filament table made unreachable', function () {
+test('the search box narrows on name, which the old panel table made unreachable', function () {
     actingAs($this->admin);
 
     $wanted = ($this->machine)(['name' => 'Registration Desk']);
@@ -240,7 +240,7 @@ test('the list is paginated at 200 rather than unbounded', function () {
 });
 
 /*
- * The archived filter. Blank is the whole point of it (audit 43).
+ * The archived filter. Blank is the whole point of it.
  */
 
 test('the archived filter is declared with the audit labels and opens blank', function () {
@@ -374,7 +374,7 @@ test('nothing in the module offers a delete, single, bulk or on the page', funct
 
     expect($names)->not->toContain('delete');
 
-    // And there is no route to reach one with either (audit 131).
+    // And there is no route to reach one with either.
     expect(route('admin.machines.index'))->toBeString();
     expect(fn () => route('admin.machines.destroy', 1))->toThrow(Exception::class);
 });
@@ -537,7 +537,7 @@ test('archived_at cannot be written through the form, even though the model guar
 });
 
 /*
- * The login link. A credential (plan 2.10 #15, audit landmine 9).
+ * The login link. A credential.
  */
 
 test('the edit page declares the Login Link action but mints nothing', function () {

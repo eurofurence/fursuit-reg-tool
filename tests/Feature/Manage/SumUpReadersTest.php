@@ -1,18 +1,18 @@
 <?php
 
 /*
- * SumUp readers, phase 5 (plan part 4.2). Transcribed from audit 4.11.
+ * SumUp readers, phase 5. Transcribed from audit 4.11.
  *
- * The case this file exists for is the pairing code. SumUpReaderResource rendered the
+ * The case this file exists for is the pairing code. the old reader list rendered the
  * pairing secret of a card terminal as a plain table column and a plain text input, so
- * every list view and every screenshot leaked it (audit landmine 10). Plan 2.10 #16 makes
+ * every list view and every screenshot leaked it. Plan 2.10 #16 makes
  * it masked with a real reveal action, and "masked" here is a claim about the payload, not
  * about the CSS: the assertions below check the rendered body and the Inertia JSON of the
  * list for the literal code, so a client-side toggle over data already shipped to the
  * browser would fail them.
  *
- * The second fix is `remote_id`. Filament's `readOnly()` is a client-side attribute over a
- * field that still round-trips into a `$guarded = []` model (audit landmine 12), so both
+ * The second fix is `remote_id`. the old panel's `readOnly()` is a client-side attribute over a
+ * field that still round-trips into a `$guarded = []` model, so both
  * write paths are asserted to drop it.
  */
 
@@ -51,7 +51,7 @@ beforeEach(function () {
     Http::fake(['*' => Http::response(['id' => 'rdr_FROM_SUMUP'], 200)]);
 
     // ManageEventScope runs on every /admin request whether or not the page is scoped,
-    // and this list deliberately is not (plan 2.9).
+    // and this list deliberately is not.
     Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -252,7 +252,7 @@ test('reveal hands the code back once, logs who asked, and changes nothing', fun
 });
 
 /*
- * Actions, including the Filament default confirm copy the audit records verbatim.
+ * Actions, including the old panel default confirm copy the audit records verbatim.
  */
 
 test('the page action is New sum up reader and it points at the create page', function () {
@@ -268,8 +268,8 @@ test('the page action is New sum up reader and it points at the create page', fu
 
 test('each row offers Reveal and Edit, and no delete', function () {
     // Audit 4.11: "Row actions: EditAction only. No delete row action." Reveal joins it
-    // because the plaintext left the cell (plan 2.10 #16); a delete does not, because the
-    // single delete belongs on the Edit page header where Filament put it.
+    // because the plaintext left the cell; a delete does not, because the
+    // single delete belongs on the Edit page header where the old panel put it.
     actingAs($this->admin);
 
     $row = collect(($this->props)()['rows'])->firstWhere('id', $this->reader->id);
@@ -283,7 +283,7 @@ test('each row offers Reveal and Edit, and no delete', function () {
         ->and($reveal['confirm']['submit'])->toBe('Reveal');
 });
 
-test('the bulk action is Delete selected, with Filament default bulk delete copy', function () {
+test('the bulk action is Delete selected, with the old panel default bulk delete copy', function () {
     actingAs($this->admin);
 
     $bulkActions = ($this->props)()['bulkActions'];
@@ -299,7 +299,7 @@ test('the bulk action is Delete selected, with Filament default bulk delete copy
         ]);
 });
 
-test('the edit page header carries Reveal and the delete the Filament Edit page had', function () {
+test('the edit page header carries Reveal and the delete the old panel Edit page had', function () {
     // Audit 4.11: EditSumUpReader declares Actions\DeleteAction::make(). The plan's route
     // table missed the single delete; it is registered and offered here.
     actingAs($this->admin);
@@ -334,7 +334,7 @@ test('the create page renders the form with no record', function () {
         );
 });
 
-test('creating a reader writes name and paring code and flashes the Filament copy', function () {
+test('creating a reader writes name and paring code and flashes the old panel copy', function () {
     actingAs($this->admin);
 
     post(route('admin.sumup-readers.store'), manageSumUpPayload([
@@ -351,7 +351,7 @@ test('creating a reader writes name and paring code and flashes the Filament cop
     ]);
 });
 
-test('editing a reader saves the name and flashes the Filament copy', function () {
+test('editing a reader saves the name and flashes the old panel copy', function () {
     actingAs($this->admin);
 
     put(route('admin.sumup-readers.update', $this->reader), manageSumUpPayload([
@@ -366,7 +366,7 @@ test('editing a reader saves the name and flashes the Filament copy', function (
 });
 
 test('an empty paring code on update keeps the stored one rather than blanking it', function () {
-    // The form never receives the current code (plan 2.10 #16), so an untouched field
+    // The form never receives the current code, so an untouched field
     // must not wipe the credential the card terminal is paired with.
     actingAs($this->admin);
 
@@ -390,7 +390,7 @@ test('a paring code sent on update replaces the stored one', function () {
 });
 
 /*
- * The remote_id fix. readOnly() was never a guard (audit landmine 12).
+ * The remote_id fix. readOnly() was never a guard.
  */
 
 test('a remote_id in the create payload is dropped rather than written', function () {
@@ -447,10 +447,10 @@ test('both text fields cap at 255', function () {
 });
 
 /*
- * Delete, single and bulk. Hard deletes: SumUpReader has no SoftDeletes (audit 7.7).
+ * Delete, single and bulk. Hard deletes: SumUpReader has no SoftDeletes.
  */
 
-test('deleting a reader removes the row and flashes the Filament copy', function () {
+test('deleting a reader removes the row and flashes the old panel copy', function () {
     actingAs($this->admin);
 
     delete(route('admin.sumup-readers.destroy', $this->reader))

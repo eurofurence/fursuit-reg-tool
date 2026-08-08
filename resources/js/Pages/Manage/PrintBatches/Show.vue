@@ -2,15 +2,15 @@
 /**
  * The batch detail page, successor to ViewPrintBatch and its PrintJobsRelationManager.
  *
- * Two things it does that the Filament page did not.
+ * Two things it does that the old panel page did not.
  *
  * The run controls are in the header. ViewPrintBatch::getHeaderActions() returns [] on
  * purpose, so pause, resume and cancel were reachable only from the list row: an operator
  * who opened a batch to find out which card jammed had to navigate back to stop the run
- * (audit 84). They are the same server-declared actions the row carries.
+ *. They are the same server-declared actions the row carries.
  *
  * The page polls. Staff watch this screen during a live run and it never refreshed itself
- * (plan 2.10 #26). Four props are reloaded and no more: the cards (`rows`, `meta`) plus
+ *. Four props are reloaded and no more: the cards (`rows`, `meta`) plus
  * `batch` and `actions`, because those two carry the run's status, its counters and the
  * `disabledReason` on each control. Without them a card failing mid-run - which pauses the
  * batch from `PrintJob::markFailed()` - repainted the card as Failed while the header still
@@ -113,7 +113,7 @@ usePoll(10000, { only: ['batch', 'actions', 'rows', 'meta'] });
         </FormField>
       </FormSection>
 
-      <!-- The one section Filament opens collapsed. -->
+      <!-- The one section the old panel opens collapsed. -->
       <FormSection title="Timing" :columns="3" collapsible collapsed>
         <FormField label="Created" :model-value="batch.timing.created" readonly />
         <FormField label="Started" :model-value="or(batch.timing.started, 'Not started')" readonly />

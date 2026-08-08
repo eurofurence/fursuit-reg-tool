@@ -1,7 +1,7 @@
 <?php
 
 /*
- * The top strip's counts (plan 1.2 and 2.8).
+ * The top strip's counts.
  *
  * Two things are locked in here. First, the strip has a data path at all: the segments
  * arrive as the shared `manageStrip` prop, which is what the 15s poll reloads, so the

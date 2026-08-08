@@ -9,10 +9,15 @@ use App\Enum\PrintBatchStatusEnum;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Jobs\Printing\GenerateBadgePrintFileJob;
+use App\Jobs\Printing\PrepareBadgePrintBatchJob;
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Fulfillment\Pending;
 use App\Models\Badge\State_Fulfillment\Processing;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * The single way badges get sent to a printer.
@@ -37,6 +42,20 @@ class BadgePrintQueue
      *
      * Returns null when nothing was printable, so callers can tell the
      * operator rather than reporting success over an empty run.
+     *
+     * **Nothing here renders anything.** This opens an empty Draft batch and hands the
+     * badge ids to `PrepareBadgePrintBatchJob`; the transitions, the artwork and the jobs
+     * all happen on a worker. It used to render inline, one badge at a time, inside the
+     * request the operator pressed the button in: a bulk run of unrendered badges spent
+     * seconds per card downloading an upload from S3 and driving mpdf, and a selection of
+     * any size ran the request past PHP's 30 second limit and died in the middle
+     * (Sentry c5c679fb). What it left behind is the reason preparation is now one job
+     * that either finishes or undoes itself - see `prepare()` and `abandon()`.
+     *
+     * The batch comes back as a Draft, which is inert: `scopeSelectable` and
+     * `isClaimable()` both ignore it, so no agent can claim a card out of a run that is
+     * still being prepared. Under the `sync` queue driver - the test suite - the job has
+     * already run by the time this returns, so the batch comes back Ready.
      */
     public static function queue(
         Collection $badges,
@@ -45,11 +64,7 @@ class BadgePrintQueue
         ?int $createdById = null,
         ?int $createdByStaffId = null,
     ): ?PrintBatch {
-        $badges = self::withoutCardsAlreadyOnTheirWay(
-            self::withoutUnapprovedFursuits(
-                $badges->filter(fn (Badge $badge) => $badge->exists)
-            )
-        );
+        $badges = self::printable($badges->filter(fn (Badge $badge) => $badge->exists));
 
         if ($badges->isEmpty()) {
             return null;
@@ -57,34 +72,18 @@ class BadgePrintQueue
 
         $printer = $printer ?? self::defaultBadgePrinter();
 
-        // Move to Processing first: that is what allocates custom_id, and the
-        // print file is rendered from it. Rendering before the transition
-        // would put a badge with no id on the card.
-        $badges->each(function (Badge $badge) {
-            if ($badge->status_fulfillment->canTransitionTo(Processing::class)) {
-                $badge->status_fulfillment->transitionTo(Processing::class);
-            }
-        });
-
-        $badges = $badges->map(fn (Badge $badge) => $badge->fresh());
-
-        self::ensurePrintFiles($badges);
-
-        $batch = PrintBatch::build(
+        $batch = PrintBatch::open(
+            // Before the badges reach Processing none of them has a custom_id, so the
+            // attendee range is not knowable yet. prepare() renames the batch once it is.
             name: $name ?? self::nameFor($badges),
-            badges: $badges,
             printer: $printer,
             eventId: $badges->first()?->fursuit?->event_id,
             createdById: $createdById,
             createdByStaffId: $createdByStaffId,
+            expectedJobs: $badges->count(),
         );
 
-        // Built batches are drafts, and a draft is not selectable by the
-        // agent. Nothing here is waiting on an operator to review it, so it
-        // goes straight to ready or it would sit unclaimable forever.
-        $batch->transitionTo(PrintBatchStatusEnum::Ready);
-
-        Log::info('badge print batch queued', [
+        Log::info('badge print batch opened', [
             'batch_id' => $batch->id,
             'badges' => $badges->count(),
             'printer_id' => $printer?->id,
@@ -92,7 +91,233 @@ class BadgePrintQueue
             'created_by_staff_id' => $createdByStaffId,
         ]);
 
+        PrepareBadgePrintBatchJob::dispatch(
+            batch: $batch,
+            badgeIds: $badges->map(fn (Badge $badge) => (int) $badge->getKey())->values()->all(),
+            autoName: $name === null,
+        )->afterCommit();
+
         return $batch->fresh();
+    }
+
+    /**
+     * Turn an opened batch into a run that can print. Called only from
+     * `PrepareBadgePrintBatchJob`, on a worker.
+     *
+     * Three steps, in this order and for these reasons:
+     *
+     *  1. **Transition to Processing**, in one transaction. That is what allocates
+     *     `custom_id`, and the card carries it, so it has to happen before anything is
+     *     rendered. All of them or none of them: a half-numbered selection is not
+     *     something the next attempt can reason about.
+     *  2. **Render**, outside any transaction. Each render is an S3 read, an image
+     *     decode and a PDF write, and holding row locks across minutes of that would put
+     *     the POS behind the print button.
+     *  3. **Commit and mark Ready**, in one transaction. The jobs, the badge locks, the
+     *     count, the name and the status move together or not at all.
+     *
+     * If step 2 or 3 throws, `abandon()` puts everything back: the badges this call moved
+     * return to Pending and the batch is cancelled carrying the reason. That is the whole
+     * point of preparing on a worker rather than in the request. The old inline path had
+     * no such recovery - a timeout mid-render left every selected badge in Processing with
+     * a `custom_id`, no batch, no jobs and nothing to tell an operator that the run they
+     * had just started did not exist.
+     *
+     * @param  array<int, int>  $badgeIds
+     */
+    public static function prepare(PrintBatch $batch, array $badgeIds, bool $autoName = true): void
+    {
+        $batch->refresh();
+
+        // Anything but a Draft means somebody else already dealt with this run: it was
+        // cancelled while it sat in the queue, or a previous attempt of this same job got
+        // further than this one knows about.
+        if ($batch->status !== PrintBatchStatusEnum::Draft || $batch->isSealed()) {
+            Log::info('badge print batch preparation skipped', [
+                'batch_id' => $batch->id,
+                'status' => $batch->status->value,
+                'sealed' => $batch->isSealed(),
+            ]);
+
+            return;
+        }
+
+        // Asked again here, not just at the button. Between the press and the worker
+        // picking this up, another run may have taken these badges, or a reviewer may
+        // have rejected the fursuit.
+        $badges = self::printable(Badge::whereIn('id', $badgeIds)->get());
+
+        if ($badges->isEmpty()) {
+            self::abandon($batch, [], 'Nothing was left to print by the time the run was prepared.');
+
+            return;
+        }
+
+        $moved = DB::transaction(function () use ($badges) {
+            $moved = [];
+
+            foreach ($badges as $badge) {
+                if ($badge->status_fulfillment->canTransitionTo(Processing::class)) {
+                    $badge->status_fulfillment->transitionTo(Processing::class);
+                    $moved[] = (int) $badge->getKey();
+                }
+            }
+
+            return $moved;
+        });
+
+        // Written down before the slow part starts, because the caller that has to undo
+        // this may be the job's failed() hook after the worker was killed mid-render, and
+        // that hook has no way of knowing which badges were already in Processing before
+        // the run began. Reverting one of those would take a badge somebody else is
+        // holding and put it back in the queue.
+        Cache::put(self::movedCacheKey($batch), $moved, now()->addDay());
+
+        try {
+            $badges = $badges->map(fn (Badge $badge) => $badge->fresh());
+
+            self::ensurePrintFiles($badges);
+
+            DB::transaction(function () use ($batch, $badges, $autoName) {
+                $batch->commitBadges($badges);
+
+                if ($autoName) {
+                    $batch->update(['name' => self::nameFor($badges)]);
+                }
+
+                $batch->transitionTo(PrintBatchStatusEnum::Ready);
+            });
+        } catch (Throwable $exception) {
+            self::abandon($batch, $moved, $exception->getMessage());
+
+            throw $exception;
+        }
+
+        Cache::forget(self::movedCacheKey($batch));
+
+        Log::info('badge print batch ready', [
+            'batch_id' => $batch->id,
+            'badges' => $badges->count(),
+            'printer_id' => $batch->printer_id,
+        ]);
+    }
+
+    /**
+     * Undo a preparation that did not finish: cancel the batch, put the badges back.
+     *
+     * Called from `prepare()` when a render or the commit throws, and again from the
+     * job's `failed()` hook so a worker that was killed outright - timeout, memory, a
+     * pod moving - cannot leave the run half made either. It is safe to run twice: a
+     * cancelled batch is terminal and a badge that is no longer in Processing is left
+     * alone.
+     *
+     * A batch that already holds jobs is left exactly as it is. The commit and the move
+     * to Ready are one transaction, so jobs exist only if the run really was made, and
+     * cancelling it here would throw away cards that are legitimately queued.
+     *
+     * @param  array<int, int>|null  $badgeIds  the badges this preparation moved to
+     *                                          Processing, or null to read back what
+     *                                          `prepare()` recorded before it started
+     */
+    public static function abandon(PrintBatch $batch, ?array $badgeIds, string $reason): void
+    {
+        $badgeIds ??= Cache::get(self::movedCacheKey($batch), []);
+
+        DB::transaction(function () use ($batch, $badgeIds, $reason) {
+            $batch->refresh();
+
+            if ($batch->isSealed()) {
+                return;
+            }
+
+            if (! $batch->status->isTerminal()) {
+                $batch->update(['pause_reason' => $reason]);
+                $batch->transitionTo(PrintBatchStatusEnum::Cancelled);
+            }
+
+            if ($badgeIds !== []) {
+                self::returnToPending(Badge::whereIn('id', $badgeIds)->get());
+            }
+        });
+
+        Cache::forget(self::movedCacheKey($batch));
+
+        Log::warning('badge print batch abandoned', [
+            'batch_id' => $batch->id,
+            'badges_returned' => count($badgeIds),
+            'reason' => $reason,
+        ]);
+    }
+
+    /**
+     * Where `prepare()` leaves the list of badges it moved, for its own failure hook.
+     */
+    private static function movedCacheKey(PrintBatch $batch): string
+    {
+        return "print-batch:{$batch->getKey()}:moved-to-processing";
+    }
+
+    /**
+     * Put badges back to Pending after a preparation that produced no run.
+     *
+     * A compensating write rather than a state transition, deliberately. Processing to
+     * Pending is not a step in the badge's life - it is the undoing of one that never
+     * completed - and adding the edge to the state machine would offer "back to Pending"
+     * as a manual option on every Processing badge in the admin panel, which is a
+     * different decision from this one.
+     *
+     * `custom_id` stays. It is allocated once and re-used by the next attempt, and
+     * clearing it would hand the same number to somebody else.
+     *
+     * Three guards, each of which means this badge is not ours to move: it has to still be
+     * in Processing, it must not be locked into a run, and no card may be on its way to a
+     * printer for it - which is another run having claimed it in the seconds since this
+     * one started.
+     *
+     * "On its way", not "has ever had a job". An earlier printed or cancelled job says
+     * nothing about where this badge should sit now: it was Pending a moment ago and this
+     * preparation is what moved it, so it goes back. Testing for any job at all left every
+     * reprint - every badge with history - stranded in Processing with no run, which is
+     * the exact failure this compensation exists to undo.
+     *
+     * @param  Collection<int, Badge>  $badges
+     */
+    private static function returnToPending(Collection $badges): void
+    {
+        foreach ($badges as $badge) {
+            if (! $badge->status_fulfillment instanceof Processing) {
+                continue;
+            }
+
+            $cardOnItsWay = $badge->printJobs()
+                ->whereIn('status', PrintJobStatusEnum::outstanding())
+                ->exists();
+
+            if ($badge->printing_locked_at !== null || $cardOnItsWay) {
+                continue;
+            }
+
+            $badge->forceFill(['status_fulfillment' => Pending::$name])->saveQuietly();
+
+            activity()
+                ->performedOn($badge)
+                ->withProperties([
+                    'old_status' => Processing::$name,
+                    'new_status' => Pending::$name,
+                ])
+                ->log('Badge returned to pending: the print run it was in was never created');
+        }
+    }
+
+    /**
+     * The badges in a selection that may actually be sent to a printer.
+     *
+     * @param  Collection<int, Badge>  $badges
+     * @return Collection<int, Badge>
+     */
+    private static function printable(Collection $badges): Collection
+    {
+        return self::withoutCardsAlreadyOnTheirWay(self::withoutUnapprovedFursuits($badges));
     }
 
     /**
@@ -183,9 +408,10 @@ class BadgePrintQueue
     /**
      * Render any badge whose print file is missing or no longer matches.
      *
-     * Synchronously, because PrintBatch::build() refuses a stale file and the
-     * operator is standing at the printer waiting. Queueing the render would
-     * only move the failure to a place nobody is looking at.
+     * Inline within the preparation job, not dispatched onward: `commitBadges()` refuses
+     * a stale file, so the run cannot be built until every card in it is rendered, and a
+     * second fan-out of jobs would only make "is it ready yet" something this job has to
+     * poll for. It is already off the request thread, which is the part that mattered.
      *
      * A badge that printed in an earlier run is still locked, and the lock
      * makes GenerateBadgePrintFileJob skip it. Left at that, a reprint of a

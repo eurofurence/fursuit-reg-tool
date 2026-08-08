@@ -16,15 +16,15 @@ use Illuminate\Http\Request;
 use Inertia\Response;
 
 /**
- * The dashboard, successor to the three Filament widgets (audit 6): StatsOverview,
+ * The dashboard, successor to the three the old panel widgets: StatsOverview,
  * BadgeStatusChart and EventComparisonChart.
  *
  * All three resolved "which event am I looking at" for themselves, three times, out of
- * `session('filament_selected_event_id')` (audit 101). Here it is resolved once, from
+ * the old panel's event session key. Here it is resolved once, from
  * App\Support\Manage\EventScope, the panel's one event filter, and handed to the four
  * stats and the two charts. That is also what makes the dashboard obey the header
  * selector the same way every list does: it narrows on a selected event and widens on
- * "All events", which under FilamentEventSelector was an unreachable state (plan 2.9).
+ * "All events", which under the old event-selector middleware was an unreachable state.
  *
  * Every prop here is a read. Nothing on this page writes, and neither does the 15s poll
  * that reloads `stats` and `charts`: the counts are counts, the chart data is a grouped
@@ -37,13 +37,13 @@ use Inertia\Response;
 class DashboardController extends Controller
 {
     /**
-     * The five colours of the widget's ramp (audit 6.2), in its order, now bound one per
+     * The five colours of the widget's ramp, in its order, now bound one per
      * fulfillment state instead of being handed out in `GROUP BY` order.
      *
      * `array_slice($colors, 0, count($statusData))` gave out fewer colours than there
      * were segments as soon as a real event produced more than five payment x fulfillment
      * combinations, and the mapping moved every time the grouping came back in a
-     * different order (audit 114). Binding hue to fulfillment and opacity to payment
+     * different order. Binding hue to fulfillment and opacity to payment
      * covers all ten combinations and cannot drift between two polls.
      */
     private const FULFILLMENT_COLORS = [
@@ -84,7 +84,7 @@ class DashboardController extends Controller
      * The dashboard.
      *
      * `stats` and `charts` are separate top-level props because the poll reloads exactly
-     * those two and nothing else (plan 2.4), and closures so a partial visit that asks
+     * those two and nothing else, and closures so a partial visit that asks
      * for one does not run the other's queries.
      */
     public function index(Request $request, EventScope $scope): Response
@@ -102,7 +102,7 @@ class DashboardController extends Controller
      * Write the global event selection.
      *
      * A missing or null event_id means all events, which is a real state here rather
-     * than the unreachable branch it was under FilamentEventSelector. An unknown id is
+     * than the unreachable branch it was under the old event-selector middleware. An unknown id is
      * a validation error, so the session can never hold an id nothing matches.
      *
      * Lives on the dashboard controller only because phase 0 owns no other non-module
@@ -219,7 +219,7 @@ class DashboardController extends Controller
      *
      * `No previous event` now means what it says. The widget printed it whenever the diff
      * was exactly zero, so two events with the same badge count reported that the older
-     * one did not exist (audit 115). A zero diff against a real event reads
+     * one did not exist. A zero diff against a real event reads
      * `0 vs {name}`, the same shape as the other two branches.
      *
      * @return array<string, mixed>
@@ -267,7 +267,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * BadgeStatusChart (audit 6.2). Doughnut, legend at the bottom, one segment per
+     * BadgeStatusChart. Doughnut, legend at the bottom, one segment per
      * payment x fulfillment combination that has badges.
      *
      * @return array<string, mixed>
@@ -326,7 +326,7 @@ class DashboardController extends Controller
      * The grouped count behind the doughnut.
      *
      * `selectRaw('status_payment, status_fulfillment, COUNT(*) as count')` is replaced
-     * (audit landmine 18). The two grouped columns go through the builder so the grammar
+     *. The two grouped columns go through the builder so the grammar
      * quotes them for whichever driver is connected, the aggregate is plain ANSI
      * `COUNT(*)`, and its alias is `badge_count`, not the bare `count` the widget used.
      * The select list is exactly the two grouped columns plus the aggregate, so MySQL's
@@ -402,7 +402,7 @@ class DashboardController extends Controller
     /**
      * One stable colour per combination: the fulfillment state picks the hue, the payment
      * state picks the opacity. A state neither map knows is grey rather than undefined,
-     * which is what chart.js drew once the ramp ran out (audit 114).
+     * which is what chart.js drew once the ramp ran out.
      */
     private function statusColor(string $payment, string $fulfillment): string
     {
@@ -415,7 +415,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * EventComparisonChart (audit 6.3). Two fixed bars, one dataset per event.
+     * EventComparisonChart. Two fixed bars, one dataset per event.
      *
      * @return array<string, mixed>
      */

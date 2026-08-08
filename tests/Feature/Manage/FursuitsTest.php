@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Fursuits (plan phase 3, audit 4.3, 4.3.1, 4.3.3, 4.3.4, 4.3.5).
+ * Fursuits.
  *
  * This is the busiest surface in the panel and the one with the most surprising current
  * behaviour, so the assertions below are split three ways:
@@ -215,7 +215,7 @@ test('the cells carry the owner, species, state badge and a signed image url', f
         );
 
     // s3, not the default disk: every read site in the panel already assumed s3 while
-    // the Filament upload wrote wherever the default pointed (audit 7.4). The url is
+    // the old panel upload wrote wherever the default pointed. The url is
     // signed and short-lived, so the assertion is on the object it points at.
     expect(FursuitController::imageUrl('fursuits/fluffy.jpg'))
         ->toContain('fursuits/fluffy.jpg')
@@ -240,7 +240,7 @@ test('a fursuit with no owner still renders', function () {
 
 test('the only row action is View, and the one page action is the review queue', function () {
     // ViewAction only: EditAction sits commented out in the resource, no bulk actions are
-    // declared, and the create header action is refused by the policy (audit 4.3, 38).
+    // declared, and the create header action is refused by the policy.
     // The page action is new: without it the way into the queue is a URL you have to know,
     // and the list is where a reviewer lands.
     $fursuit = ($this->fursuit)();
@@ -373,7 +373,7 @@ test('the view page ships the infolist content', function () {
             // fill a preview. The fixture stamps the render on, so this is the variant path.
             ->where('fursuit.image', fn ($url) => str_contains((string) $url, '.webp'))
             // The publication verdict, which is the half of a review that `status` cannot
-            // carry, and presence, which the Filament page never showed at all.
+            // carry, and presence, which the old panel page never showed at all.
             ->where('fursuit.publication.blocked', false)
             ->where('fursuit.presence.others', [])
         );
@@ -386,7 +386,7 @@ test('the record page offers no verdicts, only the way into the queue', function
      * decision with different copy, different confirm dialogs and - because the queue owns the undo
      * window and the presence banner - different safety.
      *
-     * The claim is gone too (plan 2.10 #41, audit 69/71): a five-minute cache lock taken on page load
+     * The claim is gone too: a five-minute cache lock taken on page load
      * that then refused every verdict unless the caller held it. Presence replaced it, shown and
      * never enforced.
      */
@@ -498,7 +498,7 @@ test('Approve runs PendingToApproved and advances to the next pending fursuit', 
 });
 
 test('Approve refuses, and says so, when the state has no room for it', function () {
-    // plan 2.10 #43, audit 72: the Filament action logged an error and returned with no
+    // plan 2.10 #43, audit 72: the old panel action logged an error and returned with no
     // operator feedback whatsoever. The refusal is no longer about a claim - there is none -
     // but about the record's own state.
     $fursuit = ($this->fursuit)(['status' => Approved::$name]);
@@ -585,7 +585,7 @@ test('the rejection reasons come from the table the desk edits, keyword and body
     /*
      * They were a PHP list, so the persisted select value was the integer index 0-7: clearing the
      * select threw "Undefined array key" and reordering the array silently rewired every prefill
-     * (plan 2.10 #40, audit 37). They are now rows in `review_reasons`, edited in Settings, keyed
+     *. They are now rows in `review_reasons`, edited in Settings, keyed
      * by slug - stable under reordering and under a rewording - and each carries two texts: the
      * keyword the queue puts on a chip and the body the attendee receives.
      */
@@ -956,7 +956,7 @@ test('the edit form prefills the record and offers only the allowed transitions'
             // plan 2.6: a relation select, not a numeric TextInput.
             ->count('events', 2)
             ->where('uploadPurpose', 'fursuit_image')
-            // EditFursuit's own header: View plus Filament's default delete copy.
+            // EditFursuit's own header: View plus the old panel's default delete copy.
             ->where('actions.0.name', 'view')
             ->where('actions.1.confirm', [
                 'heading' => 'Delete fursuit',
@@ -1108,7 +1108,7 @@ test('approved_at and rejected_at cannot be written by hand any more', function 
         ->and($fursuit->rejected_at)->toBeNull();
 });
 
-test('the form validates the fields the Filament schema required', function () {
+test('the form validates the fields the old panel schema required', function () {
     $fursuit = ($this->fursuit)();
 
     actingAs($this->admin)->put(route('admin.fursuits.update', $fursuit), [])
@@ -1141,7 +1141,7 @@ test('a fursuit is soft deleted and disappears from the list', function () {
     expect(Fursuit::whereKey($fursuit->id)->exists())->toBeFalse()
         ->and(Fursuit::withTrashed()->whereKey($fursuit->id)->exists())->toBeTrue()
         // FursuitObserver::deleting cascades the soft delete to the fursuit's badges, so
-        // none is left orphaned with a null deleted_at (audit 78, docs/bugfix-04-fix.md).
+        // none is left orphaned with a null deleted_at.
         ->and(Badge::where('fursuit_id', $fursuit->id)->exists())->toBeFalse()
         ->and(Badge::withTrashed()->where('fursuit_id', $fursuit->id)->exists())->toBeTrue();
 
@@ -1157,7 +1157,7 @@ test('a fursuit is soft deleted and disappears from the list', function () {
 
 test('a reviewer works the queue but cannot edit or delete a record', function () {
     // The whole moderation surface is gated on `view`, which a reviewer holds, while
-    // editing the row itself stays admin-only. That is the split the Filament page had.
+    // editing the row itself stays admin-only. That is the split the old panel page had.
     $fursuit = ($this->fursuit)();
 
     actingAs($this->reviewer);

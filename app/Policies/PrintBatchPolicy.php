@@ -8,10 +8,10 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * New. `PrintBatchResource` has no policy at all, so pausing, resuming and cancelling a
+ * New. `the old batch list` has no policy at all, so pausing, resuming and cancelling a
  * live convention print run are reachable today by anyone who passes the panel gate,
  * including an `is_reviewer`-only user - while merely looking at a printer needs
- * `is_admin` through `PrinterPolicy` (audit 51). Plan 2.10 #18 closes that.
+ * `is_admin` through `PrinterPolicy`. Plan 2.10 #18 closes that.
  *
  * Reading is `is_admin`, and so is everything else. Batch oversight is what the resource
  * exists for - staff who are not standing at the printer watch the run from here - but
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Gate;
  * things that change a run - pause, resume, cancel and the manual verification - were
  * already `is_admin` and are unchanged.
  *
- * `verify` acts on a PrintJob but is asked of the batch, which is what Filament's relation
+ * `verify` acts on a PrintJob but is asked of the batch, which is what the old panel's relation
  * manager did: a relation manager authorizes against the owner record, not against the
  * child. Keeping the same subject means "may this operator touch this run" has one answer
  * rather than two that can drift, and `PrintJobPolicy` is left to govern the print-job
@@ -29,8 +29,8 @@ use Illuminate\Support\Facades\Gate;
  *
  * `create`, `update` and `delete` are false and stay false. A batch can only come from
  * `PrintBatch::build()`, which needs the badges it will contain, and it is immutable once
- * built: `canCreate(): false` is the only resource-level override the Filament resource
- * carries, and there is no delete action on batches anywhere (audit 4.8, audit 7.7).
+ * built: `canCreate(): false` is the only resource-level override old resource
+ * carries, and there is no delete action on batches anywhere.
  */
 class PrintBatchPolicy
 {

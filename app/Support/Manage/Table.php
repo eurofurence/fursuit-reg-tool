@@ -171,8 +171,8 @@ final class Table
     }
 
     /**
-     * The four tables Filament ran with ->paginated(false) become perPage 200 with the
-     * pager still visible (plan 2.3), which needs an option the stock list does not carry.
+     * The four tables the old panel ran with ->paginated(false) become perPage 200 with the
+     * pager still visible, which needs an option the stock list does not carry.
      *
      * @param  array<int, int>  $options
      */
@@ -188,6 +188,8 @@ final class Table
      */
     public function toArray(Request $request): array
     {
+        $this->rememberReturnUrl($request);
+
         $search = trim((string) $request->input('search', ''));
         $filterValues = $this->resolveFilterValues($request);
 
@@ -239,6 +241,39 @@ final class Table
             'bulkActions' => array_map(fn (Action $action) => $action->toArray(), $this->bulkActions),
             'pageActions' => array_map(fn (Action $action) => $action->toArray(), $this->pageActions),
         ];
+    }
+
+    /**
+     * Remembers the list URL, query string and all, so a save can come back to it.
+     *
+     * Tab, filters, search, sort and page live entirely in the URL, so a controller that
+     * finishes an edit with `redirect()->route('...index')` lands on the bare list and
+     * every one of them is gone. That is the whole of the "my filters reset when I save"
+     * complaint: nothing was forgotten, the redirect just never carried it.
+     *
+     * Session rather than a `?return=` parameter because the round trip is index → edit →
+     * POST → redirect, and the middle two are the module's own pages: threading the URL
+     * through every edit link and every form would be the same fix written seventeen
+     * times. Keyed by table name, so two modules cannot send each other to the wrong list.
+     */
+    private function rememberReturnUrl(Request $request): void
+    {
+        if ($request->isMethod('GET')) {
+            session()->put("manage.table.{$this->name}.return", $request->fullUrl());
+        }
+    }
+
+    /**
+     * The list URL to go back to after an edit, or $fallback on a first visit.
+     *
+     * Only ever returns a URL this app itself served to this session, so there is nothing
+     * here an outside caller can point at another host.
+     */
+    public static function returnUrl(string $name, string $fallback): string
+    {
+        $stored = session("manage.table.{$name}.return");
+
+        return is_string($stored) && $stored !== '' ? $stored : $fallback;
     }
 
     /**
@@ -352,7 +387,7 @@ final class Table
 
     /**
      * A filter absent from the request falls back to its declared default, which is how
-     * the fursuit list keeps opening on "pending" the way the Filament table did.
+     * the fursuit list keeps opening on "pending" the way the old panel table did.
      *
      * Filter::CLEARED is the third state: the operator picked the "all" placeholder or
      * hit Clear, and the filter must stay off rather than be re-defaulted. Without it

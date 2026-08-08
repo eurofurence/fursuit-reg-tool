@@ -60,7 +60,7 @@ class PrintJobPolicy
      * An ability of its own rather than a reuse of `update`, so the question "may this
      * operator put another card through the hardware" can be answered differently from
      * "may this operator edit the record" without either answer moving the other. The
-     * Filament retry action carried no authorization beyond the resource's own; this is
+     * the old panel retry action carried no authorization beyond the resource's own; this is
      * the same `is_admin` answer, asked explicitly.
      */
     public function retry(User $user, PrintJob $printJob): bool

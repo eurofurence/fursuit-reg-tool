@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The staff list, successor to StaffResource's table and its ListStaff page.
+ * The staff list, successor to the old staff list's table and its ListStaff page.
  *
  * The envelope arrives as top-level props rather than one nested object, because
  * useTableQuery reloads rows/meta/filters/sort/search as an Inertia partial visit and

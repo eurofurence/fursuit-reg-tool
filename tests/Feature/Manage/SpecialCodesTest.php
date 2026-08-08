@@ -1,16 +1,16 @@
 <?php
 
 /*
- * Special codes (plan phase 1, audit 4.4).
+ * Special codes.
  *
  * The module 500s in production on two formatting closures that type-hint `string $state`
  * for values that are routinely absent: `class_name`, which the form never made required
- * (audit 30), and `event_id`, whose event row can be gone because events are hard-deleted
- * (audit 31). Both are covered below, because a null-safe list is the only reason this
+ *, and `event_id`, whose event row can be gone because events are hard-deleted
+ *. Both are covered below, because a null-safe list is the only reason this
  * module is in phase 1 at all.
  *
  * The rest is parity: four columns, no filters, the two `code` uniqueness rules, hard
- * delete with Filament's own confirm copy, and the stock Created / Saved / Deleted toasts
+ * delete with the old panel's own confirm copy, and the stock Created / Saved / Deleted toasts
  * this resource never overrode.
  */
 
@@ -229,7 +229,7 @@ test('sorting and paging survive the partial reload the client actually sends', 
 });
 
 test('the list is scoped by the global event selector', function () {
-    // New behaviour (plan 2.9): every row has an event_id and nothing ever filtered on it.
+    // New behaviour: every row has an event_id and nothing ever filtered on it.
     $mine = ($this->code)();
     ($this->code)(['event_id' => $this->otherEvent->id, 'code' => 'OTH01']);
 
@@ -243,7 +243,7 @@ test('the list is scoped by the global event selector', function () {
         ->assertInertia(fn (Assert $page) => $page->count('rows', 2));
 });
 
-test('the row, bulk and page actions carry Filament default copy', function () {
+test('the row, bulk and page actions carry the old panel default copy', function () {
     ($this->code)();
 
     ($this->scoped)(null)->get(route('admin.special-codes.index'))
@@ -274,7 +274,7 @@ test('the create form ships its options and the live catch-url base', function (
             ->has('actionSchemas')
             ->count('events', 2)
             // The unchanging half of {scheme}://{fcea.domain}/?code={code}&auto, so the
-            // preview can be rebuilt on every keystroke instead of once at render (audit 33).
+            // preview can be rebuilt on every keystroke instead of once at render.
             ->where('catchUrlBase', SpecialCodeController::catchUrlBase())
         );
 
@@ -757,7 +757,7 @@ test('event_id is required and must exist', function () {
 });
 
 test('catch_url is never written, whatever the request carries', function () {
-    // `dehydrated(false)` in Filament. The model is `$guarded = []`, so the request has
+    // `dehydrated(false)` in the old panel. The model is `$guarded = []`, so the request has
     // to be the thing that refuses it.
     actingAs($this->admin)
         ->post(route('admin.special-codes.store'), [
@@ -813,7 +813,7 @@ test('every ability belongs to an admin, so a reviewer is shut out of the whole 
 });
 
 test('bulk delete refuses an unauthorized caller even when the ids match nothing', function () {
-    // The all-or-nothing loop (plan 2.5) only speaks for rows it loaded, so an empty
+    // The all-or-nothing loop only speaks for rows it loaded, so an empty
     // result set walked straight past it and answered a reviewer with the success
     // 'Deleted' toast. The endpoint asks the same question the button is offered on,
     // which is what Users already did.

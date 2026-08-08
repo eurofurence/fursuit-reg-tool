@@ -2,7 +2,7 @@
 /**
  * Create and edit for a machine, the successor to CreateMachine and EditMachine.
  *
- * The field order is MachineResource's flat schema: name, TSE client, SumUp reader,
+ * The field order is the old machine list's flat schema: name, TSE client, SumUp reader,
  * should-discover-printers. `archived_at` is not a field here and never was; archiving is
  * its own action on the list.
  *
@@ -35,7 +35,7 @@ const editing = computed(() => Boolean(props.machine?.id));
 const form = useForm({
   name: props.machine?.name ?? '',
   sumup_reader_id: props.machine?.sumup_reader_id ?? '',
-  // Unticked on create, which is what the Filament Checkbox did: it set no default, so
+  // Unticked on create, which is what the old panel Checkbox did: it set no default, so
   // a new machine was saved with this off even though the column defaults to true. Kept
   // as it is rather than quietly changed, since the plan lists no fix for it.
   should_discover_printers: props.machine?.should_discover_printers ?? false,

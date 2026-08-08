@@ -1,6 +1,6 @@
 <script setup>
 /**
- * The user list, successor to UserResource's table and its ManageUsers page.
+ * The user list, successor to the old user list's table and its ManageUsers page.
  *
  * Rendered inside SettingsLayout, not ManageLayout: Users is a Settings pane rather than a
  * rail group of its own (see routes/manage/users.php), so the settings submenu stays beside
@@ -12,7 +12,7 @@
  * partials are filtered by top-level key. DataTable still wants one object, so the props
  * are gathered back up here.
  *
- * There is no filter set: UserResource declares `->filters([ // ])`. DataTable still gets
+ * There is no filter set: the old user list declares `->filters([ // ])`. DataTable still gets
  * `searchable`, so its toolbar renders with the search box alone, which is what the three
  * searchable columns need.
  *

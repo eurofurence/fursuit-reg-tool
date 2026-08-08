@@ -1,16 +1,16 @@
 <?php
 
 /*
- * Phase 0 access contract for the Inertia panel at /admin (plan part 4.2, item 1).
+ * Phase 0 access contract for the Inertia panel at /admin.
  *
  * There is no baseline suite to inherit here: DbServiceMaintenancePageTest was the only
- * test in the repository that touched the admin at all, and it covered one Filament page.
+ * test in the repository that touched the admin at all, and it covered one the old panel page.
  * So this file states the panel-level rules from scratch rather than porting them.
  *
- * Filament is gone (plan part 5). /admin-legacy is now a redirect kept for one release so
+ * the old panel is gone. /admin-legacy is now a redirect kept for one release so
  * bookmarked deep links land on the new panel, and that is what is pinned below.
  *
- * The route names are admin.* (plan part 5 step 14). The panel group is the only thing
+ * The route names are admin.*. The panel group is the only thing
  * that registers them, admin.badge-pdf.* included, which is what the URL and name
  * assertions below are for.
  */
@@ -43,14 +43,13 @@ beforeEach(function () {
 
 test('a guest is redirected to login rather than shown a manage login form', function () {
     // There is no /admin/login. The `auth` middleware pushes guests into the existing
-    // Identity SSO flow, which is what the Filament panel already does.
+    // Identity SSO flow, which is what the old panel already does.
     get(route('admin.dashboard'))
         ->assertRedirect(route('login'));
 });
 
-test('the panel is mounted at /admin and the Filament route names are gone', function () {
+test('the panel is mounted at /admin', function () {
     expect(route('admin.dashboard', absolute: false))->toBe('/admin');
-    expect(Route::has('filament.admin.pages.dashboard'))->toBeFalse();
 });
 
 test('no manage.* route name survives the rename', function () {
@@ -82,7 +81,7 @@ test('the admin.badge-pdf routes keep their names and URLs inside the panel grou
 });
 
 test('the admin.badge-pdf routes refuse a signed-in attendee', function () {
-    // They sat behind `auth` alone (audit landmine 60), and `custom_id` is
+    // They sat behind `auth` alone, and `custom_id` is
     // `{attendee_id}-{n}`, so the whole namespace was enumerable from any attendee
     // number: every logged-in user could pull any other attendee's badge PDF, image,
     // name, species and Catch-Em-All QR code included. `can:access-manage` closed that per
@@ -178,7 +177,7 @@ test('the manage-only props stay off every other interface', function () {
 });
 
 test('/admin-legacy redirects to the panel instead of 404ing', function () {
-    // The Filament mount is gone. The redirect stays for one release so a bookmark still
+    // The old panel mount is gone. The redirect stays for one release so a bookmark still
     // lands somewhere useful. It is deliberately unguarded: /admin does the checking.
     get('/admin-legacy')->assertRedirect('/admin');
 });

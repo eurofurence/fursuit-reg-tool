@@ -191,7 +191,7 @@ Grep for `pos.wallet` afterwards; a stale Ziggy route name fails at runtime, not
 
 | file | change |
 |---|---|
-| `app/Models/User.php` | drop `implements Customer, WalletFloat` (keep `FilamentUser`), drop `CanPayFloat` from the trait list, drop the 3 `Bavix\` imports |
+| `app/Models/User.php` | drop `implements Customer, WalletFloat`, drop `CanPayFloat` from the trait list, drop the 3 `Bavix\` imports |
 | `app/Models/Badge/Badge.php` | drop `implements ProductInterface`, drop `HasWalletFloat`, drop the 3 `Bavix\` imports, delete `getAmountProduct()` (63) and `getMetaProduct()` (68) |
 | `app/Models/Machine.php` | drop `HasWalletFloat` and its import |
 | `config/wallet.php` | delete |
@@ -253,6 +253,6 @@ which is itself the proof that badge state is the better record.
 ## Open item
 
 `AuthController:106` (`$user->wallet->balance;`) exists to force wallet creation on login. Nothing
-replaces it, and nothing needs to — but confirm no Filament resource or admin widget lazily
-assumes `$user->wallet` is non-null. A grep of `app/Filament/` for `wallet|balance|forcePay|refund`
+replaces it, and nothing needs to — but confirm no admin screen or widget lazily
+assumes `$user->wallet` is non-null. A grep of the admin controllers for `wallet|balance|forcePay|refund`
 returns nothing, so this looks clear.

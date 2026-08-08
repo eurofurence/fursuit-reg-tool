@@ -2,7 +2,7 @@
 /**
  * The print-job view page, successor to ViewPrintJob.
  *
- * The Filament resource defined no infolist, so its view page fell back to rendering the
+ * The old panel resource defined no infolist, so its view page fell back to rendering the
  * form schema disabled. The same fields are here as read-only rows, plus the five the
  * resource surfaced nowhere at all: the batch, the sequence in it, the printable, how the
  * job's completion is known and whether anybody has vouched for the card.

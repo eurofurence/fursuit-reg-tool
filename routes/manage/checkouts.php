@@ -8,14 +8,14 @@ use Illuminate\Support\Facades\Route;
  * Checkouts (phase 8, audit 4.5). German fiscal records under DSFinV-K and a Fiskaly TSE.
  *
  * Four routes, and the shape of the set is the point: there is no create, no edit, no
- * update and no delete, because CheckoutResource hard-refuses all three today and
+ * update and no delete, because the old checkout list hard-refuses all three today and
  * CheckoutPolicy now refuses them at the model layer as well. Adding a verb here would be
  * a new write path to a tamper-evident record, which plan part 3 does not sanction.
  *
- * `receipt` is a GET that streams the PDF. It is the re-homed link: the Filament actions
+ * `receipt` is a GET that streams the PDF. It is the re-homed link: the old panel actions
  * pointed at `pos.checkout.receipt`, which lives behind `pos-auth:machine` plus
  * `pos-auth:machine-user`, so an admin browsing /admin without an active till session was
- * bounced rather than shown the receipt (plan 2.10 #36, audit 13). Same PDF, served under
+ * bounced rather than shown the receipt. Same PDF, served under
  * the manage guard.
  *
  * `print` is a POST on its own sub-resource, handled by its own controller, for the reason

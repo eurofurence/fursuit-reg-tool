@@ -331,7 +331,7 @@ class Fursuit extends Model
     }
 
     /**
-     * The five-minute cache lock the Filament panel used to reserve a record.
+     * The five-minute cache lock the old panel used to reserve a record.
      *
      * Legacy only. The Inertia panel replaced it with FursuitPresence, which is advisory:
      * it tells a reviewer that somebody else is on the record and keeps the queue from
@@ -339,7 +339,7 @@ class Fursuit extends Model
      * refused decisions instead, which meant a reviewer who opened a record by link could
      * do nothing with it, and a stale lock froze a record for five minutes.
      *
-     * Unused since the Filament panel was removed: nothing calls it any more.
+     * Unused since the old panel was removed: nothing calls it any more.
      */
     private function getClaimCacheKey(): string
     {

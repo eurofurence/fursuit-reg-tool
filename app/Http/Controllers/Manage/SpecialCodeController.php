@@ -18,22 +18,22 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Response;
 
 /**
- * Catch-Em-All special codes (successor to SpecialCodeResource and ManageSpecialCodes).
+ * Catch-Em-All special codes (successor to the old special-code list and ManageSpecialCodes).
  *
  * Two of the four columns 500 the whole list today, both for the same reason: their
  * formatting closures type-hint `string $state` for values that are routinely absent
- * (audit landmines 30 and 31). Nothing is formatted in a closure here; the row
+ *. Nothing is formatted in a closure here; the row
  * transformer hands the table plain nullable strings and the client renders its own
  * fallback, which is the single fix plan 2.10 #7 asks for across four such columns.
  *
- * Create and edit are real pages with real URLs rather than the Filament modals, and
+ * Create and edit are real pages with real URLs rather than the old panel modals, and
  * the list is event-scoped, which it never was even though every row carries an
- * `event_id` (plan 2.9).
+ * `event_id`.
  */
 class SpecialCodeController extends Controller
 {
     /**
-     * Filament's model label for this resource, as its delete modals render it.
+     * the old panel's model label for this resource, as its delete modals render it.
      */
     private const MODEL_LABEL = 'special code';
 
@@ -64,10 +64,10 @@ class SpecialCodeController extends Controller
     {
         SpecialCode::create($request->payload());
 
-        // Filament's stock create toast; this resource declares none of its own.
+        // the old panel's stock create toast; this resource declares none of its own.
         Toast::flashSuccess('Created');
 
-        return redirect()->route('admin.special-codes.index');
+        return redirect()->to(Table::returnUrl('special-codes', route('admin.special-codes.index')));
     }
 
     public function edit(SpecialCode $code): Response
@@ -83,7 +83,7 @@ class SpecialCodeController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('admin.special-codes.index');
+        return redirect()->to(Table::returnUrl('special-codes', route('admin.special-codes.index')));
     }
 
     /**
@@ -139,9 +139,9 @@ class SpecialCodeController extends Controller
      * The label for a stored class name: the option label when it is one of ours, the
      * raw class otherwise, and null when there is none.
      *
-     * The Filament closure was `fn (string $state): string`, so a code saved without a
+     * The old panel closure was `fn (string $state): string`, so a code saved without a
      * class (the field is not required) took the entire table down with a TypeError
-     * (audit 30). The null is handled here and the client renders the empty-cell
+     *. The null is handled here and the client renders the empty-cell
      * placeholder.
      */
     public static function classLabel(?string $className): ?string
@@ -171,7 +171,7 @@ class SpecialCodeController extends Controller
 
     /**
      * The Catch-Em-All auto-catch link for a code. Verbatim from
-     * SpecialCodeResource::buildCatchAutoUrl().
+     * the old special-code list::buildCatchAutoUrl().
      */
     public static function catchUrl(string $code): string
     {
@@ -180,7 +180,7 @@ class SpecialCodeController extends Controller
 
     /**
      * The unchanging half of the link, so the form's preview can update as the operator
-     * types instead of being computed once at render (audit 33).
+     * types instead of being computed once at render.
      */
     public static function catchUrlBase(): string
     {
@@ -196,7 +196,7 @@ class SpecialCodeController extends Controller
     private function table(Request $request, EventScope $scope): array
     {
         // `with('event')` is the whole of the N+1 fix: the Event column ran one
-        // `Event::where('id', $state)` per row (audit 99).
+        // `Event::where('id', $state)` per row.
         $query = $scope->apply(SpecialCode::query()->with('event'));
 
         return Table::make($query)

@@ -29,39 +29,38 @@ use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
- * Print jobs, the successor to PrintJobResource and its four pages (audit 4.9).
+ * Print jobs, the successor to the old print-job list and its four pages.
  *
  * This module drives real hardware, so two rules shape everything below. Nothing here
  * queues, re-queues or completes a card as a side effect of rendering a page: `retry`
  * lives on its own POST endpoint in PrintJobRetryController and is the only thing that
  * makes a new job. And the status field no longer writes the column.
  *
- * Five differences from Filament, all of them decisions the plan already made.
+ * Five differences from the old panel, all of them decisions the plan already made.
  *
  *  - `?printer=` is an ordinary filter. It was a resource-wide `getEloquentQuery()` scope
  *    that fired on the view and edit pages too, with no chip to clear it from the UI
- *    (plan 2.3, audit 88). The page title still names the printer, as ListPrintJobs did.
+ *   . The page title still names the printer, as ListPrintJobs did.
  *  - `status` is a transition picker and the write goes through the model's own state
  *    handling, so marking a job Printed releases the printer, promotes the badge to
  *    ReadyForPickup and recalculates the batch counters instead of leaving the badge
- *    stuck in Processing (plan 2.10 #10, audit 22). The picker offers operator edges
+ *    stuck in Processing. The picker offers operator edges
  *    only: Queued, Printing and Retrying belong to the agent and its lease, and a card
- *    put there from a form is never claimed and never reaped (plan 2.10 #64).
- *  - deleting jobs settles the parent batch, single and bulk. The Filament bulk delete
+ *    put there from a form is never claimed and never reaped.
+ *  - deleting jobs settles the parent batch, single and bulk. The old panel bulk delete
  *    desynced `total_jobs` / `printed_count` / `verified_count` / `failed_count`
- *    permanently, and every progress badge in the printing slice reads them (plan 2.10
- *    #11, audit 23). Deleting the last outstanding job also finishes the run and hands
+ *    permanently, and every progress badge in the printing slice reads them. Deleting the last outstanding job also finishes the run and hands
  *    the badge's print lock back, and a job a machine is holding is not deletable at all
- *    (plan 2.10 #65).
+ *   .
  *  - `cancelled` is in the status vocabulary: the colour map, the filter and the picker.
  *    It was missing from all three, so a cancelled job rendered unstyled and could not be
- *    found (plan 1.3, audit 87).
+ *    found.
  *  - creating a badge job requires a batch. A batch-less badge job lands in the
  *    receipt-only unbatched lane, which `PrintJob::claimNextUnbatched()` filters to
- *    `type = Receipt`, so it sat Pending forever (audit 89).
+ *    `type = Receipt`, so it sat Pending forever.
  *
  * The type is always `App\Enum\PrintJobTypeEnum`, never the raw string `'receipt'` that
- * CheckoutResource writes (audit landmine 4). The Filament side is left alone.
+ * the old checkout list writes. The old panel side is left alone.
  *
  * The list is deliberately not event-scoped: plan 2.9 lists print jobs among the surfaces
  * that stay unscoped, matching today. A job belongs to the hall, not to an event.
@@ -69,13 +68,13 @@ use Inertia\Response;
 class PrintJobController extends Controller
 {
     /**
-     * Filament's default table date-time format, kept so the two timestamp columns read
+     * the old panel's default table date-time format, kept so the two timestamp columns read
      * the same after the move. The ISO string rides along as the cell title.
      */
     private const DATETIME_FORMAT = 'M j, Y H:i:s';
 
     /**
-     * Filament's model label for this resource, as its delete modals render it.
+     * the old panel's model label for this resource, as its delete modals render it.
      */
     private const MODEL_LABEL = 'print job';
 
@@ -124,7 +123,7 @@ class PrintJobController extends Controller
     /**
      * The morphable targets the create form will accept, keyed by class name.
      *
-     * The `printable_*` columns are NOT NULL, and the Filament create form collected
+     * The `printable_*` columns are NOT NULL, and the old panel create form collected
      * neither, so creating a print job from admin has always thrown an integrity error.
      * The pair is asked for here instead. Read by PrintJobRequest as well, so the form and
      * the rules cannot disagree.
@@ -156,7 +155,7 @@ class PrintJobController extends Controller
     }
 
     /**
-     * The read-only page. ViewPrintJob defined no infolist, so Filament fell back to
+     * The read-only page. ViewPrintJob defined no infolist, so the old panel fell back to
      * rendering the form schema disabled; this renders the same fields as text.
      */
     public function show(PrintJob $printJob): Response
@@ -213,8 +212,8 @@ class PrintJobController extends Controller
 
         $batch?->recalculateCounters();
 
-        // Filament's built-in Created toast; PrintJobResource declares none of its own
-        // beyond the retry notification (audit 7.2).
+        // the old panel's built-in Created toast; the old print-job list declares none of its own
+        // beyond the retry notification.
         Toast::flashSuccess('Created');
 
         return redirect()->route('admin.print-jobs.show', $printJob);
@@ -230,7 +229,7 @@ class PrintJobController extends Controller
     /**
      * Writes the plain attributes, then runs the status change as a transition.
      *
-     * Never `$job->status = ...`. That is the whole of plan 2.10 #10: the Filament form
+     * Never `$job->status = ...`. That is the whole of plan 2.10 #10: the old panel form
      * wrote the column through the default save, so no `printed_at` / `failed_at` stamp
      * happened, no `completion_source` was recorded, the printer was never released, the
      * badge was never promoted to ReadyForPickup and the batch counters were never
@@ -268,7 +267,7 @@ class PrintJobController extends Controller
 
             if (! $moved) {
                 // The record moved under the operator between rendering the form and
-                // submitting it. Filament wrote the column regardless and said nothing.
+                // submitting it. the old panel wrote the column regardless and said nothing.
                 Toast::flashDanger(
                     'The status was not changed',
                     'This print job can no longer move to that status.',
@@ -284,7 +283,7 @@ class PrintJobController extends Controller
             $this->settleBatch($printJob->batch);
         }
 
-        // Filament's stock EditRecord toast; this resource declares none of its own.
+        // the old panel's stock EditRecord toast; this resource declares none of its own.
         Toast::flashSuccess('Saved');
 
         return redirect()->route('admin.print-jobs.show', $printJob);
@@ -324,11 +323,11 @@ class PrintJobController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('admin.print-jobs.index');
+        return redirect()->to(Table::returnUrl('print-jobs', route('admin.print-jobs.index')));
     }
 
     /**
-     * All-or-nothing (plan 2.5): if any selected record fails the policy nothing is
+     * All-or-nothing: if any selected record fails the policy nothing is
      * deleted and a danger toast says why, rather than half a selection disappearing.
      *
      * Every batch touched by the selection is recalculated once, after the rows are gone.
@@ -368,7 +367,7 @@ class PrintJobController extends Controller
         $badges = $jobs->map->printable;
 
         // Per record rather than a mass delete, so model events still fire, which is what
-        // Filament's DeleteBulkAction did.
+        // the old panel's DeleteBulkAction did.
         $jobs->each->delete();
 
         $badges->each(fn ($badge) => $this->releasePrintLock($badge));
@@ -476,7 +475,7 @@ class PrintJobController extends Controller
     /**
      * `Print Jobs`, or `Print Jobs - {name}` while the printer filter is on.
      *
-     * Filament read `request('printer')`; the filter is `filter[printer]` now, and
+     * the old panel read `request('printer')`; the filter is `filter[printer]` now, and
      * Filter::CLEARED means the operator turned it off rather than never set it.
      */
     private function title(Request $request): string
@@ -500,7 +499,7 @@ class PrintJobController extends Controller
         return Table::make($this->query())
             ->name('print-jobs')
             ->columns($this->columns())
-            // PrintJobResource: ->defaultSort('id', 'desc').
+            // the old print-job list: ->defaultSort('id', 'desc').
             ->defaultSort('id', 'desc')
             ->filters($this->filters())
             ->rows(fn (PrintJob $job) => $this->cells($job))
@@ -517,7 +516,7 @@ class PrintJobController extends Controller
      * The list query.
      *
      * `printer`, `processingMachine` and `printable` were all lazy-loaded on a table
-     * polling every five seconds, which is three queries a row on every tick (audit 97).
+     * polling every five seconds, which is three queries a row on every tick.
      * `batch` joins them because the batch a card belongs to is now on the list at all.
      */
     private function query(): Builder
@@ -526,7 +525,7 @@ class PrintJobController extends Controller
     }
 
     /**
-     * The audit's eleven columns, in order, with Filament's own auto labels verbatim,
+     * The audit's eleven columns, in order, with the old panel's own auto labels verbatim,
      * plus the batch.
      *
      * `printer.name` and `processingMachine.name` are keyed `printer_name` and
@@ -534,9 +533,9 @@ class PrintJobController extends Controller
      * data_get consumer, including Inertia's own prop assertions.
      *
      * The batch column is the one addition. `print_batch_id` and `sequence` are surfaced
-     * nowhere in the Filament resource, so from the print-jobs list you cannot tell which
+     * nowhere in old resource, so from the print-jobs list you cannot tell which
      * run a card belongs to - which is also what made the retry action so awkward to use
-     * (audit 4.9, audit 85).
+     *.
      *
      * @return array<int, Column>
      */
@@ -564,7 +563,7 @@ class PrintJobController extends Controller
             Column::datetime('printed_at', 'Printed')->fallback('Not printed'),
             Column::text('error_message', 'Error')->fallback('None'),
 
-            // Toggleable rather than fixed: it is the one column the Filament list never
+            // Toggleable rather than fixed: it is the one column the old panel list never
             // had, so an operator who wants the old shape can put it away.
             Column::text('batch', 'Batch')->toggleable()->fallback('Unbatched'),
         ];
@@ -581,8 +580,8 @@ class PrintJobController extends Controller
             'id' => $job->id,
             'printer_name' => $job->printer?->name,
             // One vocabulary and one tone set for both enums, decided server-side. The
-            // Filament column printed the raw ->value through a deprecated BadgeColumn
-            // whose 'secondary' entries rendered unstyled (plan 1.3, audit 7.9, 7.10).
+            // the old panel column printed the raw ->value through a deprecated BadgeColumn
+            // whose 'secondary' entries rendered unstyled.
             'type' => Status::printJobType($job->type),
             'status' => Status::printJob($job->status),
             'printable' => $this->printable($job),
@@ -600,9 +599,9 @@ class PrintJobController extends Controller
      * `Badge #{custom_id}` for a badge, `{ClassBasename} #{id}` for anything else.
      *
      * The type test goes through the model's morph class rather than the hardcoded
-     * literal `'App\Models\Badge\Badge'` the Filament closure compared against, which
+     * literal `'App\Models\Badge\Badge'` the old panel closure compared against, which
      * falls into the class_basename branch the moment a morph map is registered
-     * (audit 90). A soft-deleted badge has no `custom_id` to show, so the row falls back
+     *. A soft-deleted badge has no `custom_id` to show, so the row falls back
      * to the id it still has rather than rendering `Badge #` with nothing after it.
      */
     private function printable(PrintJob $job): ?string
@@ -621,8 +620,8 @@ class PrintJobController extends Controller
     /**
      * The priority ladder, verbatim: >= 10 danger, >= 5 warning, >= 1 info, else gray.
      *
-     * Null-safe. The Filament closure type-hinted `int $state`, so one null priority was
-     * a TypeError and a 500 for the whole table (plan 2.10 #7, audit 29).
+     * Null-safe. The old panel closure type-hinted `int $state`, so one null priority was
+     * a TypeError and a 500 for the whole table.
      *
      * @return array{label: string, tone: string, icon: string|null}
      */
@@ -711,7 +710,7 @@ class PrintJobController extends Controller
      *
      * `printer` is the one that changes shape: it was a resource-wide
      * `getEloquentQuery()` scope keyed off `request()->has('printer')`, which applied to
-     * the view and edit pages as well and had no chip to clear it (plan 2.3, audit 88).
+     * the view and edit pages as well and had no chip to clear it.
      *
      * `verified` is the sixth, and it is not a parity item: the status strip shipped in
      * phase 0 links here with `filter[status]=printed&filter[verified]=0` to reach the
@@ -727,10 +726,10 @@ class PrintJobController extends Controller
     private function filters(): array
     {
         return [
-            // All seven cases, including `cancelled`, which the Filament select, the
-            // colour map and this filter all omitted (plan 1.3, audit 87). The wording is
+            // All seven cases, including `cancelled`, which the old panel select, the
+            // colour map and this filter all omitted. The wording is
             // the enum's own label(), so `queued` reads `Claimed` here and on the batch
-            // card list rather than one of each (audit 7.9).
+            // card list rather than one of each.
             Filter::select('status', 'Status')
                 ->placeholder('All statuses')
                 ->options(collect(PrintJobStatusEnum::cases())
@@ -752,7 +751,7 @@ class PrintJobController extends Controller
                     ->all())
                 ->apply(fn (Builder $query, string $value) => $query->where('printer_id', $value)),
 
-            // Free values, declared as such rather than as optionless selects. Filament
+            // Free values, declared as such rather than as optionless selects. the old panel
             // rendered them as TextInputs inside a filter form; as selects they were
             // dropdowns with nothing in them, so ListPrintJobs drew its own inputs on the
             // page. The filter bar renders both from the declaration now.
@@ -776,7 +775,7 @@ class PrintJobController extends Controller
     }
 
     /**
-     * View, Edit and Retry, as PrintJobResource declared them.
+     * View, Edit and Retry, as the old print-job list declared them.
      *
      * Retry is offered only where the model says it is possible - Failed, with fewer than
      * three retries behind it - and only to an operator the policy allows, because it puts
@@ -812,19 +811,28 @@ class PrintJobController extends Controller
      */
     private function bulkActions(): array
     {
-        // A bare class name would reach PrintJobPolicy::delete() as its $printJob
-        // argument and fail the type hint, so the question "may this operator delete print
-        // jobs at all" is asked with a throwaway instance.
-        if (! Gate::allows('delete', new PrintJob)) {
-            return [];
-        }
+        // A bare class name would reach the policy as its $printJob argument and fail the
+        // type hint, so the question "may this operator do this to print jobs at all" is
+        // asked with a throwaway instance.
+        return array_values(array_filter([
+            Gate::allows('retry', new PrintJob)
+                ? Action::post('reset', 'Reset to pending', route('admin.print-jobs.bulk.reset'))
+                    ->icon('refresh-cw')
+                    ->tone(Status::WARN)
+                    ->confirm(
+                        'Reset selected print jobs to pending',
+                        'They go back into their run as unclaimed cards, keeping their sequence and batch, and will print again. Jobs that have already printed or been cancelled cannot be reset.',
+                        'Reset',
+                    )
+                : null,
 
-        return [
-            Action::delete('delete', 'Delete selected', route('admin.print-jobs.bulk.destroy'))
-                ->icon('trash-2')
-                ->tone(Status::DANGER)
-                ->confirm('Delete selected print jobs', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete'),
-        ];
+            Gate::allows('delete', new PrintJob)
+                ? Action::delete('delete', 'Delete selected', route('admin.print-jobs.bulk.destroy'))
+                    ->icon('trash-2')
+                    ->tone(Status::DANGER)
+                    ->confirm('Delete selected print jobs', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete')
+                : null,
+        ]));
     }
 
     /**
@@ -843,7 +851,7 @@ class PrintJobController extends Controller
 
     /**
      * The view page's fields, in the order the form schema declares them, plus the four
-     * the Filament resource surfaced nowhere: the batch, the sequence, the completion
+     * old resource surfaced nowhere: the batch, the sequence, the completion
      * source and the verification.
      *
      * @return array<string, mixed>
@@ -938,8 +946,8 @@ class PrintJobController extends Controller
                 ->values()
                 ->all(),
             /*
-             * EditPrintJob's own header: View, and Delete with Filament's default delete
-             * copy (audit 4.9).
+             * EditPrintJob's own header: View, and Delete with the old panel's default delete
+             * copy.
              */
             'actions' => $printJob === null ? [] : array_map(
                 fn (Action $action) => $action->toArray(),

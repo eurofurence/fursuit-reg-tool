@@ -1,14 +1,14 @@
 <?php
 
 /*
- * Checkouts, phase 8 (plan part 4). Transcribed from audit 4.5 and 4.5.1.
+ * Checkouts, phase 8. Transcribed from audit 4.5 and 4.5.1.
  *
  * A checkout is a German fiscal record: TSE-signed, DSFinV-K exported, legally required to
  * be tamper-evident. Three groups of cases therefore carry more weight than the parity
  * transcription:
  *
  *  - the record cannot be created, edited or deleted from the panel, by anybody, through
- *    any verb. Filament refused those three in a UI class; the refusal is a policy now, and
+ *    any verb. the old panel refused those three in a UI class; the refusal is a policy now, and
  *    there is no route to reach either way.
  *  - nothing writes as a side effect of reading. Opening the list or the detail page must
  *    not queue a receipt, insert a print job or touch a column.
@@ -75,7 +75,7 @@ beforeEach(function () {
     Storage::fake('local');
 
     // ManageEventScope runs on every /admin request whether or not the page is scoped, and
-    // this list deliberately is not (plan 2.9).
+    // this list deliberately is not.
     $this->event = Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -149,7 +149,7 @@ beforeEach(function () {
 
 /*
  * Access. CheckoutPolicy answers is_admin for everything. Reading was access-manage at
- * cutover, matching the unguarded Filament resource; reviewers were then narrowed to
+ * cutover, matching the unguarded old resource; reviewers were then narrowed to
  * Dashboard, Badges and Fursuits, and a checkout is an attendee payment record a fursuit
  * reviewer has no business in. See docs/admin/roles.md.
  */
@@ -181,7 +181,7 @@ test('a reviewer cannot print a receipt either', function () {
 });
 
 /*
- * The central guarantee of the module. CheckoutResource's canCreate / canEdit / canDelete
+ * The central guarantee of the module. the old checkout list's canCreate / canEdit / canDelete
  * were three lines in a UI class; they are a policy now, and there is no route either way.
  */
 
@@ -355,7 +355,7 @@ test('the Sum summariser totals the filtered set rather than the page', function
 
     expect(($this->props)()['meta']['summary'])->toBe(['label' => 'Total', 'value' => '€35.00']);
 
-    // Paging must not shrink the total: Filament summarises the query, not the page.
+    // Paging must not shrink the total: the old panel summarises the query, not the page.
     expect(($this->props)(['per_page' => 10, 'page' => 1])['meta']['summary']['value'])->toBe('€35.00');
 
     // Filtering must move it.
@@ -384,7 +384,7 @@ test('the status filter matches on the stored state names rather than class name
     // Multiple, as the resource declares it.
     expect(($this->props)(['filter' => ['status' => ['FINISHED', 'CANCELLED']]])['rows'])->toHaveCount(2);
 
-    // The FQCN keying Filament used has to match nothing, which is the bug being fixed.
+    // The FQCN keying the old panel used has to match nothing, which is the bug being fixed.
     expect(($this->props)(['filter' => ['status' => [Finished::class]]])['rows'])->toHaveCount(0);
 });
 
@@ -487,7 +487,7 @@ test('the detail header carries Download Receipt and Print Receipt', function ()
 /* The receipt link, re-homed. */
 
 test('the receipt is served under the manage guard rather than the POS route group', function () {
-    // audit 13: the Filament actions pointed at pos.checkout.receipt, which sits behind
+    // audit 13: the old panel actions pointed at pos.checkout.receipt, which sits behind
     // pos-auth:machine plus pos-auth:machine-user.
     $checkout = ($this->checkout)();
 
@@ -521,7 +521,7 @@ test('printing a receipt queues the render, creates the job with the enum, and s
     actingAs($this->admin)
         ->post(route('admin.checkouts.print', $checkout))
         ->assertRedirect()
-        // CheckoutResource's success notification, verbatim.
+        // the old checkout list's success notification, verbatim.
         ->assertSessionHas(MANAGE_CHECKOUT_TOAST.'.title', 'Receipt added to print queue')
         ->assertSessionHas(
             MANAGE_CHECKOUT_TOAST.'.body',
@@ -561,7 +561,7 @@ test('the printer is looked up by the enum, not by the raw string', function () 
     actingAs($this->admin)
         ->post(route('admin.checkouts.print', $checkout))
         ->assertRedirect()
-        // CheckoutResource's danger notification, verbatim.
+        // the old checkout list's danger notification, verbatim.
         ->assertSessionHas(MANAGE_CHECKOUT_TOAST.'.title', 'No receipt printer found')
         ->assertSessionHas(MANAGE_CHECKOUT_TOAST.'.body', 'Please configure an active receipt printer first.');
 
@@ -595,7 +595,7 @@ test('printing twice does not queue two receipts for one fiscal record', functio
         // The second click still reports the truth: the receipt is queued.
         ->assertSessionHas(MANAGE_CHECKOUT_TOAST.'.title', 'Receipt added to print queue');
 
-    // audit 14: the Filament action could be fired repeatedly to spam duplicates.
+    // audit 14: the old panel action could be fired repeatedly to spam duplicates.
     expect(PrintJob::count())->toBe(1);
 
     // Both asks are on the record, so a reprint request is never invisible.
@@ -636,7 +636,7 @@ test('an already rendered receipt is not rendered again', function () {
 /* The detail page. */
 
 test('the detail page shows the TSE columns that exist rather than the one that does not', function () {
-    // audit landmine 5: `tse_signature` is not a column, so the Filament field was
+    // audit landmine 5: `tse_signature` is not a column, so the old panel field was
     // permanently blank and the real signatures were invisible everywhere in admin.
     $checkout = ($this->checkout)([
         'tse_start_signature' => 'START-SIG-ABC',
@@ -678,7 +678,7 @@ test('the detail page carries the checkout information fields', function () {
         ->and($view['updated_at'])->not->toBeNull();
 });
 
-/* Checkout items (audit 4.5.1). */
+/* Checkout items. */
 
 test('the items table renders the six columns in order, read-only', function () {
     $checkout = ($this->checkout)();
@@ -697,7 +697,7 @@ test('the items table renders the six columns in order, read-only', function () 
         ->and($props['bulkActions'])->toBe([])
         ->and($props['pageActions'])->toBe([])
         ->and($props['filters'])->toBe([])
-        // ->paginated(false) becomes perPage 200 with the pager visible (plan 2.3).
+        // ->paginated(false) becomes perPage 200 with the pager visible.
         ->and($props['meta']['perPage'])->toBe(200);
 });
 

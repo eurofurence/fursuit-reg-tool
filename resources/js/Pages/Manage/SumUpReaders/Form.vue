@@ -2,17 +2,17 @@
 /**
  * Create and edit for a SumUp reader, replacing CreateSumUpReader and EditSumUpReader.
  *
- * Two fields differ from the Filament schema and both are plan changes, not drift.
+ * Two fields differ from the old panel schema and both are plan changes, not drift.
  *
  * `remote_id` is rendered as read-only text rather than a `readOnly()` input, on both
- * pages as Filament had it. Filament's attribute was a client-side guard over a field
+ * pages as the old panel had it. the old panel's attribute was a client-side guard over a field
  * that still round-tripped into a `$guarded = []` model, so a crafted POST rewrote the
- * SumUp-side binding (plan 2.10 #17). It is not in the form state here, so there is
+ * SumUp-side binding. It is not in the form state here, so there is
  * nothing to submit.
  *
  * `paring_code` opens empty on edit. The stored code is never shipped to the browser
- * (plan 2.10 #16); the header's Reveal action is the only way to read it, and leaving the
- * field blank keeps it. On create it is required, exactly as Filament had it.
+ *; the header's Reveal action is the only way to read it, and leaving the
+ * field blank keeps it. On create it is required, exactly as the old panel had it.
  */
 import { computed } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
@@ -88,7 +88,7 @@ const submit = () => {
           />
 
           <!--
-            On create as well as on edit. Filament rendered a readOnly() TextInput on both
+            On create as well as on edit. the old panel rendered a readOnly() TextInput on both
             pages, empty on create because SumUp has not bound the reader yet; hiding it
             there would drop a field the audit records rather than change how it is
             written.

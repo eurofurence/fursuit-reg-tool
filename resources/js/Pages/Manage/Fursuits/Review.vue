@@ -18,7 +18,7 @@
  * - **Nothing is submitted by picking a reason.** Pick, then confirm - because a mis-click
  * on a reason chip must not mail an attendee. The undo window is the second net.
  *
- * Four things it does that the Filament page did not.
+ * Four things it does that the old panel page did not.
  *
  * - Three outcomes instead of yes/no, so a gallery rule no longer costs a badge.
  * - Keyboard: A/R/G choose a verdict, 1-9 pick that verdict's reason, Enter confirms, the left

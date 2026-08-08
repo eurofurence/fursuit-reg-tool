@@ -1,7 +1,7 @@
 <?php
 
 /*
- * The filter contract every list page inherits from App\Support\Manage\Table (plan 2.3).
+ * The filter contract every list page inherits from App\Support\Manage\Table.
  *
  * The case that matters is the third state. A `filter[...]` key that is absent means
  * "not set" and falls back to the declared default, which is how the fursuit list keeps

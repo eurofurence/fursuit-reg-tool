@@ -14,7 +14,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
  * There is no policy at all today. RfidTagsRelationManager declares no canViewForRecord
  * and no can* overrides, so every ability on the model is open and the only thing
  * protecting it is that the relation manager lives on the Staff edit page, which
- * StaffPolicy keeps admin-only (audit 54, plan 2.2). One route registration outside that
+ * StaffPolicy keeps admin-only. One route registration outside that
  * page and the tags are readable and writable by anyone; the rebuild moves the tags onto
  * their own endpoints, so the guard has to stop being incidental.
  *
@@ -52,7 +52,7 @@ class RfidTagPolicy
     }
 
     /**
-     * Hard delete, row and bulk: `rfid_tags` carries no SoftDeletes (audit 7.7).
+     * Hard delete, row and bulk: `rfid_tags` carries no SoftDeletes.
      */
     public function delete(User $user, RfidTag $rfidTag): bool
     {

@@ -7,7 +7,7 @@
  * partials are filtered by top-level key. DataTable still wants one object, so the props
  * are gathered back up here.
  *
- * No filters and no search: the Filament table declared neither, and the only narrowing
+ * No filters and no search: the old panel table declared neither, and the only narrowing
  * that exists is the global event scope, which the strip already owns. So DataTable is
  * mounted without `searchable`. No column is toggleable either, so DataTable draws no
  * toolbar at all here and the rows start straight under the header.

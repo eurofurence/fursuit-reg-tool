@@ -15,32 +15,32 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Response;
 
 /**
- * SumUp readers, the successor to SumUpReaderResource and its three pages (audit 4.11).
+ * SumUp readers, the successor to the old reader list and its three pages.
  *
  * Three shapes change and none of them is a parity gap.
  *
- *  - The `paring_code` is masked. Filament rendered the pairing code of a payment terminal
+ *  - The `paring_code` is masked. the old panel rendered the pairing code of a payment terminal
  *    as a plain table column and a plain text input, so every list view and every
- *    screenshot of this page leaked it (plan 2.10 #16, audit landmine 10). Masked here
+ *    screenshot of this page leaked it. Masked here
  *    means the plaintext never enters the list payload at all: the cell carries a fixed
  *    dot string, and the real value only ever leaves the server through `reveal`, which is
  *    its own authorized request and writes an activity entry naming who asked.
  *  - `remote_id` is no longer writable. `readOnly()` was a client-side attribute over a
  *    field that still round-tripped through the request into a `$guarded = []` model, so a
- *    crafted POST rewrote the SumUp-side binding (plan 2.10 #17, audit landmine 12). It is
+ *    crafted POST rewrote the SumUp-side binding. It is
  *    shown on the form as read-only text and is not in the request payload at all.
  *  - Create, edit and delete are real pages and real routes rather than the resource's
- *    Filament pages, and the single delete that lived on the Edit page header is
+ *    the old panel pages, and the single delete that lived on the Edit page header is
  *    registered as its own route alongside the bulk one.
  *
  * The column name stays misspelled. `paring_code` is baked into
  * 2024_09_14_224516_create_sumup_readers_table and into the POS code paths that read it,
- * so correcting the spelling here would break them (plan 2.10 #16).
+ * so correcting the spelling here would break them.
  *
  * On audit 132, deleting a reader still breaks the human-readable link between a past card
  * checkout and the terminal that took it: `machines.sumup_reader_id` is `nullOnDelete`.
  * The warning is deliberately not in the confirm copy, because both delete confirmations
- * are pinned to Filament's default copy verbatim by the parity checklist and a second
+ * are pinned to the old panel's default copy verbatim by the parity checklist and a second
  * sentence would break that. The decision is recorded here instead.
  *
  * The list is deliberately not event-scoped: plan 2.9 lists SumUp readers among the
@@ -90,11 +90,11 @@ class SumUpReaderController extends Controller
     {
         SumUpReader::create($request->validated());
 
-        // Filament's built-in Created toast; SumUpReaderResource defines none of its own
-        // (audit 4.11, 7.2).
+        // the old panel's built-in Created toast; the old reader list defines none of its own
+        // .
         Toast::flashSuccess('Created');
 
-        return redirect()->route('admin.sumup-readers.index');
+        return redirect()->to(Table::returnUrl('sumup-readers', route('admin.sumup-readers.index')));
     }
 
     public function edit(SumUpReader $reader): Response
@@ -126,7 +126,7 @@ class SumUpReaderController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('admin.sumup-readers.index');
+        return redirect()->to(Table::returnUrl('sumup-readers', route('admin.sumup-readers.index')));
     }
 
     /**
@@ -158,7 +158,7 @@ class SumUpReaderController extends Controller
      * Hard delete: SumUpReader carries no SoftDeletes, and audit 7.7 lists SumUp readers
      * among the tables that stay hard deletes.
      *
-     * The route the Filament Edit page header action had, which the plan's route table
+     * The route the old panel Edit page header action had, which the plan's route table
      * originally missed.
      */
     public function destroy(SumUpReader $reader): RedirectResponse
@@ -169,11 +169,11 @@ class SumUpReaderController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('admin.sumup-readers.index');
+        return redirect()->to(Table::returnUrl('sumup-readers', route('admin.sumup-readers.index')));
     }
 
     /**
-     * All-or-nothing (plan 2.5): if any selected record fails the policy nothing is
+     * All-or-nothing: if any selected record fails the policy nothing is
      * deleted and a danger toast says why, rather than half a selection disappearing.
      *
      * The endpoint authorizes the same question the bulk button is offered on, so an
@@ -202,7 +202,7 @@ class SumUpReaderController extends Controller
         }
 
         // Per record rather than a mass delete, so model events still fire, which is what
-        // Filament's DeleteBulkAction did.
+        // the old panel's DeleteBulkAction did.
         $readers->each->delete();
 
         Toast::flashSuccess('Deleted');
@@ -218,11 +218,11 @@ class SumUpReaderController extends Controller
         return Table::make(SumUpReader::query())
             ->name('sumup-readers')
             ->columns($this->columns())
-            // SumUpReaderResource declares no defaultSort and falls back to primary-key
+            // the old reader list declares no defaultSort and falls back to primary-key
             // order. Stated rather than left implicit, so the order does not depend on
             // whatever the driver happens to return.
             ->defaultSort('id')
-            // SumUpReaderResource declares `->filters([ // ])`.
+            // the old reader list declares `->filters([ // ])`.
             ->filters([])
             ->rows(fn (SumUpReader $reader) => [
                 'name' => $reader->name,
@@ -248,7 +248,7 @@ class SumUpReaderController extends Controller
                         )
                     : null,
                 // Edit, and no delete: audit 4.11 records `EditAction` only on the row.
-                // The single delete lives on the Edit page header, where Filament put it,
+                // The single delete lives on the Edit page header, where the old panel put it,
                 // and the bulk delete on the selection.
                 Gate::allows('update', $reader)
                     ? Action::link('edit', 'Edit', route('admin.sumup-readers.edit', $reader))->icon('pencil')
@@ -261,7 +261,7 @@ class SumUpReaderController extends Controller
 
     /**
      * The audit's three columns, in order. None of them is sortable, searchable or
-     * toggleable in Filament, and none of them becomes so here.
+     * toggleable in the old panel, and none of them becomes so here.
      *
      * @return array<int, Column>
      */
@@ -311,7 +311,7 @@ class SumUpReaderController extends Controller
 
     /**
      * The Edit page header. `EditSumUpReader` carried a DeleteAction and nothing else
-     * (audit 4.11); Reveal joins it because the edit form is where an operator is when
+     *; Reveal joins it because the edit form is where an operator is when
      * they need the code, and the form deliberately does not carry it.
      *
      * @return array<int, array<string, mixed>>

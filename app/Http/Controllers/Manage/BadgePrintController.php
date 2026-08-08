@@ -6,6 +6,7 @@ use App\Domain\Printing\Exceptions\StalePrintFileException;
 use App\Domain\Printing\Models\PrintBatch;
 use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Services\BadgePrintQueue;
+use App\Enum\PrintBatchStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\BadgePrintRequest;
@@ -14,6 +15,7 @@ use App\Models\Badge\State_Fulfillment\Processing;
 use App\Support\Manage\Action;
 use App\Support\Manage\Status;
 use App\Support\Manage\Toast;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
@@ -21,8 +23,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The two endpoints that put badges through a printer (audit 4.2, `printBadge` and
- * `printBadgeBulk`).
+ * The two endpoints that put badges through a printer.
  *
  * They live apart from BadgeController for the same reason PrintJobRetryController lives
  * apart from PrintJobController: the CRUD controller owns pages and props, this owns a
@@ -37,13 +38,13 @@ use Illuminate\Support\Facades\Log;
  *    printing lock. Even one badge gets its own, which is why the row action queues
  *    rather than creating a job.
  *  - the **order** is `PrintBatch::sortBadgesForPrinting()`, called from `build()`:
- *    attendee ascending, badge number descending inside an attendee. The Filament bulk
+ *    attendee ascending, badge number descending inside an attendee. The old panel bulk
  *    action pre-sorted its selection by attendee id and its own comment says the batch
  *    does the ordering anyway, so that sort is not reproduced here. A second ordering
  *    could only ever disagree with the one that is actually frozen into the jobs.
  *
  * **Authorisation is `viewAny` on Badge, not `manage-admin`.** That is the gate the two
- * Filament actions inherited from the resource (`is_admin || is_reviewer`) and neither
+ * the old panel actions inherited from the resource (`is_admin || is_reviewer`) and neither
  * declared one of its own, so this is exactly the audience that can print today.
  * Narrowing printing to admins is a live-convention decision the plan's risk register
  * parks on the operators rather than on this PR ("confirm with the operators who actually
@@ -55,7 +56,7 @@ use Illuminate\Support\Facades\Log;
 class BadgePrintController extends Controller
 {
     /**
-     * `printBadge`'s confirm heading is its own label, because the Filament action called
+     * `printBadge`'s confirm heading is its own label, because the old panel action called
      * a bare `requiresConfirmation(true)`.
      */
     private const ROW_LABEL = 'Print Badge';
@@ -86,22 +87,22 @@ class BadgePrintController extends Controller
     private const NOTHING_QUEUED = 'Nothing was queued';
 
     /**
-     * `printBadge`, the row action (audit 4.2, row action 2).
+     * `printBadge`, the row action.
      *
-     * The transition to Processing happens first and through the state machine, never as
-     * a write: it is what allocates `custom_id`, and the artwork is rendered from it.
-     * `BadgePrintQueue::queue()` makes the same move for every badge it is handed, so
-     * this is the same edge asked for twice and the second ask is a no-op; it is spelled
-     * out because the Filament helper spelled it out, and because a badge that cannot
-     * reach Processing must still be printable (a reprint of a picked-up card).
+     * The request does not move the badge to Processing, and must not. That transition is
+     * what allocates `custom_id`, so it belongs with the render that puts the id on the
+     * card, and both now happen in `PrepareBadgePrintBatchJob`. Doing it here as well
+     * would put the badge in Processing before the run exists, and a preparation that
+     * then failed could not undo it: the job only returns badges *it* moved, precisely so
+     * it cannot revert one that belongs to some other run.
      *
      * No printer is passed, exactly as `printBadge()` passed none: the queue falls back
      * to the first active badge printer.
      *
-     * The two log lines are `printBadge()`'s own, keys included. They are the only record
-     * of who put a single card through a printer and what state it was in when they did:
-     * the batch log below them names the batch but not the badge it came from, and a
-     * reprint of a card that cannot reach Processing writes no activity entry either.
+     * The log line is `printBadge()`'s own, keys included. It is the only record of who
+     * put a single card through a printer and what state it was in when they did: the
+     * batch log names the batch but not the badge it came from, and a reprint of a card
+     * that cannot reach Processing writes no activity entry either.
      */
     public function store(Badge $badge): RedirectResponse
     {
@@ -116,25 +117,13 @@ class BadgePrintController extends Controller
             'can_transition' => $badge->status_fulfillment->canTransitionTo(Processing::class),
         ]);
 
-        if ($badge->status_fulfillment->canTransitionTo(Processing::class)) {
-            $badge->status_fulfillment->transitionTo(Processing::class);
-        }
-
-        $badge->refresh();
-
-        Log::info('printBadge after transition', [
-            'badge_id' => $badge->id,
-            'after_fulfillment' => $badge->status_fulfillment->getValue(),
-            'after_payment' => $badge->status_payment->getValue(),
-        ]);
-
         $batch = $this->queue(collect([$badge]), null);
 
         if ($batch === null) {
             return back();
         }
 
-        // New: the Filament action gave no feedback at all (plan 2.10 #45, audit 7.2).
+        // New: the old panel action gave no feedback at all.
         Toast::flashSuccess(
             'Badge queued for printing',
             $this->queuedBody($batch),
@@ -144,10 +133,10 @@ class BadgePrintController extends Controller
     }
 
     /**
-     * `printBadgeBulk`, the bulk action (audit 4.2, bulk action 1).
+     * `printBadgeBulk`, the bulk action.
      *
      * The selection can never cross a page, which is `->selectCurrentPageOnly()` and a
-     * deliberate operational cap the panel keeps (plan 2.3).
+     * deliberate operational cap the panel keeps.
      *
      * The badges are read in a single query ordered by id, only so the request is
      * deterministic. The print order is `PrintBatch::build()`'s and nothing here competes
@@ -179,17 +168,63 @@ class BadgePrintController extends Controller
             $this->queuedBody($batch),
         );
 
-        return back();
+        return $this->backWithCutoff($badges);
+    }
+
+    /**
+     * Back to the list, with the approval cutoff moved past the run just queued.
+     *
+     * These badges are about to come off the printer and be filed, so the operator's next
+     * run wants what was approved after the newest of them and nothing before it. Writing
+     * the bound into `filter[approved_from]` is what makes that the default next view
+     * rather than something to set by hand between every run.
+     *
+     * The bound is the newest `approved_at` in the run rather than now(), because a badge
+     * approved between the operator ticking the boxes and pressing Print was never in this
+     * batch and must not be filtered away by it.
+     *
+     * A run whose badges carry no approval timestamp leaves the filter alone; there is no
+     * cutoff to be had, and overwriting a good one with a blank would be worse than
+     * leaving it.
+     *
+     * @param  EloquentCollection<int, Badge>  $badges
+     */
+    private function backWithCutoff(EloquentCollection $badges): RedirectResponse
+    {
+        // Parsed rather than read straight off the model: Fursuit does not cast
+        // `approved_at`, so these are raw strings from the driver.
+        $newest = $badges->loadMissing('fursuit')
+            ->pluck('fursuit.approved_at')
+            ->filter()
+            ->map(fn ($at) => Carbon::parse($at))
+            ->max();
+
+        if (! $newest) {
+            return back();
+        }
+
+        $target = back()->getTargetUrl();
+        $parts = parse_url($target);
+        parse_str($parts['query'] ?? '', $query);
+
+        // The control the chip renders is a datetime-local, whose value has no zone and no
+        // seconds; anything else round-trips into a blank box.
+        $query['filter']['approved_from'] = $newest->format('Y-m-d\TH:i');
+
+        return redirect()->to(
+            ($parts['path'] ?? '/').'?'.http_build_query($query)
+        );
     }
 
     /**
      * The one call into the print pipeline, plus the two refusals it can produce.
      *
-     * `PrintBatch::build()` throws `StalePrintFileException` when a badge's artwork is
-     * missing or no longer matches the order, and nothing in the printing UI has ever
-     * surfaced that (audit 93). The queue renders anything stale synchronously first, so
-     * reaching this catch means the render itself did not produce a usable file - which
-     * is a refusal the operator standing at the printer has to be told about, not a 500.
+     * `StalePrintFileException` is a refusal to batch artwork that is missing or no longer
+     * matches the order. It is raised where the run is committed, which is on
+     * the worker now, so this catch only still fires under the `sync` queue driver - the
+     * test suite, and a console run. Kept rather than dropped because it is the same
+     * refusal either way, and an operator is better told than shown a 500. On a real queue
+     * the same failure cancels the batch with the message on it instead.
      *
      * @param  Collection<int, Badge>  $badges
      */
@@ -219,23 +254,28 @@ class BadgePrintController extends Controller
 
     /**
      * What the success toast says under its title: the batch the agent will claim from,
-     * and how many cards are in it. A batch name carries the attendee range, which is how
-     * the cards are filed, so it is the one string that tells an operator which pile they
-     * are about to be handed.
+     * and how many cards are in it.
+     *
+     * A run is prepared on a queue, so at the moment this is written the artwork is still
+     * being rendered and the batch is a Draft no agent can claim. Saying "ready to print"
+     * there would be a lie that sends an operator to a printer that has nothing to do
+     * yet, so the copy depends on where the batch actually is: Ready under the `sync`
+     * driver, where preparation has already finished, and preparing anywhere else.
      */
     private function queuedBody(PrintBatch $batch): string
     {
         $name = $batch->name ?? 'Batch #'.$batch->id;
+        $cards = $batch->total_jobs === 1 ? '' : ' ('.$batch->total_jobs.' cards)';
 
-        return $batch->total_jobs === 1
-            ? $name.' is ready to print.'
-            : $name.' is ready to print ('.$batch->total_jobs.' cards).';
+        return $batch->status === PrintBatchStatusEnum::Ready
+            ? $name.' is ready to print'.$cards.'.'
+            : $name.' is being prepared'.$cards.'. It will show as ready to print once the artwork is rendered.';
     }
 
     /**
      * The row action, or null when this operator may not print.
      *
-     * Visibility is `always` in Filament, meaning "whoever can see the table", which is
+     * Visibility is `always` in the old panel, meaning "whoever can see the table", which is
      * the same question `viewAny` answers at the endpoint.
      */
     public static function rowAction(Badge $badge): ?Action
@@ -262,6 +302,8 @@ class BadgePrintController extends Controller
             return null;
         }
 
+        $options = self::printerOptions();
+
         return Action::post('printBadgeBulk', self::BULK_LABEL, route('admin.badges.bulk.print'))
             ->icon('printer')
             ->tone(Status::WARN)
@@ -271,7 +313,12 @@ class BadgePrintController extends Controller
                     'key' => 'printer_id',
                     'label' => self::PRINTER_LABEL,
                     'type' => 'select',
-                    'options' => self::printerOptions(),
+                    'options' => $options,
+                    // Pre-picked rather than blank. Most desks run one badge printer, and
+                    // the select was a required field the operator had to open and choose
+                    // from on every run. First by name, matching the order the options are
+                    // listed in, so the pick is the top of the list rather than arbitrary.
+                    'default' => $options[0]['value'] ?? '',
                     'required' => true,
                     'helper' => self::PRINTER_HELPER,
                 ],
@@ -279,10 +326,10 @@ class BadgePrintController extends Controller
     }
 
     /**
-     * Active badge printers, exactly the Filament select's query.
+     * Active badge printers, exactly the old panel select's query.
      *
      * Resolved on every request that builds the badge list rather than once per table
-     * build (audit 100). The list re-reads its bulk actions on the same five-second poll
+     * build. The list re-reads its bulk actions on the same five-second poll
      * as its rows, so a printer switched off mid-shift leaves the picker within a tick
      * instead of lingering until somebody reloads the page.
      *

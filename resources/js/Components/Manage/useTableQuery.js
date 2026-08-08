@@ -5,7 +5,7 @@ import { router } from '@inertiajs/vue3';
  *
  * A missing `filter[...]` key means "not set", and the server answers that with the
  * filter's declared default - which is exactly how the fursuit list keeps opening on
- * Pending (plan 2.3). So "cleared" needs a query-string form of its own, and an empty
+ * Pending. So "cleared" needs a query-string form of its own, and an empty
  * string cannot be it: Laravel's ConvertEmptyStringsToNull global middleware turns
  * `filter[status]=` back into a missing key before the table ever sees it, and picking
  * "All statuses" would snap straight back to Pending. App\Support\Manage\Table reads the

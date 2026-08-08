@@ -22,7 +22,7 @@ const props = defineProps({
 
 /**
  * Fired once the action's request came back successfully. The bulk bar listens for it to
- * drop the selection, which is Filament's deselectRecordsAfterCompletion. Only success:
+ * drop the selection, which is the old panel's deselectRecordsAfterCompletion. Only success:
  * a validation error or a refused action leaves the selection alone, so the operator can
  * read the toast and try again against the same rows.
  */
@@ -145,7 +145,7 @@ const base =
           </option>
         </select>
 
-        <!-- maxlength, not just the server rule: Filament's ->maxLength() stopped typing
+        <!-- maxlength, not just the server rule: the old panel's ->maxLength() stopped typing
              at the cap, so an over-long pause reason was never written in the first place.
              Without it the box takes the text and the refusal arrives as a 422 after the
              operator has hit Confirm, at a jammed printer. -->

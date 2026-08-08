@@ -10,16 +10,16 @@ use Illuminate\Validation\Rule;
 /**
  * Create and update for /admin/settings/users.
  *
- * The rules are UserResource's form schema (audit 4.13) with one field gone and two rules
+ * The rules are the old user list's form schema with one field gone and two rules
  * added.
  *
- * Gone: `valid_registration`. Filament declared a Toggle for a column that
+ * Gone: `valid_registration`. the old panel declared a Toggle for a column that
  * 2025_08_03_195303_remove_old_columns_from_users_table dropped from `users`, so every
- * save throws SQL 1054 (plan 2.10 change 4). It is not in the rules, so it cannot reach
+ * save throws SQL 1054. It is not in the rules, so it cannot reach
  * the model even if a crafted request carries it.
  *
  * Added: uniqueness on `remote_id` and `email`. Both columns are UNIQUE in
- * 0001_01_01_000000_create_users_table and the Filament form validated neither, so a
+ * 0001_01_01_000000_create_users_table and the old panel form validated neither, so a
  * duplicate would come back as SQL 1062 rather than a field error. Nobody ever saw that,
  * because the form could not get past the missing column in the first place.
  */
@@ -51,7 +51,7 @@ class UserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
             'avatar' => ['nullable', 'string'],
-            // Filament's Toggle::make()->required(): present and boolean. `required`
+            // the old panel's Toggle::make()->required(): present and boolean. `required`
             // accepts false, which is the point of a required toggle.
             'is_reviewer' => ['required', 'boolean'],
             'is_admin' => ['required', 'boolean'],
@@ -59,7 +59,7 @@ class UserRequest extends FormRequest
     }
 
     /**
-     * Filament's auto labels, so a validation message names the field the way the form
+     * the old panel's auto labels, so a validation message names the field the way the form
      * does.
      *
      * @return array<string, string>

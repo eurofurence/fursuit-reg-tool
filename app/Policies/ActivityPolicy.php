@@ -7,10 +7,10 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Spatie\Activitylog\Models\Activity;
 
 /**
- * The audit trail, read-only (plan 2.2, plan 2.10 change 12).
+ * The audit trail, read-only.
  *
- * Filament's ActivitiesRelationManager on the fursuit pages enabled create, edit, delete
- * and bulk delete on the log (audit landmine 56), so any panel user who could reach a
+ * the old panel's ActivitiesRelationManager on the fursuit pages enabled create, edit, delete
+ * and bulk delete on the log, so any panel user who could reach a
  * fursuit could fabricate or erase its history - and `causer` was not set on a manual
  * create, so a forged entry showed an empty `By`. An audit trail the audited party can
  * edit is not an audit trail. Every write ability is false here and no write route is

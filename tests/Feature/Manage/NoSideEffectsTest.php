@@ -319,7 +319,7 @@ test('an admin is refused create, update and delete on both fiscal records at th
 });
 
 test('the checkout policy refuses create, update and delete for everyone', function () {
-    // CheckoutPolicy answers what CheckoutResource's own canCreate/canEdit/canDelete
+    // CheckoutPolicy answers what the old checkout list's own canCreate/canEdit/canDelete
     // already answered, so nothing on either panel loses a screen to it.
     foreach ([$this->admin, User::factory()->create(['is_admin' => false, 'is_reviewer' => true])] as $user) {
         expect($user->can('create', Checkout::class))->toBeFalse()
@@ -332,7 +332,7 @@ test('the checkout policy refuses create, update and delete for everyone', funct
 
 test('the TSE client policy stays admin-only rather than being closed under the legacy panel', function () {
     /*
-     * TseClientPolicy is shared with Filament, which still has a create page and a row
+     * TseClientPolicy is shared with the old panel, which still has a create page and a row
      * EditAction for TSE clients until cutover. The two screens are recorded as defects
      * and the new module carries neither, but closing the ability would break a panel the
      * plan says keeps running - so the lock here is the routing table, asserted by

@@ -86,7 +86,7 @@ final class ActionField implements Arrayable
     }
 
     /**
-     * A boolean, rendered as the switch Filament's Toggle draws. Defaults to false rather
+     * A boolean, rendered as the switch the old panel's Toggle draws. Defaults to false rather
      * than null: a checkbox that is not ticked is a decision, not a missing value.
      */
     public static function toggle(string $name, string $label): self

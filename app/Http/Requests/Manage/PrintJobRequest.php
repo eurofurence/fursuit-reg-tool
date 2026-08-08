@@ -12,25 +12,24 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * Create and update for /admin/print-jobs (audit 4.9, form schema).
+ * Create and update for /admin/print-jobs.
  *
  * Authorisation happens here rather than in the controller body, because a FormRequest
  * validates before the action runs: gating in the controller would answer an unauthorised
  * write with a 422 about its payload instead of a 403.
  *
- * Three shapes differ from the Filament form, all of them plan decisions.
+ * Three shapes differ from the old panel form, all of them plan decisions.
  *
  *  - `status` is a transition name rather than a value to write. payload() never carries
- *    it; the controller runs the model's own state handling instead (plan 2.10 #10,
- *    audit 22). The values accepted are the edges PrintJobStatusEnum allows from the
+ *    it; the controller runs the model's own state handling instead. The values accepted are the edges PrintJobStatusEnum allows from the
  *    record's current state, plus the state it is already in, which means "no change".
  *    A create fixes it at Pending: there is nothing to transition from, and a create page
  *    that could fabricate a Printed card would claim a card exists that nobody printed.
  *  - `print_batch_id` is required for a badge job. A batch-less badge job falls into the
  *    receipt-only unbatched lane, which `PrintJob::claimNextUnbatched()` filters to
- *    `type = Receipt`, so it sat Pending forever (audit 89).
+ *    `type = Receipt`, so it sat Pending forever.
  *  - `printable_type` and `printable_id` are collected on create. Both columns are NOT
- *    NULL and the Filament create form asked for neither, so creating a print job from
+ *    NULL and the old panel create form asked for neither, so creating a print job from
  *    admin has always thrown an integrity error. They are immutable afterwards: which
  *    thing a card is a print of is not an edit.
  */
@@ -53,14 +52,14 @@ class PrintJobRequest extends FormRequest
         $printJob = $this->record();
 
         $rules = [
-            // Filament: Select ->relationship('printer', 'name') ->required().
+            // the old panel: Select ->relationship('printer', 'name') ->required().
             'printer_id' => ['required', 'integer', 'exists:printers,id'],
             'type' => ['required', 'string', Rule::in([
                 PrintJobTypeEnum::Badge->value,
                 PrintJobTypeEnum::Receipt->value,
             ])],
             'status' => ['required', 'string', Rule::in($this->statusValues())],
-            // Filament: TextInput ->numeric() with a 0 default. The column is an
+            // the old panel: TextInput ->numeric() with a 0 default. The column is an
             // unsignedTinyInteger, so the bounds are the column's own.
             'priority' => ['nullable', 'integer', 'min:0', 'max:255'],
             'retry_count' => ['nullable', 'integer', 'min:0', 'max:255'],
@@ -87,7 +86,7 @@ class PrintJobRequest extends FormRequest
     }
 
     /**
-     * Filament's own labels for the fields that carry one, so a validation message names
+     * the old panel's own labels for the fields that carry one, so a validation message names
      * them the way the form does.
      *
      * @return array<string, string>
@@ -129,7 +128,7 @@ class PrintJobRequest extends FormRequest
         $payload = [
             'printer_id' => (int) $validated['printer_id'],
             'type' => PrintJobTypeEnum::from($validated['type']),
-            // Filament defaulted both TextInputs to 0. An emptied field means the same
+            // the old panel defaulted both TextInputs to 0. An emptied field means the same
             // thing the default does rather than writing null into a ladder that has to
             // compare it.
             'priority' => (int) ($validated['priority'] ?? 0),

@@ -30,36 +30,35 @@ use Inertia\Response;
 use Spatie\Activitylog\Models\Activity;
 
 /**
- * Fursuits: the list, the view page and the edit form (audit 4.3, 4.3.3, 4.3.4, 4.3.5).
+ * Fursuits: the list, the view page and the edit form.
  *
  * The moderation verbs live in FursuitModerationController and the mail-only action in
  * FursuitNotificationController; this class owns the three pages and the props they read.
  *
- * Four shapes differ from Filament, all of them decisions the plan already made.
+ * Four shapes differ from the old panel, all of them decisions the plan already made.
  *
  *  - There is no create page. FursuitPolicy::create() returns false and stays false
- *    (plan 2.2, audit 38), so the Filament create page was already unreachable.
+ *   , so the old panel create page was already unreachable.
  *  - `status` is no longer a free-text TextInput writing straight through the cast. It
  *    is a picker over the transitions the state machine allows from the record's current
  *    state, and the write goes through transitionTo(), so approved_at / rejected_at
- *    bookkeeping, the activity entry and the user's notification all happen (plan 2.10
- *    #9, audit 21). `approved_at` and `rejected_at` stop being hand-editable and can no
+ *    bookkeeping, the activity entry and the user's notification all happen. `approved_at` and `rejected_at` stop being hand-editable and can no
  *    longer contradict `status`.
- *  - `event_id` is a relation select rather than a numeric TextInput (plan 2.6).
- *  - The activity log on the view page is read-only (plan 2.10 #12, audit 56).
+ *  - `event_id` is a relation select rather than a numeric TextInput.
+ *  - The activity log on the view page is read-only.
  *
- * The list is event-scoped exactly as it is today (plan 2.9).
+ * The list is event-scoped exactly as it is today.
  */
 class FursuitController extends Controller
 {
     /**
-     * Filament's default table date-time format, kept so timestamps read the same after
+     * the old panel's default table date-time format, kept so timestamps read the same after
      * the move. The ISO string rides along as the cell title.
      */
     private const DATETIME_FORMAT = 'M j, Y H:i:s';
 
     /**
-     * Filament's model label for this resource, as its delete modal renders it.
+     * the old panel's model label for this resource, as its delete modal renders it.
      */
     private const MODEL_LABEL = 'fursuit';
 
@@ -121,7 +120,7 @@ class FursuitController extends Controller
              * The one action form the client renders itself rather than through ActionButton: the
              * notification modal shows its reason field only for a rejection, which is live
              * behaviour ActionButton has no concept of - and a bug fix in its own right (audit 73:
-             * the Filament Select was never ->live(), so the conditional field only appeared on the
+             * the old panel Select was never ->live(), so the conditional field only appeared on the
              * next form round-trip).
              */
             'notificationTypes' => FursuitNotificationController::typeOptions(),
@@ -165,7 +164,7 @@ class FursuitController extends Controller
             };
         }
 
-        // Filament's stock EditRecord toast; this resource declares none of its own.
+        // the old panel's stock EditRecord toast; this resource declares none of its own.
         Toast::flashSuccess('Saved');
 
         return redirect()->route('admin.fursuits.show', $fursuit);
@@ -173,7 +172,7 @@ class FursuitController extends Controller
 
     /**
      * Soft delete, as today: the model uses SoftDeletes and FursuitObserver cascades the
-     * deletion to the fursuit's badges (audit 78).
+     * deletion to the fursuit's badges.
      */
     public function destroy(Fursuit $fursuit): RedirectResponse
     {
@@ -183,14 +182,14 @@ class FursuitController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('admin.fursuits.index');
+        return redirect()->to(Table::returnUrl('fursuits', route('admin.fursuits.index')));
     }
 
     /**
      * A signed, short-lived link to a private object on s3.
      *
-     * Every read site in the panel reads s3 (audit 7.4), so this names the disk rather
-     * than inheriting the default, which is what let the Filament upload write somewhere
+     * Every read site in the panel reads s3, so this names the disk rather
+     * than inheriting the default, which is what let the old panel upload write somewhere
      * else than the table and the infolist read from. A disk that cannot sign - the fake
      * used by the tests, or a local dev disk - falls back to a plain URL rather than
      * taking the page down.
@@ -301,14 +300,14 @@ class FursuitController extends Controller
         return Table::make($query)
             ->name('fursuits')
             ->columns($this->columns())
-            // FursuitResource declares no defaultSort and falls back to primary-key
+            // the old fursuit list declares no defaultSort and falls back to primary-key
             // order. Stated rather than left implicit, so the order does not depend on
             // whatever the driver happens to return.
             ->defaultSort('id')
             ->filters([
                 /*
                  * The one filter this table has ever had, and it opens on Pending
-                 * (audit 135). The list has never shown the full set on first load, so
+                 *. The list has never shown the full set on first load, so
                  * losing the default would read as missing data rather than as a wider
                  * view. Clearing it is a separate request carrying Filter::CLEARED.
                  */
@@ -346,12 +345,11 @@ class FursuitController extends Controller
                 'publication_blocked' => $fursuit->isPublicationBlocked(),
             ])
             ->recordUrl(fn (Fursuit $fursuit) => route('admin.fursuits.show', $fursuit))
-            // ViewAction only. EditAction sits commented out in the resource (audit
-            // 4.3), and the edit page is reached from the view page instead.
+            // ViewAction only. EditAction sits commented out in the resource, and the edit page is reached from the view page instead.
             ->rowActions(fn (Fursuit $fursuit) => [
                 Action::link('view', 'View', route('admin.fursuits.show', $fursuit))->icon('eye'),
             ])
-            // FursuitResource declares no bulk actions, and the create header action is
+            // the old fursuit list declares no bulk actions, and the create header action is
             // hidden in practice because the policy refuses it.
             ->bulkActions([])
             // The way into the queue. The list is where a reviewer lands, and working the
@@ -364,7 +362,7 @@ class FursuitController extends Controller
     }
 
     /**
-     * The audit's seven columns, in order, with Filament's own auto labels verbatim.
+     * The audit's seven columns, in order, with the old panel's own auto labels verbatim.
      *
      * The audit's `user.name` and `species.name` are keyed `user_name` and `species_name`
      * here, labels unchanged: a dot in a cell key is read as a path by every data_get
@@ -389,11 +387,11 @@ class FursuitController extends Controller
                     $dir,
                 )
             ),
-            // Searchable against the stored state name, which is what the Filament
+            // Searchable against the stored state name, which is what the old panel
             // column searched: `pending`, `approved`, `rejected`.
             Column::badge('status', 'Status')->searchable(),
             Column::text('name', 'Name')->searchable(),
-            // Filament's ImageColumn is ->circular() here (audit 4.3 column 5).
+            // the old panel's ImageColumn is ->circular() here.
             Column::image('image', 'Image')->circular(),
             Column::bool('published', 'Published'),
             Column::bool('catch_em_all', 'Catch em all'),
@@ -404,8 +402,8 @@ class FursuitController extends Controller
     }
 
     /**
-     * The infolist, transcribed (audit 4.3). Hints and helper texts are the attendee-
-     * facing strings the Filament entries carried, verbatim, because they explain to the
+     * The infolist, transcribed. Hints and helper texts are the attendee-
+     * facing strings the old panel entries carried, verbatim, because they explain to the
      * reviewer what the attendee was told when they submitted.
      *
      * @return array<string, mixed>
@@ -439,7 +437,7 @@ class FursuitController extends Controller
                 'blockedAt' => $fursuit->publication_blocked_at?->toIso8601String(),
             ],
             /*
-             * Who else is looking. The Filament page showed no indication at all, so a
+             * Who else is looking. The old panel page showed no indication at all, so a
              * reviewer could only find out by pressing a button and watching where it took
              * them - and the lock behind that button then refused their verdict.
              */
@@ -531,7 +529,7 @@ class FursuitController extends Controller
     }
 
     /**
-     * The read-only successor to ActivitiesRelationManager (audit 4.3.5).
+     * The read-only successor to ActivitiesRelationManager.
      *
      * Create, edit, delete and bulk delete are gone with plan 2.10 #12: an audit trail
      * the audited party can edit is not an audit trail, `causer` was never set on a
@@ -632,8 +630,8 @@ class FursuitController extends Controller
                 'catch_em_all' => (bool) $fursuit->catch_em_all,
             ],
             /*
-             * EditFursuit's own header: View, and Delete with Filament's default delete
-             * copy (audit 4.3.3). The delete is a soft delete and FursuitObserver
+             * EditFursuit's own header: View, and Delete with the old panel's default delete
+             * copy. The delete is a soft delete and FursuitObserver
              * cascades it to the fursuit's badges.
              */
             'actions' => array_map(fn (Action $action) => $action->toArray(), array_values(array_filter([
@@ -654,7 +652,7 @@ class FursuitController extends Controller
                 ->map(fn (Species $species) => ['value' => $species->id, 'label' => $species->name])
                 ->all(),
             // Same order as the global event selector, so one event list in the panel is
-            // never ordered differently from another (plan 2.10 #53).
+            // never ordered differently from another.
             'events' => Event::orderByDesc('starts_at')
                 ->get()
                 ->map(fn (Event $event) => ['value' => $event->id, 'label' => $event->name])

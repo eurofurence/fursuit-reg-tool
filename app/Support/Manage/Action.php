@@ -10,7 +10,7 @@ use Illuminate\Contracts\Support\Arrayable;
  * Visibility is decided server-side (build the action or do not), which is what makes
  * "batch controls are offered only to an admin" assertable in a feature test.
  * A disabled action is still sent, carrying the reason, so the UI can explain itself,
- * which the Filament panel never did: it hid actions instead.
+ * which the old panel never did: it hid actions instead.
  *
  * Bulk actions POST an `ids[]` array. Guarded bulk operations are all-or-nothing, so the
  * controller either changes everything or nothing and says why.
@@ -20,7 +20,7 @@ use Illuminate\Contracts\Support\Arrayable;
 final class Action implements Arrayable
 {
     /**
-     * Filament's own default confirm body, used verbatim wherever a resource never
+     * the old panel's own default confirm body, used verbatim wherever a resource never
      * overrode it, so the parity tests can assert on the copy.
      */
     public const DEFAULT_CONFIRM_DESCRIPTION = 'Are you sure you would like to do this?';
@@ -92,7 +92,7 @@ final class Action implements Arrayable
     }
 
     /**
-     * A bare requiresConfirmation() in Filament: the action label as the heading, the
+     * A bare requiresConfirmation() in the old panel: the action label as the heading, the
      * default body, and Confirm to submit.
      */
     public function confirmDefault(): self
@@ -101,7 +101,7 @@ final class Action implements Arrayable
     }
 
     /**
-     * Filament's DeleteAction copy. `$label` is the record label the heading names.
+     * the old panel's DeleteAction copy. `$label` is the record label the heading names.
      */
     public function confirmDelete(string $label): self
     {

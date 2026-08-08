@@ -10,21 +10,21 @@ use Illuminate\Validation\Rule;
 
 /**
  * Update for /admin/badges/{badge}. There is no store: the create page is not ported
- * (plan 2.10 #6, audit 25).
+ *.
  *
  * The rule set is deliberately two fields long, and that is the whole point of it.
- * BadgeResource's form carried fourteen, twelve of them disabled, and Filament's edit
+ * the old badge list's form carried fourteen, twelve of them disabled, and the old panel's edit
  * page writes raw form state straight to the model. The one enabled money field rendered
  * `number_format($state / 100, 2)` on read with no inverse on write, so saving an
- * unchanged badge stored "3.00" in a cents column (audit 3). Nothing here accepts a money
+ * unchanged badge stored "3.00" in a cents column. Nothing here accepts a money
  * field at all, so no /admin write path can put a euro string into a cents column,
  * whatever the request carries: `Badge` is `$guarded = []`, so the request has to be the
  * thing that refuses it.
  *
  * The two statuses that do survive are validated against what the state machine allows
- * from the badge's current state, not against the full state list. The Filament selects
+ * from the badge's current state, not against the full state list. The old panel selects
  * offered every state unconditionally and wrote it through the cast, so admin could put a
- * badge somewhere no transition leads (audit 20).
+ * badge somewhere no transition leads.
  */
 class BadgeRequest extends FormRequest
 {
@@ -47,7 +47,7 @@ class BadgeRequest extends FormRequest
         $badge = $this->route('badge');
 
         return [
-            // Filament had both Selects ->required().
+            // the old panel had both Selects ->required().
             'status_fulfillment' => [
                 'required',
                 'string',
@@ -62,7 +62,7 @@ class BadgeRequest extends FormRequest
     }
 
     /**
-     * Filament's own labels for these two fields, so a validation message names them the
+     * the old panel's own labels for these two fields, so a validation message names them the
      * way the form does.
      *
      * @return array<string, string>

@@ -8,18 +8,18 @@ use App\Http\Controllers\Manage\ToolsController;
 use Illuminate\Support\Facades\Route;
 
 /*
- * Tools (audit 5.2). Read-only pages over data other modules own.
+ * Tools. Read-only pages over data other modules own.
  *
- * Badge Preview replaces App\Filament\Pages\BadgePreview. The Livewire page kept the
+ * Badge Preview replaces App\the old panel\Pages\BadgePreview. The Livewire page kept the
  * loaded badge in component state; here the state is the URL, so the lookup POSTs and
  * redirects to `?custom_id=…` and the two PDF buttons are plain GET links a browser can
- * genuinely open in a new tab (plan 2.10 #34, audit landmine 49).
+ * genuinely open in a new tab.
  *
  * The two PDF routes are the successors of `admin.badge-pdf.view` and
  * `admin.badge-pdf.download`, which sat behind `auth` alone, so any signed-in attendee
- * could pull any badge PDF by custom id (audit landmine 60). Both survive as separate
+ * could pull any badge PDF by custom id. Both survive as separate
  * routes because view and download are two distinct actions and collapsing them into one
- * endpoint loses the download (plan 2.1).
+ * endpoint loses the download.
  *
  * `{customId}` is the last segment of each path and every other segment is a literal, so
  * nothing here shadows anything. The id is a free-form string, not an integer, so it
@@ -70,10 +70,10 @@ Route::middleware('can:manage-admin')->group(function () {
 });
 
 /*
- * Maintenance (audit 5.3). One page, one repair, and the only endpoints in the panel that
+ * Maintenance. One page, one repair, and the only endpoints in the panel that
  * exist to change data rather than to manage a record.
  *
- * DB Service replaces App\Filament\Pages\DbService. It shares this file with Tools because
+ * DB Service replaces App\the old panel\Pages\DbService. It shares this file with Tools because
  * both are pages rather than resources and neither is worth a file of its own; the paths
  * are a separate prefix group, so nothing about `tools.` applies to them.
  *
@@ -98,7 +98,7 @@ Route::prefix('maintenance')->name('maintenance.')->middleware('can:manage-admin
 });
 
 /*
- * PDF Generator (audit 5.1), the other read-only tool. Its own group rather than a line in
+ * PDF Generator, the other read-only tool. Its own group rather than a line in
  * the one above, so the two tools stay separately readable.
  *
  * Three routes: the form, and one download each. Both downloads are GET, because a PDF is

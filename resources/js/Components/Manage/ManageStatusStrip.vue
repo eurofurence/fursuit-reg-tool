@@ -22,7 +22,7 @@
  * lead the strip, jammed against the sidebar edge and wide enough to overflow.
  *
  * Polls on its own interval and reloads only its own prop, so it keeps ticking while a
- * list page is being filtered or a form is being filled in (plan 2.4, 15s).
+ * list page is being filtered or a form is being filled in.
  */
 import { computed } from 'vue';
 import { Link, usePoll } from '@inertiajs/vue3';
@@ -71,6 +71,13 @@ const segment
     class="sticky top-0 z-20 flex h-mg-strip shrink-0 items-center gap-3 border-b border-hairline bg-mg-surface-1 px-4"
     aria-label="Manage status"
   >
+    <!--
+      Where the layout hangs its menu button below md. A slot rather than a prop because
+      the button belongs to the shell that owns the drawer's open state, and this strip has
+      no business knowing the rail exists.
+    -->
+    <slot name="leading" />
+
     <!--
       min-w-0 is what makes flex-1 able to shrink below its content, and overflow-hidden
       is what keeps the excess out of the document instead of widening the page. It is

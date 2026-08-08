@@ -119,7 +119,7 @@ class HandleInertiaRequests extends Middleware
             $user = $request->user();
 
             // The ability flags let the sidebar hide what the user cannot reach,
-            // mirroring what Filament's policies do to the nav today. No badges or
+            // mirroring what the old panel's policies do to the nav today. No badges or
             // amountDue here: the admin never renders either.
             return [
                 'user' => $user?->only(['id', 'name', 'email']),

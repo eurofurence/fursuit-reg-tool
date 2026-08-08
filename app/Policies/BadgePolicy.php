@@ -72,10 +72,10 @@ class BadgePolicy
     /**
      * "May this actor open the panel's badge editor for this record."
      *
-     * This used to read `$user->is_admin && request()->routeIs('filament.*',
-     * 'livewire.*')`, so the override only applied while the admin panel was Filament.
+     * This used to read `$user->is_admin && request()->routeIs('<old-panel>.*',
+     * 'livewire.*')`, so the override only applied while the admin panel was the old panel.
      * Moving the panel to /admin would have flipped every admin from "can edit any
-     * badge" to "owner rules only" without anything saying so (audit landmine 52), and
+     * badge" to "owner rules only" without anything saying so, and
      * /admin/badges/{badge}/edit would 403 on every badge an admin does not own.
      * Answered on the actor now, with no reference to the current request, so the same
      * question gets the same answer from a queue worker or a console command. See
@@ -111,7 +111,7 @@ class BadgePolicy
      *
      * This is what the attendee-facing badge editor authorizes. Before the route check
      * came out of `update()` it was also what an admin got on those routes, since
-     * `routeIs('filament.*')` is false on `/badges/*`, so this keeps that path answering
+     * That route check was false on `/badges/*`, so this keeps that path answering
      * exactly as it did.
      */
     public function updateAsOwner(User $user, Badge $badge): bool

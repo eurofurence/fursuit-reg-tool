@@ -1,9 +1,9 @@
 <?php
 
 /*
- * Dashboard (plan phase 9, audit 6).
+ * Dashboard.
  *
- * The three Filament widgets become one page: four stats, the badge-status doughnut and
+ * The three the old panel widgets become one page: four stats, the badge-status doughnut and
  * the event-comparison bars, all of them scoped to the header's event selection and all
  * of them shaped server-side, so every string, colour and tone in the audit is assertable
  * without rendering a canvas.
@@ -11,12 +11,12 @@
  * Four things beyond plain parity are pinned here:
  *
  *  - `No previous event` means there is no previous event, not that the diff is zero
- *    (audit 115);
+ *   ;
  *  - the doughnut's labels read `Paid / Ready for Pickup`, and every payment x
  *    fulfillment combination gets its own stable colour, past the five the ramp had
- *    (audit 114);
+ *   ;
  *  - the grouped count is portable. The test database is SQLite and production is MySQL,
- *    so the one query is executed here and compiled under both grammars (audit 18);
+ *    so the one query is executed here and compiled under both grammars;
  *  - rendering and polling write nothing. The page is four counts and a GROUP BY, and it
  *    reloads itself every 15 seconds, so a stray write would repeat forever.
  */
@@ -185,7 +185,7 @@ test('stat 1 keeps the No Event copy for an empty events table', function () {
 
 test('stat 1 says all events rather than claiming an order window nobody selected', function () {
     /*
-     * "All events" is reachable now (plan 2.9) and is not the same thing as having no
+     * "All events" is reachable now and is not the same thing as having no
      * events, so it does not borrow the empty-table copy and it does not report an order
      * window: no single event owns one.
      */
@@ -497,7 +497,7 @@ test('the grouped badge count compiles to portable SQL under both grammars', fun
 
     foreach ([$sqlite, $mysql] as $sql) {
         // ANSI COUNT(*), and an alias that is not the bare `count` the widget used
-        // unquoted (audit 18).
+        // unquoted.
         expect($sql)->toContain('COUNT(*) as badge_count')
             ->and($sql)->not->toContain(' as count ')
             // The MySQL-only constructs the audit found elsewhere in the panel.

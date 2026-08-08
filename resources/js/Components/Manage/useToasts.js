@@ -13,7 +13,7 @@ import { router } from '@inertiajs/vue3';
  * not among them in @inertiajs/vue3 2.x, so watching it there never fires. The event
  * carries the raw page object, which has it.
  *
- * Every mutating manage action flashes one, with the same title and body the Filament
+ * Every mutating manage action flashes one, with the same title and body the old panel
  * notification used, so behaviour is comparable and testable.
  */
 const toasts = ref([]);

@@ -1,11 +1,15 @@
 <script setup>
 /**
- * Permanent left sidebar, full viewport height down the left edge, always labelled,
- * no collapse.
+ * Left navigation: a permanent full-height rail from md up, a slide-over drawer below it.
  *
  * An icon rail saves 180px and costs a guess on every click; this panel is used to edit
  * things, not to watch a wall, so the labels stay. Fixed width also means the content
  * column never reflows mid-session.
+ *
+ * There is no collapse on the desktop rail, and the drawer is not a second nav: it is this
+ * same element repositioned, so the module list has one implementation. The shell owns the
+ * open state and this component only asks to be closed - on a link, on the brand, on the
+ * close button - because the shell is also what draws the scrim over the content.
  *
  * The rail owns the whole left edge rather than starting below the strip, and it carries
  * the brand at its top. The strip used to span the page above the menu, which put its
@@ -20,17 +24,21 @@
  * 220px against a 240px token, which is the drift that removes.
  *
  * Groups and badges come from App\Support\Manage\Navigation, which declares the group
- * order the Filament panel never had and drops items whose route does not exist yet -
+ * order the old panel never had and drops items whose route does not exist yet -
  * that is how rebuild phases add modules without touching this component.
  */
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import ManageIcon from './ManageIcon.vue';
 import { resolve, toneBadge } from './tones.js';
 
 const props = defineProps({
   groups: { type: Array, default: () => [] },
+  /** Whether the drawer is showing. Ignored from md up, where the rail is permanent. */
+  open: { type: Boolean, default: false },
 });
+
+const emit = defineEmits(['close']);
 
 const page = usePage();
 
@@ -55,6 +63,27 @@ const activeRoute = computed(() => {
 });
 
 const isActive = (item) => item.route === activeRoute.value;
+
+/**
+ * Whether the rail is currently a drawer, tracked off the same md breakpoint the classes
+ * below use. Only `inert` needs this: a closed drawer is translated off screen but still
+ * focusable, so tabbing from the header would walk into an invisible menu. The permanent
+ * rail must never be inert, hence the query rather than a plain `!open`.
+ */
+const isNarrow = ref(false);
+
+let query = null;
+const syncNarrow = () => {
+  isNarrow.value = query.matches;
+};
+
+onMounted(() => {
+  query = window.matchMedia('(max-width: 767.98px)');
+  syncNarrow();
+  query.addEventListener('change', syncNarrow);
+});
+
+onBeforeUnmount(() => query?.removeEventListener('change', syncNarrow));
 </script>
 
 <template>
@@ -62,8 +91,23 @@ const isActive = (item) => item.route === activeRoute.value;
     A plain div, not an <aside>: the only landmark in here is the <nav> below, and it is
     the one screen readers already know by name. Wrapping it in a complementary landmark
     would add a second, unnamed one for a brand link.
+
+    Below md the rail would eat 240px of a 375px screen, so there it is a drawer: taken out
+    of the flex row, slid off the left edge, and brought back over the content. From md up
+    every one of those classes is undone by its md: counterpart and this is the permanent
+    rail it has always been - same element, same width, no second copy of the nav to keep
+    in step. `fixed` is also what the close button positions against, so there is no
+    `relative` here: the two are the same property and would fight.
+
+    Transform rather than display, so the panel animates and, more importantly, so its
+    links stay in the DOM in one predictable order for the keyboard. inert is what keeps
+    them off the tab sequence while it is closed, which visibility alone would not do.
   -->
-  <div class="flex h-full w-mg-rail shrink-0 flex-col border-r border-hairline bg-mg-surface-1">
+  <div
+    id="manage-nav"
+    class="fixed inset-y-0 left-0 z-40 flex h-full w-mg-rail shrink-0 flex-col border-r border-hairline bg-mg-surface-1 transition-transform duration-200 md:static md:z-auto md:translate-x-0 md:transition-none"
+    :class="open ? 'translate-x-0 shadow-xl shadow-black/40' : '-translate-x-full'"
+    :inert="!open && isNarrow ? true : null">
     <!--
       h-mg-strip, the same token the header uses, so the hairline under the brand and the
       hairline under the header are one continuous line across the seam.
@@ -76,9 +120,23 @@ const isActive = (item) => item.route === activeRoute.value;
     <Link
       :href="route('admin.dashboard')"
       class="flex h-mg-strip shrink-0 items-center border-b border-hairline px-4 text-[13px] font-semibold tracking-wide text-fg-1 outline-none transition-colors hover:text-state-live focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
+      @click="emit('close')"
     >
       Fursuit Badges
     </Link>
+
+    <!--
+      Closes the drawer without navigating. Only exists while the rail is a drawer; from md
+      up there is nothing to close.
+    -->
+    <button
+      type="button"
+      class="absolute top-0 right-0 flex h-mg-strip w-10 items-center justify-center text-fg-3 outline-none transition-colors hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40 md:hidden"
+      aria-label="Close navigation"
+      @click="emit('close')"
+    >
+      <ManageIcon name="x" :size="16" />
+    </button>
 
     <!--
       min-h-0 is what lets flex-1 shrink below the nav's content height, which is what
@@ -104,6 +162,7 @@ const isActive = (item) => item.route === activeRoute.value;
           :class="isActive(item)
             ? 'bg-state-live/10 font-medium text-state-live'
             : 'text-fg-2 hover:bg-mg-surface-2 hover:text-fg-1'"
+          @click="emit('close')"
         >
           <span
             v-if="isActive(item)"

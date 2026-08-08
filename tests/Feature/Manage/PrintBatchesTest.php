@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Print batches, phase 7 (plan part 4). Transcribed from audit 4.8 and 4.8.1.
+ * Print batches, phase 7. Transcribed from audit 4.8 and 4.8.1.
  *
  * A batch is a live convention print run, so four groups of cases carry more weight than
  * the parity transcription:
@@ -9,7 +9,7 @@
  *  - nothing acts on its own. Opening the list, opening a batch and the ten-second polls
  *    behind both must not move a batch, a card, a printer or a badge.
  *  - the three run controls require is_admin. There is no PrintBatchPolicy today, so a
- *    reviewer can halt or cancel a run in progress (audit 51, plan 2.10 #18).
+ *    reviewer can halt or cancel a run in progress.
  *  - a refused control writes nothing. PrintBatch::resume() requeues the failed cards
  *    before it attempts the transition and PrintBatch::cancel() cancels the outstanding
  *    jobs inside its transaction before it attempts its own, so "call it and read the
@@ -77,7 +77,7 @@ beforeEach(function () {
     Storage::fake('s3');
 
     // ManageEventScope runs on every /admin request whether or not the page is scoped, and
-    // this list deliberately is not (plan 2.9).
+    // this list deliberately is not.
     $this->event = Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -451,7 +451,7 @@ test('cancel carries its heading, its description and its default reason verbati
 });
 
 test('a control that cannot fire is offered disabled with the reason rather than hidden', function () {
-    // plan 2.5: the Filament panel hid actions, which leaves an operator staring at a
+    // plan 2.5: the old panel hid actions, which leaves an operator staring at a
     // paused run wondering where Resume went. PrinterController's clear-error does the
     // same thing.
     ($this->batch)(['status' => PrintBatchStatusEnum::Draft]);

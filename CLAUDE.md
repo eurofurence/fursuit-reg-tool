@@ -110,8 +110,8 @@ wraps this with its own models, services, and states.
 - `/` - Public fursuit badge registration interface (Vue/Inertia)
 - `/admin` - the Inertia admin panel for staff, and the only one. Route names are `admin.*` (the
   prefix is applied in `bootstrap/app.php`, so the files under `routes/manage/` declare only their
-  own segment); files and controllers still live under `Manage/`. The Filament panel it replaced is
-  gone; `/admin-legacy` is a redirect kept for one release so old bookmarks land on `/admin`
+  own segment); files and controllers still live under `Manage/`. `/admin-legacy` is a redirect
+  kept for one release so old bookmarks land on `/admin`
 - `/pos` - Point-of-sale system for on-site operations (machine + staff PIN auth)
 - `/catch-em-all` - "Catch-Em-All" game interface (mobile-first, PWA)
 - `/gallery` - Public fursuit gallery
@@ -203,7 +203,6 @@ Read the file for the area you are changing; each records decisions that were re
 | [`docs/fiscal-compliance.md`](docs/fiscal-compliance.md) | SumUp, Fiskaly TSE signing, DSFinV-K exports |
 | [`docs/migrations.md`](docs/migrations.md) | writing any migration |
 | [`docs/admin/roles.md`](docs/admin/roles.md) | any route under `routes/manage/`, a policy's `viewAny`/`view`, or a new Settings pane or Tools card - it is the reviewer/admin boundary |
-| [`docs/admin/rebuild-plan.md`](docs/admin/rebuild-plan.md) | the `/admin` panel design, plus `current-filament-features.md` and `parity-checklist.md` as the parity contract |
 | [`docs/wallet-removal-plan.md`](docs/wallet-removal-plan.md) | wallet / payment plumbing |
 
 Repo root also has `CATCH.md` (Catch-Em-All game), `TSE.md` and `zebra.md` (fiscal / printer

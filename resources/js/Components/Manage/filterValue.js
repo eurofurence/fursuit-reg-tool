@@ -98,6 +98,21 @@ export function summarize(filter, value = filter.value) {
 
       return min !== '' ? `from ${min}` : `up to ${max}`;
     }
+    // `2026-08-08T14:30` is what the control stores and it is unreadable on a pill; the
+    // date is dropped only when it is today, which on a print shift is most of the time.
+    case 'datetime': {
+      const at = new Date(value);
+
+      if (Number.isNaN(at.getTime())) {
+        return String(value);
+      }
+
+      const time = at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      return at.toDateString() === new Date().toDateString()
+        ? time
+        : `${at.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
+    }
     default:
       return String(value);
   }

@@ -12,8 +12,7 @@ use Inertia\SessionKey;
  * excluded from the browser's history state, and survives the redirect an action performs.
  * Without that, navigating back would replay old toasts.
  *
- * Titles and bodies deliberately match the notifications the Filament panel sent (audit
- * 7.2), so the parity tests can assert on them verbatim. The surfaces that are silent
+ * Titles and bodies deliberately match the notifications the old panel sent, so the parity tests can assert on them verbatim. The surfaces that are silent
  * today and gain a toast are listed as change 45, not smuggled in as parity.
  */
 final class Toast

@@ -1,16 +1,15 @@
 <?php
 
 /*
- * Users, phase 1 (plan part 4.2). Transcribed from audit 4.13.
+ * Users, phase 1. Transcribed from audit 4.13.
  *
  * The audit is the baseline this repository does not otherwise have, so the column list
  * below is a literal array copied out of it rather than a description of one: a dropped
  * column fails a test instead of quietly disappearing.
  *
- * The case this file exists for is `valid_registration`. UserResource declares a Toggle
+ * The case this file exists for is `valid_registration`. the old user list declares a Toggle
  * and an IconColumn for a column that 2025_08_03_195303_remove_old_columns_from_users_table
- * dropped from `users`, so both Create and Edit throw SQL 1054 in production today (audit
- * landmine 26, plan 2.10 change 4). The field is not ported, and "the form saves" is
+ * dropped from `users`, so both Create and Edit throw SQL 1054 in production today. The field is not ported, and "the form saves" is
  * asserted for both directions rather than assumed.
  */
 
@@ -43,7 +42,7 @@ const MANAGE_TOAST_TITLE = 'inertia.flash_data.toast.title';
 
 beforeEach(function () {
     // ManageEventScope runs on every /admin request whether or not the page is scoped,
-    // and this list deliberately is not (plan 2.9).
+    // and this list deliberately is not.
     Event::factory()->create([
         'name' => 'Eurofurence 29',
         'starts_at' => now()->addDays(30),
@@ -220,7 +219,7 @@ test('the list paginates', function () {
 });
 
 /*
- * Actions, including the Filament default confirm copy the audit records verbatim.
+ * Actions, including the old panel default confirm copy the audit records verbatim.
  */
 
 test('the page action is New user and it points at the create page', function () {
@@ -234,7 +233,7 @@ test('the page action is New user and it points at the create page', function ()
         ->and($actions[0]['method'])->toBe('get');
 });
 
-test('each row offers Edit and Delete, with Filament default delete copy', function () {
+test('each row offers Edit and Delete, with the old panel default delete copy', function () {
     actingAs($this->admin);
 
     $row = collect(($this->props)()['rows'])->firstWhere('id', $this->attendee->id);
@@ -252,7 +251,7 @@ test('each row offers Edit and Delete, with Filament default delete copy', funct
         ]);
 });
 
-test('the bulk action is Delete selected, with Filament default bulk delete copy', function () {
+test('the bulk action is Delete selected, with the old panel default bulk delete copy', function () {
     actingAs($this->admin);
 
     $bulkActions = ($this->props)()['bulkActions'];
@@ -434,10 +433,10 @@ test('a duplicate remote_id or email is a field error, not an SQL 1062', functio
 });
 
 /*
- * Delete, single and bulk. Hard deletes: User has no SoftDeletes (audit 7.7).
+ * Delete, single and bulk. Hard deletes: User has no SoftDeletes.
  */
 
-test('deleting a user removes the row and flashes the Filament copy', function () {
+test('deleting a user removes the row and flashes the old panel copy', function () {
     actingAs($this->admin);
 
     $target = User::factory()->create();
@@ -473,7 +472,7 @@ test('bulk delete needs at least one id', function () {
         ->assertSessionHasErrors('ids');
 });
 
-test('create and update flash the Filament Created and Saved copy', function () {
+test('create and update flash the old panel Created and Saved copy', function () {
     actingAs($this->admin);
 
     post(route('admin.settings.users.store'), manageUserPayload([
@@ -492,7 +491,7 @@ test('create and update flash the Filament Created and Saved copy', function () 
  */
 
 test('is_reviewer is cast to bool so a strict comparison works', function () {
-    // Uncast until now while is_admin was cast (plan 2.10 change 47, audit landmine 58).
+    // Uncast until now while is_admin was cast.
     expect($this->reviewer->fresh()->is_reviewer)->toBeTrue()
         ->and($this->admin->fresh()->is_reviewer)->toBeFalse();
 });

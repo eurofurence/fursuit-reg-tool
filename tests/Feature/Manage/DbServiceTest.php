@@ -6,7 +6,7 @@
  * The successor to the four cases in tests/Feature/DbServiceMaintenancePageTest.php, which
  * the plan asks phase 9 to re-express against /admin/maintenance/db-service: admin 200,
  * reviewer 403, the nav entry hidden from a non-admin, and one preview -> apply round trip
- * asserting the converted badge. That file, its Filament page and
+ * asserting the converted badge. That file, its the old panel page and
  * App\Services\FreeBadgeRepairService were all deleted from the repository in commit
  * 5aa2148, so this file is the only coverage of the repair path that exists.
  *
@@ -111,7 +111,7 @@ function badgeSnapshot(): array
 }
 
 // -------------------------------------------------------------------------------------
-// Access. The Filament page's own gate, on all three endpoints rather than only the GET.
+// Access. The old panel page's own gate, on all three endpoints rather than only the GET.
 // -------------------------------------------------------------------------------------
 
 test('a guest is redirected to login', function () {
@@ -298,7 +298,7 @@ test('the review reports the badge, the counts and the money', function () {
             ->where('report.affected_badge_count', 1)
             ->where('report.affected_user_count', 1)
             ->where('report.total_refund_cents', 500)
-            // Cents in, euros out, through the one server-side formatter (plan 2.10 #1).
+            // Cents in, euros out, through the one server-side formatter.
             ->where('report.total_refund', '€5.00')
             ->where('report.rows.0.badge_id', $badge->id)
             ->where('report.rows.0.owner', $user->name)

@@ -12,12 +12,12 @@
  * What is left, and why:
  *
  *  - Send Notification is rendered here rather than by ActionButton because its reason field has to
- *    react the moment a type is picked. The Filament Select behind it was never ->live(), so the
- *    field only appeared on the next round-trip (audit 73). Which types need a reason comes from the
+ *    react the moment a type is picked. The old panel Select behind it was never ->live(), so the
+ *    field only appeared on the next round-trip. Which types need a reason comes from the
  *    server, so the mail list and this form cannot disagree.
- *  - Presence is shown, never enforced (plan 2.10 #41): the Filament page took a five-minute cache
+ *  - Presence is shown, never enforced: the old panel page took a five-minute cache
  *    lock on load and then refused every verdict unless the caller held it.
- *  - The activity log is read-only (plan 2.10 #12). It arrives as an ordinary table envelope at the
+ *  - The activity log is read-only. It arrives as an ordinary table envelope at the
  *    top level, which is unambiguous because it is the only table on the page, so sorting, searching
  *    and paging work the way they do everywhere else.
  */
@@ -86,7 +86,7 @@ const activities = computed(() => ({
 /**
  * Who else is looking at this record.
  *
- * Advisory, and that is the change: the Filament page took a five-minute cache lock on
+ * Advisory, and that is the change: the old panel page took a five-minute cache lock on
  * load and then refused every verdict unless the caller held it, so a reviewer who opened
  * a record by link could do nothing with it. Presence is shown, never enforced.
  */
@@ -187,7 +187,7 @@ const textarea =
 
       <!--
         The infolist: a twelve-column grid, image on three and everything else on nine,
-        transcribed from FursuitResource::infolist().
+        transcribed from the old fursuit list::infolist().
       -->
       <section class="grid grid-cols-1 gap-3 md:grid-cols-12">
         <div class="md:col-span-3">

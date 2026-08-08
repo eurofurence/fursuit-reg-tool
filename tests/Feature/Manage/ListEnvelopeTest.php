@@ -1,8 +1,7 @@
 <?php
 
 /*
- * The list envelope, checked across every module at once (plan part 1, the phase-1
- * lesson).
+ * The list envelope, checked across every module at once.
  *
  * Each module tests its own columns, filters and copy. This file tests the one thing no
  * module can test for the others: that the visit the client actually sends comes back
@@ -115,7 +114,7 @@ test('the events list sorts and paginates under a partial visit', function () {
         ->and($second['meta']['page'])->toBe(2)
         ->and($second['rows'][0]['id'])->not->toBe($first['rows'][0]['id']);
 
-    // EventResource declares neither filters nor a searchable column, and the envelope
+    // the old event list declares neither filters nor a searchable column, and the envelope
     // still has to carry both keys.
     expect($ascending['filters'])->toBe([])->and($ascending['search'])->toBe('');
 });
@@ -282,7 +281,7 @@ test('the users and special-code lists still answer the same visit', function ()
 });
 
 /*
- * The shared image cell. Both modules that declare one wanted Filament's
+ * The shared image cell. Both modules that declare one wanted the old panel's
  * ImageColumn->circular() and neither could add it alone, because the shape lives in
  * Column and DataTable rather than in either controller (checklist 4.2 column 1, 4.3
  * column 5).
@@ -309,7 +308,7 @@ test('the image placeholder every fallback points at exists', function () {
 
 /*
  * The phase-5 and phase-6 modules. Machines, SumUp Readers and Printers declare no
- * sortable column, which is the Filament resources' own shape: none of the three called
+ * sortable column, which is the old panel resources' own shape: none of the three called
  * ->sortable() on anything. Their cases assert the two levers those lists do have (search
  * where a column declares it, filters where the resource declares them) plus paging, and
  * assert the sort key that comes back is the declared default rather than whatever was
@@ -342,7 +341,7 @@ test('the machines list searches, filters and paginates under a partial visit', 
         ->and(collect($archived['filters'])->firstWhere('key', 'archived')['value'])->toBe('1');
 
     /*
-     * MachineResource ran ->paginated(false), which becomes perPage 200 with the options
+     * the old machine list ran ->paginated(false), which becomes perPage 200 with the options
      * [25, 50, 100, 200] (checklist 988). 10 is not offered here, so paging is exercised
      * at the smallest size this list actually accepts; asking for 10 has to fall back to
      * the declared 200 rather than silently page at 10.
@@ -413,7 +412,7 @@ test('the sumup readers list paginates under a partial visit and still carries a
         ->and($second['meta']['page'])->toBe(2)
         ->and($second['rows'][0]['id'])->not->toBe($first['rows'][0]['id']);
 
-    // SumUpReaderResource declares `->filters([ // ])` and no searchable column, so both
+    // the old reader list declares `->filters([ // ])` and no searchable column, so both
     // keys are empty here on purpose; the envelope still has to carry them.
     expect($first['filters'])->toBe([])
         ->and($first['search'])->toBe('')
@@ -448,7 +447,7 @@ test('the tse clients list searches and paginates under a partial visit', functi
         ->and($second['meta']['page'])->toBe(2)
         ->and($second['rows'][0]['id'])->not->toBe($first['rows'][0]['id']);
 
-    // TseClientResource declares `->filters([])` and no sortable column, so a requested
+    // the old TSE client list declares `->filters([])` and no sortable column, so a requested
     // sort has to come back as the declared default rather than reordering the list.
     expect($first['filters'])->toBe([])
         ->and(manageListPartial('/admin/tse-clients?sort=serial_number&dir=desc', 'Manage/TseClients/Index')['sort'])
@@ -477,7 +476,7 @@ test('the printers list searches and paginates under a partial visit', function 
         ->and($second['meta']['page'])->toBe(2)
         ->and($second['rows'][0]['id'])->not->toBe($first['rows'][0]['id']);
 
-    // PrinterResource declares none, and none were added.
+    // the old printer list declares none, and none were added.
     expect($all['filters'])->toBe([])->and($all['sort'])->toBe(['key' => 'id', 'dir' => 'asc']);
 });
 
@@ -504,7 +503,7 @@ test('the print jobs list sorts, searches, filters and paginates under a partial
         ->and($ascending['rows'][0]['id'])->not->toBe($descending['rows'][0]['id']);
 
     // The printer scope is an ordinary filter now rather than the old resource-wide
-    // `?printer=` query scope (plan 2.3, audit 88).
+    // `?printer=` query scope.
     $byPrinter = manageListPartial('/admin/print-jobs?filter[printer]='.$alpha->id, 'Manage/PrintJobs/Index');
     expect($byPrinter['rows'])->toHaveCount(1)
         ->and(collect($byPrinter['filters'])->firstWhere('key', 'printer')['value'])->toBe((string) $alpha->id);
@@ -632,9 +631,9 @@ test('the checkouts list sorts, searches, filters and paginates under a partial 
         ->and($descending['rows'][0]['cells']['total'])->toBe('€3.00');
 
     /*
-     * The status filter is the one this module exists to fix: Filament keyed its options
+     * The status filter is the one this module exists to fix: the old panel keyed its options
      * by FQCN while the column holds the states' own `$name` strings, so it matched zero
-     * rows (audit landmine 6). Multi-select, as the resource declares it.
+     * rows. Multi-select, as the resource declares it.
      */
     $cancelled = manageListPartial('/admin/checkouts?filter[status][]=CANCELLED', 'Manage/Checkouts/Index');
     expect($cancelled['rows'])->toHaveCount(1)
@@ -689,7 +688,7 @@ test('the checkout items list searches and paginates under a partial visit', fun
     $all = manageListPartial($url, 'Manage/Checkouts/Show');
     expect($all['rows'])->toHaveCount(26)
         ->and($all['rows'][0]['cells']['total'])->toBe('€1.19')
-        // ->paginated(false) becomes perPage 200 with the pager visible (plan 2.3).
+        // ->paginated(false) becomes perPage 200 with the pager visible.
         ->and($all['meta']['perPage'])->toBe(200);
 
     $searched = manageListPartial($url.'?search=Alpha+line', 'Manage/Checkouts/Show');
@@ -712,8 +711,8 @@ test('the checkout items list searches and paginates under a partial visit', fun
 
 /*
  * The one check that cannot be deferred to review. Three of these lists sit on top of a
- * credential each, and all three leaked one in Filament: SumUpReaderResource rendered the
- * pairing code as a plain column (audit landmine 10), StaffResource carried the PIN into
+ * credential each, and all three leaked one in the old panel: the old reader list rendered the
+ * pairing code as a plain column, the old staff list carried the PIN into
  * the payload behind a formatted cell, and the machine login link was a URL that logs a
  * till in. Each module asserts its own; this asserts all three against the whole serialised
  * list payload at once, so a credential reintroduced through a shared prop - a page action,
