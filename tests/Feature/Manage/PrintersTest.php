@@ -82,7 +82,7 @@ beforeEach(function () {
 
     $this->machine = Machine::factory()->create(['name' => 'Hall 1 Terminal']);
 
-    $this->props = fn (array $query = []) => get(route('manage.printers.index', $query))
+    $this->props = fn (array $query = []) => get(route('admin.printers.index', $query))
         ->viewData('page')['props'];
 });
 
@@ -159,13 +159,13 @@ function managePrinterPartial(string $url): array
  */
 
 test('a guest is redirected to login', function () {
-    get(route('manage.printers.index'))->assertRedirect(route('login'));
+    get(route('admin.printers.index'))->assertRedirect(route('login'));
 });
 
 test('an attendee cannot reach the printer list at all', function () {
     actingAs($this->attendee);
 
-    get(route('manage.printers.index'))->assertForbidden();
+    get(route('admin.printers.index'))->assertForbidden();
 });
 
 test('a reviewer holds access-manage but is refused every printer ability', function () {
@@ -177,15 +177,15 @@ test('a reviewer holds access-manage but is refused every printer ability', func
         'is_active' => true,
     ]);
 
-    get(route('manage.printers.index'))->assertForbidden();
-    get(route('manage.printers.create'))->assertForbidden();
-    post(route('manage.printers.store'), managePrinterPayload($this->machine))->assertForbidden();
-    get(route('manage.printers.edit', $printer))->assertForbidden();
-    put(route('manage.printers.update', $printer), managePrinterPayload($this->machine))->assertForbidden();
-    delete(route('manage.printers.destroy', $printer))->assertForbidden();
-    delete(route('manage.printers.bulk.destroy'), ['ids' => [$printer->id]])->assertForbidden();
-    post(route('manage.printers.active', ['printer' => $printer, 'active' => 0]))->assertForbidden();
-    post(route('manage.printers.clear-error', $printer))->assertForbidden();
+    get(route('admin.printers.index'))->assertForbidden();
+    get(route('admin.printers.create'))->assertForbidden();
+    post(route('admin.printers.store'), managePrinterPayload($this->machine))->assertForbidden();
+    get(route('admin.printers.edit', $printer))->assertForbidden();
+    put(route('admin.printers.update', $printer), managePrinterPayload($this->machine))->assertForbidden();
+    delete(route('admin.printers.destroy', $printer))->assertForbidden();
+    delete(route('admin.printers.bulk.destroy'), ['ids' => [$printer->id]])->assertForbidden();
+    post(route('admin.printers.active', ['printer' => $printer, 'active' => 0]))->assertForbidden();
+    post(route('admin.printers.clear-error', $printer))->assertForbidden();
 
     // Nothing was written on the way to any of those 403s.
     assertDatabaseHas('printers', [
@@ -399,7 +399,7 @@ test('the name search works under a partial visit even though Filament hid the b
     Printer::factory()->create(['machine_id' => $this->machine->id, 'name' => 'Zebra ZXP9']);
     Printer::factory()->create(['machine_id' => $this->machine->id, 'name' => 'Epson receipt']);
 
-    $props = managePrinterPartial(route('manage.printers.index', ['search' => 'Zebra']));
+    $props = managePrinterPartial(route('admin.printers.index', ['search' => 'Zebra']));
 
     expect($props['rows'])->toHaveCount(1)
         ->and($props['rows'][0]['cells']['name'])->toBe('Zebra ZXP9')
@@ -418,7 +418,7 @@ test('the poll visit reloads the rows and writes nothing', function () {
 
     EventFacade::fake([PrinterStatusUpdated::class]);
 
-    $props = managePrinterPartial(route('manage.printers.index'));
+    $props = managePrinterPartial(route('admin.printers.index'));
 
     expect($props['rows'])->toHaveCount(1);
 
@@ -448,9 +448,9 @@ test('the toggle cell carries the state the click is asking for', function () {
     $offCell = managePrinterCells($props, 'Off')['is_active'];
 
     expect($onCell['value'])->toBeTrue()
-        ->and($onCell['url'])->toBe(route('manage.printers.active', ['printer' => $on->id, 'active' => 0]))
+        ->and($onCell['url'])->toBe(route('admin.printers.active', ['printer' => $on->id, 'active' => 0]))
         ->and($offCell['value'])->toBeFalse()
-        ->and($offCell['url'])->toBe(route('manage.printers.active', ['printer' => $off->id, 'active' => 1]));
+        ->and($offCell['url'])->toBe(route('admin.printers.active', ['printer' => $off->id, 'active' => 1]));
 });
 
 test('the toggle endpoint writes and reports what it did', function () {
@@ -462,13 +462,13 @@ test('the toggle endpoint writes and reports what it did', function () {
         'is_active' => true,
     ]);
 
-    post(route('manage.printers.active', ['printer' => $printer, 'active' => 0]))
+    post(route('admin.printers.active', ['printer' => $printer, 'active' => 0]))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Printer deactivated');
 
     assertDatabaseHas('printers', ['id' => $printer->id, 'is_active' => false]);
 
-    post(route('manage.printers.active', ['printer' => $printer, 'active' => 1]))
+    post(route('admin.printers.active', ['printer' => $printer, 'active' => 1]))
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Printer activated');
 
     assertDatabaseHas('printers', ['id' => $printer->id, 'is_active' => true]);
@@ -479,7 +479,7 @@ test('the toggle refuses a request that does not say which state it wants', func
 
     $printer = Printer::factory()->create(['machine_id' => $this->machine->id, 'is_active' => true]);
 
-    post(route('manage.printers.active', $printer))->assertSessionHasErrors('active');
+    post(route('admin.printers.active', $printer))->assertSessionHasErrors('active');
 
     assertDatabaseHas('printers', ['id' => $printer->id, 'is_active' => true]);
 });
@@ -495,7 +495,7 @@ test('a toggle that asks for the state the printer is already in writes nothing'
 
     $before = $printer->updated_at;
 
-    post(route('manage.printers.active', ['printer' => $printer, 'active' => 1]))
+    post(route('admin.printers.active', ['printer' => $printer, 'active' => 1]))
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Nothing changed');
 
     expect($printer->fresh()->updated_at->equalTo($before))->toBeTrue();
@@ -539,7 +539,7 @@ test('clear error is enabled on a paused printer and puts it back to ready', fun
 
     expect($action['disabledReason'])->toBeNull();
 
-    post(route('manage.printers.clear-error', $printer))
+    post(route('admin.printers.clear-error', $printer))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Printer error cleared');
 
@@ -563,7 +563,7 @@ test('clear error refuses a printer that has no error', function () {
         'status' => PrinterStatusEnum::IDLE,
     ]);
 
-    post(route('manage.printers.clear-error', $printer))
+    post(route('admin.printers.clear-error', $printer))
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Nothing was cleared');
 });
 
@@ -586,7 +586,7 @@ test('clear error refuses when a second active printer shares the name', functio
         'status' => PrinterStatusEnum::OFFLINE,
     ]);
 
-    post(route('manage.printers.clear-error', $printer))
+    post(route('admin.printers.clear-error', $printer))
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Nothing was cleared');
 
     assertDatabaseHas('printers', ['id' => $printer->id, 'status' => PrinterStatusEnum::OFFLINE->value]);
@@ -601,8 +601,8 @@ test('a printer with no print jobs deletes', function () {
 
     $printer = Printer::factory()->create(['machine_id' => $this->machine->id]);
 
-    delete(route('manage.printers.destroy', $printer))
-        ->assertRedirect(route('manage.printers.index'))
+    delete(route('admin.printers.destroy', $printer))
+        ->assertRedirect(route('admin.printers.index'))
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Deleted');
 
     assertDatabaseMissing('printers', ['id' => $printer->id]);
@@ -614,7 +614,7 @@ test('a printer that still has print jobs is not deleted', function () {
     $printer = Printer::factory()->create(['machine_id' => $this->machine->id]);
     $job = managePrintJob($printer, PrintJobStatusEnum::Printed);
 
-    delete(route('manage.printers.destroy', $printer))
+    delete(route('admin.printers.destroy', $printer))
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Nothing was deleted');
 
     // printer_id cascades, so a successful delete would have taken the job with it and
@@ -630,7 +630,7 @@ test('the bulk delete is all or nothing when one printer still has jobs', functi
     $busy = Printer::factory()->create(['machine_id' => $this->machine->id]);
     $job = managePrintJob($busy, PrintJobStatusEnum::Pending);
 
-    delete(route('manage.printers.bulk.destroy'), ['ids' => [$clean->id, $busy->id]])
+    delete(route('admin.printers.bulk.destroy'), ['ids' => [$clean->id, $busy->id]])
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Nothing was deleted');
 
     assertDatabaseHas('printers', ['id' => $clean->id]);
@@ -651,7 +651,7 @@ test('the bulk delete removes a clean selection with Filament copy', function ()
         ->and($bulk['confirm']['description'])->toBe('Are you sure you would like to do this?')
         ->and($bulk['confirm']['submit'])->toBe('Delete');
 
-    delete(route('manage.printers.bulk.destroy'), ['ids' => [$first->id, $second->id]])
+    delete(route('admin.printers.bulk.destroy'), ['ids' => [$first->id, $second->id]])
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Deleted');
 
     assertDatabaseMissing('printers', ['id' => $first->id]);
@@ -667,7 +667,7 @@ test('the create page renders instead of throwing on a null record', function ()
 
     // Filament's default_paper_size closure type-hinted a non-nullable Printer $record,
     // so this page died with a TypeError the moment anyone reached it (landmine 27).
-    $props = get(route('manage.printers.create'))->assertOk()->viewData('page')['props'];
+    $props = get(route('admin.printers.create'))->assertOk()->viewData('page')['props'];
 
     expect($props['printer'])->toBeNull()
         ->and($props['paperSizes'])->toBe([])
@@ -681,14 +681,14 @@ test('the list offers the create button the Filament page removed', function () 
     $create = collect(($this->props)()['pageActions'])->firstWhere('name', 'create');
 
     expect($create['label'])->toBe('New printer')
-        ->and($create['url'])->toBe(route('manage.printers.create'));
+        ->and($create['url'])->toBe(route('admin.printers.create'));
 });
 
 test('creating a printer writes an empty paper size list for the agent to fill in', function () {
     actingAs($this->admin);
 
-    post(route('manage.printers.store'), managePrinterPayload($this->machine))
-        ->assertRedirect(route('manage.printers.index'))
+    post(route('admin.printers.store'), managePrinterPayload($this->machine))
+        ->assertRedirect(route('admin.printers.index'))
         ->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Created');
 
     $printer = Printer::query()->where('name', 'Zebra ZXP9')->firstOrFail();
@@ -701,9 +701,9 @@ test('creating a printer writes an empty paper size list for the agent to fill i
     // The reported sizes reach the edit page as rows, never as a JSON document: the panel
     // has no raw-JSON field anywhere, and this one was the last of them. A printer that
     // has reported nothing has no rows, and the page says so rather than printing `{}`.
-    expect(get(route('manage.printers.edit', $printer))->viewData('page')['props']['printer'])
+    expect(get(route('admin.printers.edit', $printer))->viewData('page')['props']['printer'])
         ->not->toHaveKey('paper_sizes')
-        ->and(get(route('manage.printers.edit', $printer))->viewData('page')['props']['printer']['reportedPaperSizes'])
+        ->and(get(route('admin.printers.edit', $printer))->viewData('page')['props']['printer']['reportedPaperSizes'])
         ->toBe([]);
 });
 
@@ -712,7 +712,7 @@ test('the reported paper sizes reach the edit page as rows rather than as JSON',
 
     $printer = Printer::factory()->create(['machine_id' => $this->machine->id]);
 
-    $rows = get(route('manage.printers.edit', $printer))
+    $rows = get(route('admin.printers.edit', $printer))
         ->viewData('page')['props']['printer']['reportedPaperSizes'];
 
     // Name on its own, every other reported key rendered as `key: value` in the order the
@@ -726,7 +726,7 @@ test('the reported paper sizes reach the edit page as rows rather than as JSON',
 test('the create form refuses a paper size the printer has never reported', function () {
     actingAs($this->admin);
 
-    post(route('manage.printers.store'), managePrinterPayload($this->machine, ['default_paper_size' => 'A4']))
+    post(route('admin.printers.store'), managePrinterPayload($this->machine, ['default_paper_size' => 'A4']))
         ->assertSessionHasErrors('default_paper_size');
 
     assertDatabaseMissing('printers', ['name' => 'Zebra ZXP9']);
@@ -741,20 +741,20 @@ test('the edit form offers only the sizes this printer reported and saves one', 
         'default_paper_size' => 'A4',
     ]);
 
-    $props = get(route('manage.printers.edit', $printer))->assertOk()->viewData('page')['props'];
+    $props = get(route('admin.printers.edit', $printer))->assertOk()->viewData('page')['props'];
 
     expect(collect($props['paperSizes'])->pluck('value')->all())->toBe(['A4', 'Letter'])
         ->and($props['printer']['default_paper_size'])->toBe('A4')
         ->and($props['condition'])->not->toBeNull();
 
-    put(route('manage.printers.update', $printer), managePrinterPayload($this->machine, [
+    put(route('admin.printers.update', $printer), managePrinterPayload($this->machine, [
         'name' => 'Zebra ZXP9',
         'default_paper_size' => 'Letter',
     ]))->assertSessionHas(MANAGE_PRINTER_TOAST_TITLE, 'Saved');
 
     expect($printer->fresh()->default_paper_size)->toBe('Letter');
 
-    put(route('manage.printers.update', $printer), managePrinterPayload($this->machine, [
+    put(route('admin.printers.update', $printer), managePrinterPayload($this->machine, [
         'default_paper_size' => 'A3',
     ]))->assertSessionHasErrors('default_paper_size');
 });
@@ -765,9 +765,9 @@ test('the form cannot overwrite the paper sizes the agent reported', function ()
     $printer = Printer::factory()->create(['machine_id' => $this->machine->id, 'name' => 'Zebra ZXP9']);
     $reported = $printer->paper_sizes;
 
-    put(route('manage.printers.update', $printer), managePrinterPayload($this->machine, [
+    put(route('admin.printers.update', $printer), managePrinterPayload($this->machine, [
         'paper_sizes' => [['name' => 'Forged', 'width' => 1, 'height' => 1, 'mm' => [1, 1]]],
-    ]))->assertRedirect(route('manage.printers.index'));
+    ]))->assertRedirect(route('admin.printers.index'));
 
     expect($printer->fresh()->paper_sizes)->toBe($reported);
 });
@@ -777,7 +777,7 @@ test('the edit page carries the delete action Filament put on its header', funct
 
     $printer = Printer::factory()->create(['machine_id' => $this->machine->id]);
 
-    $actions = get(route('manage.printers.edit', $printer))->viewData('page')['props']['actions'];
+    $actions = get(route('admin.printers.edit', $printer))->viewData('page')['props']['actions'];
 
     $delete = collect($actions)->firstWhere('name', 'delete');
 
@@ -798,7 +798,7 @@ test('the condition panel carries the reading and the remedy', function () {
         'handling_machine_name' => 'Hall 1 Terminal',
     ]);
 
-    $condition = get(route('manage.printers.edit', $printer))->viewData('page')['props']['condition'];
+    $condition = get(route('admin.printers.edit', $printer))->viewData('page')['props']['condition'];
 
     expect($condition['condition']['label'])->toBe('Ribbon low')
         ->and($condition['condition']['tone'])->toBe('warn')

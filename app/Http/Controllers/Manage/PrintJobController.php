@@ -167,10 +167,18 @@ class PrintJobController extends Controller
 
         return inertia('Manage/PrintJobs/Show', [
             'job' => $this->viewData($printJob),
-            // ViewPrintJob's own header: EditAction, and nothing else.
+            // ViewPrintJob's own header: EditAction, and nothing else. Plus the way back:
+            // the queue has no rail entry any more, so a card is opened from the run that
+            // owns it and the run is where an operator returns to. An unbatched card has
+            // nowhere to go back to, so it gets no button rather than a dead one.
             'actions' => array_map(fn (Action $action) => $action->toArray(), array_values(array_filter([
+                $printJob->batch !== null && Gate::allows('view', $printJob->batch)
+                    ? Action::link('batch', 'Back to batch', route('admin.print-batches.show', $printJob->batch))
+                        ->icon('layers')
+                    : null,
+
                 Gate::allows('update', $printJob)
-                    ? Action::link('edit', 'Edit', route('manage.print-jobs.edit', $printJob))->icon('pencil')
+                    ? Action::link('edit', 'Edit', route('admin.print-jobs.edit', $printJob))->icon('pencil')
                     : null,
             ]))),
         ]);
@@ -209,7 +217,7 @@ class PrintJobController extends Controller
         // beyond the retry notification (audit 7.2).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('manage.print-jobs.show', $printJob);
+        return redirect()->route('admin.print-jobs.show', $printJob);
     }
 
     public function edit(PrintJob $printJob): Response
@@ -279,7 +287,7 @@ class PrintJobController extends Controller
         // Filament's stock EditRecord toast; this resource declares none of its own.
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.print-jobs.show', $printJob);
+        return redirect()->route('admin.print-jobs.show', $printJob);
     }
 
     /**
@@ -316,7 +324,7 @@ class PrintJobController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('manage.print-jobs.index');
+        return redirect()->route('admin.print-jobs.index');
     }
 
     /**
@@ -497,7 +505,7 @@ class PrintJobController extends Controller
             ->filters($this->filters())
             ->rows(fn (PrintJob $job) => $this->cells($job))
             ->recordUrl(fn (PrintJob $job) => Gate::allows('view', $job)
-                ? route('manage.print-jobs.show', $job)
+                ? route('admin.print-jobs.show', $job)
                 : null)
             ->rowActions(fn (PrintJob $job) => $this->rowActions($job))
             ->bulkActions($this->bulkActions())
@@ -692,8 +700,8 @@ class PrintJobController extends Controller
             'title' => $batch->status?->label(),
             // The batch module lands in phase 7; until its route exists this is text
             // rather than a dead link.
-            'url' => Route::has('manage.print-batches.show')
-                ? route('manage.print-batches.show', $batch)
+            'url' => Route::has('admin.print-batches.show')
+                ? route('admin.print-batches.show', $batch)
                 : null,
         ];
     }
@@ -780,15 +788,15 @@ class PrintJobController extends Controller
     {
         return array_values(array_filter([
             Gate::allows('view', $job)
-                ? Action::link('view', 'View', route('manage.print-jobs.show', $job))->icon('eye')
+                ? Action::link('view', 'View', route('admin.print-jobs.show', $job))->icon('eye')
                 : null,
 
             Gate::allows('update', $job)
-                ? Action::link('edit', 'Edit', route('manage.print-jobs.edit', $job))->icon('pencil')
+                ? Action::link('edit', 'Edit', route('admin.print-jobs.edit', $job))->icon('pencil')
                 : null,
 
             $job->canRetry() && Gate::allows('retry', $job)
-                ? Action::post('retry', 'Retry', route('manage.print-jobs.retry', $job))
+                ? Action::post('retry', 'Retry', route('admin.print-jobs.retry', $job))
                     // heroicon-o-arrow-path.
                     ->icon('refresh-cw')
                     ->tone(Status::WARN)
@@ -812,7 +820,7 @@ class PrintJobController extends Controller
         }
 
         return [
-            Action::delete('delete', 'Delete selected', route('manage.print-jobs.bulk.destroy'))
+            Action::delete('delete', 'Delete selected', route('admin.print-jobs.bulk.destroy'))
                 ->icon('trash-2')
                 ->tone(Status::DANGER)
                 ->confirm('Delete selected print jobs', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete'),
@@ -829,7 +837,7 @@ class PrintJobController extends Controller
         }
 
         return [
-            Action::link('create', 'New print job', route('manage.print-jobs.create'))->icon('plus'),
+            Action::link('create', 'New print job', route('admin.print-jobs.create'))->icon('plus'),
         ];
     }
 
@@ -936,9 +944,9 @@ class PrintJobController extends Controller
             'actions' => $printJob === null ? [] : array_map(
                 fn (Action $action) => $action->toArray(),
                 array_values(array_filter([
-                    Action::link('view', 'View', route('manage.print-jobs.show', $printJob))->icon('eye'),
+                    Action::link('view', 'View', route('admin.print-jobs.show', $printJob))->icon('eye'),
                     Gate::allows('delete', $printJob)
-                        ? Action::delete('delete', 'Delete', route('manage.print-jobs.destroy', $printJob))
+                        ? Action::delete('delete', 'Delete', route('admin.print-jobs.destroy', $printJob))
                             ->icon('trash-2')
                             ->tone(Status::DANGER)
                             ->confirmDelete(self::MODEL_LABEL)

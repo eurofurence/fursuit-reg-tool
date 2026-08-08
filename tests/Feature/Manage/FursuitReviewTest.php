@@ -23,6 +23,7 @@
 use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Services\BadgePrintQueue;
 use App\Enum\FursuitReviewOutcomeEnum;
+use App\Jobs\GenerateFursuitWebpJob;
 use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Badge\Badge;
 use App\Models\Event;
@@ -39,6 +40,7 @@ use App\Notifications\FursuitRejectedNotification;
 use App\Services\FursuitReviewService;
 use App\Support\Manage\EventScope;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -104,10 +106,10 @@ test('the queue hands out the oldest waiting fursuit and the page carries the th
     $first = ($this->fursuit)();
     ($this->fursuit)(['name' => 'Later']);
 
-    ($this->scoped)($this->reviewer)->get(route('manage.fursuits.review'))
-        ->assertRedirect(route('manage.fursuits.review.show', $first));
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review'))
+        ->assertRedirect(route('admin.fursuits.review.show', $first));
 
-    ($this->scoped)($this->reviewer)->get(route('manage.fursuits.review.show', $first))
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $first))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Fursuits/Review')
@@ -115,17 +117,17 @@ test('the queue hands out the oldest waiting fursuit and the page carries the th
             ->where('fursuit.species', 'Wolf')
             ->where('fursuit.publication.blocked', false)
             ->where('queue.remaining', 2)
-            // Every outcome ships its shortcut, its consequence and its own reason list, so
-            // the page cannot disagree with the server about what a key does.
+            // Every outcome ships its keys, its consequence and its own reason list, so the
+            // page cannot disagree with the server about what a key does.
             ->count('outcomes', 3)
             ->where('outcomes.0.value', 'approved')
-            ->where('outcomes.0.shortcut', 'a')
+            ->where('outcomes.0.shortcuts', ['a'])
             ->where('outcomes.0.requiresReason', false)
             ->where('outcomes.1.value', 'rejected')
-            ->where('outcomes.1.shortcut', 'r')
+            ->where('outcomes.1.shortcuts', ['r'])
             ->where('outcomes.1.requiresReason', true)
             ->where('outcomes.2.value', 'publication_blocked')
-            ->where('outcomes.2.shortcut', 'g')
+            ->where('outcomes.2.shortcuts', ['g'])
             ->where('outcomes.2.requiresReason', true)
             ->where('outcomes.2.consequence', 'Prints and is handed out, but never shown in the gallery or the game.')
             ->where('undo', null)
@@ -136,12 +138,12 @@ test('the queue skips a record another reviewer is on, and says so if you follow
     $taken = ($this->fursuit)(['name' => 'Taken']);
     $free = ($this->fursuit)(['name' => 'Free']);
 
-    ($this->scoped)($this->second)->get(route('manage.fursuits.review.show', $taken))->assertSuccessful();
+    ($this->scoped)($this->second)->get(route('admin.fursuits.review.show', $taken))->assertSuccessful();
 
-    ($this->scoped)($this->reviewer)->get(route('manage.fursuits.review'))
-        ->assertRedirect(route('manage.fursuits.review.show', $free));
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review'))
+        ->assertRedirect(route('admin.fursuits.review.show', $free));
 
-    ($this->scoped)($this->reviewer)->get(route('manage.fursuits.review.show', $taken))
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $taken))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('presence.others.0.name', $this->second->name));
 });
@@ -151,17 +153,17 @@ test('the queue hands out a busy record rather than claiming the queue is empty'
     // over would tell the reviewer there is nothing to do while the backlog is not empty.
     $only = ($this->fursuit)();
 
-    ($this->scoped)($this->second)->get(route('manage.fursuits.review.show', $only))->assertSuccessful();
+    ($this->scoped)($this->second)->get(route('admin.fursuits.review.show', $only))->assertSuccessful();
 
-    ($this->scoped)($this->reviewer)->get(route('manage.fursuits.review'))
-        ->assertRedirect(route('manage.fursuits.review.show', $only));
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review'))
+        ->assertRedirect(route('admin.fursuits.review.show', $only));
 });
 
 test('an empty queue lands on the list and says so', function () {
     ($this->fursuit)(['status' => Approved::$name]);
 
-    ($this->scoped)($this->reviewer)->get(route('manage.fursuits.review'))
-        ->assertRedirect(route('manage.fursuits.index'))
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review'))
+        ->assertRedirect(route('admin.fursuits.index'))
         ->assertInertiaFlash('toast', [
             'tone' => 'success',
             'title' => 'Nothing left to review',
@@ -180,20 +182,20 @@ test('a verdict from the queue advances inside the queue, not to the record page
     $next = ($this->fursuit)(['name' => 'Next']);
 
     ($this->scoped)($this->reviewer)
-        ->post(route('manage.fursuits.approve', [$fursuit, 'queue' => 1]))
-        ->assertRedirect(route('manage.fursuits.review.show', $next));
+        ->post(route('admin.fursuits.approve', [$fursuit, 'queue' => 1]))
+        ->assertRedirect(route('admin.fursuits.review.show', $next));
 
     // Without the flag the same endpoint keeps the reviewer on record pages.
     ($this->scoped)($this->reviewer)
-        ->post(route('manage.fursuits.approve', $next))
-        ->assertRedirect(route('manage.fursuits.index'));
+        ->post(route('admin.fursuits.approve', $next))
+        ->assertRedirect(route('admin.fursuits.index'));
 });
 
 test('a publication block approves the badge and closes only the public surfaces', function () {
     $fursuit = ($this->fursuit)();
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit), [
-        'reason' => 'not_a_photo',
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit), [
+        'reason' => 'artwork',
         'custom_reason' => 'Your image is not a photo of a fursuit.',
     ])->assertRedirect();
 
@@ -223,10 +225,74 @@ test('a publication block approves the badge and closes only the public surfaces
     Notification::assertNotSentTo($fursuit->user, FursuitRejectedNotification::class);
 });
 
+test('the publication mail carries the consequence once, and only offers a resubmission that is possible', function () {
+    /*
+     * The reason says what we found; the mail says what follows. Both halves are asserted here because
+     * the interesting part is the conditional: "you may resubmit" is an invitation to a disappointment
+     * once the card is through the printer, and the attendee cannot tell which side of that line they
+     * are on from the mail.
+     *
+     * Rendered rather than inspected line by line - that is what catches a broken blade, and the whole
+     * point of the shared template is that the band, the finding and the button reach the inbox.
+     */
+    $fursuit = ($this->fursuit)();
+    // The factory stamps `printed_at` on every badge, so "not printed yet" has to be stated.
+    $fursuit->badges()->sole()->forceFill(['printed_at' => null, 'printing_locked_at' => null])->saveQuietly();
+
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit), [
+        'reason' => 'fetish',
+        'custom_reason' => 'We determined that your submission contains adult or fetish related items.',
+    ]);
+
+    ($this->deliver)();
+
+    Notification::assertSentTo($fursuit->user, FursuitPublicationBlockedNotification::class,
+        function (FursuitPublicationBlockedNotification $mail) use ($fursuit) {
+            $message = $mail->toMail($fursuit->user);
+            $html = $message->render();
+
+            expect($message->subject)->toBe('"Fluffy" - badge approved, but not in the gallery')
+                ->and($message->viewData['band'])->toBe('Approved, not published')
+                ->and($message->viewData['tone'])->toBe('warn');
+
+            return str_contains($html, 'We determined that your submission contains adult or fetish related items.')
+                && str_contains($html, 'has been revoked')
+                && str_contains($html, 'until we print your badge')
+                && str_contains($html, 'Send a different photo')
+                // The guidelines sentence carries the general rule; the finding above carries the
+                // specific one. Both, in that order.
+                && str_contains($html, 'did not meet the guidelines for publication');
+        });
+
+    // Same verdict on a badge that has already been printed: the finding and the revocation stand, the
+    // offer to resubmit is replaced by what is actually possible.
+    $printed = ($this->fursuit)(['name' => 'Already printed']);
+    $printed->badges()->sole()->forceFill(['printed_at' => now(), 'printing_locked_at' => now()])->saveQuietly();
+
+    Notification::fake();
+
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $printed), [
+        'reason' => 'artwork',
+        'custom_reason' => 'We determined that your submission is artwork rather than a photo of a costume.',
+    ]);
+
+    ($this->deliver)();
+
+    Notification::assertSentTo($printed->user, FursuitPublicationBlockedNotification::class,
+        function (FursuitPublicationBlockedNotification $mail) use ($printed) {
+            $html = $mail->toMail($printed->user)->render();
+
+            return str_contains($html, 'has been revoked')
+                && str_contains($html, 'already been printed')
+                && str_contains($html, 'order a new badge')
+                && ! str_contains($html, 'Send a different photo');
+        });
+});
+
 test('a blocked fursuit stays out of the gallery even if the attendee flips the switch back on', function () {
     $fursuit = ($this->fursuit)();
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit), [
         'custom_reason' => 'Not a costume.',
     ]);
 
@@ -241,11 +307,11 @@ test('lifting a block restores the switches the attendee had, not blanket public
     // undoing their own mistake.
     $fursuit = ($this->fursuit)(['published' => true, 'catch_em_all' => false]);
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit), [
         'custom_reason' => 'Not a costume.',
     ]);
 
-    ($this->scoped)($this->reviewer)->delete(route('manage.fursuits.unblock-publication', $fursuit))
+    ($this->scoped)($this->reviewer)->delete(route('admin.fursuits.unblock-publication', $fursuit))
         ->assertRedirect();
 
     $fursuit->refresh();
@@ -261,11 +327,11 @@ test('approving a blocked fursuit clears the block', function () {
     // out of the gallery forever with nothing on screen explaining why.
     $fursuit = ($this->fursuit)();
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit), [
         'custom_reason' => 'Not a costume.',
     ]);
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.approve', $fursuit))->assertRedirect();
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.approve', $fursuit))->assertRedirect();
 
     expect($fursuit->fresh()->isPublicationBlocked())->toBeFalse();
 });
@@ -273,12 +339,12 @@ test('approving a blocked fursuit clears the block', function () {
 test('a second block is not offered while one stands, and a lift is', function () {
     $fursuit = ($this->fursuit)();
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit), [
         'custom_reason' => 'Not a costume.',
     ]);
 
     $outcomes = collect(
-        ($this->scoped)($this->reviewer)->get(route('manage.fursuits.review.show', $fursuit))
+        ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $fursuit))
             ->viewData('page')['props']['outcomes']
     )->keyBy('value');
 
@@ -289,7 +355,7 @@ test('a second block is not offered while one stands, and a lift is', function (
         ->and($outcomes['approved']['available'])->toBeTrue();
 
     $actions = collect(
-        actingAs($this->reviewer)->get(route('manage.fursuits.show', $fursuit))
+        actingAs($this->reviewer)->get(route('admin.fursuits.show', $fursuit))
             ->viewData('page')['props']['actions']
     )->pluck('name');
 
@@ -306,7 +372,7 @@ test('a block on somebody who never asked to be published is recorded as a plain
     $fursuit = ($this->fursuit)(['published' => false, 'catch_em_all' => false]);
 
     // And it needs no reason, so the verdict is still one keystroke.
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit))
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit))
         ->assertRedirect()
         ->assertInertiaFlash('toast', [
             'tone' => 'success',
@@ -328,18 +394,30 @@ test('a block on somebody who never asked to be published is recorded as a plain
     Notification::assertNotSentTo($fursuit->user, FursuitPublicationBlockedNotification::class);
 });
 
-test('the queue page says the block will be a plain approval before it is pressed', function () {
+test('the block button is not offered when nothing was requested, and its key folds into Approve', function () {
+    /*
+     * Two buttons that do the same thing is a worse surface than one, so the block is simply not
+     * there - but `g` is the key a reviewer reaches for on digital art, so it lands on Approve
+     * instead of doing nothing.
+     */
     $fursuit = ($this->fursuit)(['published' => false, 'catch_em_all' => false]);
 
     $outcomes = collect(
-        ($this->scoped)($this->reviewer)->get(route('manage.fursuits.review.show', $fursuit))
+        ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $fursuit))
             ->viewData('page')['props']['outcomes']
     )->keyBy('value');
 
-    expect($outcomes['publication_blocked']['silentApproval'])->toBeTrue()
-        ->and($outcomes['publication_blocked']['requiresReason'])->toBeFalse()
-        ->and($outcomes['publication_blocked']['consequence'])
-        ->toBe('The attendee asked for neither the gallery nor the game, so this is recorded as a plain approval.');
+    expect($outcomes->keys()->all())->toBe(['approved', 'rejected'])
+        ->and($outcomes['approved']['shortcuts'])->toBe(['a', 'g'])
+        ->and($outcomes['approved']['consequence'])
+        ->toBe('Prints and is handed out. The attendee asked for neither the gallery nor the game, so there is nothing to publish.');
+
+    // The endpoint still answers, because an older tab or a typed URL must not create a block
+    // nobody asked for.
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit))
+        ->assertRedirect();
+
+    expect($fursuit->fresh()->isPublicationBlocked())->toBeFalse();
 });
 
 test('wanting only the game is still a request worth blocking', function () {
@@ -347,10 +425,10 @@ test('wanting only the game is still a request worth blocking', function () {
     // that asked to be catchable.
     $fursuit = ($this->fursuit)(['published' => false, 'catch_em_all' => true]);
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit))
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit))
         ->assertSessionHasErrors('custom_reason');
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit), [
         'custom_reason' => 'Not a costume.',
     ])->assertRedirect();
 
@@ -379,7 +457,7 @@ test('the page shows the earlier version and whether the photo actually changed'
     $fursuit->refresh();
     $fursuit->update(['name' => 'Fluffy II']);
 
-    $card = ($this->scoped)($this->reviewer)->get(route('manage.fursuits.review.show', $fursuit))
+    $card = ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $fursuit))
         ->viewData('page')['props']['fursuit'];
 
     expect($card['history'])->toHaveCount(2)
@@ -451,18 +529,18 @@ test('undo restores the record and nothing reaches the attendee', function () {
     $fursuit = ($this->fursuit)();
     ($this->fursuit)(['name' => 'Next']);
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.reject', [$fursuit, 'queue' => 1]), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.reject', [$fursuit, 'queue' => 1]), [
         'custom_reason' => 'Wrong for the wrong reasons.',
     ])->assertRedirect();
 
     expect($fursuit->fresh()->status)->toBeInstanceOf(Rejected::class);
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.review.undo'))
-        ->assertRedirect(route('manage.fursuits.review.show', $fursuit))
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.review.undo'))
+        ->assertRedirect(route('admin.fursuits.review.show', $fursuit))
         ->assertInertiaFlash('toast', [
             'tone' => 'success',
             'title' => 'Decision undone',
-            'body' => 'Rejected (Code of Conduct) on Fluffy was taken back. Nothing was sent to the attendee.',
+            'body' => 'Took back "Rejected, must be fixed" on Fluffy. Nothing was sent to the attendee.',
         ]);
 
     $fursuit->refresh();
@@ -485,16 +563,147 @@ test('undo restores the record and nothing reaches the attendee', function () {
         ->and($decision->notified_at)->toBeNull();
 });
 
+test('the undo bar sits on the record it applies to, not on the next one', function () {
+    /*
+     * Context matters more than reach here. The bar used to travel with the reviewer, so
+     * "Approved on Fluffy - undo" sat above a different animal's photo: taking a verdict back
+     * meant trusting a name instead of looking at what was being restored. Now the queue moves on
+     * clean and the Back button is the way to the record, where the bar is.
+     */
+    $decided = ($this->fursuit)(['name' => 'Judged']);
+    $next = ($this->fursuit)(['name' => 'Next']);
+
+    ($this->scoped)($this->reviewer)
+        ->post(route('admin.fursuits.approve', [$decided, 'queue' => 1]))
+        ->assertRedirect(route('admin.fursuits.review.show', $next));
+
+    // Nothing on the record the reviewer was carried to.
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $next))
+        ->assertInertia(fn (Assert $page) => $page->where('undo', null));
+
+    // And it is there on the one they decided, naming the verdict and counting down.
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $decided))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('undo.fursuit', 'Judged')
+            ->where('undo.fursuitId', $decided->id)
+            ->where('undo.outcome', 'Approved')
+            ->where('undo.url', route('admin.fursuits.review.undo'))
+            ->where('undo.expiresAt', fn ($at) => $at !== null)
+        );
+});
+
+test('the panel shows the gallery variant, not the print master', function () {
+    /*
+     * The master is archival - print-sized, routinely over a megabyte - and the queue was pulling
+     * one per record to fill a column. GenerateFursuitWebpJob renders the gallery variants when
+     * the photo is submitted, so both surfaces read those: the row takes the 500px thumbnail and
+     * the review page the 1080x1920 webp.
+     */
+    $fursuit = ($this->fursuit)();
+    $fursuit->forceFill([
+        'image_webp' => 'gallery/fursuits/fluffy.webp',
+        'image_thumb' => 'gallery/fursuits/fluffy-thumb.webp',
+    ])->save();
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $fursuit))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('fursuit.image', fn ($url) => str_contains((string) $url, 'fluffy.webp'))
+        );
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rows.0.cells.image', fn ($url) => str_contains((string) $url, 'fluffy-thumb.webp'))
+        );
+
+    // A render that has not landed yet falls back to the master rather than to an empty frame:
+    // the variant is derived data and a reviewer still has to see something to judge.
+    $fresh = ($this->fursuit)(['name' => 'Not rendered yet', 'image' => 'fursuits/raw.jpg']);
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $fresh))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('fursuit.image', fn ($url) => str_contains((string) $url, 'fursuits/raw.jpg'))
+        );
+});
+
+test('a submitted photo is queued for its gallery variants straight away', function () {
+    // The admin surfaces read the variants, so they have to exist without anybody visiting the
+    // gallery first. FursuitObserver dispatches on create and again whenever the photo changes.
+    Queue::fake();
+
+    $fursuit = Fursuit::factory()->create([
+        'event_id' => $this->event->id,
+        'species_id' => $this->species->id,
+        'status' => Pending::$name,
+        'image' => 'fursuits/first.jpg',
+        'image_webp' => null,
+    ]);
+
+    Queue::assertPushed(GenerateFursuitWebpJob::class);
+
+    Queue::fake();
+
+    $fursuit->refresh();
+    $fursuit->update(['image' => 'fursuits/second.jpg']);
+
+    Queue::assertPushed(GenerateFursuitWebpJob::class);
+
+    // And the variant columns are dropped with the old photo, so nothing serves the previous
+    // picture while the re-render is queued.
+    expect($fursuit->fresh()->image_webp)->toBeNull()
+        ->and($fursuit->fresh()->image_thumb)->toBeNull();
+});
+
+test('the back target points at the last record decided, and is not an undo', function () {
+    /*
+     * The left arrow navigates; the button on that record undoes. Keeping them apart is the point:
+     * the arrow used to perform the undo, which erased a verdict on a record the reviewer could not
+     * see. So the page ships a URL, not an action, and the verdict is still standing after the trip.
+     */
+    $decided = ($this->fursuit)(['name' => 'Judged']);
+    $next = ($this->fursuit)(['name' => 'Next']);
+
+    ($this->scoped)($this->reviewer)
+        ->post(route('admin.fursuits.approve', [$decided, 'queue' => 1]))
+        ->assertRedirect(route('admin.fursuits.review.show', $next));
+
+    // On the record it moved to: a way back, and no undo bar.
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $next))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('back.url', route('admin.fursuits.review.show', $decided))
+            ->where('back.fursuit', 'Judged')
+            ->where('back.outcome', 'Approved')
+            ->where('undo', null)
+        );
+
+    // Following it changes nothing by itself - and there the undo bar is.
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $decided))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            // No trip to the page you are already on.
+            ->where('back', null)
+            ->where('undo.fursuit', 'Judged')
+        );
+
+    expect($decided->fresh()->status)->toBeInstanceOf(Approved::class);
+
+    // Nothing to go back to once the verdict has been announced, so the arrow stops offering a
+    // page that can no longer act on it.
+    ($this->deliver)();
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $next))
+        ->assertInertia(fn (Assert $page) => $page->where('back', null));
+});
+
 test('undo is refused once the attendee has been told', function () {
     $fursuit = ($this->fursuit)();
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.approve', $fursuit));
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.approve', $fursuit));
 
     ($this->deliver)();
 
     Notification::assertSentTo($fursuit->user, FursuitApprovedNotification::class);
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.review.undo'))
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.review.undo'))
         ->assertInertiaFlash('toast', [
             'tone' => 'warning',
             'title' => 'Nothing to undo',
@@ -508,10 +717,10 @@ test('undo reaches only your own last verdict', function () {
     $mine = ($this->fursuit)(['name' => 'Mine']);
     $theirs = ($this->fursuit)(['name' => 'Theirs']);
 
-    ($this->scoped)($this->second)->post(route('manage.fursuits.approve', $theirs));
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.approve', $mine));
+    ($this->scoped)($this->second)->post(route('admin.fursuits.approve', $theirs));
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.approve', $mine));
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.review.undo'))->assertRedirect();
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.review.undo'))->assertRedirect();
 
     expect($mine->fresh()->status)->toBeInstanceOf(Pending::class)
         ->and($theirs->fresh()->status)->toBeInstanceOf(Approved::class);
@@ -521,12 +730,12 @@ test('a superseded verdict is neither undoable nor announced', function () {
     // Two reviewers on one record, which presence makes unlikely and does not prevent.
     $fursuit = ($this->fursuit)();
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.approve', $fursuit));
-    ($this->scoped)($this->second)->post(route('manage.fursuits.block-publication', $fursuit), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.approve', $fursuit));
+    ($this->scoped)($this->second)->post(route('admin.fursuits.block-publication', $fursuit), [
         'custom_reason' => 'Not a costume.',
     ]);
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.review.undo'))
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.review.undo'))
         ->assertInertiaFlash('toast', [
             'tone' => 'warning',
             'title' => 'Nothing to undo',
@@ -546,7 +755,7 @@ test('a verdict is not announced after the attendee has resubmitted', function (
     // otherwise describe a submission that no longer exists.
     $fursuit = ($this->fursuit)();
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.reject', $fursuit), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.reject', $fursuit), [
         'custom_reason' => 'Please change the photo.',
     ]);
 
@@ -581,10 +790,10 @@ test('a Code of Conduct rejection stops the card, a publication block does not',
     $blocked = ($this->fursuit)(['name' => 'Not published']);
     $pending = ($this->fursuit)(['name' => 'Still waiting']);
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.reject', $rejected), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.reject', $rejected), [
         'custom_reason' => 'Against the Code of Conduct.',
     ]);
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $blocked), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $blocked), [
         'custom_reason' => 'Not a costume.',
     ]);
 
@@ -624,7 +833,7 @@ test('a Code of Conduct rejection stops the card, a publication block does not',
 test('the decision row carries what undo needs and nothing the attendee did not get', function () {
     $fursuit = ($this->fursuit)();
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.approve', $fursuit));
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.approve', $fursuit));
 
     $decision = $fursuit->reviewDecisions()->sole();
 
@@ -639,25 +848,28 @@ test('the decision row carries what undo needs and nothing the attendee did not 
 });
 
 test('the two reason lists are separate, and each verdict validates against its own', function () {
-    // The eight rejection strings all tell the attendee to fix their badge, which is wrong
-    // for a badge that is approved and being printed.
-    $rejectionKeys = array_keys(FursuitReviewService::REASONS[FursuitReviewOutcomeEnum::Rejected->value]);
-    $blockKeys = array_keys(FursuitReviewService::REASONS[FursuitReviewOutcomeEnum::PublicationBlocked->value]);
+    // The rejection wording tells the attendee to fix their badge, which is wrong for a badge that
+    // is approved and being printed - so the lists are per outcome and do not share slugs.
+    $rejectionKeys = FursuitReviewService::reasonSlugs(FursuitReviewOutcomeEnum::Rejected);
+    $blockKeys = FursuitReviewService::reasonSlugs(FursuitReviewOutcomeEnum::PublicationBlocked);
 
-    expect($rejectionKeys)->toHaveCount(8)
-        ->and($blockKeys)->toContain('not_a_photo', 'ai_generated', 'real_animal', 'no_costume')
-        ->and(FursuitReviewService::REASONS[FursuitReviewOutcomeEnum::PublicationBlocked->value]['not_a_photo'])
-        ->toContain('gallery');
+    expect($rejectionKeys)->not->toContain('artwork', 'ai_generated', 'real_animal', 'fetish')
+        ->and($blockKeys)->toContain('artwork', 'ai_generated', 'real_animal', 'no_costume', 'identifiable_human', 'fetish')
+        // Every body is a finding and nothing more; the consequence is the notification's job, so
+        // no reason string mentions the gallery or printing at all.
+        ->and(collect(FursuitReviewService::reasonOptions(FursuitReviewOutcomeEnum::PublicationBlocked))
+            ->firstWhere('value', 'artwork')['body'])
+        ->toBe('We determined that your submission is artwork rather than a photo of a costume.');
 
     $fursuit = ($this->fursuit)();
 
     // A rejection slug is not a publication-block slug.
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit), [
-        'reason' => 'explicit',
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit), [
+        'reason' => 'drugs',
         'custom_reason' => 'Anything',
     ])->assertSessionHasErrors('reason');
 
-    ($this->scoped)($this->reviewer)->post(route('manage.fursuits.block-publication', $fursuit), [
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.block-publication', $fursuit), [
         'reason' => 'no_costume',
     ])->assertSessionHasErrors('custom_reason');
 
@@ -670,8 +882,8 @@ test('an outsider reaches none of it', function () {
 
     actingAs($outsider);
 
-    get(route('manage.fursuits.review'))->assertForbidden();
-    get(route('manage.fursuits.review.show', $fursuit))->assertForbidden();
-    post(route('manage.fursuits.review.undo'))->assertForbidden();
-    post(route('manage.fursuits.block-publication', $fursuit), ['custom_reason' => 'x'])->assertForbidden();
+    get(route('admin.fursuits.review'))->assertForbidden();
+    get(route('admin.fursuits.review.show', $fursuit))->assertForbidden();
+    post(route('admin.fursuits.review.undo'))->assertForbidden();
+    post(route('admin.fursuits.block-publication', $fursuit), ['custom_reason' => 'x'])->assertForbidden();
 });

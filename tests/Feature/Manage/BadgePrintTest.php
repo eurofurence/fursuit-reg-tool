@@ -106,7 +106,7 @@ beforeEach(function () {
 test('rendering the badge list queues nothing', function () {
     $badge = ($this->badge)();
 
-    ($this->scoped)()->get(route('manage.badges.index'))->assertSuccessful();
+    ($this->scoped)()->get(route('admin.badges.index'))->assertSuccessful();
 
     expect(PrintBatch::count())->toBe(0)
         ->and(PrintJob::count())->toBe(0)
@@ -126,7 +126,7 @@ test('the five-second poll queues nothing', function () {
             'X-Inertia-Partial-Component' => 'Manage/Badges/Index',
             'X-Inertia-Partial-Data' => 'rows,meta,bulkActions',
         ])
-        ->get(route('manage.badges.index'))
+        ->get(route('admin.badges.index'))
         ->assertSuccessful();
 
     expect(PrintBatch::count())->toBe(0)
@@ -137,7 +137,7 @@ test('the five-second poll queues nothing', function () {
 test('opening the edit page queues nothing', function () {
     $badge = ($this->badge)();
 
-    ($this->scoped)()->get(route('manage.badges.edit', $badge))->assertSuccessful();
+    ($this->scoped)()->get(route('admin.badges.edit', $badge))->assertSuccessful();
 
     expect(PrintBatch::count())->toBe(0)->and(PrintJob::count())->toBe(0);
 });
@@ -151,7 +151,7 @@ test('the row action transitions the badge to Processing through the state machi
 
     expect($badge->status_fulfillment->getValue())->toBe('pending');
 
-    actingAs($this->admin)->post(route('manage.badges.print', $badge))
+    actingAs($this->admin)->post(route('admin.badges.print', $badge))
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
@@ -165,7 +165,7 @@ test('the row action transitions the badge to Processing through the state machi
 test('the row action gives a single badge its own batch, through BadgePrintQueue', function () {
     $badge = ($this->badge)();
 
-    actingAs($this->admin)->post(route('manage.badges.print', $badge))->assertRedirect();
+    actingAs($this->admin)->post(route('admin.badges.print', $badge))->assertRedirect();
 
     $batch = PrintBatch::sole();
 
@@ -189,7 +189,7 @@ test('the row action gives a single badge its own batch, through BadgePrintQueue
 test('the row action falls back to the first active badge printer', function () {
     $badge = ($this->badge)();
 
-    actingAs($this->admin)->post(route('manage.badges.print', $badge))->assertRedirect();
+    actingAs($this->admin)->post(route('admin.badges.print', $badge))->assertRedirect();
 
     expect(PrintBatch::sole()->printer_id)->toBe($this->printer->id);
 });
@@ -199,7 +199,7 @@ test('the row action still prints a badge that cannot reach Processing', functio
     // the transition is skipped and the badge is queued from where it stands.
     $badge = ($this->badge)('0142-1', ['status_fulfillment' => 'picked_up']);
 
-    actingAs($this->admin)->post(route('manage.badges.print', $badge))->assertRedirect();
+    actingAs($this->admin)->post(route('admin.badges.print', $badge))->assertRedirect();
 
     expect($badge->fresh()->status_fulfillment)->toBeInstanceOf(PickedUp::class)
         ->and(PrintBatch::count())->toBe(1)
@@ -215,8 +215,8 @@ test('the same print, posted twice, produces one batch and one card', function (
      */
     $badge = ($this->badge)();
 
-    actingAs($this->admin)->post(route('manage.badges.print', $badge))->assertRedirect();
-    actingAs($this->admin)->post(route('manage.badges.print', $badge))
+    actingAs($this->admin)->post(route('admin.badges.print', $badge))->assertRedirect();
+    actingAs($this->admin)->post(route('admin.badges.print', $badge))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_BADGE_PRINT_TOAST, 'Nothing was queued');
 
@@ -228,9 +228,9 @@ test('a bulk selection that includes an already queued badge queues only the res
     $queued = ($this->badge)('0100-1');
     $fresh = ($this->badge)('0101-1');
 
-    actingAs($this->admin)->post(route('manage.badges.print', $queued))->assertRedirect();
+    actingAs($this->admin)->post(route('admin.badges.print', $queued))->assertRedirect();
 
-    actingAs($this->admin)->post(route('manage.badges.bulk.print'), [
+    actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
         'ids' => [$queued->id, $fresh->id],
         'printer_id' => $this->printer->id,
     ])->assertRedirect()->assertSessionHasNoErrors();
@@ -246,7 +246,7 @@ test('a bulk selection that includes an already queued badge queues only the res
 test('the row action flashes a toast, which the Filament action never did', function () {
     $badge = ($this->badge)();
 
-    actingAs($this->admin)->post(route('manage.badges.print', $badge))
+    actingAs($this->admin)->post(route('admin.badges.print', $badge))
         ->assertSessionHas(MANAGE_BADGE_PRINT_TOAST, 'Badge queued for printing');
 });
 
@@ -259,7 +259,7 @@ test('the bulk action queues the selection to the chosen printer as one batch', 
     $second = ($this->badge)('0101-1');
     $other = Printer::factory()->badge()->create(['name' => 'Badge Printer 2']);
 
-    actingAs($this->admin)->post(route('manage.badges.bulk.print'), [
+    actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
         'ids' => [$first->id, $second->id],
         'printer_id' => $other->id,
     ])->assertRedirect()->assertSessionHasNoErrors();
@@ -295,7 +295,7 @@ test('the print order is the batch\'s own, not a second one layered on top', fun
     $main = Badge::factory()->withPrintFile()->create(['custom_id' => '1001-1', 'status_fulfillment' => 'pending', 'fursuit_id' => $fursuit()]);
     $later = ($this->badge)('1002-1');
 
-    actingAs($this->admin)->post(route('manage.badges.bulk.print'), [
+    actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
         'ids' => [$later->id, $main->id, $spare->id],
         'printer_id' => $this->printer->id,
     ])->assertRedirect()->assertSessionHasNoErrors();
@@ -307,7 +307,7 @@ test('the print order is the batch\'s own, not a second one layered on top', fun
 test('the bulk action requires a printer and queues nothing without one', function () {
     $badge = ($this->badge)();
 
-    actingAs($this->admin)->post(route('manage.badges.bulk.print'), [
+    actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
         'ids' => [$badge->id],
     ])->assertSessionHasErrors('printer_id');
 
@@ -322,7 +322,7 @@ test('the bulk action refuses a printer that is not an active badge printer', fu
     $inactive = Printer::factory()->badge()->create(['is_active' => false]);
 
     foreach ([$receipt->id, $inactive->id, 999999] as $printerId) {
-        actingAs($this->admin)->post(route('manage.badges.bulk.print'), [
+        actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
             'ids' => [$badge->id],
             'printer_id' => $printerId,
         ])->assertSessionHasErrors('printer_id');
@@ -334,7 +334,7 @@ test('the bulk action refuses a printer that is not an active badge printer', fu
 });
 
 test('the bulk action says so when the selection queued nothing', function () {
-    actingAs($this->admin)->post(route('manage.badges.bulk.print'), [
+    actingAs($this->admin)->post(route('admin.badges.bulk.print'), [
         'ids' => [999999],
         'printer_id' => $this->printer->id,
     ])->assertSessionHas(MANAGE_BADGE_PRINT_TOAST, 'Nothing was queued');
@@ -350,8 +350,8 @@ test('the bulk action says so when the selection queued nothing', function () {
 test('a guest cannot print', function () {
     $badge = ($this->badge)();
 
-    post(route('manage.badges.print', $badge))->assertRedirect();
-    post(route('manage.badges.bulk.print'), ['ids' => [$badge->id], 'printer_id' => $this->printer->id])
+    post(route('admin.badges.print', $badge))->assertRedirect();
+    post(route('admin.badges.bulk.print'), ['ids' => [$badge->id], 'printer_id' => $this->printer->id])
         ->assertRedirect();
 
     expect(PrintBatch::count())->toBe(0)
@@ -362,9 +362,9 @@ test('a guest cannot print', function () {
 test('a user who cannot see badges cannot print, and nothing is queued', function () {
     $badge = ($this->badge)();
 
-    actingAs($this->nobody)->post(route('manage.badges.print', $badge))->assertForbidden();
+    actingAs($this->nobody)->post(route('admin.badges.print', $badge))->assertForbidden();
 
-    actingAs($this->nobody)->post(route('manage.badges.bulk.print'), [
+    actingAs($this->nobody)->post(route('admin.badges.bulk.print'), [
         'ids' => [$badge->id],
         'printer_id' => $this->printer->id,
     ])->assertForbidden();
@@ -378,7 +378,7 @@ test('a user who cannot see badges cannot print, and nothing is queued', functio
 test('a reviewer can print, which is the audience the Filament actions had', function () {
     $badge = ($this->badge)();
 
-    actingAs($this->reviewer)->post(route('manage.badges.print', $badge))
+    actingAs($this->reviewer)->post(route('admin.badges.print', $badge))
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
@@ -392,7 +392,7 @@ test('a reviewer can print, which is the audience the Filament actions had', fun
 test('the list declares the print row action with its confirm copy', function () {
     ($this->badge)();
 
-    $rows = ($this->scoped)()->get(route('manage.badges.index'))->viewData('page')['props']['rows'];
+    $rows = ($this->scoped)()->get(route('admin.badges.index'))->viewData('page')['props']['rows'];
 
     $action = collect($rows[0]['actions'])->firstWhere('name', 'printBadge');
 
@@ -411,7 +411,7 @@ test('the list declares the print row action with its confirm copy', function ()
 test('the list declares the bulk print action with its modal copy and printer select', function () {
     ($this->badge)();
 
-    $props = ($this->scoped)()->get(route('manage.badges.index'))->viewData('page')['props'];
+    $props = ($this->scoped)()->get(route('admin.badges.index'))->viewData('page')['props'];
 
     expect($props['bulkActions'])->toHaveCount(1);
 
@@ -446,7 +446,7 @@ test('the printer options follow the hardware rather than freezing at table buil
     $this->printer->update(['is_active' => false]);
     $second = Printer::factory()->badge()->create(['name' => 'Badge Printer 2']);
 
-    $props = ($this->scoped)()->get(route('manage.badges.index'))->viewData('page')['props'];
+    $props = ($this->scoped)()->get(route('admin.badges.index'))->viewData('page')['props'];
 
     expect($props['bulkActions'][0]['fields'][0]['options'])
         ->toBe([['value' => $second->id, 'label' => 'Badge Printer 2']]);
@@ -455,5 +455,5 @@ test('the printer options follow the hardware rather than freezing at table buil
 test('a user who cannot see badges is offered no print action at all', function () {
     // The button and the endpoint answer the same question, so an action that is not
     // offered is also one that cannot be posted (asserted above).
-    expect(actingAs($this->nobody)->get(route('manage.badges.index'))->status())->toBe(403);
+    expect(actingAs($this->nobody)->get(route('admin.badges.index'))->status())->toBe(403);
 });

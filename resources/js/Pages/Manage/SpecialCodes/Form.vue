@@ -97,12 +97,12 @@ const catchUrl = computed(
 
 const submit = () => {
   if (editing.value) {
-    form.put(route('manage.special-codes.update', props.specialCode.id));
+    form.put(route('admin.special-codes.update', props.specialCode.id));
 
     return;
   }
 
-  form.post(route('manage.special-codes.store'));
+  form.post(route('admin.special-codes.store'));
 };
 </script>
 

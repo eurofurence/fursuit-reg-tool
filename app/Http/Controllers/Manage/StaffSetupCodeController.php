@@ -61,7 +61,7 @@ class StaffSetupCodeController extends Controller
         }
 
         // Flashed, not saved. The form picks it up as a prop and the save persists it.
-        session()->flash('manage.staff.generated_setup_code', $code);
+        session()->flash('admin.staff.generated_setup_code', $code);
 
         return back();
     }

@@ -103,7 +103,7 @@ class EventController extends Controller
         // (audit 4.1: no custom notifications).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('manage.events.index');
+        return redirect()->route('admin.settings.events.index');
     }
 
     public function edit(Event $event): Response
@@ -119,7 +119,7 @@ class EventController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.events.index');
+        return redirect()->route('admin.settings.events.index');
     }
 
     /**
@@ -238,14 +238,14 @@ class EventController extends Controller
                 'archival_notice' => $this->notice($event->archival_notice),
             ])
             ->recordUrl(fn (Event $event) => Gate::allows('update', $event)
-                ? route('manage.events.edit', $event)
+                ? route('admin.settings.events.edit', $event)
                 : null)
             ->rowActions(fn (Event $event) => array_values(array_filter([
                 Gate::allows('update', $event)
-                    ? Action::link('edit', 'Edit', route('manage.events.edit', $event))->icon('pencil')
+                    ? Action::link('edit', 'Edit', route('admin.settings.events.edit', $event))->icon('pencil')
                     : null,
                 Gate::allows('delete', $event)
-                    ? Action::delete('delete', 'Delete', route('manage.events.destroy', $event))
+                    ? Action::delete('delete', 'Delete', route('admin.settings.events.destroy', $event))
                         ->icon('trash-2')
                         ->tone('danger')
                         // Filament's DeleteAction copy, never overridden in this
@@ -302,7 +302,7 @@ class EventController extends Controller
         }
 
         return [
-            Action::delete('bulk-delete', 'Delete selected', route('manage.events.bulk.destroy'))
+            Action::delete('bulk-delete', 'Delete selected', route('admin.settings.events.bulk.destroy'))
                 ->icon('trash-2')
                 ->tone('danger')
                 ->confirm(
@@ -323,7 +323,7 @@ class EventController extends Controller
         }
 
         return [
-            Action::link('create', 'New event', route('manage.events.create'))->icon('plus'),
+            Action::link('create', 'New event', route('admin.settings.events.create'))->icon('plus'),
         ];
     }
 

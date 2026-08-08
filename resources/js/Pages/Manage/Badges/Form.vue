@@ -43,7 +43,7 @@ const form = useForm({
 
 const title = computed(() => props.badge.custom_id ?? props.badge.fursuit ?? 'Badge');
 
-const submit = () => form.put(route('manage.badges.update', props.badge.id));
+const submit = () => form.put(route('admin.badges.update', props.badge.id));
 </script>
 
 <template>

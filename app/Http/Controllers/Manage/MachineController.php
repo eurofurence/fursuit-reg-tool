@@ -77,7 +77,7 @@ class MachineController extends Controller
         // (audit 7.2).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('manage.machines.index');
+        return redirect()->route('admin.machines.index');
     }
 
     public function edit(Machine $machine): Response
@@ -101,7 +101,7 @@ class MachineController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.machines.index');
+        return redirect()->route('admin.machines.index');
     }
 
     /**
@@ -207,7 +207,7 @@ class MachineController extends Controller
                 'should_discover_printers' => (bool) $machine->should_discover_printers,
             ])
             ->recordUrl(fn (Machine $machine) => Gate::allows('update', $machine)
-                ? route('manage.machines.edit', $machine)
+                ? route('admin.machines.edit', $machine)
                 : null)
             ->rowActions(fn (Machine $machine) => $this->rowActions($machine))
             ->bulkActions($this->bulkActions())
@@ -290,11 +290,11 @@ class MachineController extends Controller
         }
 
         return array_values(array_filter([
-            Action::link('edit', 'Edit', route('manage.machines.edit', $machine))->icon('pencil'),
+            Action::link('edit', 'Edit', route('admin.machines.edit', $machine))->icon('pencil'),
 
             $machine->isArchived()
                 ? null
-                : Action::post('archive', 'Archive', route('manage.machines.archive', $machine))
+                : Action::post('archive', 'Archive', route('admin.machines.archive', $machine))
                     ->icon('archive')
                     ->tone(Status::WARN)
                     ->confirm(
@@ -304,7 +304,7 @@ class MachineController extends Controller
                     ),
 
             $machine->isArchived()
-                ? Action::delete('unarchive', 'Restore', route('manage.machines.unarchive', $machine))
+                ? Action::delete('unarchive', 'Restore', route('admin.machines.unarchive', $machine))
                     ->icon('rotate-ccw')
                     ->tone(Status::OK)
                     ->confirm(
@@ -333,7 +333,7 @@ class MachineController extends Controller
         }
 
         return [
-            Action::post('archive', 'Archive selected', route('manage.machines.bulk.archive'))
+            Action::post('archive', 'Archive selected', route('admin.machines.bulk.archive'))
                 ->icon('archive')
                 ->tone(Status::WARN)
                 ->confirm(
@@ -342,7 +342,7 @@ class MachineController extends Controller
                     'Yes, archive them',
                 ),
 
-            Action::delete('unarchive', 'Restore selected', route('manage.machines.bulk.unarchive'))
+            Action::delete('unarchive', 'Restore selected', route('admin.machines.bulk.unarchive'))
                 ->icon('rotate-ccw')
                 ->tone(Status::OK)
                 ->confirm(
@@ -363,7 +363,7 @@ class MachineController extends Controller
         }
 
         return [
-            Action::link('create', 'New machine', route('manage.machines.create'))->icon('plus'),
+            Action::link('create', 'New machine', route('admin.machines.create'))->icon('plus'),
         ];
     }
 
@@ -382,7 +382,7 @@ class MachineController extends Controller
         return [
             // The raw action name is what Filament rendered as the label, so the button
             // still reads `Login Link`.
-            Action::post('login-link', 'Login Link', route('manage.machines.login-link', $machine))
+            Action::post('login-link', 'Login Link', route('admin.machines.login-link', $machine))
                 ->icon('key')
                 ->toArray(),
         ];

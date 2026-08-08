@@ -13,8 +13,13 @@ use App\Support\Manage\Status;
  * outcomes below separate the two questions a reviewer is actually answering:
  *
  *  - Approved: fine on both counts. The card prints, the fursuit may be published.
- *  - Rejected: breaks the Code of Conduct. Nothing prints and nothing is handed out
- *    until the attendee changes the submission. This is the only blocking outcome.
+ *  - Rejected: the submission has to change before anything can be printed. Nothing prints
+ *    and nothing is handed out until the attendee fixes it. This is the only blocking
+ *    outcome. Two kinds of thing land here and it is worth not conflating them: breaches of
+ *    the Rules of Conduct (real fur, explicit content, hate symbols), and submissions that
+ *    are simply not a printable fursuit badge (a photo of a person, an unusable image).
+ *    Calling the whole outcome "Code of Conduct" told an attendee whose photo was merely
+ *    blurry that they had broken a rule.
  *  - PublicationBlocked: fine by the Code of Conduct, wrong for the public surfaces -
  *    digital art rather than a photo of a suit, most often. The card prints and is
  *    handed out as normal; the gallery and Catch-Em-All do not show it.
@@ -29,7 +34,10 @@ enum FursuitReviewOutcomeEnum: string
     {
         return match ($this) {
             self::Approved => 'Approved',
-            self::Rejected => 'Rejected (Code of Conduct)',
+            // Not "Rejected (Code of Conduct)": most rejections are, but "this is a photo of a
+            // person" and "this is too blurry to print" are not rule breaches, and the label is
+            // what the reviewer and the log both read.
+            self::Rejected => 'Rejected, must be fixed',
             self::PublicationBlocked => 'Approved, not published',
         };
     }

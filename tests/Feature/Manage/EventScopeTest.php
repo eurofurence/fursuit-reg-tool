@@ -65,7 +65,7 @@ beforeEach(function () {
 });
 
 test('with no session state the newest event is selected', function () {
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('manageEvent.id', $this->newer->id)
@@ -74,30 +74,30 @@ test('with no session state the newest event is selected', function () {
 });
 
 test('selecting an event persists it across requests', function () {
-    from(route('manage.dashboard'))
-        ->post(route('manage.event.select'), ['event_id' => $this->older->id])
-        ->assertRedirect(route('manage.dashboard'));
+    from(route('admin.dashboard'))
+        ->post(route('admin.event.select'), ['event_id' => $this->older->id])
+        ->assertRedirect(route('admin.dashboard'));
 
     // The next request must not be re-seeded with the newest event.
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('manageEvent.id', $this->older->id)
             ->where('manageEvent.name', 'Eurofurence 28')
         );
 
     // And the one after that, because the middleware runs again every time.
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where('manageEvent.id', $this->older->id));
 });
 
 test('selecting all events actually means all events and survives the next request', function () {
     // This is the case FilamentEventSelector could never express. A null id is a
     // decision, not a missing value, and the seed has to leave it alone.
-    from(route('manage.dashboard'))
-        ->post(route('manage.event.select'), ['event_id' => null])
-        ->assertRedirect(route('manage.dashboard'));
+    from(route('admin.dashboard'))
+        ->post(route('admin.event.select'), ['event_id' => null])
+        ->assertRedirect(route('admin.dashboard'));
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('manageEvent.id', null)
@@ -106,33 +106,33 @@ test('selecting all events actually means all events and survives the next reque
 
     // Two more round trips: the old bug re-seeded on *every* request, so one was enough
     // to lose the choice, but a regression that only bites on the second is just as bad.
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where('manageEvent.id', null));
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where('manageEvent.id', null));
 });
 
 test('an omitted event_id is the same explicit all-events choice as an empty one', function () {
     // The selector posts nothing at all for the "All events" option.
-    from(route('manage.dashboard'))->post(route('manage.event.select'), []);
+    from(route('admin.dashboard'))->post(route('admin.event.select'), []);
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where('manageEvent.id', null));
 });
 
 test('a specific event can be chosen again after all events', function () {
-    from(route('manage.dashboard'))->post(route('manage.event.select'), []);
-    from(route('manage.dashboard'))->post(route('manage.event.select'), ['event_id' => $this->newer->id]);
+    from(route('admin.dashboard'))->post(route('admin.event.select'), []);
+    from(route('admin.dashboard'))->post(route('admin.event.select'), ['event_id' => $this->newer->id]);
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where('manageEvent.id', $this->newer->id));
 });
 
 test('the scope is shared as an Inertia prop with every option and its own orders_open flag', function () {
     // The blade select could only show the marker for the already-selected event, so the
     // prop carries the flag per option (landmine 68).
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('manageEvent', fn (Assert $scope) => $scope
                 ->where('id', $this->newer->id)
@@ -150,31 +150,31 @@ test('the scope is shared as an Inertia prop with every option and its own order
 });
 
 test('an unknown event id is a validation error, not a poisoned session', function () {
-    from(route('manage.dashboard'))
-        ->post(route('manage.event.select'), ['event_id' => 999999])
+    from(route('admin.dashboard'))
+        ->post(route('admin.event.select'), ['event_id' => 999999])
         ->assertInvalid(['event_id']);
 
     // The old selector wrote whatever the query string carried straight into the session.
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('manageEvent.id', $this->newer->id));
 });
 
 test('a non-numeric event id is rejected instead of being returned as an int', function () {
     // getSelectedEventId(): ?int would TypeError on this.
-    from(route('manage.dashboard'))
-        ->post(route('manage.event.select'), ['event_id' => 'all'])
+    from(route('admin.dashboard'))
+        ->post(route('admin.event.select'), ['event_id' => 'all'])
         ->assertInvalid(['event_id']);
 
-    get(route('manage.dashboard'))->assertSuccessful();
+    get(route('admin.dashboard'))->assertSuccessful();
 });
 
 test('an event deleted after it was selected does not fatal, it means all events', function () {
-    from(route('manage.dashboard'))->post(route('manage.event.select'), ['event_id' => $this->older->id]);
+    from(route('admin.dashboard'))->post(route('admin.event.select'), ['event_id' => $this->older->id]);
 
     $this->older->delete();
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('manageEvent.id', null)
@@ -188,7 +188,7 @@ test('junk left in the session by anything else resolves to all events', functio
         EventScope::SESSION_CHOSEN => true,
     ]);
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('manageEvent.id', null));
 });
@@ -284,7 +284,7 @@ test('the ten unscoped lists ignore the selected event', function () {
     ]);
 
     // Scope the panel to the newer event. Nothing above belongs to it.
-    from(route('manage.dashboard'))->post(route('manage.event.select'), ['event_id' => $this->newer->id]);
+    from(route('admin.dashboard'))->post(route('admin.event.select'), ['event_id' => $this->newer->id]);
 
     $ids = function (string $route) {
         $props = get(route($route))->viewData('page')['props'];
@@ -292,14 +292,14 @@ test('the ten unscoped lists ignore the selected event', function () {
         return collect($props['rows'])->pluck('id')->map(fn ($id) => (int) $id)->all();
     };
 
-    expect($ids('manage.checkouts.index'))->toContain($checkout->id)
-        ->and($ids('manage.machines.index'))->toContain($machine->id)
-        ->and($ids('manage.printers.index'))->toContain($printer->id)
-        ->and($ids('manage.print-jobs.index'))->toContain($job->id)
-        ->and($ids('manage.print-batches.index'))->toContain($batch->id)
-        ->and($ids('manage.staff.index'))->toContain($staff->id)
-        ->and($ids('manage.sumup-readers.index'))->toContain($reader->id)
-        ->and($ids('manage.tse-clients.index'))->toContain($tseClient->id)
-        ->and($ids('manage.users.index'))->toContain($this->admin->id)
-        ->and($ids('manage.events.index'))->toContain($this->older->id);
+    expect($ids('admin.checkouts.index'))->toContain($checkout->id)
+        ->and($ids('admin.machines.index'))->toContain($machine->id)
+        ->and($ids('admin.printers.index'))->toContain($printer->id)
+        ->and($ids('admin.print-jobs.index'))->toContain($job->id)
+        ->and($ids('admin.print-batches.index'))->toContain($batch->id)
+        ->and($ids('admin.staff.index'))->toContain($staff->id)
+        ->and($ids('admin.sumup-readers.index'))->toContain($reader->id)
+        ->and($ids('admin.tse-clients.index'))->toContain($tseClient->id)
+        ->and($ids('admin.settings.users.index'))->toContain($this->admin->id)
+        ->and($ids('admin.settings.events.index'))->toContain($this->older->id);
 });

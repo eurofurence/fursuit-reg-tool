@@ -111,10 +111,6 @@ class DbServiceController extends Controller
             'report' => $report,
             'result' => $result,
             'actions' => $this->actions($report, $result),
-            // Plan 2.10 #3: phase 9 links the corrupted-total report rather than growing a
-            // second copy of the query. Both pages are `manage-admin`, so the link is never
-            // offered to someone who would be refused at the far end.
-            'corruptedTotalsUrl' => route('manage.badges.corrupted-totals'),
         ]);
     }
 
@@ -135,7 +131,7 @@ class DbServiceController extends Controller
 
         // Filament set `reviewingFreeBadges = true` whether or not anything was found, so
         // the empty report is shown with its three zeroed stat cards rather than swallowed.
-        return redirect()->route('manage.maintenance.db-service', ['review' => 1]);
+        return redirect()->route('admin.maintenance.db-service', ['review' => 1]);
     }
 
     /**
@@ -157,7 +153,7 @@ class DbServiceController extends Controller
         }
 
         return redirect()
-            ->route('manage.maintenance.db-service')
+            ->route('admin.maintenance.db-service')
             ->with(self::RESULT_KEY, $result);
     }
 
@@ -175,7 +171,7 @@ class DbServiceController extends Controller
      */
     private function actions(?array $report, ?array $result): array
     {
-        $page = route('manage.maintenance.db-service');
+        $page = route('admin.maintenance.db-service');
 
         if ($result !== null) {
             // `resetFreeBadgeFix`, which cleared report, result and review flag. A link back
@@ -187,7 +183,7 @@ class DbServiceController extends Controller
 
         if ($report === null) {
             return [
-                Action::post('preview', 'Fix free badges', route('manage.maintenance.db-service.preview'))
+                Action::post('preview', 'Fix free badges', route('admin.maintenance.db-service.preview'))
                     ->icon('search')
                     ->toArray(),
             ];
@@ -197,7 +193,7 @@ class DbServiceController extends Controller
 
         // Shown only when there is something to convert, matching the blade.
         if ($report['affected_badge_count'] > 0) {
-            $actions[] = Action::post('apply', 'Confirm & apply fix', route('manage.maintenance.db-service.apply'))
+            $actions[] = Action::post('apply', 'Confirm & apply fix', route('admin.maintenance.db-service.apply'))
                 ->icon('check')
                 // Filament's color('success').
                 ->tone(Status::OK)

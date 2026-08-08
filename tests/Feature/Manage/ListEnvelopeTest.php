@@ -100,15 +100,15 @@ test('the events list sorts and paginates under a partial visit', function () {
 
     actingAs($this->admin);
 
-    $ascending = manageListPartial('/admin/events?sort=starts_at&dir=asc', 'Manage/Events/Index');
-    $descending = manageListPartial('/admin/events?sort=starts_at&dir=desc', 'Manage/Events/Index');
+    $ascending = manageListPartial('/admin/settings/events?sort=starts_at&dir=asc', 'Manage/Events/Index');
+    $descending = manageListPartial('/admin/settings/events?sort=starts_at&dir=desc', 'Manage/Events/Index');
 
     expect($ascending['sort'])->toBe(['key' => 'starts_at', 'dir' => 'asc'])
         ->and($ascending['rows'][0]['cells']['name'])->toBe('Alpha')
         ->and($descending['rows'][0]['cells']['name'])->toBe('Zulu');
 
-    $first = manageListPartial('/admin/events?per_page=10&page=1', 'Manage/Events/Index');
-    $second = manageListPartial('/admin/events?per_page=10&page=2', 'Manage/Events/Index');
+    $first = manageListPartial('/admin/settings/events?per_page=10&page=1', 'Manage/Events/Index');
+    $second = manageListPartial('/admin/settings/events?per_page=10&page=2', 'Manage/Events/Index');
 
     expect($first['rows'])->toHaveCount(10)
         ->and($second['rows'])->toHaveCount(2)
@@ -272,19 +272,13 @@ test('the users and special-code lists still answer the same visit', function ()
 
     actingAs($this->admin);
 
-    $first = manageListPartial('/admin/users?per_page=10&page=1', 'Manage/Users/Index');
-    $second = manageListPartial('/admin/users?per_page=10&page=2', 'Manage/Users/Index');
+    $first = manageListPartial('/admin/settings/users?per_page=10&page=1', 'Manage/Users/Index');
+    $second = manageListPartial('/admin/settings/users?per_page=10&page=2', 'Manage/Users/Index');
 
     expect($second['meta']['page'])->toBe(2)
         ->and($second['rows'][0]['id'])->not->toBe($first['rows'][0]['id']);
 
     manageListPartial('/admin/special-codes', 'Manage/SpecialCodes/Index');
-});
-
-test('the corrupted-totals report renders', function () {
-    ($this->scoped)();
-
-    get('/admin/badges/corrupted-totals')->assertOk();
 });
 
 /*
@@ -795,14 +789,21 @@ test('no list payload carries a PIN, an RFID tag, a pairing code or a login link
 test('the sidebar carries every module registered so far', function () {
     actingAs($this->admin);
 
-    $groups = get(route('manage.dashboard'))->viewData('page')['props']['manageNav'];
+    $groups = get(route('admin.dashboard'))->viewData('page')['props']['manageNav'];
     $labels = collect($groups)->flatMap(fn (array $group) => collect($group['items'])->pluck('label'))->all();
 
-    expect($labels)->toContain('Dashboard', 'Events', 'Badges', 'Fursuits', 'Special Codes', 'Users', 'Badge Preview');
+    /*
+     * Four modules are not in this list, and each is reached from a list inside a page body
+     * rather than from the rail: Events and Users are Settings panes (asserted in
+     * SettingsTest), Badge Preview, PDF Generator and DB Service are cards on the Tools
+     * index (asserted in their own tests), and Print Jobs is the card table on a print
+     * batch. What the rail must still carry is the one entry that leads to each.
+     */
+    expect($labels)->toContain('Dashboard', 'Badges', 'Fursuits', 'Special Codes');
 
     // Phase 5 and 6. Navigation drops any item whose route does not exist, so this is the
     // only place that can say all five modules registered theirs.
-    expect($labels)->toContain('Machines', 'Staff', 'SumUp Readers', 'Printers', 'Print Jobs');
+    expect($labels)->toContain('Machines', 'Staff', 'SumUp Readers', 'Printers');
 
     // Phase 7.
     expect($labels)->toContain('Print Batches');
@@ -811,33 +812,31 @@ test('the sidebar carries every module registered so far', function () {
     expect($labels)->toContain('TSE Clients');
     expect($labels)->toContain('Checkouts');
 
-    // Phase 9. Both routes now exist, so Navigation stops dropping them.
-    expect($labels)->toContain('PDF Generator');
-    expect($labels)->toContain('DB Service');
+    // Phase 9, and the two page-body lists.
+    expect($labels)->toContain('Tools');
+    expect($labels)->toContain('Settings');
 
-    /*
-     * Every module in Navigation has now shipped, so there is no pending item left to
-     * assert the drop against. The drop is still load-bearing, so the case below covers
-     * it with the one item that is conditionally absent: DB Service is gated on
-     * `manage-admin`, and a reviewer must not be offered a page that moves money.
-     *
-     * Asserted one at a time when a pending list returns: `not->toContain($a, $b)` passes
-     * as soon as a single argument is absent, so the list form kept passing after
-     * Printers and Print Jobs shipped.
-     */
+    // The rows that moved: a group of one, or a page reached from the page it belongs to.
+    expect($labels)->not->toContain('Users');
+    expect($labels)->not->toContain('Print Jobs');
+    expect($labels)->not->toContain('DB Service');
 });
 
-test('the rail hides DB Service from a reviewer who may not run it', function () {
+test('the rail is the same for a reviewer, who is filtered inside the pages instead', function () {
     $reviewer = User::factory()->create(['is_admin' => false, 'is_reviewer' => true]);
 
     actingAs($reviewer);
 
-    $groups = get(route('manage.dashboard'))->viewData('page')['props']['manageNav'];
+    $groups = get(route('admin.dashboard'))->viewData('page')['props']['manageNav'];
     $labels = collect($groups)->flatMap(fn (array $group) => collect($group['items'])->pluck('label'))->all();
 
-    // Non-vacuity: the reviewer really does get a rail, and it really does lose this item.
-    expect($labels)->toContain('Badge Preview', 'PDF Generator')
-        ->and($labels)->not->toContain('DB Service');
+    /*
+     * Tools is open to a reviewer because it is a menu; the admin-only card inside it is
+     * dropped by Navigation::tools(), which DbServiceTest asserts. Hiding the rail entry
+     * here would take Badge Preview and the PDF Generator - both of which a reviewer keeps
+     * (parity checklist line 83) - with it.
+     */
+    expect($labels)->toContain('Badges', 'Tools', 'Settings');
 });
 
 test('the rail counts follow the selected event', function () {
@@ -861,7 +860,7 @@ test('the rail counts follow the selected event', function () {
         actingAs($this->admin);
         session([EventScope::SESSION_ID => $eventId, EventScope::SESSION_CHOSEN => true]);
 
-        $props = get(route('manage.dashboard'))->viewData('page')['props'];
+        $props = get(route('admin.dashboard'))->viewData('page')['props'];
 
         $fursuits = collect($props['manageNav'])
             ->flatMap(fn (array $group) => $group['items'])

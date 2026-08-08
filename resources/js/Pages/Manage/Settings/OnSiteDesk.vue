@@ -116,7 +116,7 @@ const removeHourRow = (index) => hoursForm.hours.splice(index, 1);
 
 const hourError = (index, field) => hoursForm.errors[`hours.${index}.${field}`];
 
-const submitHours = () => hoursForm.put(route('manage.settings.on-site-desk.hours'), { preserveScroll: true });
+const submitHours = () => hoursForm.put(route('admin.settings.on-site-desk.hours'), { preserveScroll: true });
 
 const hoursDirty = computed(
   () => JSON.stringify(hoursForm.hours) !== JSON.stringify(props.openingHours.map((row) => ({ ...row, note: row.note ?? '' }))),
@@ -147,7 +147,7 @@ const boothRowsFrom = (rows) =>
 
 const boothsForm = useForm({ booths: boothRowsFrom(props.booths) });
 
-const submitBooths = () => boothsForm.put(route('manage.settings.on-site-desk.booths'), { preserveScroll: true });
+const submitBooths = () => boothsForm.put(route('admin.settings.on-site-desk.booths'), { preserveScroll: true });
 
 const boothError = (index, field) => boothsForm.errors[`booths.${index}.${field}`];
 
@@ -174,7 +174,7 @@ const showingSplit = ref(false);
 
 const resetToDefaults = () => {
   confirmingReset.value = false;
-  router.post(route('manage.settings.on-site-desk.booths.reset'), {}, { preserveScroll: true });
+  router.post(route('admin.settings.on-site-desk.booths.reset'), {}, { preserveScroll: true });
 };
 
 const loadDefaultsIntoEditor = () => {

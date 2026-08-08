@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
  * All thirteen modules share this so sorting, searching, filtering, pagination and
  * column-visibility behave identically and are worth testing only once.
  *
- * Request contract: ?search=&sort=&dir=&page=&per_page=&filter[key]=
+ * Request contract: ?tab=&search=&sort=&dir=&page=&per_page=&filter[key]=
  */
 final class Table
 {
@@ -25,6 +25,9 @@ final class Table
 
     /** @var array<int, Filter> */
     private array $filters = [];
+
+    /** @var array<int, Tab> */
+    private array $tabs = [];
 
     private ?string $defaultSortKey = null;
 
@@ -80,6 +83,20 @@ final class Table
     public function filters(array $filters): self
     {
         $this->filters = $filters;
+
+        return $this;
+    }
+
+    /**
+     * The preset views this table offers, in the order they are shown, the first being the
+     * default. A module that passes none renders exactly as it did before tabs existed:
+     * the envelope carries an empty list and the client draws no strip.
+     *
+     * @param  array<int, Tab>  $tabs
+     */
+    public function tabs(array $tabs): self
+    {
+        $this->tabs = array_values($tabs);
 
         return $this;
     }
@@ -174,6 +191,15 @@ final class Table
         $search = trim((string) $request->input('search', ''));
         $filterValues = $this->resolveFilterValues($request);
 
+        // The tab is resolved and counted before anything else touches the query, because
+        // a count is of the tab's own view of the table and must not see the chip filters
+        // or the search term. It narrows first for the same reason it is drawn first: it
+        // picks the view, and the filters then narrow inside it.
+        $tab = $this->resolveTab($request);
+        $tabs = $this->tabPayload($tab);
+
+        $tab?->applyTo($this->query);
+
         $this->applyFilters($filterValues);
         $this->applySearch($search);
         $sort = $this->applySort($request);
@@ -181,7 +207,7 @@ final class Table
         $perPage = $this->resolvePerPage($request);
         $paginator = $this->query->paginate($perPage)->withQueryString();
 
-        return [
+        return $this->tabEnvelope($tabs) + [
             'name' => $this->name,
             'rows' => collect($paginator->items())->map(fn (Model $record) => [
                 'id' => $record->getKey(),
@@ -252,6 +278,76 @@ final class Table
             ->map(fn (Column $column) => $column->key)
             ->values()
             ->all();
+    }
+
+    /**
+     * The `tabs` key, or no key at all on a table that declares none.
+     *
+     * Absent rather than empty on purpose. These envelopes are spread into a page's props,
+     * and an Inertia prop a page has not declared falls through to `$attrs`, which on a
+     * two-root page (every list page: `<Head>` plus `<ManageLayout>`) is a dev warning on
+     * a module that has nothing to do with tabs. Sending the key only when there is
+     * something in it means the sixteen tabless modules receive byte-identical props and
+     * none of their pages is touched. A module that declares tabs adds the prop to its
+     * page, exactly as it already does for `filters` or `sort`.
+     *
+     * Each entry carries `active`, the server's own resolution, which is what a test
+     * asserts against. TabBar does not read it - `tabs` is not one of the five props a
+     * partial visit reloads, so a server-sent flag would freeze on the first switch - and
+     * re-derives the same answer from the URL under the same two fallback rules. See
+     * resolveTab below and TabBar.vue.
+     *
+     * @param  array<int, array<string, mixed>>  $tabs
+     * @return array<string, mixed>
+     */
+    private function tabEnvelope(array $tabs): array
+    {
+        return $tabs === [] ? [] : ['tabs' => $tabs];
+    }
+
+    /**
+     * The active tab, or null on a table that declares none.
+     *
+     * An unrecognised `?tab=` falls back to the first declared tab rather than showing an
+     * empty list or 404ing: the key is a hand-editable, bookmarkable, renameable token, so
+     * a stale one has to land somewhere sensible. TabBar.vue applies the same fallback so
+     * the strip's selected tab and the rows below it cannot disagree.
+     */
+    private function resolveTab(Request $request): ?Tab
+    {
+        if ($this->tabs === []) {
+            return null;
+        }
+
+        $requested = $request->input('tab');
+
+        return collect($this->tabs)->first(fn (Tab $tab) => $tab->key === $requested) ?? $this->tabs[0];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function tabPayload(?Tab $active): array
+    {
+        return array_map(fn (Tab $tab) => $tab->toArray() + [
+            'active' => $active !== null && $active->key === $tab->key,
+            'count' => $tab->isCounted() ? $this->countTab($tab) : null,
+        ], $this->tabs);
+    }
+
+    /**
+     * One COUNT per counted tab, and only for tabs that asked. The query is cloned so the
+     * count cannot leave its constraint behind on the query that fetches the rows, and
+     * getCountForPagination is used rather than count() so a grouped base query is counted
+     * the same way the paginator counts it.
+     */
+    private function countTab(Tab $tab): int
+    {
+        $counting = clone $this->query;
+
+        $tab->applyTo($counting);
+
+        return $counting->toBase()->getCountForPagination();
     }
 
     /**

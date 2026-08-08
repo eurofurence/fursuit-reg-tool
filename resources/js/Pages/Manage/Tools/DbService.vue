@@ -17,7 +17,7 @@
  * guess which one that was; here the event is named on screen before anything runs.
  */
 import { computed } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import ActionButton from '@/Components/Manage/ActionButton.vue';
 import FormSection from '@/Components/Manage/FormSection.vue';
@@ -32,8 +32,6 @@ const props = defineProps({
   result: { type: Object, default: null },
   /** The server-declared buttons for whichever of the three states is showing. */
   actions: { type: Array, default: () => [] },
-  /** The read-only money report the badge list also links (plan 2.10 #3). */
-  corruptedTotalsUrl: { type: String, required: true },
 });
 
 /** The blade's three stat cards, in its order and with its labels. */
@@ -192,18 +190,6 @@ const onImageError = (event) => {
         <div v-if="actions.length" class="flex items-center gap-2 pt-2">
           <ActionButton v-for="action in actions" :key="action.name" :action="action" />
         </div>
-      </FormSection>
-
-      <FormSection
-        title="Badge total check"
-        description="Badges whose stored total does not equal subtotal + tax, from the money fixes in rebuild-plan 2.10 #3."
-      >
-        <p class="py-1 text-[13px] text-fg-2">
-          A read-only report, on its own page.
-          <Link :href="corruptedTotalsUrl" class="text-state-live underline-offset-2 hover:underline">
-            Open the badge total check
-          </Link>
-        </p>
       </FormSection>
     </div>
   </ManageLayout>

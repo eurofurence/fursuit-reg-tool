@@ -32,10 +32,23 @@ use function Pest\Laravel\withSession;
 
 /** The pane URLs, with the component each one must render. */
 dataset('settings panes', [
-    'general' => ['manage.settings.general', 'Manage/Settings/General'],
-    'on-site desk' => ['manage.settings.on-site-desk', 'Manage/Settings/OnSiteDesk'],
-    'printing' => ['manage.settings.printing', 'Manage/Settings/Printing'],
-    'badges' => ['manage.settings.badges', 'Manage/Settings/Badges'],
+    'general' => ['admin.settings.general', 'Manage/Settings/General'],
+    'on-site desk' => ['admin.settings.on-site-desk', 'Manage/Settings/OnSiteDesk'],
+    'printing' => ['admin.settings.printing', 'Manage/Settings/Printing'],
+    'badges' => ['admin.settings.badges', 'Manage/Settings/Badges'],
+    'review reasons' => ['admin.settings.review-reasons', 'Manage/Settings/ReviewReasons'],
+]);
+
+/**
+ * The panes that configure something belonging to one event, and therefore carry an `event` prop
+ * of their own. Review Reasons is not one of them: the wording is the same at every event, so it
+ * declares no event context and the globally shared prop is all there is on that page.
+ */
+dataset('event-scoped settings panes', [
+    'general' => ['admin.settings.general', 'Manage/Settings/General'],
+    'on-site desk' => ['admin.settings.on-site-desk', 'Manage/Settings/OnSiteDesk'],
+    'printing' => ['admin.settings.printing', 'Manage/Settings/Printing'],
+    'badges' => ['admin.settings.badges', 'Manage/Settings/Badges'],
 ]);
 
 beforeEach(function () {
@@ -58,10 +71,10 @@ beforeEach(function () {
 });
 
 test('every pane is its own URL under /admin/settings', function () {
-    expect(route('manage.settings.general', absolute: false))->toBe('/admin/settings')
-        ->and(route('manage.settings.on-site-desk', absolute: false))->toBe('/admin/settings/on-site-desk')
-        ->and(route('manage.settings.printing', absolute: false))->toBe('/admin/settings/printing')
-        ->and(route('manage.settings.badges', absolute: false))->toBe('/admin/settings/badges');
+    expect(route('admin.settings.general', absolute: false))->toBe('/admin/settings')
+        ->and(route('admin.settings.on-site-desk', absolute: false))->toBe('/admin/settings/on-site-desk')
+        ->and(route('admin.settings.printing', absolute: false))->toBe('/admin/settings/printing')
+        ->and(route('admin.settings.badges', absolute: false))->toBe('/admin/settings/badges');
 });
 
 test('a pane renders its own component for an admin', function (string $name, string $component) {
@@ -100,7 +113,7 @@ test('the panes still render with no event selected', function (string $name, st
             ->component($component)
             ->where('event', null)
         );
-})->with('settings panes');
+})->with('event-scoped settings panes');
 
 test('a guest is pushed into the SSO flow rather than shown a settings page', function (string $name) {
     get(route($name))->assertRedirect(route('login'));
@@ -133,24 +146,46 @@ test('Settings appears once in the rail and points at the General pane', functio
     actingAs($this->admin);
 
     $nav = withSession($this->session)
-        ->get(route('manage.settings.general'))
+        ->get(route('admin.settings.general'))
         ->viewData('page')['props']['manageNav'];
 
     $items = collect($nav)
         ->flatMap(fn (array $group) => $group['items'])
-        ->where('route', 'manage.settings.general')
+        ->where('route', 'admin.settings.general')
         ->values();
 
     expect($items)->toHaveCount(1)
         ->and($items[0]['label'])->toBe('Settings')
-        ->and($items[0]['url'])->toBe(route('manage.settings.general'));
+        ->and($items[0]['url'])->toBe(route('admin.settings.general'));
 
-    // The three other panes are reached from the in-page submenu, not from the rail.
+    // The other panes are reached from the in-page submenu, not from the rail.
     $railRoutes = collect($nav)->flatMap(fn (array $group) => $group['items'])->pluck('route');
 
-    expect($railRoutes)->not->toContain('manage.settings.on-site-desk')
-        ->and($railRoutes)->not->toContain('manage.settings.printing')
-        ->and($railRoutes)->not->toContain('manage.settings.badges');
+    expect($railRoutes)->not->toContain('admin.settings.on-site-desk')
+        ->and($railRoutes)->not->toContain('admin.settings.printing')
+        ->and($railRoutes)->not->toContain('admin.settings.badges')
+        ->and($railRoutes)->not->toContain('admin.settings.review-reasons')
+        // Events moved in beside them and left the rail with them.
+        ->and($railRoutes)->not->toContain('admin.settings.events.index');
+});
+
+test('the submenu is built server-side and drops the Events pane for a reviewer', function () {
+    /*
+     * The submenu used to be a constant in SettingsLayout.vue, which was fine while every
+     * pane was open to anyone who could open the panel. Events is not: EventPolicy gates it
+     * on `is_admin`, so a client-side list would offer a reviewer a card that 403s.
+     */
+    $panes = fn (User $user) => collect(
+        actingAs($user)
+            ->withSession($this->session)
+            ->get(route('admin.settings.general'))
+            ->viewData('page')['props']['manageSettingsNav']
+    )->pluck('key');
+
+    expect($panes($this->admin)->all())
+        ->toBe(['general', 'events', 'on-site-desk', 'printing', 'badges', 'review-reasons', 'users'])
+        ->and($panes($this->reviewer)->all())
+        ->toBe(['general', 'on-site-desk', 'printing', 'badges', 'review-reasons']);
 });
 
 test('reading every pane writes nothing', function () {
@@ -174,10 +209,10 @@ test('reading every pane writes nothing', function () {
     // branch where there is no row to write to at all.
     foreach ([$this->session, $this->session, [EventScope::SESSION_ID => null, EventScope::SESSION_CHOSEN => true]] as $session) {
         foreach ([
-            'manage.settings.general',
-            'manage.settings.on-site-desk',
-            'manage.settings.printing',
-            'manage.settings.badges',
+            'admin.settings.general',
+            'admin.settings.on-site-desk',
+            'admin.settings.printing',
+            'admin.settings.badges',
         ] as $name) {
             withSession($session)->get(route($name))->assertSuccessful();
         }
@@ -191,34 +226,67 @@ test('reading every pane writes nothing', function () {
         ->and(Event::count())->toBe(1);
 });
 
-test('Settings writes only the two columns the Events form does not own', function () {
+test('Settings writes only its own records, never a column Events owns', function () {
     /*
      * The overlap guard, asserted structurally rather than by reading the forms. The Events
-     * module owns badge_class, cost and the seven date fields; Settings writes exactly
-     * three routes, all of them On-Site Desk, and between them they touch only
-     * `desk_opening_hours` and `pickup_booths`. A write appearing on any other pane, or a
-     * fourth write here, is a second editor for a field Events already owns until someone
-     * proves otherwise, and turns this red.
+     * module owns badge_class, cost and the seven date fields, and it now sits under
+     * /admin/settings/events, so it is inside this name prefix rather than beside it; Users
+     * moved in the same way and owns the `users` table. Every other Settings write must
+     * still be one of its own: On-Site Desk touches `desk_opening_hours` and `pickup_booths`,
+     * and Review Reasons owns its own table. A write appearing on any other pane is a second
+     * editor for a field somebody else owns until proven otherwise, and turns this red.
      */
     $settingsWrites = collect(Route::getRoutes()->getRoutesByName())
-        ->filter(fn ($route, string $name) => str_starts_with($name, 'manage.settings.'))
+        ->filter(fn ($route, string $name) => str_starts_with($name, 'admin.settings.'))
         ->reject(fn ($route) => $route->methods() === ['GET', 'HEAD']);
 
     expect($settingsWrites->keys()->all())->toBe([
-        'manage.settings.on-site-desk.hours',
-        'manage.settings.on-site-desk.booths',
-        'manage.settings.on-site-desk.booths.reset',
+        'admin.settings.events.store',
+        'admin.settings.events.bulk.destroy',
+        'admin.settings.events.update',
+        'admin.settings.events.destroy',
+        'admin.settings.on-site-desk.hours',
+        'admin.settings.on-site-desk.booths',
+        'admin.settings.on-site-desk.booths.reset',
+        'admin.settings.review-reasons.store',
+        'admin.settings.review-reasons.update',
+        'admin.settings.review-reasons.destroy',
+        'admin.settings.review-reasons.restore-defaults',
+        'admin.settings.users.store',
+        'admin.settings.users.bulk.destroy',
+        'admin.settings.users.update',
+        'admin.settings.users.destroy',
     ]);
 
-    // Every one of them is admin-gated, both at the route and inside the method.
-    $settingsWrites->each(function ($route) {
+    /*
+     * The pane writes are admin-gated by middleware, both at the route and inside the method.
+     * Events and Users are gated by their policies instead - EventPolicy in EventRequest and
+     * the controller, UserPolicy in every UserController method - which is a stricter answer
+     * than `manage-admin` (`is_admin`, not the panel gate) and is asserted over the HTTP
+     * boundary in EventsTest and UsersTest. Splitting them here rather than loosening the
+     * assertion keeps the middleware requirement real for everything that has one.
+     */
+    [$moduleWrites, $paneWrites] = $settingsWrites->partition(
+        fn ($route, string $name) => str_starts_with($name, 'admin.settings.events.')
+            || str_starts_with($name, 'admin.settings.users.')
+    );
+
+    $eventWrites = $moduleWrites->filter(
+        fn ($route, string $name) => str_starts_with($name, 'admin.settings.events.')
+    );
+
+    $paneWrites->each(function ($route) {
         expect($route->gatherMiddleware())->toContain('can:manage-admin');
     });
 
-    // And no Settings route may reach the controller that owns the event record.
+    // And only the Events module may reach the controller that owns the event record.
     $eventEditors = collect(Route::getRoutes()->getRoutesByName())
-        ->filter(fn ($route, string $name) => str_starts_with($name, 'manage.settings.'))
+        ->filter(fn ($route, string $name) => str_starts_with($name, 'admin.settings.'))
         ->filter(fn ($route) => str_contains((string) ($route->getAction('controller') ?? ''), 'EventController'));
 
-    expect($eventEditors->keys()->all())->toBe([]);
+    expect($eventEditors->keys()->every(fn (string $name) => str_starts_with($name, 'admin.settings.events.')))
+        ->toBeTrue()
+        ->and($eventWrites->keys()->all())->toBe($eventEditors->reject(
+            fn ($route) => $route->methods() === ['GET', 'HEAD']
+        )->keys()->all());
 });

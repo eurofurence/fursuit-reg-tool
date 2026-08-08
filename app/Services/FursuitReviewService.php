@@ -8,6 +8,7 @@ use App\Models\Fursuit\FursuitReviewDecision;
 use App\Models\Fursuit\States\Approved;
 use App\Models\Fursuit\States\Pending;
 use App\Models\Fursuit\States\Rejected;
+use App\Models\ReviewReason;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -42,83 +43,158 @@ class FursuitReviewService
     public const UNDO_WINDOW_MINUTES = 5;
 
     /**
-     * The reasons a reviewer picks from, per outcome, keyed by slug.
+     * The reasons shipped with the app, per outcome, keyed by slug.
      *
-     * Slugs, not list indexes. The Filament array was a list, so the persisted select
-     * value was the integer index: clearing the select threw "Undefined array key", and
-     * reordering the array silently rewired every prefill. A slug is stable under
-     * reordering and means something in a request log.
+     * **Defaults, not the list.** The live list is `review_reasons`, which the desk edits in
+     * Settings > Review Reasons; this array is what seeds that table while it is empty (see
+     * the migration and ReviewReasonSeeder). Editing a string here changes nothing on an
+     * installation that has already been seeded, which is the point: the wording is the
+     * reviewers' to own.
      *
-     * Only the final text is stored and mailed. These prefill the textarea and the
-     * reviewer may edit it afterwards, which is the behaviour the Filament page had.
+     * Each entry is a keyword and a body. The keyword is what the review queue puts on a chip,
+     * because a reviewer picking from eleven options needs to scan them, not read them; the
+     * body is the paragraph the attendee receives. Before the split, the queue showed the full
+     * paragraphs, which made the picker a wall of text.
      *
-     * The rejection list is the original eight, verbatim. The publication list is new and
-     * worded for what it actually does - the badge is fine, the photo is not gallery
-     * material - because the same eight strings all told the attendee to fix their badge.
+     * Slugs, not list indexes. The Filament array was a list, so the persisted select value was
+     * the integer index: clearing the select threw "Undefined array key", and reordering the
+     * array silently rewired every prefill. A slug is stable under reordering, survives an edit
+     * to the wording, and means something in a request log.
      *
-     * @var array<string, array<string, string>>
+     * @var array<string, array<string, array{keyword: string, body: string}>>
      */
-    public const REASONS = [
+    public const DEFAULT_REASONS = [
         /*
-         * Rejections, which stop the card. Every one of them is either a Rules of Conduct
-         * breach the badge itself would carry into the convention
-         * (https://help.eurofurence.org/legal/roc/) or a submission that is not a fursuit badge
-         * at all. Nothing that is merely wrong for the gallery belongs here - that is what the
-         * publication list below is for, and putting "this is digital art" here is what used to
-         * cost attendees a badge over a gallery rule.
+         * Rejections, which stop the card until the attendee changes the submission.
          *
-         * Two rules are deliberately *not* rejection reasons, because they do not transfer from
-         * the hall to a photograph:
+         * Three categories, and the bar is deliberately this high: a rejection costs the attendee
+         * their badge until they act, so it is reserved for content Eurofurence cannot hand out at
+         * all. Everything else that is merely wrong for the gallery keeps the badge and closes the
+         * public surfaces instead - see the publication list below.
          *
-         *  - **Prop weapons.** The RoC bans *carrying* weapons on the premises and requires
-         *    look-alikes, LARP props and replicas to be checked in at the Security Office. That
-         *    is a rule about an object somebody brings, not about a picture: a suit
-         *    photographed with a prop sword is not carrying anything. Only a real firearm or
-         *    bladed weapon, or an image of violence, is refused - `real_weapon` below. Do not
-         *    add a blanket weapons rejection.
-         *  - **Body paint and makeup.** Body paint needs Security's permission on site; a photo
-         *    of it breaks nothing.
+         * Things that are *not* rejections, each of which was on this list once:
+         *
+         *  - **Image quality.** "Too dark", "too blurry" is not our call. The attendee chose the
+         *    photo; we print what they sent.
+         *  - **Not a costume, artwork, AI art, a real animal, an identifiable person.** None of
+         *    these breaks a rule the badge carries into the convention. They are publication
+         *    blocks: printed and handed out, not shown in the gallery or the game.
+         *  - **Fetish or overly revealing items.** The RoC restricts these in *public* areas, and
+         *    the badge is still issued - it is the gallery that stays PG-13. So this is a
+         *    publication block, and only nudity or a visibly anatomically correct suit is refused
+         *    outright.
+         *  - **Prop weapons.** The RoC bans *carrying* weapons and has look-alikes, LARP props and
+         *    replicas checked in at the Security Office: a rule about an object somebody brings on
+         *    site, not about a photograph. A suit photographed with a prop sword carries nothing.
+         *  - **Body paint.** Needs Security's permission on site; a photo of it breaks nothing.
          */
         FursuitReviewOutcomeEnum::Rejected->value => [
-            'human' => 'The submission shows a human rather than a fursuit. We can only accept badges created for fursuits.',
-            // RoC, Clothing: "Wearing costumes, accessories or displaying items made from real
-            // fur is not allowed." A suit that cannot be worn at the convention cannot be on a
-            // badge for it either.
-            'real_fur' => 'The costume appears to be made from real fur, which is not allowed at Eurofurence.',
-            'explicit' => 'The submission is sexual or fetish related and does not follow our guidelines.',
-            // RoC, Clothing: nothing "visibly 'anatomically correct' or indecently revealing".
-            'anatomically_correct' => 'The submission is anatomically correct or indecently revealing and does not follow our guidelines.',
-            // RoC, Harassment: hate speech and symbols promoting discrimination are prohibited.
-            'hate_symbol' => 'The submission shows symbols, slogans or insignia that are not acceptable at Eurofurence.',
-            // Not the prop-weapon rule; see the note above.
-            'real_weapon' => 'The submission shows a real weapon or an act of violence. Prop and costume weapons are fine, but real ones cannot go on a badge.',
-            'drugs' => 'The submission shows illegal substances or their use.',
-            // RoC, Photography: recording is not allowed in the Fursuit Lounge and other
-            // headless-fursuiter areas, and a badge photo carries whoever is in it.
-            'third_party' => 'The submission shows another person who is identifiable. Please send a photo of your own fursuit only.',
-            'low_quality' => 'The submission is too dark, too blurry or too small for us to print. Please send a clearer photo.',
-            'name' => 'The name of the fursuit is not appropriate.',
-            'species' => 'The species of the fursuit is not appropriate.',
+            'drugs' => [
+                'keyword' => 'Drugs',
+                'body' => 'We determined that your submission contains drugs or drug promoting content, including legal substances.',
+            ],
+            'hate_speech' => [
+                'keyword' => 'Harassment or hate speech',
+                'body' => 'We determined that your submission contains harassment, hate speech, or symbols associated with it.',
+            ],
+            /*
+             * RoC, Clothing: in convention-exclusive areas attendees may not wear clothing or
+             * costumes which are visibly "anatomically correct" or indecently revealing their own
+             * private anatomy, and the same standard applies to what we print and hand out.
+             *
+             * Do not justify this to the attendee with "a badge is worn in those areas". The
+             * fursuit badge is a separate keepsake, not the attendee badge - wearing it is
+             * optional, and the FAQ says so - which makes that argument both wrong and confusing.
+             */
+            'nudity' => [
+                'keyword' => 'Nude or anatomically correct',
+                'body' => 'We determined that your submission contains nude or visibly anatomically correct content.',
+            ],
         ],
+        /*
+         * Publication blocks: the badge is approved, printed and handed out, and only the gallery
+         * and Fursuit Catch-Em-All are closed. The wording has to say that in every case, because
+         * a rejection asks the attendee to go and fix something and none of these does.
+         */
         FursuitReviewOutcomeEnum::PublicationBlocked->value => [
-            'not_a_photo' => 'Your image is not a photo of a fursuit. The gallery and Fursuit Catch-Em-All only show photos of real costumes.',
-            'ai_generated' => 'Your image appears to be AI generated rather than a photo of a real fursuit.',
-            'real_animal' => 'Your image shows a real animal rather than a fursuit.',
-            'no_costume' => 'Your image does not show a costume.',
+            'artwork' => [
+                'keyword' => 'Artwork',
+                'body' => 'We determined that your submission is artwork rather than a photo of a costume.',
+            ],
+            'ai_generated' => [
+                'keyword' => 'AI generated',
+                'body' => 'We determined that your submission is AI generated rather than a photo of a real fursuit.',
+            ],
+            'real_animal' => [
+                'keyword' => 'Real animal',
+                'body' => 'We determined that your submission shows a real animal. We love animals, but they are not allowed on the convention premises.',
+            ],
+            'no_costume' => [
+                'keyword' => 'Not a costume',
+                'body' => 'We determined that your submission is a person, or is close enough to be identifiable as one.',
+            ],
+            'identifiable_human' => [
+                'keyword' => 'Identifiable human',
+                'body' => 'We determined that your submission contains an identifiable person, and we cannot verify that they consented to their face being published.',
+            ],
+            // RoC, Clothing: in public areas attendees may not wear clothing or accessories which
+            // are overly revealing, inappropriate to the atmosphere of the convention, or likely to
+            // draw reasonable complaint or offense, including obviously fetish-related items. The
+            // badge is still issued; the gallery stays PG-13.
+            'fetish' => [
+                'keyword' => 'Adult or fetish items',
+                'body' => 'We determined that your submission contains adult or fetish related items.',
+            ],
         ],
     ];
 
     /**
-     * The reason picker for one outcome, in declaration order.
+     * The reason picker for one outcome, as the desk arranged it.
      *
-     * @return array<int, array{value: string, label: string}>
+     * `label` is the keyword the chip carries and `body` is the paragraph the attendee receives;
+     * the client puts the first on the button and the second into the textarea. Two fields
+     * because a reviewer picking from eleven options scans keywords, while the attendee needs a
+     * sentence that explains itself.
+     *
+     * Falls back to the shipped defaults when the table is empty, so a database that has not
+     * been seeded yet still has a working review queue rather than a picker with nothing in it.
+     * The migration seeds on deploy; this is the safety net, not the mechanism.
+     *
+     * @return array<int, array{value: string, label: string, body: string}>
      */
     public static function reasonOptions(FursuitReviewOutcomeEnum $outcome): array
     {
-        return collect(self::REASONS[$outcome->value] ?? [])
-            ->map(fn (string $reason, string $key) => ['value' => $key, 'label' => $reason])
-            ->values()
+        $reasons = ReviewReason::pickerFor($outcome);
+
+        if ($reasons->isEmpty()) {
+            return collect(self::DEFAULT_REASONS[$outcome->value] ?? [])
+                ->map(fn (array $reason, string $slug) => [
+                    'value' => $slug,
+                    'label' => $reason['keyword'],
+                    'body' => $reason['body'],
+                ])
+                ->values()
+                ->all();
+        }
+
+        return $reasons
+            ->map(fn (ReviewReason $reason) => [
+                'value' => $reason->slug,
+                'label' => $reason->keyword,
+                'body' => $reason->body,
+            ])
             ->all();
+    }
+
+    /**
+     * The slugs a verdict may be filed under, so a rejection cannot carry a publication-block
+     * reason and a retired reason cannot be revived by a hand-made request.
+     *
+     * @return array<int, string>
+     */
+    public static function reasonSlugs(FursuitReviewOutcomeEnum $outcome): array
+    {
+        return array_column(self::reasonOptions($outcome), 'value');
     }
 
     /**

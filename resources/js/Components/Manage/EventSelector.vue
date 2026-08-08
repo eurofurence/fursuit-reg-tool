@@ -6,7 +6,7 @@
  * `?selected_event_id=`, had no "All events" option in its markup, and its middleware
  * forgot the session key and re-seeded it in the same request, so the one branch that
  * meant "all events" could never be reached. Here the choice is an explicit
- * POST to manage.event.select, `null` means all events and is a value the server stores,
+ * POST to admin.event.select, `null` means all events and is a value the server stores,
  * and every option carries its own orders-open marker rather than only the selected one.
  *
  * A hand-rolled listbox rather than a <select>, and rather than an off-the-shelf select
@@ -141,7 +141,7 @@ const choose = (option) => {
   processing.value = true;
 
   router.post(
-    route('manage.event.select'),
+    route('admin.event.select'),
     { event_id: option.id },
     {
       preserveScroll: true,

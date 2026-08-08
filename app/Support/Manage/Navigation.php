@@ -55,60 +55,77 @@ final class Navigation
         $badges = $this->badges();
 
         /*
-         * The seven Filament groups, minus the two that existed only because a page was
-         * filed under its own heading: Badge Preview moves out of "Debug Tools" and in
-         * beside the PDF generator, since both are read-only tools over the same data.
+         * Six groups, down from the Filament seven. Four of them existed only because a
+         * single page needed a heading to sit under - Sales held Checkouts, User Management
+         * held Users, Maintenance held DB Service - and a group of one is a heading that
+         * says the row's name twice. Each of those moved to the subject it belongs to:
+         * Checkouts to POS, Users to Settings, the two tool pages and DB Service to one
+         * Tools index.
          */
         $groups = [
             ['label' => 'Overview', 'items' => [
-                $this->item('Dashboard', 'layout-dashboard', 'manage.dashboard'),
-            ]],
-            ['label' => 'Events & Registration', 'items' => [
-                $this->item('Events', 'calendar-days', 'manage.events.index', null, $this->permits('viewAny', Event::class)),
-                $this->item('Badges', 'id-card', 'manage.badges.index', $badges['badges'] ?? null, $this->permits('viewAny', Badge::class)),
-                $this->item('Fursuits', 'circle-user', 'manage.fursuits.index', $badges['fursuits'] ?? null, $this->permits('viewAny', Fursuit::class)),
-                $this->item('Special Codes', 'qr-code', 'manage.special-codes.index', null, $this->permits('viewAny', SpecialCode::class)),
-            ]],
-            ['label' => 'Sales', 'items' => [
-                $this->item('Checkouts', 'shopping-cart', 'manage.checkouts.index', null, $this->permits('viewAny', Checkout::class)),
-            ]],
-            ['label' => 'POS', 'items' => [
-                $this->item('Machines', 'monitor', 'manage.machines.index', null, $this->permits('viewAny', Machine::class)),
-                $this->item('Staff', 'users-round', 'manage.staff.index', null, $this->permits('viewAny', Staff::class)),
-                $this->item('SumUp Readers', 'credit-card', 'manage.sumup-readers.index', null, $this->permits('viewAny', SumUpReader::class)),
-                $this->item('TSE Clients', 'shield-check', 'manage.tse-clients.index', null, $this->permits('viewAny', TseClient::class)),
-            ]],
-            ['label' => 'Printing', 'items' => [
-                $this->item('Printers', 'printer', 'manage.printers.index', $badges['printers'] ?? null, $this->permits('viewAny', Printer::class)),
-                $this->item('Print Jobs', 'list-ordered', 'manage.print-jobs.index', null, $this->permits('viewAny', PrintJob::class)),
-                $this->item('Print Batches', 'layers', 'manage.print-batches.index', $badges['batches'] ?? null, $this->permits('viewAny', PrintBatch::class)),
-            ]],
-            ['label' => 'User Management', 'items' => [
-                $this->item('Users', 'users', 'manage.users.index', null, $this->permits('viewAny', User::class)),
-            ]],
-            ['label' => 'Tools', 'items' => [
-                $this->item('PDF Generator', 'file-text', 'manage.tools.pdf'),
-                $this->item('Badge Preview', 'eye', 'manage.tools.badge-preview'),
+                $this->item('Dashboard', 'layout-dashboard', 'admin.dashboard'),
             ]],
             /*
-             * One entry, not four. Settings carries its own vertical submenu inside the
-             * page body (SettingsLayout.vue), so the three panes beside General are
-             * reached from there rather than from the rail; putting all four here would
+             * Events is not here. It is edited a handful of times per convention and every
+             * field on it configures the convention rather than running it, so it moved into
+             * Settings as a pane of its own; see settings() below.
+             */
+            ['label' => 'Registration', 'items' => [
+                $this->item('Badges', 'id-card', 'admin.badges.index', $badges['badges'] ?? null, $this->permits('viewAny', Badge::class)),
+                $this->item('Fursuits', 'circle-user', 'admin.fursuits.index', $badges['fursuits'] ?? null, $this->permits('viewAny', Fursuit::class)),
+            ]],
+            /*
+             * Special Codes is the only admin surface the game has, and it is a game record
+             * rather than a registration one: the code is what a Catch-Em-All player scans.
+             * It sat under Registration because it was filed beside the badge tables it has
+             * nothing to do with.
+             */
+            ['label' => 'Catch-Em-All', 'items' => [
+                $this->item('Special Codes', 'qr-code', 'admin.special-codes.index', null, $this->permits('viewAny', SpecialCode::class)),
+            ]],
+            /*
+             * Checkouts is first in POS, not a "Sales" group of its own. Every checkout in
+             * the database was rung up on one of the tills below it, so the receipt and the
+             * machine, staff member and reader that produced it are one subject.
+             */
+            ['label' => 'POS', 'items' => [
+                $this->item('Checkouts', 'shopping-cart', 'admin.checkouts.index', null, $this->permits('viewAny', Checkout::class)),
+                $this->item('Machines', 'monitor', 'admin.machines.index', null, $this->permits('viewAny', Machine::class)),
+                $this->item('Staff', 'users-round', 'admin.staff.index', null, $this->permits('viewAny', Staff::class)),
+                $this->item('SumUp Readers', 'credit-card', 'admin.sumup-readers.index', null, $this->permits('viewAny', SumUpReader::class)),
+                $this->item('TSE Clients', 'shield-check', 'admin.tse-clients.index', null, $this->permits('viewAny', TseClient::class)),
+            ]],
+            /*
+             * Print Jobs has no rail entry. A card is only ever worked on as part of the run
+             * it belongs to, and the batch page already lists its cards with the same table,
+             * the same actions and the verify control the standalone list never had. The
+             * routes stay: `admin.print-jobs.show` and friends are what the batch table links
+             * to, and the badge detail still deep-links the queue filtered to one badge.
+             */
+            ['label' => 'Printing', 'items' => [
+                $this->item('Printers', 'printer', 'admin.printers.index', $badges['printers'] ?? null, $this->permits('viewAny', Printer::class)),
+                $this->item('Print Batches', 'layers', 'admin.print-batches.index', $badges['batches'] ?? null, $this->permits('viewAny', PrintBatch::class)),
+            ]],
+            /*
+             * Two entries, not nine. Both carry their own list inside the page body -
+             * Settings its vertical submenu (SettingsLayout.vue, fed by settings() below),
+             * Tools its card grid (fed by tools()) - so the panes and the tool pages are
+             * reached from there rather than from the rail; putting them all here would
              * mean the same list twice, two columns apart, with two active markers.
              *
-             * `manage.settings.general` is the pane /admin/settings renders, so the rail
+             * `admin.settings.general` is the pane /admin/settings renders, so the rail
              * item and the first pane are one URL.
              *
-             * No `permits()` argument: reading how the convention is configured is open to
-             * the whole panel, like the tools above it, and each pane gates its own writes
-             * on `manage-admin`. On-Site Desk is the one pane that has any, which is also
-             * why the booth split left Tools for it.
+             * Neither carries a `permits()` argument: reading how the convention is
+             * configured, and reaching the tool index, are open to the whole panel, and the
+             * entries inside gate themselves. Events and Users are gated inside settings(),
+             * DB Service inside tools(), rather than here, because hiding a rail entry over
+             * one child would take all its siblings with it.
              */
             ['label' => 'Configuration', 'items' => [
-                $this->item('Settings', 'cog', 'manage.settings.general'),
-            ]],
-            ['label' => 'Maintenance', 'items' => [
-                $this->item('DB Service', 'wrench', 'manage.maintenance.db-service', null, $this->permits('manage-admin')),
+                $this->item('Tools', 'wrench', 'admin.tools.index'),
+                $this->item('Settings', 'cog', 'admin.settings.general'),
             ]],
         ];
 
@@ -123,12 +140,111 @@ final class Navigation
     }
 
     /**
-     * The top strip's own segments: the two numbers staff act on (plan 1.2).
+     * The Settings submenu: the panes SettingsLayout.vue lists inside the page body.
+     *
+     * Built here rather than declared in the layout, which is where it started. Every pane
+     * used to be open to anyone who could open the panel, so a client-side list was four
+     * constants taking a round trip. Events is the pane that ended that: EventPolicy gates
+     * it on `is_admin`, so a reviewer who saw the card would be offered a 403. The list is
+     * therefore filtered the same way the rail is, by Route::has plus the policy, and a
+     * pane the operator cannot open is simply absent.
+     *
+     * `blurb` is what the card is for. One line at that width: it is a signpost, and the
+     * pane itself explains the fields.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function settings(): array
+    {
+        $panes = [
+            $this->pane('general', 'General', 'sliders-horizontal', 'admin.settings.general',
+                'The event this panel is configuring, and what Settings holds.'),
+            $this->pane('events', 'Events', 'calendar-days', 'admin.settings.events.index',
+                'The conventions themselves: dates, order window and badge class.',
+                $this->permits('viewAny', Event::class)),
+            $this->pane('on-site-desk', 'On-Site Desk', 'map-pin', 'admin.settings.on-site-desk',
+                'Opening hours and the booth ranges attendees queue by.'),
+            $this->pane('printing', 'Printing', 'printer', 'admin.settings.printing',
+                'Printers, jobs and batches for the badge print run.'),
+            $this->pane('badges', 'Badges', 'id-card', 'admin.settings.badges',
+                'Badge design, pricing and what attendees may order.'),
+            $this->pane('review-reasons', 'Review Reasons', 'shield-check', 'admin.settings.review-reasons',
+                'The keywords the review queue offers, and the text attendees receive.'),
+            /*
+             * Users is a pane rather than a rail group of its own. Accounts are created a
+             * handful of times per convention and every field on one - reviewer, admin -
+             * configures who may work the panel rather than running anything through it,
+             * which is the line Settings is drawn on, the same one that moved Events here.
+             */
+            $this->pane('users', 'Users', 'users', 'admin.settings.users.index',
+                'Panel accounts, and which of them review or administer.',
+                $this->permits('viewAny', User::class)),
+        ];
+
+        return array_values(array_filter($panes));
+    }
+
+    /**
+     * The Tools index: one card per tool, replacing the Tools and Maintenance rail groups.
+     *
+     * Same shape as settings() and filtered the same way, by Route::has plus the gate, so a
+     * tool the operator cannot open is absent rather than a card that 403s. DB Service is
+     * the one entry with a gate: it is the single write in the panel and `manage-admin`
+     * guards it on the route, in the controller and here.
+     *
+     * `danger` marks a card that changes data, so the one repair does not read like the two
+     * read-only exports beside it.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function tools(): array
+    {
+        $tools = [
+            $this->pane('pdf', 'PDF Generator', 'file-text', 'admin.tools.pdf',
+                'Badge lists and box labels for the print run, as PDFs to hand out.'),
+            $this->pane('badge-preview', 'Badge Preview', 'eye', 'admin.tools.badge-preview',
+                'Look a badge up by custom id and see the card it prints as.'),
+            $this->pane('db-service', 'DB Service', 'wrench', 'admin.maintenance.db-service',
+                'Repair badges charged the fee although prepaid entitlement was left.',
+                $this->permits('manage-admin')),
+        ];
+
+        return collect($tools)
+            ->filter()
+            ->map(fn (array $tool) => $tool + ['danger' => $tool['key'] === 'db-service'])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function pane(string $key, string $label, string $icon, string $route, string $blurb, bool $visible = true): ?array
+    {
+        if (! $visible || ! Route::has($route)) {
+            return null;
+        }
+
+        return [
+            'key' => $key,
+            'label' => $label,
+            'icon' => $icon,
+            'blurb' => $blurb,
+            'url' => route($route),
+        ];
+    }
+
+    /**
+     * The top strip's own segments: the numbers staff act on (plan 1.2).
      *
      * Same counts as the rail, from the same cached read, so the chip beside "Fursuits"
-     * and the "pending" segment three elements to its left can never disagree. The strip
-     * counts unverified *cards* while the rail chip counts the *batches* holding them:
-     * two different questions, both named in plan 2.8 and 1.2, so both are computed.
+     * and the "pending reviews" segment three elements to its left can never disagree.
+     *
+     * The printing segment is the work still ahead, not the work already done and
+     * unchecked: an operator asks "how many cards are left", and the unverified count
+     * answered a question only the print-batch page cares about. Unverified cards are
+     * still counted for the rail chip, which is where that question belongs. The two print
+     * numbers are a pair, left and done, and they are read together.
      *
      * Segments are rendered at zero as well, tone idle. An operator reading "0 pending"
      * knows the queue is empty; a segment that vanishes only says the strip changed.
@@ -143,26 +259,44 @@ final class Navigation
         if ($this->permits('viewAny', Fursuit::class)) {
             $segments[] = [
                 'key' => 'pending_fursuits',
-                'label' => 'pending',
+                'label' => 'pending reviews',
                 'value' => $counts['fursuits'],
                 'tone' => $counts['fursuits'] > 0 ? Status::WARN : Status::IDLE,
                 'icon' => 'hourglass',
-                // No filter in the link: the fursuit list declares
-                // Filter::select('status')->default('pending') (plan 2.3), so its plain
-                // URL already is the pending set this segment counts.
-                'url' => $this->urlFor('manage.fursuits.index'),
+                // The queue, not the list: the number is the review backlog, so the click
+                // hands the reviewer the next record instead of a table they then have to
+                // pick a row out of. An empty queue redirects to the list on its own
+                // (FursuitReviewController::index), so zero is not a dead end.
+                'url' => $this->urlFor('admin.fursuits.review'),
             ];
         }
 
-        if ($this->permits('viewAny', PrintJob::class)) {
+        if ($this->permits('viewAny', Badge::class)) {
             $segments[] = [
-                'key' => 'unverified_cards',
-                'label' => 'unverified',
-                'value' => $counts['cards'],
-                'tone' => $counts['cards'] > 0 ? Status::WARN : Status::IDLE,
+                'key' => 'unprinted_badges',
+                'label' => 'left to print',
+                'value' => $counts['unprinted'],
+                'tone' => $counts['unprinted'] > 0 ? Status::WARN : Status::IDLE,
+                'icon' => 'printer',
+                'url' => $this->urlFor('admin.badges.index', [
+                    'filter' => ['status_fulfillment' => ['pending', 'processing']],
+                ]),
+            ];
+
+            /*
+             * The other half of the same question. "Left to print" alone says how much
+             * work is ahead but nothing about how far the run has got, and during the
+             * convention that is the number an operator is actually asked for. Tone ok
+             * rather than warn: it is progress, not a queue anybody has to clear.
+             */
+            $segments[] = [
+                'key' => 'printed_badges',
+                'label' => 'printed',
+                'value' => $counts['printed'],
+                'tone' => $counts['printed'] > 0 ? Status::OK : Status::IDLE,
                 'icon' => 'id-card',
-                'url' => $this->urlFor('manage.print-jobs.index', [
-                    'filter' => ['status' => PrintJobStatusEnum::Printed->value, 'verified' => '0'],
+                'url' => $this->urlFor('admin.badges.index', [
+                    'filter' => ['status_fulfillment' => ['ready_for_pickup', 'picked_up']],
                 ]),
             ];
         }
@@ -254,12 +388,23 @@ final class Navigation
         $eventId = $this->eventId;
 
         return Cache::remember('manage.nav.counts.'.($eventId ?? 'all'), self::BADGE_TTL, function () use ($eventId) {
-            $badges = Badge::query()
+            /*
+             * One grouped read behind all three badge numbers. The rail chip wants the
+             * total, the strip wants the two halves of the print run, and three separate
+             * count() queries would be three table scans per poll for numbers that are
+             * one GROUP BY apart.
+             */
+            $fulfillment = Badge::query()
                 ->when($eventId, fn (Builder $query) => $query->whereHas(
                     'fursuit',
                     fn (Builder $fursuit) => $fursuit->where('event_id', $eventId)
                 ))
-                ->count();
+                ->toBase()
+                ->selectRaw('status_fulfillment, count(*) as aggregate')
+                ->groupBy('status_fulfillment')
+                ->pluck('aggregate', 'status_fulfillment');
+
+            $badges = (int) $fulfillment->sum();
 
             /*
              * whereState rather than where('status', 'pending'): the column is a Spatie
@@ -270,6 +415,24 @@ final class Navigation
                 ->when($eventId, fn (Builder $query) => $query->where('event_id', $eventId))
                 ->whereState('status', Pending::class)
                 ->count();
+
+            /*
+             * The cards still to come out of a printer. Pending is a badge nobody has
+             * queued yet, Processing is one sitting in a batch: both are work ahead, and
+             * both disappear from the count the moment the card exists. The badge list's
+             * status_fulfillment filter takes exactly these two values, so the strip's
+             * number and the list the segment links to are the same set.
+             */
+            $unprintedBadges = (int) $fulfillment->only(['pending', 'processing'])->sum();
+
+            /*
+             * The counterpart: a card exists for this badge, whether or not the attendee
+             * has collected it. The dead `printed` state is deliberately not in the set -
+             * nothing transitions into it (only the raw `badges:print` command writes it)
+             * and the badge list has no filter option for it, so counting it here would
+             * put a number on the strip that its own link cannot show.
+             */
+            $printedBadges = (int) $fulfillment->only(['ready_for_pickup', 'picked_up'])->sum();
 
             $stopped = Printer::query()
                 ->where('is_active', true)
@@ -289,6 +452,8 @@ final class Navigation
 
             return [
                 'badges' => $badges,
+                'unprinted' => $unprintedBadges,
+                'printed' => $printedBadges,
                 'fursuits' => $pendingFursuits,
                 'printers' => $stopped,
                 'cards' => $unverifiedCards,

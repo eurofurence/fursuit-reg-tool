@@ -42,12 +42,12 @@ const form = useForm({
 
 const submit = () => {
   if (editing.value) {
-    form.put(route('manage.sumup-readers.update', props.reader.id));
+    form.put(route('admin.sumup-readers.update', props.reader.id));
 
     return;
   }
 
-  form.post(route('manage.sumup-readers.store'));
+  form.post(route('admin.sumup-readers.store'));
 };
 </script>
 

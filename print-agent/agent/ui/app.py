@@ -61,6 +61,20 @@ LABELS = {
 }
 
 
+def _positive_int(raw: str, fallback: int) -> int:
+    """Parse a settings box, keeping the old value when it is not a number.
+
+    A typo in a spinner should not silently turn a warning threshold into zero
+    and take the warnings away with it.
+    """
+    try:
+        value = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return fallback
+
+    return value if value > 0 else fallback
+
+
 class DemoPoller:
     """Cycles through states so the UI can be reviewed without hardware."""
 
@@ -331,6 +345,15 @@ class AgentApp(tk.Tk):
         self.session_cards = console.SessionCards(self.session_frame)
         self.session_cards.pack(anchor="w")
 
+        # Blanks are finite and the printer only says so once it is empty.
+        self.stock_frame = ttk.LabelFrame(steps_frame, text="Card stock", padding=10)
+        self.card_stock = console.CardStock(
+            self.stock_frame,
+            on_set=self._set_card_stock,
+            on_refill=self._refill_card_stock,
+        )
+        self.card_stock.pack(anchor="w")
+
         # Shown only when a fault has stopped the run.
         self.recovery = ttk.Frame(steps_frame)
         ttk.Label(self.recovery, text="Once the printer is fixed:").pack(side="left")
@@ -494,6 +517,64 @@ class AgentApp(tk.Tk):
         self.api_token = self._field(server, "API token", self.config_data.api_token, 1, secret=True)
         ttk.Button(server, text="Test connection",
                    command=self._test_server).grid(row=2, column=1, sticky="w", pady=(8, 0))
+
+        # Pushover was configurable only by hand-editing the config file, which
+        # meant in practice it was never on, and the one channel that reaches a
+        # phone when the run stops was the one nobody had set up.
+        pushover_box = ttk.LabelFrame(tab, text="Pushover alerts", padding=12)
+        pushover_box.pack(fill="x", pady=(12, 0))
+
+        self.pushover_enabled = tk.BooleanVar(value=self.config_data.pushover.enabled)
+        ttk.Checkbutton(
+            pushover_box,
+            text="Send a phone alert when printing stops, or is about to",
+            variable=self.pushover_enabled,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
+
+        self.pushover_user = self._field(
+            pushover_box, "User key", self.config_data.pushover.user_key, 1, secret=True)
+        self.pushover_token = self._field(
+            pushover_box, "API token", self.config_data.pushover.api_token, 2, secret=True)
+        self.pushover_cooldown = self._field(
+            pushover_box, "Repeat after (seconds)",
+            str(self.config_data.pushover.cooldown_seconds), 3)
+
+        ttk.Label(
+            pushover_box,
+            text=("The user key is on your Pushover dashboard; the API token comes from "
+                  "an application you create there. Only faults reach this: a stopped "
+                  "printer, a jam, or the card stock running low. Everything else goes "
+                  "to Telegram, so the phone alert stays worth reading."),
+            wraplength=560, style="Sub.TLabel", justify="left",
+        ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(8, 0))
+
+        ttk.Button(pushover_box, text="Send a test alert",
+                   command=self._test_pushover).grid(row=5, column=1, sticky="w", pady=(8, 0))
+
+        cards_box = ttk.LabelFrame(tab, text="Card stock", padding=12)
+        cards_box.pack(fill="x", pady=(12, 0))
+
+        self.cards_enabled = tk.BooleanVar(value=self.config_data.card_stock.enabled)
+        ttk.Checkbutton(
+            cards_box,
+            text="Count the blank cards and warn before they run out",
+            variable=self.cards_enabled,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
+
+        self.cards_threshold = self._field(
+            cards_box, "Warn with this many left",
+            str(self.config_data.card_stock.low_threshold), 1)
+        self.cards_refill = self._field(
+            cards_box, "Refill button adds",
+            str(self.config_data.card_stock.refill_size), 2)
+
+        ttk.Label(
+            cards_box,
+            text=("The count lives on the Console, where it is set and refilled. The "
+                  "printer only reports empty once it already is, which strands a run "
+                  "mid-batch."),
+            wraplength=560, style="Sub.TLabel", justify="left",
+        ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
         telegram_box = ttk.LabelFrame(tab, text="Telegram channel", padding=12)
         telegram_box.pack(fill="x", pady=(12, 0))
@@ -983,10 +1064,19 @@ class AgentApp(tk.Tk):
 
     def _sync_session_panel(self) -> None:
         """Show the badge readout only for a printer that produces badges."""
-        if self._selected_card_binding() is not None:
+        card_printer = self._selected_card_binding() is not None
+
+        if card_printer:
             self.session_frame.pack(fill="x", pady=(14, 0))
         else:
             self.session_frame.pack_forget()
+
+        # Card stock is blank plastic, so it means nothing on a receipt roll.
+        if card_printer and self.config_data.card_stock.enabled:
+            self.stock_frame.pack(fill="x", pady=(14, 0))
+            self._refresh_card_stock()
+        else:
+            self.stock_frame.pack_forget()
 
     # -- camera selection --------------------------------------------------
 
@@ -1379,6 +1469,9 @@ class AgentApp(tk.Tk):
                     # so a finished card was never ticked off and the batch sat
                     # at "ready" until the next claim announced it complete.
                     self._sync_active_batch()
+                elif kind == "stock":
+                    self.card_stock.show(
+                        payload, self.config_data.card_stock.low_threshold)
                 elif kind == "telegram":
                     self._on_telegram_command(payload)
                 elif kind == "decision":
@@ -1465,6 +1558,18 @@ class AgentApp(tk.Tk):
         self.config_data.server_url = self.server_url.get().strip()
         self.config_data.api_token = self.api_token.get().strip()
 
+        self.config_data.pushover.enabled = self.pushover_enabled.get()
+        self.config_data.pushover.user_key = self.pushover_user.get().strip()
+        self.config_data.pushover.api_token = self.pushover_token.get().strip()
+        self.config_data.pushover.cooldown_seconds = _positive_int(
+            self.pushover_cooldown.get(), self.config_data.pushover.cooldown_seconds)
+
+        self.config_data.card_stock.enabled = self.cards_enabled.get()
+        self.config_data.card_stock.low_threshold = _positive_int(
+            self.cards_threshold.get(), self.config_data.card_stock.low_threshold)
+        self.config_data.card_stock.refill_size = _positive_int(
+            self.cards_refill.get(), self.config_data.card_stock.refill_size)
+
         self.config_data.telegram.enabled = self.telegram_enabled.get()
         self.config_data.telegram.bot_token = self.telegram_token.get().strip()
         self.config_data.telegram.chat_id = self.telegram_chat.get().strip()
@@ -1517,6 +1622,43 @@ class AgentApp(tk.Tk):
             "State: %s\nCondition: %s\nRibbon: %s of %s cards" % (
                 reading.printer_state, condition, reading.supply_level, reading.supply_max))
         self._log("SNMP test OK: %s" % condition)
+
+    def _test_pushover(self) -> None:
+        """Prove the keys work, from the machine that will be doing the sending.
+
+        Saves first: typing keys and pressing Test without pressing Save tested
+        the old ones and reported success.
+        """
+        self._save_config()
+
+        if not self.config_data.pushover.enabled:
+            messagebox.showinfo("Pushover is off",
+                                "Tick the box above, then test.")
+            return
+
+        from .. import notify as notify_module
+
+        notifier = notify_module.Notifier(self.config_data.pushover)
+
+        if not notifier.is_configured():
+            messagebox.showwarning("Not configured",
+                                   "Both the user key and the API token are needed.")
+            return
+
+        # A test that is silently swallowed by the cooldown looks like a
+        # delivery failure, so it does not go through the usual keyed path.
+        sent = notifier.alert("pushover-test-%d" % int(time.time()),
+                              "Badge printer test",
+                              "If this arrived, alerts from this station work.")
+
+        if sent:
+            messagebox.showinfo("Sent", "Check your phone.")
+            self._log("Pushover test sent")
+        else:
+            messagebox.showerror(
+                "Not sent",
+                "Pushover refused it. Check the user key and API token.")
+            self._log("Pushover test failed")
 
     def _test_telegram(self) -> None:
         """Post a test message using whatever is typed in the fields now.
@@ -1803,6 +1945,9 @@ class AgentApp(tk.Tk):
             on_decision=lambda decision: self.events.put(("decision", decision)),
             on_log=lambda message: self.events.put(("log", message)),
             on_batch_change=lambda batch_id: self.events.put(("batch_change", batch_id)),
+            on_stock=lambda remaining: self.events.put(("stock", remaining)),
+            count_cards=self.config_data.card_stock.enabled,
+            low_card_threshold=self.config_data.card_stock.low_threshold,
         )
 
         # Set here rather than passed in: only the card console shows the
@@ -1811,6 +1956,51 @@ class AgentApp(tk.Tk):
         worker.on_card = self._on_card_finished
 
         return worker
+
+    # -- card stock ---------------------------------------------------------
+
+    def _set_card_stock(self, remaining) -> None:
+        """Record how many blanks are in the hopper."""
+        try:
+            _client, store, _notifier = self._services()
+            store.set_card_stock(remaining)
+        except Exception as error:  # noqa: BLE001 - the operator gets told
+            self._log("Could not save the card count: %s" % error)
+            return
+
+        self._log("Card stock set to %d" % remaining)
+        self._refresh_card_stock()
+
+    def _refill_card_stock(self) -> None:
+        """Add one stack. Counts up from whatever is left rather than resetting.
+
+        A refill is poured on top of the blanks already in the hopper, so
+        replacing the figure would lose them.
+        """
+        size = self.config_data.card_stock.refill_size
+
+        try:
+            _client, store, _notifier = self._services()
+            store.set_card_stock((store.card_stock() or 0) + size)
+        except Exception as error:  # noqa: BLE001
+            self._log("Could not add the refill: %s" % error)
+            return
+
+        self._log("Added %d blank cards" % size)
+        self._refresh_card_stock()
+
+    def _refresh_card_stock(self) -> None:
+        if not hasattr(self, "card_stock"):
+            return
+
+        try:
+            _client, store, _notifier = self._services()
+            remaining = store.card_stock()
+        except Exception:  # noqa: BLE001 - a readout, not a print
+            return
+
+        self.card_stock.set_refill_size(self.config_data.card_stock.refill_size)
+        self.card_stock.show(remaining, self.config_data.card_stock.low_threshold)
 
     def _build_notifier(self, notifier):
         """Fault alerts, to Pushover and to the chat.

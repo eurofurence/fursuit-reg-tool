@@ -115,25 +115,25 @@ function badgeSnapshot(): array
 // -------------------------------------------------------------------------------------
 
 test('a guest is redirected to login', function () {
-    get(route('manage.maintenance.db-service'))->assertRedirect();
+    get(route('admin.maintenance.db-service'))->assertRedirect();
 });
 
 test('an attendee cannot reach the page at all', function () {
-    actingAs($this->nobody)->get(route('manage.maintenance.db-service'))->assertForbidden();
+    actingAs($this->nobody)->get(route('admin.maintenance.db-service'))->assertForbidden();
 });
 
 test('a reviewer is refused, because the page is admin-only', function () {
-    actingAs($this->reviewer)->get(route('manage.maintenance.db-service'))->assertForbidden();
+    actingAs($this->reviewer)->get(route('admin.maintenance.db-service'))->assertForbidden();
 });
 
 test('a reviewer is refused the preview and the apply, not only the page', function () {
-    actingAs($this->reviewer)->post(route('manage.maintenance.db-service.preview'))->assertForbidden();
-    actingAs($this->reviewer)->post(route('manage.maintenance.db-service.apply'))->assertForbidden();
+    actingAs($this->reviewer)->post(route('admin.maintenance.db-service.preview'))->assertForbidden();
+    actingAs($this->reviewer)->post(route('admin.maintenance.db-service.apply'))->assertForbidden();
 });
 
 test('an attendee is refused the preview and the apply', function () {
-    actingAs($this->nobody)->post(route('manage.maintenance.db-service.preview'))->assertForbidden();
-    actingAs($this->nobody)->post(route('manage.maintenance.db-service.apply'))->assertForbidden();
+    actingAs($this->nobody)->post(route('admin.maintenance.db-service.preview'))->assertForbidden();
+    actingAs($this->nobody)->post(route('admin.maintenance.db-service.apply'))->assertForbidden();
 });
 
 test('a refused apply writes nothing', function () {
@@ -142,35 +142,40 @@ test('a refused apply writes nothing', function () {
 
     $before = badgeSnapshot();
 
-    actingAs($this->reviewer)->post(route('manage.maintenance.db-service.apply'))->assertForbidden();
+    actingAs($this->reviewer)->post(route('admin.maintenance.db-service.apply'))->assertForbidden();
 
     expect(badgeSnapshot())->toBe($before);
 });
 
 test('an admin reaches the page', function () {
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service'))
+        ->get(route('admin.maintenance.db-service'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Manage/Tools/DbService'));
 });
 
-test('the nav entry is offered to an admin and hidden from a reviewer', function () {
-    $labels = fn ($groups) => collect($groups)
-        ->flatMap(fn ($group) => collect($group['items'])->pluck('label'))
-        ->all();
+/*
+ * The successor to the rail assertion: DB Service has no rail row of its own since the
+ * Maintenance group was folded into the Tools index, so what has to stay true is that its
+ * card is on that index for an admin and absent for a reviewer. The index itself is open to
+ * both - it is a menu - and the card is the thing `manage-admin` decides.
+ */
+test('the Tools card is offered to an admin and hidden from a reviewer', function () {
+    $labels = fn ($tools) => collect($tools)->pluck('label')->all();
 
     actingAs($this->admin)
-        ->get(route('manage.dashboard'))
+        ->get(route('admin.tools.index'))
         ->assertInertia(fn (Assert $page) => $page->where(
-            'manageNav',
-            fn ($groups) => in_array('DB Service', $labels($groups), true)
+            'tools',
+            fn ($tools) => in_array('DB Service', $labels($tools), true)
         ));
 
     actingAs($this->reviewer)
-        ->get(route('manage.dashboard'))
+        ->get(route('admin.tools.index'))
+        ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where(
-            'manageNav',
-            fn ($groups) => ! in_array('DB Service', $labels($groups), true)
+            'tools',
+            fn ($tools) => ! in_array('DB Service', $labels($tools), true)
         ));
 });
 
@@ -180,7 +185,7 @@ test('the nav entry is offered to an admin and hidden from a reviewer', function
 
 test('the page opens idle, naming the active event and offering only the preview', function () {
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service'))
+        ->get(route('admin.maintenance.db-service'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Tools/DbService')
             // Event::getActiveEvent(): the newest by starts_at.
@@ -192,20 +197,18 @@ test('the page opens idle, naming the active event and offering only the preview
             ->where('actions.0.icon', 'search')
             ->where('actions.0.method', 'post')
             ->count('actions', 1)
-            // Plan 2.10 #3: the corrupted-total report is linked, not copied.
-            ->where('corruptedTotalsUrl', route('manage.badges.corrupted-totals'))
         );
 });
 
 // Checklist line 57: the page is not selector-scoped, it uses Event::getActiveEvent().
 test('the page ignores the header event selection', function () {
-    actingAs($this->admin)->post(route('manage.event.select'), ['event_id' => $this->older->id]);
+    actingAs($this->admin)->post(route('admin.event.select'), ['event_id' => $this->older->id]);
 
     $user = ($this->attendee)(1, $this->older);
     ($this->chargedBadge)($user, [], $this->older);
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('event.name', 'Eurofurence 29')
             // The older event's wrongly charged badge is not this page's business.
@@ -232,11 +235,11 @@ test('the preview writes nothing', function () {
     ];
 
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.preview'))
-        ->assertRedirect(route('manage.maintenance.db-service', ['review' => 1]));
+        ->post(route('admin.maintenance.db-service.preview'))
+        ->assertRedirect(route('admin.maintenance.db-service', ['review' => 1]));
 
     // And again through the GET that renders the review, which recomputes the report.
-    actingAs($this->admin)->get(route('manage.maintenance.db-service', ['review' => 1]))->assertOk();
+    actingAs($this->admin)->get(route('admin.maintenance.db-service', ['review' => 1]))->assertOk();
 
     expect(badgeSnapshot())->toBe($before);
     expect(DB::table('badges')->count())->toBe($counts['badges']);
@@ -248,8 +251,8 @@ test('the preview writes nothing', function () {
 
 test('an empty preview flashes Nothing to fix and still shows its zeroed cards', function () {
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.preview'))
-        ->assertRedirect(route('manage.maintenance.db-service', ['review' => 1]))
+        ->post(route('admin.maintenance.db-service.preview'))
+        ->assertRedirect(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertSessionHas(MANAGE_DB_SERVICE_TOAST, [
             'tone' => 'success',
             'title' => 'Nothing to fix',
@@ -257,7 +260,7 @@ test('an empty preview flashes Nothing to fix and still shows its zeroed cards',
         ]);
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('report.affected_badge_count', 0)
             ->where('report.affected_user_count', 0)
@@ -273,7 +276,7 @@ test('a preview that found something does not flash Nothing to fix', function ()
     ($this->chargedBadge)(($this->attendee)(1));
 
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.preview'))
+        ->post(route('admin.maintenance.db-service.preview'))
         ->assertSessionMissing(MANAGE_DB_SERVICE_TOAST);
 });
 
@@ -285,7 +288,7 @@ test('a row with no stored image reports a null image url for the page to fall b
     $badge->fursuit->forceFill(['image' => null])->saveQuietly();
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(fn (Assert $page) => $page->where('report.rows.0.image_url', null));
 });
 
@@ -294,7 +297,7 @@ test('the review reports the badge, the counts and the money', function () {
     $badge = ($this->chargedBadge)($user);
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('report.affected_badge_count', 1)
             ->where('report.affected_user_count', 1)
@@ -319,7 +322,7 @@ test('the apply button carries the confirm copy verbatim and only when there is 
     ($this->chargedBadge)($user, ['total' => 1000, 'subtotal' => 840, 'tax' => 160]);
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('actions.0.name', 'apply')
             ->where('actions.0.label', 'Confirm & apply fix')
@@ -351,7 +354,7 @@ test('apply writes exactly what the preview promised', function () {
     $promised = null;
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(function (Assert $page) use (&$promised) {
             $promised = $page->toArray()['props']['report'];
         });
@@ -359,8 +362,8 @@ test('apply writes exactly what the preview promised', function () {
     expect(collect($promised['rows'])->pluck('badge_id')->all())->toBe([$badge->id]);
 
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.apply'))
-        ->assertRedirect(route('manage.maintenance.db-service'));
+        ->post(route('admin.maintenance.db-service.apply'))
+        ->assertRedirect(route('admin.maintenance.db-service'));
 
     $badge->refresh();
     expect($badge->is_free_badge)->toBeTrue();
@@ -384,7 +387,7 @@ test('apply flashes the fix applied notification and reports the result', functi
     ($this->chargedBadge)($user);
 
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.apply'))
+        ->post(route('admin.maintenance.db-service.apply'))
         ->assertSessionHas(MANAGE_DB_SERVICE_TOAST, [
             'tone' => 'success',
             'title' => 'Fix applied',
@@ -392,8 +395,8 @@ test('apply flashes the fix applied notification and reports the result', functi
         ]);
 
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.apply'))
-        ->assertRedirect(route('manage.maintenance.db-service'));
+        ->post(route('admin.maintenance.db-service.apply'))
+        ->assertRedirect(route('admin.maintenance.db-service'));
 });
 
 test('the result panel shows the counters and offers Run again', function () {
@@ -401,11 +404,11 @@ test('the result panel shows the counters and offers Run again', function () {
     ($this->chargedBadge)($user);
 
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.apply'))
-        ->assertRedirect(route('manage.maintenance.db-service'));
+        ->post(route('admin.maintenance.db-service.apply'))
+        ->assertRedirect(route('admin.maintenance.db-service'));
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service'))
+        ->get(route('admin.maintenance.db-service'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('result.success', true)
             ->where('result.fixed_badge_count', 1)
@@ -423,7 +426,7 @@ test('the result panel shows the counters and offers Run again', function () {
     // Run again is a link back to the bare page, so the result is gone on the next load
     // and nothing was written to clear it.
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service'))
+        ->get(route('admin.maintenance.db-service'))
         ->assertInertia(fn (Assert $page) => $page->where('result', null)->where('report', null));
 });
 
@@ -431,7 +434,7 @@ test('apply logs the correction against the badge with the causer and the old mo
     $user = ($this->attendee)(1);
     $badge = ($this->chargedBadge)($user);
 
-    actingAs($this->admin)->post(route('manage.maintenance.db-service.apply'));
+    actingAs($this->admin)->post(route('admin.maintenance.db-service.apply'));
 
     $entry = DB::table('activity_log')
         ->where('subject_id', $badge->id)
@@ -462,7 +465,7 @@ test('the full entitlement is honoured, with no minus one', function () {
     $first = ($this->chargedBadge)($user);
     $second = ($this->chargedBadge)($user);
 
-    actingAs($this->admin)->post(route('manage.maintenance.db-service.apply'));
+    actingAs($this->admin)->post(route('admin.maintenance.db-service.apply'));
 
     expect($first->refresh()->is_free_badge)->toBeTrue();
     expect($second->refresh()->is_free_badge)->toBeTrue();
@@ -474,7 +477,7 @@ test('spare copies are never converted and never consume the allowance', functio
     $copy = ($this->chargedBadge)($user, ['extra_copy_of' => $main->id]);
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('report.affected_badge_count', 1)
             // badges_total counts the copy; should_be_free does not.
@@ -483,7 +486,7 @@ test('spare copies are never converted and never consume the allowance', functio
             ->where('report.rows.0.should_be_paid', 1)
         );
 
-    actingAs($this->admin)->post(route('manage.maintenance.db-service.apply'));
+    actingAs($this->admin)->post(route('admin.maintenance.db-service.apply'));
 
     expect($main->refresh()->is_free_badge)->toBeTrue();
     expect($copy->refresh()->is_free_badge)->toBeFalse();
@@ -496,12 +499,12 @@ test('a badge already free consumes the allowance, so a second run is a no-op', 
     $paid = ($this->chargedBadge)($user);
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(fn (Assert $page) => $page->where('report.affected_badge_count', 0));
 
     $before = badgeSnapshot();
 
-    actingAs($this->admin)->post(route('manage.maintenance.db-service.apply'));
+    actingAs($this->admin)->post(route('admin.maintenance.db-service.apply'));
 
     expect(badgeSnapshot())->toBe($before);
     expect($free->refresh()->is_free_badge)->toBeTrue();
@@ -518,7 +521,7 @@ test('a badge that has already been paid is never converted and never priced as 
     $badge = ($this->chargedBadge)($user, ['status_payment' => Paid::$name, 'paid_at' => $paidAt]);
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('report.affected_badge_count', 0)
             ->where('report.affected_user_count', 0)
@@ -529,7 +532,7 @@ test('a badge that has already been paid is never converted and never priced as 
     $before = badgeSnapshot();
 
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.apply'))
+        ->post(route('admin.maintenance.db-service.apply'))
         ->assertSessionHas(MANAGE_DB_SERVICE_TOAST.'.body', 'Converted 0 badge(s) for 0 user(s) to free.');
 
     expect(badgeSnapshot())->toBe($before);
@@ -554,13 +557,13 @@ test('an unpaid badge is still converted when the same owner also holds a paid o
     $unpaid = ($this->chargedBadge)($user);
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service', ['review' => 1]))
+        ->get(route('admin.maintenance.db-service', ['review' => 1]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('report.affected_badge_count', 1)
             ->where('report.rows.0.badge_id', $unpaid->id)
         );
 
-    actingAs($this->admin)->post(route('manage.maintenance.db-service.apply'));
+    actingAs($this->admin)->post(route('admin.maintenance.db-service.apply'));
 
     expect($unpaid->refresh()->is_free_badge)->toBeTrue()
         ->and((int) $unpaid->refresh()->total)->toBe(0)
@@ -573,7 +576,7 @@ test('the lowest badge id is converted first when the allowance is short', funct
     $first = ($this->chargedBadge)($user);
     $second = ($this->chargedBadge)($user);
 
-    actingAs($this->admin)->post(route('manage.maintenance.db-service.apply'));
+    actingAs($this->admin)->post(route('admin.maintenance.db-service.apply'));
 
     expect($first->refresh()->is_free_badge)->toBeTrue();
     expect($second->refresh()->is_free_badge)->toBeFalse();
@@ -583,12 +586,12 @@ test('running the repair twice does not convert anything the second time', funct
     $user = ($this->attendee)(1);
     ($this->chargedBadge)($user);
 
-    actingAs($this->admin)->post(route('manage.maintenance.db-service.apply'));
+    actingAs($this->admin)->post(route('admin.maintenance.db-service.apply'));
 
     $after = badgeSnapshot();
 
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.apply'))
+        ->post(route('admin.maintenance.db-service.apply'))
         ->assertSessionHas(MANAGE_DB_SERVICE_TOAST, [
             'tone' => 'success',
             'title' => 'Fix applied',
@@ -602,7 +605,7 @@ test('a badge from another event is left alone', function () {
     $user = ($this->attendee)(1, $this->older);
     $badge = ($this->chargedBadge)($user, [], $this->older);
 
-    actingAs($this->admin)->post(route('manage.maintenance.db-service.apply'));
+    actingAs($this->admin)->post(route('admin.maintenance.db-service.apply'));
 
     expect($badge->refresh()->is_free_badge)->toBeFalse();
     expect((int) $badge->refresh()->total)->toBe(500);
@@ -619,7 +622,7 @@ test('with no event at all the apply fails with No active event', function () {
     Event::query()->delete();
 
     actingAs($this->admin)
-        ->post(route('manage.maintenance.db-service.apply'))
+        ->post(route('admin.maintenance.db-service.apply'))
         ->assertSessionHas(MANAGE_DB_SERVICE_TOAST, [
             'tone' => 'danger',
             'title' => 'Fix failed',
@@ -627,7 +630,7 @@ test('with no event at all the apply fails with No active event', function () {
         ]);
 
     actingAs($this->admin)
-        ->get(route('manage.maintenance.db-service'))
+        ->get(route('admin.maintenance.db-service'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('event', null)
             ->where('result.success', false)

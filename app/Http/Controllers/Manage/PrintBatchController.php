@@ -124,7 +124,7 @@ class PrintBatchController extends Controller
             ->filters($this->filters())
             ->rows(fn (PrintBatch $batch) => $this->row($batch))
             ->recordUrl(fn (PrintBatch $batch) => Gate::allows('view', $batch)
-                ? route('manage.print-batches.show', $batch)
+                ? route('admin.print-batches.show', $batch)
                 : null)
             ->rowActions(fn (PrintBatch $batch) => $this->rowActions($batch))
             // `->bulkActions()` is never called on the resource, so there is no select
@@ -313,7 +313,7 @@ class PrintBatchController extends Controller
     {
         return array_values(array_filter([
             Gate::allows('view', $batch)
-                ? Action::link('view', 'View', route('manage.print-batches.show', $batch))->icon('eye')
+                ? Action::link('view', 'View', route('admin.print-batches.show', $batch))->icon('eye')
                 : null,
 
             ...$this->runActions($batch),
@@ -342,7 +342,7 @@ class PrintBatchController extends Controller
         $actions = [];
 
         if (Gate::allows('pause', $batch)) {
-            $pause = Action::post('pause', 'Pause', route('manage.print-batches.pause', $batch))
+            $pause = Action::post('pause', 'Pause', route('admin.print-batches.pause', $batch))
                 // heroicon-o-pause.
                 ->icon('pause')
                 ->tone(Status::WARN)
@@ -372,7 +372,7 @@ class PrintBatchController extends Controller
         }
 
         if (Gate::allows('resume', $batch)) {
-            $resume = Action::post('resume', 'Resume', route('manage.print-batches.resume', $batch))
+            $resume = Action::post('resume', 'Resume', route('admin.print-batches.resume', $batch))
                 // heroicon-o-play.
                 ->icon('play')
                 ->tone(Status::OK)
@@ -388,7 +388,7 @@ class PrintBatchController extends Controller
         }
 
         if (Gate::allows('cancel', $batch)) {
-            $cancel = Action::post('cancel', 'Cancel', route('manage.print-batches.cancel', $batch))
+            $cancel = Action::post('cancel', 'Cancel', route('admin.print-batches.cancel', $batch))
                 // heroicon-o-x-circle.
                 ->icon('circle-x')
                 ->tone(Status::DANGER)
@@ -595,13 +595,20 @@ class PrintBatchController extends Controller
     }
 
     /**
-     * `verify`, the one action on a card.
+     * What a card offers: View, Verify and Retry.
      *
-     * Offered only for a card that printed and that nobody has vouched for yet, which is
-     * the relation manager's own predicate, and only to an operator the batch policy
-     * allows. Hidden rather than disabled where it does not apply: a run is hundreds of
-     * rows long, and a greyed-out button on every unprinted card is noise on the screen
-     * whose whole job is to make the unchecked ones obvious.
+     * Verify was the only one while Print Jobs was a rail module of its own. It is not:
+     * the queue is reached through the run that owns it now, so this table is where an
+     * operator opens a card and where a failed one is put through the printer again. Both
+     * are the print-job module's own endpoints, asked of the print-job policy, exactly as
+     * PrintJobController::rowActions asks them; nothing is re-implemented here.
+     *
+     * Verify is offered only for a card that printed and that nobody has vouched for yet,
+     * which is the relation manager's own predicate, and only to an operator the batch
+     * policy allows. Retry is offered only where the model says it is possible - Failed,
+     * with fewer than three retries behind it. Both are hidden rather than disabled where
+     * they do not apply: a run is hundreds of rows long, and a greyed-out button on every
+     * card is noise on the screen whose whole job is to make the exceptions obvious.
      *
      * @return array<int, Action>
      */
@@ -609,21 +616,31 @@ class PrintBatchController extends Controller
     {
         $verifiable = $job->status === PrintJobStatusEnum::Printed && $job->verified_print_at === null;
 
-        if (! $verifiable || Gate::denies('verify', $batch)) {
-            return [];
-        }
+        return array_values(array_filter([
+            Gate::allows('view', $job)
+                ? Action::link('view', 'View', route('admin.print-jobs.show', $job))->icon('eye')
+                : null,
 
-        return [
-            Action::post('verify', 'Mark verified', route('manage.print-batches.jobs.verify', [$batch, $job]))
-                // heroicon-o-check-badge.
-                ->icon('circle-check')
-                ->tone(Status::OK)
-                ->confirm(
-                    'Confirm this card',
-                    'Only do this with the printed card in front of you. This records that a human checked it.',
-                    'Confirm',
-                ),
-        ];
+            $verifiable && Gate::allows('verify', $batch)
+                ? Action::post('verify', 'Mark verified', route('admin.print-batches.jobs.verify', [$batch, $job]))
+                    // heroicon-o-check-badge.
+                    ->icon('circle-check')
+                    ->tone(Status::OK)
+                    ->confirm(
+                        'Confirm this card',
+                        'Only do this with the printed card in front of you. This records that a human checked it.',
+                        'Confirm',
+                    )
+                : null,
+
+            $job->canRetry() && Gate::allows('retry', $job)
+                ? Action::post('retry', 'Retry', route('admin.print-jobs.retry', $job))
+                    // heroicon-o-arrow-path.
+                    ->icon('refresh-cw')
+                    ->tone(Status::WARN)
+                    ->confirmDefault()
+                : null,
+        ]));
     }
 
     /**

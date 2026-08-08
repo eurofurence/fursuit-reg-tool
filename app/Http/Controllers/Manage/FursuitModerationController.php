@@ -43,19 +43,13 @@ class FursuitModerationController extends Controller
     public function __construct(private readonly FursuitReviewService $reviews) {}
 
     /**
-     * The eight rejection reasons, verbatim and in order, keyed by slug.
+     * The rejection reasons, as the desk has them arranged.
      *
-     * Kept as an alias so nothing that already reads this constant has to learn a new
-     * name; the list itself moved to FursuitReviewService, which now holds one list per
-     * outcome. A publication block needs its own wording - the same eight strings all tell
-     * the attendee to fix a badge that, in that case, is fine and will be printed.
+     * A method and no longer a constant: the list lives in `review_reasons` and is edited in
+     * Settings > Review Reasons, so it cannot be resolved at compile time. Each entry carries
+     * the keyword the queue puts on a chip and the body the attendee receives.
      *
-     * @var array<string, string>
-     */
-    public const REJECT_REASONS = FursuitReviewService::REASONS[FursuitReviewOutcomeEnum::Rejected->value];
-
-    /**
-     * @return array<int, array{value: string, label: string}>
+     * @return array<int, array{value: string, label: string, body: string}>
      */
     public static function rejectReasonOptions(): array
     {
@@ -194,7 +188,7 @@ class FursuitModerationController extends Controller
 
         if ($outcome->requiresReason() && ! $silent) {
             $validated = $request->validate([
-                'reason' => ['nullable', 'string', Rule::in(array_keys(FursuitReviewService::REASONS[$outcome->value]))],
+                'reason' => ['nullable', 'string', Rule::in(FursuitReviewService::reasonSlugs($outcome))],
                 'custom_reason' => ['required', 'string'],
             ]);
 
@@ -267,11 +261,11 @@ class FursuitModerationController extends Controller
                 'No pending fursuits are waiting in the selected event.',
             );
 
-            return redirect()->route('manage.fursuits.index');
+            return redirect()->route('admin.fursuits.index');
         }
 
         return redirect()->route(
-            $inQueue ? 'manage.fursuits.review.show' : 'manage.fursuits.show',
+            $inQueue ? 'admin.fursuits.review.show' : 'admin.fursuits.show',
             $next,
         );
     }

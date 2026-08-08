@@ -65,7 +65,7 @@ class RfidTagController extends Controller
             ])
             ->rowActions(fn (RfidTag $tag) => array_values(array_filter([
                 Gate::allows('delete', $tag)
-                    ? Action::delete('delete', 'Delete', route('manage.staff.rfid-tags.destroy', [$staff, $tag]))
+                    ? Action::delete('delete', 'Delete', route('admin.staff.rfid-tags.destroy', [$staff, $tag]))
                         ->icon('trash-2')
                         ->tone('danger')
                         // Filament's DeleteAction copy, never overridden here: heading
@@ -186,7 +186,7 @@ class RfidTagController extends Controller
         }
 
         return [
-            Action::delete('delete', 'Delete selected', route('manage.staff.rfid-tags.bulk.destroy', $staff))
+            Action::delete('delete', 'Delete selected', route('admin.staff.rfid-tags.bulk.destroy', $staff))
                 ->icon('trash-2')
                 ->tone('danger')
                 ->confirm('Delete selected rfid tags', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete'),

@@ -43,11 +43,11 @@ test('the retired Tools URL redirects to the pane that replaced it', function ()
 
     withSession($this->session)
         ->get('/admin/tools/pickup-booths')
-        ->assertRedirect(route('manage.settings.on-site-desk'));
+        ->assertRedirect(route('admin.settings.on-site-desk'));
 
     // Unnamed, so App\Support\Manage\Navigation cannot put the retired item back in the
     // rail pointing at a redirect.
-    expect(Route::has('manage.tools.pickup-booths'))->toBeFalse();
+    expect(Route::has('admin.tools.pickup-booths'))->toBeFalse();
 });
 
 test('a cross-row error names the row the operator typed, not its sorted position', function () {
@@ -59,7 +59,7 @@ test('a cross-row error names the row the operator typed, not its sorted positio
     actingAs($this->admin);
 
     withSession($this->session)
-        ->put(route('manage.settings.on-site-desk.booths'), [
+        ->put(route('admin.settings.on-site-desk.booths'), [
             'booths' => [
                 ['from' => 2000, 'to' => null],
                 ['from' => 0, 'to' => 999],

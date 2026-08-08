@@ -78,15 +78,25 @@ class Notifier:
             and self.config.api_token
         )
 
-    def alert(self, key: str, title: str, message: str, priority: int = PRIORITY_NORMAL) -> bool:
+    def alert(self, key: str, title: str, message: str, priority: int = PRIORITY_NORMAL,
+              stops_printing: bool = True) -> bool:
         """Send one alert. Returns True only if it actually went out.
 
-        False means disabled, still inside the cooldown for this key, or the
-        send failed. All three are non-events for the caller: there is nothing
-        useful a print worker can do about an undelivered notification.
+        False means disabled, still inside the cooldown for this key, the alert
+        was not urgent enough for a phone, or the send failed. All of them are
+        non-events for the caller: there is nothing useful a print worker can
+        do about an undelivered notification.
+
+        `stops_printing` is what keeps this channel worth having. Pushover is
+        for the run having stopped or being about to stop; a phone that buzzes
+        for every blank card gets silenced, and then it is silent for the jam
+        as well.
         """
         try:
             if not self.is_configured():
+                return False
+
+            if not stops_printing:
                 return False
 
             if not self._claim_slot(key):

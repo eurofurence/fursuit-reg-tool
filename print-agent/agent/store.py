@@ -423,6 +423,47 @@ class LocalStore:
             )
             self._connection.commit()
 
+    # ------------------------------------------------------------------
+    # Card stock
+    # ------------------------------------------------------------------
+    #
+    # How many blanks are in the hopper. Kept here rather than in the config
+    # file because it changes with every card printed, and a settings file
+    # rewritten a thousand times a day is a settings file that eventually gets
+    # truncated by a power cut.
+
+    CARD_STOCK_KEY = "card_stock_remaining"
+
+    def card_stock(self) -> Optional[int]:
+        """Blanks left, or None when nobody has said how many were loaded.
+
+        None and 0 mean different things: None is "not being counted", 0 is
+        "counted, and empty". Warning on the first would cry wolf at every
+        station that never set a figure.
+        """
+        value = self.get(self.CARD_STOCK_KEY)
+
+        return None if value is None else int(value)
+
+    def set_card_stock(self, remaining: Optional[int]) -> None:
+        if remaining is None:
+            self.delete(self.CARD_STOCK_KEY)
+            return
+
+        self.set(self.CARD_STOCK_KEY, max(0, int(remaining)))
+
+    def take_card(self, count: int = 1) -> Optional[int]:
+        """Count cards off the stack. Returns what is left, or None if untracked."""
+        remaining = self.card_stock()
+
+        if remaining is None:
+            return None
+
+        remaining = max(0, remaining - int(count))
+        self.set(self.CARD_STOCK_KEY, remaining)
+
+        return remaining
+
     def get(self, key: str, default: Any = None) -> Any:
         with self._lock:
             row = self._connection.execute(

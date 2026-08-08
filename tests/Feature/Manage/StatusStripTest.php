@@ -13,6 +13,7 @@
  * the event named two elements to its left.
  */
 
+use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
@@ -63,7 +64,7 @@ beforeEach(function () {
 });
 
 test('the strip is shared as its own prop so the poll has something to reload', function () {
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->has('manageStrip.segments'));
 });
@@ -73,28 +74,28 @@ test('the strip counts pending approvals for the selected event only', function 
     ($this->pendingFursuits)($this->older, 7);
 
     // The newest event is the seeded default.
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('manageStrip.segments.0.key', 'pending_fursuits')
             ->where('manageStrip.segments.0.value', 3)
             ->where('manageStrip.segments.0.tone', 'warn')
         );
 
-    from(route('manage.dashboard'))
-        ->post(route('manage.event.select'), ['event_id' => $this->older->id]);
+    from(route('admin.dashboard'))
+        ->post(route('admin.event.select'), ['event_id' => $this->older->id]);
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where('manageStrip.segments.0.value', 7));
 
     // All events is a real selection, and it means every event's pending queue.
-    from(route('manage.dashboard'))->post(route('manage.event.select'), []);
+    from(route('admin.dashboard'))->post(route('admin.event.select'), []);
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where('manageStrip.segments.0.value', 10));
 });
 
 test('a segment at zero still renders, in the idle tone', function () {
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('manageStrip.segments.0.value', 0)
             ->where('manageStrip.segments.0.tone', 'idle')
@@ -109,33 +110,79 @@ test('the rail chip and the strip segment agree on the pending count', function 
     expect((new Navigation($this->newer->id))->strip()['segments'][0]['value'])->toBe(2);
 });
 
-test('a reviewer sees the segments their policies allow and no others', function () {
-    // PrintJobPolicy::viewAny is admin only; FursuitPolicy::viewAny admits reviewers.
+test('a segment is dropped for a user whose policy refuses its model', function () {
+    // Both segments are gated on a policy rather than on the panel gate. Reviewers pass
+    // FursuitPolicy::viewAny and BadgePolicy::viewAny, so they see both; the gate is what
+    // keeps a segment from appearing for anyone a later policy change shuts out.
     actingAs(User::factory()->create(['is_admin' => false, 'is_reviewer' => true]));
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('manageStrip.segments', 1)
+            ->has('manageStrip.segments', 3)
             ->where('manageStrip.segments.0.key', 'pending_fursuits')
+            ->where('manageStrip.segments.1.key', 'unprinted_badges')
+            ->where('manageStrip.segments.2.key', 'printed_badges')
         );
 });
 
-test('each segment links at the list its number was counted from', function () {
-    // Both modules exist now: phase 3 registered manage.fursuits.index and phase 6
-    // registered manage.print-jobs.index, so both segments link for real. A segment whose
-    // module a phase has not built yet still shows its number and simply carries no url,
-    // which is Navigation::urlFor()'s Route::has() branch.
+test('each segment links at the work its number was counted from', function () {
+    // The fursuit segment links at the review queue, not the list: the number is a
+    // backlog, so the click hands over the next record to judge. A segment whose module a
+    // phase has not built yet still shows its number and simply carries no url, which is
+    // Navigation::urlFor()'s Route::has() branch.
     actingAs($this->admin);
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('manageStrip.segments.0.key', 'pending_fursuits')
-            ->where('manageStrip.segments.0.url', route('manage.fursuits.index'))
-            ->where('manageStrip.segments.1.key', 'unverified_cards')
-            // The unverified cards the print-job list can actually show: printed, and
-            // vouched for by nobody.
-            ->where('manageStrip.segments.1.url', route('manage.print-jobs.index', [
-                'filter' => ['status' => 'printed', 'verified' => '0'],
+            ->where('manageStrip.segments.0.label', 'pending reviews')
+            ->where('manageStrip.segments.0.url', route('admin.fursuits.review'))
+            ->where('manageStrip.segments.1.key', 'unprinted_badges')
+            ->where('manageStrip.segments.1.label', 'left to print')
+            // The badges whose card has not been printed: not queued, or queued and still
+            // waiting on a printer.
+            ->where('manageStrip.segments.1.url', route('admin.badges.index', [
+                'filter' => ['status_fulfillment' => ['pending', 'processing']],
             ]))
+            ->where('manageStrip.segments.2.key', 'printed_badges')
+            ->where('manageStrip.segments.2.label', 'printed')
+            // Its counterpart: the card exists, collected or not.
+            ->where('manageStrip.segments.2.url', route('admin.badges.index', [
+                'filter' => ['status_fulfillment' => ['ready_for_pickup', 'picked_up']],
+            ]))
+        );
+});
+
+test('the left-to-print segment counts the badges without a card, in the selected event', function () {
+    $waiting = fn (Event $event, string $status, int $count) => Badge::factory()
+        ->count($count)
+        ->for(Fursuit::factory()->for($event)->state(['status' => Approved::$name]))
+        ->create(['status_fulfillment' => $status]);
+
+    $waiting($this->newer, 'pending', 2);
+    $waiting($this->newer, 'processing', 1);
+    $waiting($this->newer, 'ready_for_pickup', 4);
+    $waiting($this->newer, 'picked_up', 3);
+    $waiting($this->older, 'pending', 5);
+
+    get(route('admin.dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('manageStrip.segments.1.value', 3)
+            ->where('manageStrip.segments.1.tone', 'warn')
+            // Printed is the same run seen from the other end: collected or not, the card
+            // exists, and it is progress rather than a queue, so the tone is ok.
+            ->where('manageStrip.segments.2.value', 7)
+            ->where('manageStrip.segments.2.tone', 'ok')
+        );
+
+    Cache::flush();
+    from(route('admin.dashboard'))
+        ->post(route('admin.event.select'), ['event_id' => $this->older->id]);
+
+    get(route('admin.dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('manageStrip.segments.1.value', 5)
+            ->where('manageStrip.segments.2.value', 0)
+            ->where('manageStrip.segments.2.tone', 'idle')
         );
 });

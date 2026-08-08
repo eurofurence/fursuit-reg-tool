@@ -143,7 +143,7 @@ beforeEach(function () {
 
     // Every read below is an admin read; the access cases act for themselves.
     $this->props = fn (array $query = []) => actingAs($this->admin)
-        ->get(route('manage.checkouts.index', $query))
+        ->get(route('admin.checkouts.index', $query))
         ->viewData('page')['props'];
 });
 
@@ -153,18 +153,18 @@ beforeEach(function () {
  */
 
 test('a guest is redirected to login', function () {
-    get(route('manage.checkouts.index'))->assertRedirect(route('login'));
+    get(route('admin.checkouts.index'))->assertRedirect(route('login'));
 });
 
 test('an attendee cannot reach the checkout list at all', function () {
-    actingAs($this->attendee)->get(route('manage.checkouts.index'))->assertForbidden();
+    actingAs($this->attendee)->get(route('admin.checkouts.index'))->assertForbidden();
 });
 
 test('a reviewer can read the list and the detail page, as in Filament', function () {
     $checkout = ($this->checkout)();
 
-    actingAs($this->reviewer)->get(route('manage.checkouts.index'))->assertSuccessful();
-    actingAs($this->reviewer)->get(route('manage.checkouts.show', $checkout))->assertSuccessful();
+    actingAs($this->reviewer)->get(route('admin.checkouts.index'))->assertSuccessful();
+    actingAs($this->reviewer)->get(route('admin.checkouts.show', $checkout))->assertSuccessful();
 });
 
 test('a reviewer is not offered the print action and cannot post it', function () {
@@ -172,13 +172,13 @@ test('a reviewer is not offered the print action and cannot post it', function (
     ($this->receiptPrinter)();
 
     $props = actingAs($this->reviewer)
-        ->get(route('manage.checkouts.index'))
+        ->get(route('admin.checkouts.index'))
         ->viewData('page')['props'];
 
     expect(array_column($props['rows'][0]['actions'], 'name'))->toBe(['view', 'receipt']);
 
     actingAs($this->reviewer)
-        ->post(route('manage.checkouts.print', $checkout))
+        ->post(route('admin.checkouts.print', $checkout))
         ->assertForbidden();
 
     expect(PrintJob::count())->toBe(0);
@@ -197,11 +197,11 @@ test('create, update and delete are all refused, by policy and by routing', func
     $before = Checkout::findOrFail($checkout->id)->getRawOriginal();
 
     // No route exists for any of the three verbs.
-    expect(app('router')->has('manage.checkouts.store'))->toBeFalse()
-        ->and(app('router')->has('manage.checkouts.create'))->toBeFalse()
-        ->and(app('router')->has('manage.checkouts.edit'))->toBeFalse()
-        ->and(app('router')->has('manage.checkouts.update'))->toBeFalse()
-        ->and(app('router')->has('manage.checkouts.destroy'))->toBeFalse();
+    expect(app('router')->has('admin.checkouts.store'))->toBeFalse()
+        ->and(app('router')->has('admin.checkouts.create'))->toBeFalse()
+        ->and(app('router')->has('admin.checkouts.edit'))->toBeFalse()
+        ->and(app('router')->has('admin.checkouts.update'))->toBeFalse()
+        ->and(app('router')->has('admin.checkouts.destroy'))->toBeFalse();
 
     // And the URLs those verbs would live at refuse the method rather than binding.
     actingAs($this->admin);
@@ -228,8 +228,8 @@ test('reading the list or the detail page writes nothing', function () {
 
     $updatedAt = $checkout->updated_at;
 
-    actingAs($this->admin)->get(route('manage.checkouts.index'))->assertSuccessful();
-    actingAs($this->admin)->get(route('manage.checkouts.show', $checkout))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.checkouts.index'))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.checkouts.show', $checkout))->assertSuccessful();
 
     expect(PrintJob::count())->toBe(0)
         ->and($checkout->fresh()->updated_at->equalTo($updatedAt))->toBeTrue();
@@ -251,7 +251,7 @@ test('the list offers no create action and no bulk actions', function () {
 test('the list renders the nine columns in order, with their labels and types', function () {
     ($this->checkout)();
 
-    actingAs($this->admin)->get(route('manage.checkouts.index'))
+    actingAs($this->admin)->get(route('admin.checkouts.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Checkouts/Index')
@@ -275,7 +275,7 @@ test('the customer cell links to the users list pre-filtered by that name', func
 
     expect(($this->props)()['rows'][0]['cells']['user_name'])->toMatchArray([
         'display' => 'Paying Attendee',
-        'url' => route('manage.users.index', ['search' => 'Paying Attendee']),
+        'url' => route('admin.settings.users.index', ['search' => 'Paying Attendee']),
     ]);
 });
 
@@ -343,7 +343,7 @@ test('the detail page renders the same three figures as euros, agreeing with the
     $checkout = ($this->checkout)(['subtotal' => 1000, 'tax' => 190, 'total' => 1190]);
 
     $props = actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $checkout))
+        ->get(route('admin.checkouts.show', $checkout))
         ->viewData('page')['props'];
 
     expect($props['checkout']['subtotal'])->toBe('€10.00')
@@ -446,7 +446,7 @@ test('the row actions are View, Receipt and Print with the audit copy', function
         'tone' => 'idle',
         'method' => 'get',
         'newTab' => true,
-        'url' => route('manage.checkouts.receipt', $checkout),
+        'url' => route('admin.checkouts.receipt', $checkout),
     ]);
 
     expect($actions['print'])->toMatchArray([
@@ -454,7 +454,7 @@ test('the row actions are View, Receipt and Print with the audit copy', function
         'icon' => 'printer',
         'tone' => 'info',
         'method' => 'post',
-        'url' => route('manage.checkouts.print', $checkout),
+        'url' => route('admin.checkouts.print', $checkout),
     ]);
 
     expect($actions['print']['confirm'])->toMatchArray([
@@ -467,7 +467,7 @@ test('the detail header carries Download Receipt and Print Receipt', function ()
     $checkout = ($this->checkout)();
 
     $props = actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $checkout))
+        ->get(route('admin.checkouts.show', $checkout))
         ->viewData('page')['props'];
 
     $actions = collect($props['actions'])->keyBy('name');
@@ -497,7 +497,7 @@ test('the receipt is served under the manage guard rather than the POS route gro
 
     Storage::put('checkouts/'.$checkout->id.'.pdf', '%PDF-1.4 fake');
 
-    $response = actingAs($this->admin)->get(route('manage.checkouts.receipt', $checkout));
+    $response = actingAs($this->admin)->get(route('admin.checkouts.receipt', $checkout));
 
     $response->assertSuccessful();
     expect($response->headers->get('Content-Type'))->toBe('application/pdf');
@@ -509,7 +509,7 @@ test('a receipt that cannot be rendered is a toast, not a 500', function () {
     $checkout = ($this->checkout)();
 
     actingAs($this->admin)
-        ->get(route('manage.checkouts.receipt', $checkout))
+        ->get(route('admin.checkouts.receipt', $checkout))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_CHECKOUT_TOAST.'.tone', 'danger');
 });
@@ -523,7 +523,7 @@ test('printing a receipt queues the render, creates the job with the enum, and s
     $printer = ($this->receiptPrinter)();
 
     actingAs($this->admin)
-        ->post(route('manage.checkouts.print', $checkout))
+        ->post(route('admin.checkouts.print', $checkout))
         ->assertRedirect()
         // CheckoutResource's success notification, verbatim.
         ->assertSessionHas(MANAGE_CHECKOUT_TOAST.'.title', 'Receipt added to print queue')
@@ -563,7 +563,7 @@ test('the printer is looked up by the enum, not by the raw string', function () 
     Printer::factory()->create(['type' => PrintJobTypeEnum::Badge, 'is_active' => true]);
 
     actingAs($this->admin)
-        ->post(route('manage.checkouts.print', $checkout))
+        ->post(route('admin.checkouts.print', $checkout))
         ->assertRedirect()
         // CheckoutResource's danger notification, verbatim.
         ->assertSessionHas(MANAGE_CHECKOUT_TOAST.'.title', 'No receipt printer found')
@@ -582,7 +582,7 @@ test('an inactive receipt printer is not used', function () {
     Printer::factory()->create(['type' => PrintJobTypeEnum::Receipt, 'is_active' => false]);
 
     actingAs($this->admin)
-        ->post(route('manage.checkouts.print', $checkout))
+        ->post(route('admin.checkouts.print', $checkout))
         ->assertSessionHas(MANAGE_CHECKOUT_TOAST.'.title', 'No receipt printer found');
 
     expect(PrintJob::count())->toBe(0);
@@ -594,8 +594,8 @@ test('printing twice does not queue two receipts for one fiscal record', functio
     $checkout = ($this->checkout)();
     ($this->receiptPrinter)();
 
-    actingAs($this->admin)->post(route('manage.checkouts.print', $checkout));
-    actingAs($this->admin)->post(route('manage.checkouts.print', $checkout))
+    actingAs($this->admin)->post(route('admin.checkouts.print', $checkout));
+    actingAs($this->admin)->post(route('admin.checkouts.print', $checkout))
         // The second click still reports the truth: the receipt is queued.
         ->assertSessionHas(MANAGE_CHECKOUT_TOAST.'.title', 'Receipt added to print queue');
 
@@ -614,11 +614,11 @@ test('a receipt whose job already printed can be asked for again', function () {
     $checkout = ($this->checkout)();
     ($this->receiptPrinter)();
 
-    actingAs($this->admin)->post(route('manage.checkouts.print', $checkout));
+    actingAs($this->admin)->post(route('admin.checkouts.print', $checkout));
 
     PrintJob::sole()->forceFill(['status' => PrintJobStatusEnum::Printed])->save();
 
-    actingAs($this->admin)->post(route('manage.checkouts.print', $checkout));
+    actingAs($this->admin)->post(route('admin.checkouts.print', $checkout));
 
     expect(PrintJob::count())->toBe(2);
 });
@@ -631,7 +631,7 @@ test('an already rendered receipt is not rendered again', function () {
 
     Storage::put('checkouts/'.$checkout->id.'.pdf', '%PDF-1.4 fake');
 
-    actingAs($this->admin)->post(route('manage.checkouts.print', $checkout));
+    actingAs($this->admin)->post(route('admin.checkouts.print', $checkout));
 
     Bus::assertNotDispatched(CreateReceiptFromCheckoutJob::class);
     expect(PrintJob::count())->toBe(1);
@@ -652,7 +652,7 @@ test('the detail page shows the TSE columns that exist rather than the one that 
     ]);
 
     $view = actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $checkout))
+        ->get(route('admin.checkouts.show', $checkout))
         ->viewData('page')['props']['checkout'];
 
     expect($view)->not->toHaveKey('tse_signature');
@@ -669,7 +669,7 @@ test('the detail page carries the checkout information fields', function () {
     $checkout = ($this->checkout)();
 
     $view = actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $checkout))
+        ->get(route('admin.checkouts.show', $checkout))
         ->viewData('page')['props']['checkout'];
 
     expect($view['remote_id'])->toBe('REMOTE-1')
@@ -690,7 +690,7 @@ test('the items table renders the six columns in order, read-only', function () 
     ($this->item)($checkout, ['name' => 'Badge', 'subtotal' => 500, 'tax' => 95, 'total' => 595]);
 
     $props = actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $checkout))
+        ->get(route('admin.checkouts.show', $checkout))
         ->viewData('page')['props'];
 
     expect(array_column($props['columns'], 'key'))->toBe(MANAGE_CHECKOUT_ITEM_COLUMNS)
@@ -711,7 +711,7 @@ test('the item money columns are euros from cents', function () {
     ($this->item)($checkout, ['name' => 'Badge', 'subtotal' => 500, 'tax' => 95, 'total' => 595]);
 
     $cells = actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $checkout))
+        ->get(route('admin.checkouts.show', $checkout))
         ->viewData('page')['props']['rows'][0]['cells'];
 
     expect($cells['subtotal'])->toBe('€5.00')
@@ -726,7 +726,7 @@ test('the features cell joins the array and falls back to a dash', function () {
     ($this->item)($checkout, ['name' => 'Plain']);
 
     $rows = collect(actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $checkout))
+        ->get(route('admin.checkouts.show', $checkout))
         ->viewData('page')['props']['rows'])
         ->keyBy('cells.name');
 
@@ -747,12 +747,12 @@ test('the badge cell names the fursuit, links to the badge, and survives a delet
     ]);
 
     $cell = fn () => actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $checkout))
+        ->get(route('admin.checkouts.show', $checkout))
         ->viewData('page')['props']['rows'][0]['cells']['payable'];
 
     expect($cell())->toMatchArray([
         'display' => 'Blue Wolf (#0142-1)',
-        'url' => route('manage.badges.edit', $badge),
+        'url' => route('admin.badges.edit', $badge),
     ]);
 
     /*
@@ -776,7 +776,7 @@ test('a checkout item table survives a checkout with no items', function () {
     $checkout = ($this->checkout)();
 
     $props = actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $checkout))
+        ->get(route('admin.checkouts.show', $checkout))
         ->viewData('page')['props'];
 
     expect($props['rows'])->toBe([])
@@ -790,7 +790,7 @@ test('one checkout cannot see another checkout items', function () {
     ($this->item)($theirs, ['name' => 'Not mine']);
 
     $props = actingAs($this->admin)
-        ->get(route('manage.checkouts.show', $mine))
+        ->get(route('admin.checkouts.show', $mine))
         ->viewData('page')['props'];
 
     expect($props['rows'])->toBe([]);

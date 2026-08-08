@@ -7,14 +7,16 @@
  * for a column that no longer exists on `users`, and it is why saving this form throws
  * SQL 1054 today (plan 2.10 change 4). It is not here, and UserRequest does not accept it
  * either, so a stale client cannot resurrect it.
+ *
+ * Inside SettingsLayout, like the list it is reached from: Users is a Settings pane, so the
+ * submenu stays beside the form and the header keeps saying where in Settings this is.
  */
 import { computed } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import ManageLayout from '@/Layouts/ManageLayout.vue';
+import SettingsLayout from '@/Layouts/SettingsLayout.vue';
 import FormActions from '@/Components/Manage/FormActions.vue';
 import FormField from '@/Components/Manage/FormField.vue';
 import FormSection from '@/Components/Manage/FormSection.vue';
-import PageHeader from '@/Components/Manage/PageHeader.vue';
 
 const props = defineProps({
   /** null on create. */
@@ -22,6 +24,12 @@ const props = defineProps({
 });
 
 const editing = computed(() => Boolean(props.user?.id));
+
+/*
+ * SettingsLayout titles every pane "Settings", so the subtitle is the only place this
+ * screen can say which account it is editing; "Users" alone would repeat the submenu.
+ */
+const subtitle = computed(() => (editing.value ? `Users / ${props.user.name}` : 'Users / New user'));
 
 const form = useForm({
   remote_id: props.user?.remote_id ?? '',
@@ -34,24 +42,19 @@ const form = useForm({
 
 const submit = () => {
   if (editing.value) {
-    form.put(route('manage.users.update', props.user.id));
+    form.put(route('admin.settings.users.update', props.user.id));
 
     return;
   }
 
-  form.post(route('manage.users.store'));
+  form.post(route('admin.settings.users.store'));
 };
 </script>
 
 <template>
   <Head :title="editing ? 'Edit user' : 'New user'" />
 
-  <ManageLayout>
-    <PageHeader
-      :title="editing ? 'Edit user' : 'New user'"
-      :subtitle="editing ? user.name : null"
-    />
-
+  <SettingsLayout :subtitle="subtitle" flush>
     <form class="flex min-h-0 flex-1 flex-col" @submit.prevent="submit">
       <div class="flex-1 space-y-3 p-4">
         <FormSection title="User">
@@ -108,5 +111,5 @@ const submit = () => {
         :submit-label="editing ? 'Save changes' : 'Create'"
       />
     </form>
-  </ManageLayout>
+  </SettingsLayout>
 </template>

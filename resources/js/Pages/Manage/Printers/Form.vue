@@ -68,12 +68,12 @@ const form = useForm({
 
 const submit = () => {
   if (editing.value) {
-    form.put(route('manage.printers.update', props.printer.id));
+    form.put(route('admin.printers.update', props.printer.id));
 
     return;
   }
 
-  form.post(route('manage.printers.store'));
+  form.post(route('admin.printers.store'));
 };
 </script>
 

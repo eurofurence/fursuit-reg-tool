@@ -77,12 +77,12 @@ const expiry = computed(() => {
 
 const submit = () => {
   if (editing.value) {
-    form.put(route('manage.machines.update', props.machine.id));
+    form.put(route('admin.machines.update', props.machine.id));
 
     return;
   }
 
-  form.post(route('manage.machines.store'));
+  form.post(route('admin.machines.store'));
 };
 </script>
 

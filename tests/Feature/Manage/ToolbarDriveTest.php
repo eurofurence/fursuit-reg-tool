@@ -89,7 +89,7 @@ test('the checkouts date range narrows on either bound over the partial visit', 
     }
 
     $drive = function (array $filter) {
-        $url = route('manage.checkouts.index', $filter ? ['filter' => $filter] : []);
+        $url = route('admin.checkouts.index', $filter ? ['filter' => $filter] : []);
 
         return partial($url, 'Manage/Checkouts/Index');
     };
@@ -127,28 +127,28 @@ test('a module with no declared filters still sorts, searches and paginates', fu
         fn (User $user, int $index) => $user->forceFill(['created_at' => now()->subDays($index)])->save()
     );
 
-    $first = partial(route('manage.users.index'), 'Manage/Users/Index');
+    $first = partial(route('admin.settings.users.index'), 'Manage/Users/Index');
 
     expect($first['filters'])->toBe([])
         ->and($first['meta']['total'])->toBeGreaterThan(25)
         ->and($first['rows'])->toHaveCount(25);
 
     // Page 2 is a different row set, not the same one re-rendered.
-    $second = partial(route('manage.users.index', ['page' => 2]), 'Manage/Users/Index');
+    $second = partial(route('admin.settings.users.index', ['page' => 2]), 'Manage/Users/Index');
 
     expect($second['meta']['page'])->toBe(2)
         ->and(collect($second['rows'])->pluck('id')->intersect(collect($first['rows'])->pluck('id')))
         ->toBeEmpty();
 
     // per_page changes how many come back.
-    $wide = partial(route('manage.users.index', ['per_page' => 50]), 'Manage/Users/Index');
+    $wide = partial(route('admin.settings.users.index', ['per_page' => 50]), 'Manage/Users/Index');
 
     expect($wide['meta']['perPage'])->toBe(50)
         ->and(count($wide['rows']))->toBeGreaterThan(count($first['rows']));
 
     // Sorting flips the row set, both ways.
-    $asc = partial(route('manage.users.index', ['sort' => 'created_at', 'dir' => 'asc']), 'Manage/Users/Index');
-    $desc = partial(route('manage.users.index', ['sort' => 'created_at', 'dir' => 'desc']), 'Manage/Users/Index');
+    $asc = partial(route('admin.settings.users.index', ['sort' => 'created_at', 'dir' => 'asc']), 'Manage/Users/Index');
+    $desc = partial(route('admin.settings.users.index', ['sort' => 'created_at', 'dir' => 'desc']), 'Manage/Users/Index');
 
     expect($asc['sort'])->toMatchArray(['key' => 'created_at', 'dir' => 'asc'])
         ->and($desc['sort'])->toMatchArray(['key' => 'created_at', 'dir' => 'desc'])
@@ -157,7 +157,7 @@ test('a module with no declared filters still sorts, searches and paginates', fu
     // Search narrows to the one record that matches.
     $needle = User::factory()->create(['name' => 'Zzyzx Uniquename']);
 
-    $found = partial(route('manage.users.index', ['search' => 'Zzyzx Uniquename']), 'Manage/Users/Index');
+    $found = partial(route('admin.settings.users.index', ['search' => 'Zzyzx Uniquename']), 'Manage/Users/Index');
 
     expect($found['search'])->toBe('Zzyzx Uniquename')
         ->and($found['meta']['total'])->toBe(1)
@@ -169,19 +169,19 @@ test('every list module answers the partial visit with a whole envelope', functi
     // props, or with a rows array the pager cannot describe. Cheap, and it covers the
     // modules the shape-specific tests above do not name.
     $modules = [
-        'manage.badges.index' => 'Manage/Badges/Index',
-        'manage.checkouts.index' => 'Manage/Checkouts/Index',
-        'manage.events.index' => 'Manage/Events/Index',
-        'manage.fursuits.index' => 'Manage/Fursuits/Index',
-        'manage.machines.index' => 'Manage/Machines/Index',
-        'manage.print-batches.index' => 'Manage/PrintBatches/Index',
-        'manage.print-jobs.index' => 'Manage/PrintJobs/Index',
-        'manage.printers.index' => 'Manage/Printers/Index',
-        'manage.special-codes.index' => 'Manage/SpecialCodes/Index',
-        'manage.staff.index' => 'Manage/Staff/Index',
-        'manage.sumup-readers.index' => 'Manage/SumUpReaders/Index',
-        'manage.tse-clients.index' => 'Manage/TseClients/Index',
-        'manage.users.index' => 'Manage/Users/Index',
+        'admin.badges.index' => 'Manage/Badges/Index',
+        'admin.checkouts.index' => 'Manage/Checkouts/Index',
+        'admin.settings.events.index' => 'Manage/Events/Index',
+        'admin.fursuits.index' => 'Manage/Fursuits/Index',
+        'admin.machines.index' => 'Manage/Machines/Index',
+        'admin.print-batches.index' => 'Manage/PrintBatches/Index',
+        'admin.print-jobs.index' => 'Manage/PrintJobs/Index',
+        'admin.printers.index' => 'Manage/Printers/Index',
+        'admin.special-codes.index' => 'Manage/SpecialCodes/Index',
+        'admin.staff.index' => 'Manage/Staff/Index',
+        'admin.sumup-readers.index' => 'Manage/SumUpReaders/Index',
+        'admin.tse-clients.index' => 'Manage/TseClients/Index',
+        'admin.settings.users.index' => 'Manage/Users/Index',
     ];
 
     foreach ($modules as $name => $component) {
@@ -194,25 +194,25 @@ test('every list module answers the partial visit with a whole envelope', functi
 });
 
 test('column visibility persists per user per table and comes back on the next load', function () {
-    $props = partial(route('manage.users.index'), 'Manage/Users/Index');
+    $props = partial(route('admin.settings.users.index'), 'Manage/Users/Index');
 
     expect($props)->not->toBeEmpty();
 
     // The toggle posts the whole hidden set, exactly as DataTable does.
-    $this->post(route('manage.tables.columns', 'users'), ['hidden' => ['created_at']])
+    $this->post(route('admin.tables.columns', 'users'), ['hidden' => ['created_at']])
         ->assertRedirect();
 
-    get(route('manage.users.index'))
+    get(route('admin.settings.users.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('hiddenColumns', ['created_at'])
             ->etc()
         );
 
     // And it is undone by posting the empty set back.
-    $this->post(route('manage.tables.columns', 'users'), ['hidden' => []])
+    $this->post(route('admin.tables.columns', 'users'), ['hidden' => []])
         ->assertRedirect();
 
-    get(route('manage.users.index'))
+    get(route('admin.settings.users.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('hiddenColumns', [])
             ->etc()

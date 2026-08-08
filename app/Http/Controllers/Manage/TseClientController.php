@@ -124,7 +124,7 @@ class TseClientController extends Controller
                 'state' => $this->stateValue($client),
             ])
             ->recordUrl(fn (TseClient $client) => Gate::allows('view', $client)
-                ? route('manage.tse-clients.show', $client)
+                ? route('admin.tse-clients.show', $client)
                 : null)
             ->rowActions(fn (TseClient $client) => array_values(array_filter([
                 // Filament's row had EditAction only. The edit is gone with the write
@@ -133,7 +133,7 @@ class TseClientController extends Controller
                 // records that only an empty `getHeaderActions()` kept the stock
                 // DeleteAction off the Filament edit page.
                 Gate::allows('view', $client)
-                    ? Action::link('view', 'View', route('manage.tse-clients.show', $client))->icon('eye')
+                    ? Action::link('view', 'View', route('admin.tse-clients.show', $client))->icon('eye')
                     : null,
             ])))
             // No bulk actions and no page actions. `createnew` is the one header action

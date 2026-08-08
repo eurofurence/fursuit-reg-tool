@@ -206,9 +206,17 @@ class FakeCamera:
 class FakeNotifier:
     def __init__(self):
         self.alerts = []
+        self.urgent = []
 
-    def alert(self, key, title, message, priority=0):
+    def alert(self, key, title, message, priority=0, stops_printing=True):
         self.alerts.append((key, title, message))
+
+        # What would have reached a phone. Pushover is meant to be reserved for
+        # the run stopping or being about to, and nothing enforces that but the
+        # flag the worker passes.
+        if stops_printing:
+            self.urgent.append(key)
+
         return True
 
 

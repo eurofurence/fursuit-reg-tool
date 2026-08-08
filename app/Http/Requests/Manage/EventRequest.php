@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * Create and update for /admin/events.
+ * Create and update for /admin/settings/events.
  *
  * The rules are EventResource's form schema (audit 4.1) with two deliberate departures.
  * `cost` is gone: nothing ever read it, so the form no longer offers it. And

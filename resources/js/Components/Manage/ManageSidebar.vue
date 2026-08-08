@@ -74,7 +74,7 @@ const isActive = (item) => item.route === activeRoute.value;
       out in markup too.
     -->
     <Link
-      :href="route('manage.dashboard')"
+      :href="route('admin.dashboard')"
       class="flex h-mg-strip shrink-0 items-center border-b border-hairline px-4 text-[13px] font-semibold tracking-wide text-fg-1 outline-none transition-colors hover:text-state-live focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
     >
       Fursuit Badges

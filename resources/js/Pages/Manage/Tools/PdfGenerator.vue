@@ -47,7 +47,7 @@ const isBadgeList = computed(() => form.pdf_type === 'badge_list');
 const errors = computed(() => usePage().props.errors ?? {});
 
 const badgeListUrl = computed(() =>
-  route('manage.tools.pdf.badge-list', {
+  route('admin.tools.pdf.badge-list', {
     payment_status: form.payment_status,
     badge_ranges: form.badge_ranges,
     rows_per_column: form.rows_per_column,
@@ -57,7 +57,7 @@ const badgeListUrl = computed(() =>
 );
 
 const boxLabelsUrl = computed(() =>
-  route('manage.tools.pdf.box-labels', {
+  route('admin.tools.pdf.box-labels', {
     title: form.title,
     subtitle: form.subtitle,
   }),

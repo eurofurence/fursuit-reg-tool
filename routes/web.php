@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\BadgePdfController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\InfoController;
@@ -44,22 +43,10 @@ Route::middleware(EventEndedMiddleware::class)->group(function () {
     });
 });
 
-// Admin badge PDF routes.
-//
-// `can:access-manage` and not `auth` alone: `custom_id` is `{attendee_id}-{n}`, so the
-// whole namespace is enumerable and every signed-in attendee could pull any other
-// attendee's badge PDF, image, name, species and Catch-Em-All QR code included (audit
-// landmine 60, rebuild-plan 2.10 change 20). The gate is `is_admin || is_reviewer`, the
-// same set the retired Filament panel admitted, so nobody who could reach these links
-// loses them. `manage.tools.badge-preview.pdf.*` are their successors; these two names
-// still own the `admin.` prefix, which is why the panel routes stay `manage.*` until the
-// rename phase.
-Route::middleware(['auth', 'can:access-manage'])->prefix('admin')->group(function () {
-    Route::get('/badge-pdf/{customId}/view', [BadgePdfController::class, 'view'])
-        ->name('admin.badge-pdf.view');
-    Route::get('/badge-pdf/{customId}/download', [BadgePdfController::class, 'download'])
-        ->name('admin.badge-pdf.download');
-});
+// The badge PDF routes used to be a second `/admin` group here, named admin.badge-pdf.*
+// by hand. The panel now owns the `admin.` name prefix, so they moved into it: they are
+// registered in routes/manage/tools.php beside the badge-preview PDF routes and keep both
+// their URLs and their names. See docs/admin/rebuild-plan.md part 5 step 14.
 
 // The Filament panel used to sit here. It is gone; the Inertia panel owns /admin.
 // Kept for one release so bookmarked deep links land on the new panel instead of a 404.

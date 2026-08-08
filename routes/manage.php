@@ -7,14 +7,13 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Manage routes
+| Admin panel routes
 |--------------------------------------------------------------------------
 |
 | The Inertia admin panel, and the only one: it serves /admin and the Filament
 | panel that used to sit there is gone; see docs/admin/rebuild-plan.md. The
-| route names stay manage.* until the rename phase, because admin.* still
-| belongs to admin.badge-pdf.* in
-| routes/web.php. This file holds the panel shell only: the dashboard, the
+| route names are admin.*, and this group is the only thing that registers
+| them. This file holds the panel shell only: the dashboard, the
 | session-state endpoints and the shared table endpoint. Every module lives
 | in its own file under routes/manage/ and is picked up automatically, so
 | the modules of plan part 3 can land phase by phase without ever touching
@@ -47,7 +46,7 @@ Route::post('tables/{table}/columns', [TableColumnController::class, 'update'])
 /*
  * Module routes. A new module is added by dropping routes/manage/{module}.php in;
  * nothing here changes. Each file registers inside this group, so it inherits the
- * /admin prefix, the manage.* name prefix and the middleware stack from the group
+ * /admin prefix, the admin.* name prefix and the middleware stack from the group
  * in bootstrap/app.php.
  *
  * Sorted so registration order is the same on every machine, because route

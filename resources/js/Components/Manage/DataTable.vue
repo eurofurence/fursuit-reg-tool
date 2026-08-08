@@ -23,15 +23,16 @@
  * inline editing - and mounts both directly.
  */
 import { computed, ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import ActionButton from './ActionButton.vue';
 import ColumnMenu from './ColumnMenu.vue';
 import FilterBar from './FilterBar.vue';
 import ManageIcon from './ManageIcon.vue';
 import Pagination from './Pagination.vue';
 import StatusBadge from './StatusBadge.vue';
+import TabBar from './TabBar.vue';
 import { resolve, toneText } from './tones.js';
-import { useTableQuery } from './useTableQuery.js';
+import { activeTabKey, useTableQuery } from './useTableQuery.js';
 
 const props = defineProps({
   table: { type: Object, required: true },
@@ -48,6 +49,8 @@ const props = defineProps({
 });
 
 const { toggleSort } = useTableQuery();
+
+const page = usePage();
 
 const selected = ref([]);
 const hidden = ref([...(props.table.hiddenColumns ?? [])]);
@@ -79,6 +82,29 @@ const visibleColumns = computed(() => props.table.columns.filter((column) => !hi
 const toggleableColumns = computed(() => props.table.columns.filter((column) => column.toggleable));
 
 const filters = computed(() => props.table.filters ?? []);
+
+/*
+ * Preset views. Declared on the server exactly like columns and filters, so a module gains
+ * them by adding `->tabs([...])` to its Table and this file needs nothing: the strip is
+ * here, above the toolbar, or it is not there at all. Sixteen modules declare none, are
+ * sent no `tabs` key at all, and render as they always have.
+ */
+const tabs = computed(() => props.table.tabs ?? []);
+
+/*
+ * What the tabs control: the toolbar that refines the view, the rows, and the pager, which
+ * is this component's existing root. It only carries the tabpanel role when there is a
+ * tablist above it, because a tabpanel with no tablist is a lie; the id is unconditional
+ * so the two cases stay one piece of markup. Named per table, so two lists on one screen
+ * could not point at each other.
+ */
+const panelId = computed(() => `table-${props.table.name}`);
+
+// Through the shared resolver, off the same reactive URL TabBar uses, so the panel is
+// labelled by the tab that is actually selected rather than by a second opinion.
+const activeTabId = computed(() =>
+  tabs.value.length ? `${panelId.value}-tab-${activeTabKey(tabs.value, page.url)}` : null,
+);
 
 /*
  * No controls, no band. A table with nothing to filter, nothing to search and nothing to
@@ -117,7 +143,7 @@ const toggleColumn = (key) => {
     : [...hidden.value, key];
 
   router.post(
-    route('manage.tables.columns', props.table.name),
+    route('admin.tables.columns', props.table.name),
     { hidden: hidden.value },
     { preserveScroll: true, preserveState: true },
   );
@@ -175,7 +201,21 @@ const open = (row, event) => {
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col">
+  <!--
+    Two roots, and the split is the point. The strip picks the view; everything under it -
+    the toolbar that refines the view, the rows, the pager - is the view. A tab may not sit
+    inside the panel it controls, so the strip is the component's sibling root rather than
+    its first child, and the panel keeps the element and the classes it has always had. A
+    module with no tabs renders one root, unchanged, with no strip and no empty band.
+  -->
+  <TabBar v-if="tabs.length" :tabs="tabs" :panel-id="panelId" />
+
+  <div
+    :id="panelId"
+    class="flex min-w-0 flex-col"
+    :role="tabs.length ? 'tabpanel' : null"
+    :aria-labelledby="activeTabId"
+  >
     <!-- Bulk bar: only present while something is selected, so it never costs vertical space. -->
     <div
       v-if="selected.length && table.bulkActions.length"

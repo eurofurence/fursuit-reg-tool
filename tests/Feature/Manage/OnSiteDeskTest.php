@@ -75,8 +75,8 @@ beforeEach(function () {
 });
 
 test('the pane lives under Settings, not Tools', function () {
-    expect(route('manage.settings.on-site-desk', absolute: false))->toBe('/admin/settings/on-site-desk')
-        ->and(Route::has('manage.tools.pickup-booths'))->toBeFalse();
+    expect(route('admin.settings.on-site-desk', absolute: false))->toBe('/admin/settings/on-site-desk')
+        ->and(Route::has('admin.tools.pickup-booths'))->toBeFalse();
 });
 
 test('an event without its own split falls back to the defaults', function () {
@@ -94,7 +94,7 @@ test('the page renders both editors and the per-booth counts', function () {
 
     withSession($this->session)
         ->actingAs($this->admin)
-        ->get(route('manage.settings.on-site-desk'))
+        ->get(route('admin.settings.on-site-desk'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Settings/OnSiteDesk')
@@ -118,12 +118,12 @@ test('the page renders both editors and the per-booth counts', function () {
 test('an admin can save a custom split', function () {
     actingAs($this->admin);
 
-    withSession($this->session)->put(route('manage.settings.on-site-desk.booths'), [
+    withSession($this->session)->put(route('admin.settings.on-site-desk.booths'), [
         'booths' => [
             ['from' => 0, 'to' => 4999],
             ['from' => 5000, 'to' => null],
         ],
-    ])->assertRedirect(route('manage.settings.on-site-desk'));
+    ])->assertRedirect(route('admin.settings.on-site-desk'));
 
     expect($this->event->fresh()->pickup_booths)->toBe([
         ['label' => '0 – 4999', 'from' => 0, 'to' => 4999],
@@ -134,7 +134,7 @@ test('an admin can save a custom split', function () {
 test('rows are stored in range order however they were typed', function () {
     actingAs($this->admin);
 
-    withSession($this->session)->put(route('manage.settings.on-site-desk.booths'), [
+    withSession($this->session)->put(route('admin.settings.on-site-desk.booths'), [
         'booths' => [
             ['from' => 5000, 'to' => null],
             ['from' => 0, 'to' => 4999],
@@ -147,7 +147,7 @@ test('rows are stored in range order however they were typed', function () {
 test('a typed label is kept and a blank one is derived', function () {
     actingAs($this->admin);
 
-    withSession($this->session)->put(route('manage.settings.on-site-desk.booths'), [
+    withSession($this->session)->put(route('admin.settings.on-site-desk.booths'), [
         'booths' => [
             ['label' => 'Lounge counter', 'from' => 0, 'to' => 999],
             ['label' => '', 'from' => 1000, 'to' => null],
@@ -164,8 +164,8 @@ test('resetting clears the column so the event follows the defaults again', func
     actingAs($this->admin);
 
     withSession($this->session)
-        ->post(route('manage.settings.on-site-desk.booths.reset'))
-        ->assertRedirect(route('manage.settings.on-site-desk'));
+        ->post(route('admin.settings.on-site-desk.booths.reset'))
+        ->assertRedirect(route('admin.settings.on-site-desk'));
 
     expect($this->event->fresh()->pickup_booths)->toBeNull();
 });
@@ -174,7 +174,7 @@ test('a bad booth row is refused, and the error names the field that caused it',
     actingAs($this->admin);
 
     withSession($this->session)
-        ->put(route('manage.settings.on-site-desk.booths'), ['booths' => $booths])
+        ->put(route('admin.settings.on-site-desk.booths'), ['booths' => $booths])
         ->assertSessionHasErrors($field);
 
     expect($this->event->fresh()->pickup_booths)->toBeNull($reason);
@@ -206,12 +206,12 @@ test('an admin can publish, edit and clear the opening hours', function () {
 
     // Typed out of order on purpose: days have one correct order and it is not the order
     // somebody happened to add the rows in.
-    withSession($this->session)->put(route('manage.settings.on-site-desk.hours'), [
+    withSession($this->session)->put(route('admin.settings.on-site-desk.hours'), [
         'hours' => [
             ['date' => '2026-09-03', 'opens' => '09:00', 'closes' => '17:00', 'note' => ''],
             ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => 'Busiest day'],
         ],
-    ])->assertRedirect(route('manage.settings.on-site-desk'));
+    ])->assertRedirect(route('admin.settings.on-site-desk'));
 
     expect($this->event->fresh()->desk_opening_hours)->toBe([
         ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => 'Busiest day'],
@@ -221,7 +221,7 @@ test('an admin can publish, edit and clear the opening hours', function () {
     // Clearing every row is a save, not a no-op: the column goes back to null so it reads
     // the same as an event that never published hours.
     withSession($this->session)
-        ->put(route('manage.settings.on-site-desk.hours'), ['hours' => []])
+        ->put(route('admin.settings.on-site-desk.hours'), ['hours' => []])
         ->assertSessionHasNoErrors();
 
     expect($this->event->fresh()->desk_opening_hours)->toBeNull()
@@ -232,7 +232,7 @@ test('a bad opening-hours row is refused', function (array $hours, string $field
     actingAs($this->admin);
 
     withSession($this->session)
-        ->put(route('manage.settings.on-site-desk.hours'), ['hours' => $hours])
+        ->put(route('admin.settings.on-site-desk.hours'), ['hours' => $hours])
         ->assertSessionHasErrors($field);
 
     expect($this->event->fresh()->desk_opening_hours)->toBeNull();
@@ -261,7 +261,7 @@ test('the first and last day of the event are themselves allowed', function () {
     actingAs($this->admin);
 
     withSession($this->session)
-        ->put(route('manage.settings.on-site-desk.hours'), [
+        ->put(route('admin.settings.on-site-desk.hours'), [
             'hours' => [
                 ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => ''],
                 ['date' => '2026-09-06', 'opens' => '10:00', 'closes' => '14:00', 'note' => ''],
@@ -280,7 +280,7 @@ test('the editor is told the range it may pick from', function () {
     actingAs($this->admin);
 
     withSession($this->session)
-        ->get(route('manage.settings.on-site-desk'))
+        ->get(route('admin.settings.on-site-desk'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Settings/OnSiteDesk')
             ->where('event.startsAt', '2026-09-02')
@@ -292,16 +292,16 @@ test('a reviewer can read the page but neither write', function () {
     actingAs($this->reviewer);
 
     withSession($this->session)
-        ->get(route('manage.settings.on-site-desk'))
+        ->get(route('admin.settings.on-site-desk'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('canEdit', false));
 
     withSession($this->session)
-        ->put(route('manage.settings.on-site-desk.booths'), ['booths' => [['from' => 0, 'to' => null]]])
+        ->put(route('admin.settings.on-site-desk.booths'), ['booths' => [['from' => 0, 'to' => null]]])
         ->assertForbidden();
 
     withSession($this->session)
-        ->put(route('manage.settings.on-site-desk.hours'), [
+        ->put(route('admin.settings.on-site-desk.hours'), [
             'hours' => [['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00']],
         ])
         ->assertForbidden();

@@ -140,7 +140,7 @@ class BadgePreviewController extends Controller
 
     private function backToPage(string $customId): RedirectResponse
     {
-        return redirect()->route('manage.tools.badge-preview', ['custom_id' => $customId]);
+        return redirect()->route('admin.tools.badge-preview', ['custom_id' => $customId]);
     }
 
     /**
@@ -223,14 +223,14 @@ class BadgePreviewController extends Controller
             Action::link(
                 'view-pdf',
                 'View PDF in Browser',
-                route('manage.tools.badge-preview.pdf.view', ['customId' => $customId])
+                route('admin.tools.badge-preview.pdf.view', ['customId' => $customId])
             )->icon('eye')->newTab()->toArray(),
 
             // Filament's `color('success')`, which is Status::OK here.
             Action::link(
                 'download-pdf',
                 'Download PDF',
-                route('manage.tools.badge-preview.pdf.download', ['customId' => $customId])
+                route('admin.tools.badge-preview.pdf.download', ['customId' => $customId])
             )->icon('download')->tone(Status::OK)->toArray(),
         ];
     }

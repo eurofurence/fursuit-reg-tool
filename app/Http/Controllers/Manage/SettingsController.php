@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Manage;
 
 use App\Domain\Printing\Models\PrintBatch;
 use App\Domain\Printing\Models\Printer;
-use App\Domain\Printing\Models\PrintJob;
 use App\Http\Controllers\Controller;
 use App\Models\Badge\Badge;
 use App\Models\Event;
@@ -14,16 +13,18 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Response;
 
 /**
- * Settings: configuration only, four panes behind one rail entry.
+ * Settings: configuration only, every pane behind one rail entry.
  *
- * The panes are General, On-Site Desk, Printing and Badges, each a real URL under
- * /admin/settings so the second vertical menu in the page body highlights from the path
- * rather than from client state. Tools keeps Badge Preview and the PDF Generator, and
- * Maintenance keeps DB Service: those run something, they do not configure anything.
+ * The panes are General, Events, On-Site Desk, Printing, Badges, Review Reasons and Users,
+ * each a real URL under /admin/settings so the second vertical menu in the page body
+ * highlights from the path rather than from client state. The Tools index keeps Badge
+ * Preview, the PDF Generator and DB Service: those run something, they do not configure
+ * anything.
  *
- * Three of the four panes live in this controller. On-Site Desk has its own
- * (App\Http\Controllers\Manage\OnSiteDeskController) because it is the only pane with real
- * fields to save, and its two writes belong beside the reads that feed them.
+ * Three panes live in this controller. On-Site Desk, Review Reasons, Events and Users have
+ * their own: the first two because they are the panes with real fields to save, and the last
+ * two because each is a full list-plus-form module (EventController, UserController) that
+ * moved in here rather than a settings form that grew.
  *
  * STORAGE: per-event columns on `events`, and nothing else.
  *
@@ -67,7 +68,7 @@ class SettingsController extends Controller
         return inertia('Manage/Settings/General', $this->props($scope, [
             'links' => $this->compact([
                 $this->eventLink($scope),
-                $this->link('All events', 'manage.events.index', [], $this->permits('viewAny', Event::class)),
+                $this->link('All events', 'admin.settings.events.index', [], $this->permits('viewAny', Event::class)),
             ]),
         ]));
     }
@@ -76,9 +77,10 @@ class SettingsController extends Controller
     {
         return inertia('Manage/Settings/Printing', $this->props($scope, [
             'links' => $this->compact([
-                $this->link('Printers', 'manage.printers.index', [], $this->permits('viewAny', Printer::class)),
-                $this->link('Print Jobs', 'manage.print-jobs.index', [], $this->permits('viewAny', PrintJob::class)),
-                $this->link('Print Batches', 'manage.print-batches.index', [], $this->permits('viewAny', PrintBatch::class)),
+                $this->link('Printers', 'admin.printers.index', [], $this->permits('viewAny', Printer::class)),
+                // No Print Jobs link: a card is worked on inside the batch that owns it, so
+                // the batch list is the one destination for the queue now.
+                $this->link('Print Batches', 'admin.print-batches.index', [], $this->permits('viewAny', PrintBatch::class)),
             ]),
         ]));
     }
@@ -88,7 +90,7 @@ class SettingsController extends Controller
         return inertia('Manage/Settings/Badges', $this->props($scope, [
             'links' => $this->compact([
                 $this->eventLink($scope),
-                $this->link('Badges', 'manage.badges.index', [], $this->permits('viewAny', Badge::class)),
+                $this->link('Badges', 'admin.badges.index', [], $this->permits('viewAny', Badge::class)),
             ]),
         ]));
     }
@@ -128,7 +130,7 @@ class SettingsController extends Controller
 
         return $this->link(
             $event->name.' in Events',
-            'manage.events.edit',
+            'admin.settings.events.edit',
             [$event->id],
             Gate::allows('update', $event),
         );

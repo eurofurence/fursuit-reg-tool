@@ -162,3 +162,51 @@ with @BotFather, add it to the channel as an administrator, paste the numeric ch
 
 Everything except the verify call is local: the agent keeps its queue, cached PDFs and pending
 confirmations in SQLite so a network drop does not stop printing.
+
+## Card stock and alerts
+
+Blank cards are finite and the printer only says so once it is empty, which strands a run
+mid-batch. The agent counts them down instead.
+
+- The count lives in the agent's local store (`card_stock_remaining`), not the config file: it
+  changes with every card, and a settings file rewritten a thousand times a day is one that
+  eventually gets truncated by a power cut.
+- `None` and `0` mean different things. `None` is "nobody is counting" and warns about nothing;
+  `0` is "counted, and empty".
+- Set and refill are on the Console, next to the session readout. Refill adds a stack
+  (`card_stock.refill_size`, default 100) on top of what is left rather than replacing it.
+- Warnings start at `card_stock.low_threshold` (default 10) and are keyed per remaining card, so
+  the last few each warn rather than one alert at ten followed by silence down to zero.
+
+**Pushover is only for the run stopping, or being about to.** Every alert carries
+`stops_printing`; `AlertRelay` sends the urgent ones to Pushover and all of them to Telegram.
+A phone that buzzes for one blank card in a run of four hundred gets silenced, and is then
+silent for the jam too. Non-urgent today: a blank card, a receipt that did not print, and a
+server that refused a print result (the card exists, only the bookkeeping failed).
+
+Both Pushover and the card-stock thresholds are configured on the agent's Setup tab. Pushover
+used to be editable only by hand in the config file, which meant in practice it was never on.
+
+## Where the code lives
+
+Print jobs and printer state are modelled in `app/Domain/Printing/` (`Models/`, `Services/`,
+`Exceptions/`) with their own enums in `app/Enum/` (`PrintJobStatusEnum`, `PrintJobTypeEnum`,
+`PrintBatchStatusEnum`, `PrinterStatusEnum`, `PrinterStatusSeverityEnum`, `PrinterConditionEnum`,
+`PrintCompletionSourceEnum`, `PrintVerificationSourceEnum`). Queued jobs are in `app/Jobs/Printing/`:
+`GenerateBadgePrintFileJob`, `PrintBadgeJob`, `BatchPrintJob`.
+
+POS-side controllers are under `app/Http/Controllers/POS/Printing/`.
+`php artisan printing:check-stuck-jobs` (scheduled every 3 min) detects stuck jobs;
+`printing:reap-leases` returns jobs stranded by a dead agent.
+
+`docs/printing-implementation.md` is the build/debug companion to this file.
+
+## QZ Tray is gone
+
+On-site printing used to be driven through **QZ Tray**, a browser-to-printer bridge, with the POS
+exposing certificate and signing endpoints in `routes/pos-auth.php` for it. That is removed:
+`QZPrintService.vue`, `QzStatusIndicator.vue`, `QzCertController`, the `qz-tray` package and
+`MachineQzStatusTest` are all deleted, and `pos-auth.php` now carries machine login and printer-state
+endpoints only. The design notes from that era are still in the repo root as `PRINTING_SYSTEM.md`,
+`PRINTING_SYSTEM_IMPROVEMENTS.md` and `PRINTING_SYSTEM_IMPROVEMENTS_LARAVEL.md`; read them as history,
+not as a description of the current system. Zebra hardware notes are in `zebra.md`.

@@ -94,7 +94,7 @@ class SumUpReaderController extends Controller
         // (audit 4.11, 7.2).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('manage.sumup-readers.index');
+        return redirect()->route('admin.sumup-readers.index');
     }
 
     public function edit(SumUpReader $reader): Response
@@ -126,7 +126,7 @@ class SumUpReaderController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.sumup-readers.index');
+        return redirect()->route('admin.sumup-readers.index');
     }
 
     /**
@@ -169,7 +169,7 @@ class SumUpReaderController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('manage.sumup-readers.index');
+        return redirect()->route('admin.sumup-readers.index');
     }
 
     /**
@@ -235,11 +235,11 @@ class SumUpReaderController extends Controller
                 ],
             ])
             ->recordUrl(fn (SumUpReader $reader) => Gate::allows('update', $reader)
-                ? route('manage.sumup-readers.edit', $reader)
+                ? route('admin.sumup-readers.edit', $reader)
                 : null)
             ->rowActions(fn (SumUpReader $reader) => array_values(array_filter([
                 Gate::allows('reveal', $reader)
-                    ? Action::post('reveal', 'Reveal', route('manage.sumup-readers.reveal', $reader))
+                    ? Action::post('reveal', 'Reveal', route('admin.sumup-readers.reveal', $reader))
                         ->icon('eye')
                         ->confirm(
                             'Reveal pairing code',
@@ -251,7 +251,7 @@ class SumUpReaderController extends Controller
                 // The single delete lives on the Edit page header, where Filament put it,
                 // and the bulk delete on the selection.
                 Gate::allows('update', $reader)
-                    ? Action::link('edit', 'Edit', route('manage.sumup-readers.edit', $reader))->icon('pencil')
+                    ? Action::link('edit', 'Edit', route('admin.sumup-readers.edit', $reader))->icon('pencil')
                     : null,
             ])))
             ->bulkActions($this->bulkActions())
@@ -288,7 +288,7 @@ class SumUpReaderController extends Controller
         }
 
         return [
-            Action::delete('delete', 'Delete selected', route('manage.sumup-readers.bulk.destroy'))
+            Action::delete('delete', 'Delete selected', route('admin.sumup-readers.bulk.destroy'))
                 ->icon('trash-2')
                 ->tone('danger')
                 ->confirm('Delete selected sum up readers', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete'),
@@ -305,7 +305,7 @@ class SumUpReaderController extends Controller
         }
 
         return [
-            Action::link('create', 'New sum up reader', route('manage.sumup-readers.create'))->icon('plus'),
+            Action::link('create', 'New sum up reader', route('admin.sumup-readers.create'))->icon('plus'),
         ];
     }
 
@@ -321,7 +321,7 @@ class SumUpReaderController extends Controller
         $actions = [];
 
         if (Gate::allows('reveal', $reader)) {
-            $actions[] = Action::post('reveal', 'Reveal', route('manage.sumup-readers.reveal', $reader))
+            $actions[] = Action::post('reveal', 'Reveal', route('admin.sumup-readers.reveal', $reader))
                 ->icon('eye')
                 ->confirm(
                     'Reveal pairing code',
@@ -331,7 +331,7 @@ class SumUpReaderController extends Controller
         }
 
         if (Gate::allows('delete', $reader)) {
-            $actions[] = Action::delete('delete', 'Delete', route('manage.sumup-readers.destroy', $reader))
+            $actions[] = Action::delete('delete', 'Delete', route('admin.sumup-readers.destroy', $reader))
                 ->icon('trash-2')
                 ->tone('danger')
                 ->confirmDelete('sum up reader');

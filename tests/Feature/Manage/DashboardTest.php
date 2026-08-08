@@ -89,14 +89,14 @@ beforeEach(function () {
 
     /** The four stats of one visit, keyed for readability. */
     $this->stats = function (?int $eventId) {
-        $stats = ($this->scoped)($eventId)->get(route('manage.dashboard'))
+        $stats = ($this->scoped)($eventId)->get(route('admin.dashboard'))
             ->assertSuccessful()
             ->viewData('page')['props']['stats'];
 
         return collect($stats)->keyBy('key')->all();
     };
 
-    $this->charts = fn (?int $eventId) => ($this->scoped)($eventId)->get(route('manage.dashboard'))
+    $this->charts = fn (?int $eventId) => ($this->scoped)($eventId)->get(route('admin.dashboard'))
         ->assertSuccessful()
         ->viewData('page')['props']['charts'];
 });
@@ -108,7 +108,7 @@ beforeEach(function () {
 */
 
 test('the dashboard renders the four stats and both charts as top-level props', function () {
-    ($this->scoped)($this->newer->id)->get(route('manage.dashboard'))
+    ($this->scoped)($this->newer->id)->get(route('admin.dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Dashboard')
@@ -127,7 +127,7 @@ test('the poll asks for stats and charts only, and gets them', function () {
     $visit = ($this->scoped)($this->newer->id);
 
     // The first paint, which is also what settles the asset version the poll has to send.
-    $visit->get(route('manage.dashboard'))->assertSuccessful();
+    $visit->get(route('admin.dashboard'))->assertSuccessful();
 
     // What usePoll(15000, { only: ['stats', 'charts'] }) actually sends.
     $response = $visit
@@ -137,7 +137,7 @@ test('the poll asks for stats and charts only, and gets them', function () {
             'X-Inertia-Partial-Data' => 'stats,charts',
             'X-Inertia-Partial-Component' => 'Manage/Dashboard',
         ])
-        ->get(route('manage.dashboard'))
+        ->get(route('admin.dashboard'))
         ->assertSuccessful();
 
     $props = $response->json('props');
@@ -273,7 +273,7 @@ test('stat 4 counts pending fursuits, warns above zero and links to the fursuits
         ->and($stat['description'])->toBe('Awaiting review')
         ->and($stat['icon'])->toBe('clock')
         ->and($stat['tone'])->toBe(Status::WARN)
-        ->and($stat['url'])->toBe(route('manage.fursuits.index'));
+        ->and($stat['url'])->toBe(route('admin.fursuits.index'));
 });
 
 test('stat 4 is success at zero and never counts another event', function () {
@@ -537,7 +537,7 @@ test('rendering the dashboard and polling it twice writes nothing', function () 
 
     $visit = ($this->scoped)($this->newer->id);
 
-    $visit->get(route('manage.dashboard'))->assertSuccessful();
+    $visit->get(route('admin.dashboard'))->assertSuccessful();
 
     $visit->withHeaders([
         'X-Inertia' => 'true',
@@ -546,8 +546,8 @@ test('rendering the dashboard and polling it twice writes nothing', function () 
         'X-Inertia-Partial-Component' => 'Manage/Dashboard',
     ]);
 
-    $visit->get(route('manage.dashboard'))->assertSuccessful();
-    $visit->get(route('manage.dashboard'))->assertSuccessful();
+    $visit->get(route('admin.dashboard'))->assertSuccessful();
+    $visit->get(route('admin.dashboard'))->assertSuccessful();
 
     expect($snapshot())->toEqual($before);
 });

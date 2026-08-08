@@ -56,7 +56,7 @@ below bakes it in rather than bolting it on.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ EF29 (2026)  ▾   ✓ Orders open      12 pending   3 unverified   user  ↗   │  h-10, sticky
+│ EF29 (2026) ▾ ✓ Orders open  12 pending reviews 3 left to print 40 printed │  h-10, sticky
 ├─────┬──────────────────────────────────────────────────────────────────────┤
 │ ▣ 1 │  Badges                                    [ Print selected ]        │  h-14 page header
 │ ▤ 2 │ ──────────────────────────────────────────────────────────────────── │
@@ -73,7 +73,9 @@ below bakes it in rather than bolting it on.
 
 - **Top strip.** Left: the global event selector, which is this app's defining cross-cutting
   control (2.9). Right of it: whether the selected event's order window is open, and the two counts
-  staff act on, pending fursuit approvals and printed-but-unverified cards. Both deep-link.
+  staff act on: fursuits waiting on a review, badges with no card yet, and badges already
+  printed. All deep-link: the review count opens the queue itself, the two print counts the
+  badge list filtered to each half of the run.
 - **Sidebar.** Permanent, 220px, always labelled, no collapse. Groups in a **declared** order, which
   the current panel does not have (audit 2.2: no `->navigationGroups()` call, three `navigationSort`
   collisions, so today's order is partly accidental). Declared order:
@@ -198,7 +200,7 @@ Under `resources/js/Components/Manage/`. Source line counts are from
 | **PORT subtotal** | | **1 475** | 18 files, copied with model swaps only |
 | `ActionButton.vue` | ADAPT | 173 | The only file in the set that imports a shadcn primitive (`@/Components/ui/dialog`). Swap for PrimeVue `Dialog`, roughly 15 lines |
 | `ManageSidebar.vue` | ADAPT | 82 | Structure ports; the group/item list is this app's |
-| `ManageStatusStrip.vue` | ADAPT | 95 | Structure ports; the segments become event selector, orders-open, pending approvals, unverified cards |
+| `ManageStatusStrip.vue` | ADAPT | 95 | Structure ports; the segments become event selector, orders-open, pending reviews, left to print, printed |
 | `ManageLayout.vue` | ADAPT | 38 | In `Layouts/`, not `Components/Manage/` |
 | `EventSelector.vue` | NEW | - | The global event dropdown. 2.9 |
 | `RelationTable.vue` | NEW | - | Embedded child table for the four relation-manager equivalents (checkout items, RFID tags, batch cards, fursuit activity) |
@@ -328,13 +330,13 @@ POST   /admin/event                                  manage.event.select
 POST   /admin/uploads                                manage.uploads.store
 POST   /admin/tables/{table}/columns                 manage.tables.columns
 
-GET    /admin/events                                 manage.events.index
-GET    /admin/events/create                          manage.events.create
-POST   /admin/events                                 manage.events.store
-GET    /admin/events/{event}/edit                    manage.events.edit
-PUT    /admin/events/{event}                         manage.events.update
-DELETE /admin/events/{event}                         manage.events.destroy
-DELETE /admin/events/bulk                            manage.events.bulk.destroy
+GET    /admin/settings/events                        manage.settings.events.index
+GET    /admin/settings/events/create                 manage.settings.events.create
+POST   /admin/settings/events                        manage.settings.events.store
+GET    /admin/settings/events/{event}/edit           manage.settings.events.edit
+PUT    /admin/settings/events/{event}                manage.settings.events.update
+DELETE /admin/settings/events/{event}                manage.settings.events.destroy
+DELETE /admin/settings/events/bulk                   manage.settings.events.bulk.destroy
 
 GET    /admin/badges                                 manage.badges.index
 GET    /admin/badges/{badge}/edit                    manage.badges.edit
@@ -802,10 +804,13 @@ refer to the audit's landmine table.
    ships with phase 4 as a read-only report on the DB Service page. **Corrected while building
    phase 4:** the DB Service page is phase 9, so "phase 4" and "on the DB Service page" cannot both
    hold. Phase 4 wins, because the report exists to make the read-only `total` field safe to ship
-   and shipping it later leaves the corrupted rows unfindable. It lands as its own read-only page,
+   and shipping it later leaves the corrupted rows unfindable. It landed as its own read-only page,
    `GET /admin/badges/corrupted-totals`, reachable from a `Total check` page action on the badge
-   list that only `manage-admin` is offered. Phase 9 links the same page from DB Service rather
-   than growing a second copy of the query.
+   list that only `manage-admin` was offered, and linked again from DB Service in phase 9.
+   **Removed after the fact:** the report, its route, its page action and the DB Service link are
+   gone. The read-only `total` field remains, so no write path can damage a money column; the
+   report was a one-off cleanup aid for rows the old Filament form had already damaged and is no
+   longer carried in the panel.
 
 **Broken surfaces that are not ported as working features.**
 
@@ -1278,8 +1283,8 @@ event-scoped next-record walk; the read-only activity list; transition-based sta
 fix and the portable attendee-id sort; 4 filters including the attendee range; 5 form sections with
 `total` read-only and both statuses as transition pickers; `selectCurrentPageOnly` semantics
 preserved on the bulk selection. **The print row action and the bulk print action are not in this
-phase**; they ship in phase 7 with the rest of the print pipeline. Includes the corrupted-total
-report from change 3.
+phase**; they ship in phase 7 with the rest of the print pipeline. Shipped the corrupted-total
+report from change 3, since removed (see 2.10 #3).
 
 **Phase 5 - POS identity: Machines, Staff, RFID tags, SumUp Readers.** Machines with archive and
 restore, single and bulk, and the on-demand expiring login link. Staff with the `SecurePinRule` fix,
@@ -1309,7 +1314,7 @@ slugged filenames, corrected copy and out-of-range reporting. DB Service with th
 flow, the same confirm copy and the same three notifications, gated on `manage-admin`. Dashboard:
 the four stats, the doughnut and the bar chart on `chart.js`, at a 15s poll.
 
-**Phase 10 - Parity gate and cutover.** Part 5.
+**Phase 10 - Parity gate and cutover.** Part 5. **Done** - see the note at the head of Part 5.
 
 ---
 
@@ -1458,6 +1463,27 @@ repo has no browser test harness to extend. Revisit after cutover.
 
 ## Part 5 - Cutover and Filament removal
 
+**Done.** All fifteen steps below have landed. They are left as written, as the record of what was
+intended; the paragraphs here note the three places the outcome differs from the instruction.
+Filament is out of `composer.json`, out of `vendor/`, and out of the
+application: no provider, resource, page, widget, relation manager, blade view, stylesheet or
+contract remains. `/admin` is the Inertia panel and the only panel, the route names are `admin.*`,
+and `/admin-legacy/{path?}` is a 301 to `/admin` kept for one release (step 1). See the **Cutover
+status** block at the top of [`parity-checklist.md`](./parity-checklist.md) for what was verified.
+
+What survives a `rg -i filament` over the source tree is prose, not code: comments and Pest test
+names that say what the old panel did — "the bulk delete carries Filament default copy", "the
+Filament resource had no view page". That wording is the parity record, and it is deliberately kept.
+The one exception was three comments making a false *present-tense* claim (`resources/css/pos.css`
+lines 5 and 54, `resources/css/manage.css` line 81, all "the public site and Filament keep …"),
+which step 13 called out and which are now reworded.
+
+Two smaller deltas. Step 11's Livewire removal needed no separate decision: Livewire came in only as
+a Filament dependency and left with it, and nothing outside `app/Filament/` had ever referenced it.
+And the `filament.access` permission string, which the cutover brief said to keep if production
+stores it, is not present anywhere in the codebase and never was — this app gates the panel on the
+`access-manage` gate over `is_admin` / `is_reviewer`, so there is nothing to keep.
+
 Phase 10, one PR, only once the gate above is fully green, and never inside an event window.
 
 1. Drop the `/admin-legacy` mount. `Route::redirect('/admin-legacy/{path?}', '/admin', 301)
@@ -1538,7 +1564,7 @@ behaviour changes, no renames beyond the ones listed, no opportunistic cleanup.
 | The `PrintBatchPolicy` change locks out a reviewer who runs print batches in practice | Confirm with the operators who actually run print batches **before** phase 7 lands, not after. If reviewers do run them, the policy becomes an explicit `print.manage` flag rather than reverting to no check |
 | Tailwind 4 pressure returns mid-project | The decision and its numbers are recorded above. A Tailwind 4 upgrade is its own PR, after the POS rework, with its own visual pass over the 26 701 preset lines |
 | The POS rework on this branch conflicts with `/admin` work in `tailwind.config.js` | No existing token is touched semantically: `/admin` only appends to `theme.extend.colors` under the `mg-` prefix and adds one CSS file. Textually it is not free, though - `tailwind.config.js` is dirty on `printing-rework` right now with a 23-line `pos-*` block, and the `mg-*` block appends at the same closing brace of `theme.extend.colors`. Expect one trivial conflict there, and land the `mg-*` block after the POS block rather than merging into it |
-| Money fixes reveal already-corrupted badge totals | Change 3 ships a read-only report in phase 4 before anything is written; the repair, if needed, goes through `FreeBadgeRepairService`'s pattern with a preview and an activity entry |
+| Money fixes reveal already-corrupted badge totals | Change 3 shipped a read-only report in phase 4 before anything was written; the report has since been removed (see 2.10 #3). The write path stays read-only, so no new corruption is possible |
 | Private-S3 upload or signed-URL regression | `Storage::fake('s3')` per purpose, plus the fursuit image is the only upload in scope, so the surface is one field |
 | Polling load multiplies across 16 tables | `only:` partial reloads, pause on hidden tab and dirty form, cached badge counts, and the widget interval dropped from 5s to 15s |
 

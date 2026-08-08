@@ -583,7 +583,7 @@ class PdfGeneratorController extends Controller
 
     private function backToPage(): RedirectResponse
     {
-        return redirect()->route('manage.tools.pdf');
+        return redirect()->route('admin.tools.pdf');
     }
 
     /**

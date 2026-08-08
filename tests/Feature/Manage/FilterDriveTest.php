@@ -64,7 +64,7 @@ test('badges multi-select filter narrows rows and is absent from the URL until a
     makeBadge($this->event, 30, Printed::$name);
 
     // First load: no filter applied, every row is there and the filter carries no value.
-    get(route('manage.badges.index'))
+    get(route('admin.badges.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('meta.total', 3)
@@ -75,7 +75,7 @@ test('badges multi-select filter narrows rows and is absent from the URL until a
             ->etc()
         );
 
-    get(route('manage.badges.index', ['filter' => ['status_fulfillment' => [FulfillmentPending::$name]]]))
+    get(route('admin.badges.index', ['filter' => ['status_fulfillment' => [FulfillmentPending::$name]]]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('meta.total', 2)
             ->where('filters.0.value', [FulfillmentPending::$name])
@@ -83,11 +83,11 @@ test('badges multi-select filter narrows rows and is absent from the URL until a
         );
 
     // Two choices accumulate rather than replace.
-    get(route('manage.badges.index', ['filter' => ['status_fulfillment' => [FulfillmentPending::$name, Printed::$name]]]))
+    get(route('admin.badges.index', ['filter' => ['status_fulfillment' => [FulfillmentPending::$name, Printed::$name]]]))
         ->assertInertia(fn (Assert $page) => $page->where('meta.total', 3)->etc());
 
     // Emptied but still on the bar: the cleared token, not a missing key.
-    get(route('manage.badges.index', ['filter' => ['status_fulfillment' => Filter::CLEARED]]))
+    get(route('admin.badges.index', ['filter' => ['status_fulfillment' => Filter::CLEARED]]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('meta.total', 3)
             ->where('filters.0.value', [])
@@ -100,7 +100,7 @@ test('the badges attendee-id range narrows on either bound and both', function (
     makeBadge($this->event, 300, FulfillmentPending::$name);
     makeBadge($this->event, 900, FulfillmentPending::$name);
 
-    $range = fn (array $bounds) => get(route('manage.badges.index', ['filter' => ['attendee_id_range' => $bounds]]));
+    $range = fn (array $bounds) => get(route('admin.badges.index', ['filter' => ['attendee_id_range' => $bounds]]));
 
     $range(['min' => 200])->assertInertia(fn (Assert $page) => $page->where('meta.total', 2)->etc());
     $range(['max' => 200])->assertInertia(fn (Assert $page) => $page->where('meta.total', 1)->etc());
@@ -116,7 +116,7 @@ test('the badges attendee-id range narrows on either bound and both', function (
     $range(['min' => 200, 'max' => 1000])->assertInertia(fn (Assert $page) => $page->where('meta.total', 2)->etc());
 
     // Removed entirely: the key is gone from the URL and nothing is narrowed.
-    get(route('manage.badges.index'))
+    get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('meta.total', 3)
             ->where('filters.3.value', ['min' => '', 'max' => ''])
@@ -128,7 +128,7 @@ test('the machines archived ternary is three-state and survives a reload', funct
     Machine::factory()->count(2)->create(['archived_at' => null]);
     Machine::factory()->create(['archived_at' => now()]);
 
-    $url = fn (?string $value) => route('manage.machines.index', $value === null ? [] : ['filter' => ['archived' => $value]]);
+    $url = fn (?string $value) => route('admin.machines.index', $value === null ? [] : ['filter' => ['archived' => $value]]);
 
     // Blank is the default: active machines only.
     get($url(null))->assertInertia(fn (Assert $page) => $page
@@ -162,7 +162,7 @@ test('the fursuit status default applies on first load and is still removable', 
     Fursuit::factory()->count(2)->create(['event_id' => $this->event->id, 'status' => FursuitPending::$name]);
     Fursuit::factory()->count(3)->create(['event_id' => $this->event->id, 'status' => Approved::$name]);
 
-    get(route('manage.fursuits.index'))
+    get(route('admin.fursuits.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('meta.total', 2)
@@ -172,7 +172,7 @@ test('the fursuit status default applies on first load and is still removable', 
         );
 
     // Removing a defaulted filter sends the cleared token, and that has to stick.
-    get(route('manage.fursuits.index', ['filter' => ['status' => Filter::CLEARED]]))
+    get(route('admin.fursuits.index', ['filter' => ['status' => Filter::CLEARED]]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('meta.total', 5)
             ->where('filters.0.value', '')
@@ -188,7 +188,7 @@ test('the real partial visit the filter bar makes returns the narrowed rows', fu
 
     // Exactly what useTableQuery's router.get({ only: [...] }) sends.
     $response = get(
-        route('manage.badges.index', ['filter' => ['status_fulfillment' => [Printed::$name]]]),
+        route('admin.badges.index', ['filter' => ['status_fulfillment' => [Printed::$name]]]),
         [
             'X-Inertia' => 'true',
             'X-Inertia-Version' => $version,

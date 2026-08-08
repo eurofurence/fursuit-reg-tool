@@ -70,7 +70,7 @@ beforeEach(function () {
         'paring_code' => MANAGE_SUMUP_CODE,
     ]);
 
-    $this->props = fn (array $query = []) => get(route('manage.sumup-readers.index', $query))
+    $this->props = fn (array $query = []) => get(route('admin.sumup-readers.index', $query))
         ->viewData('page')['props'];
 });
 
@@ -80,26 +80,26 @@ beforeEach(function () {
  */
 
 test('a guest is redirected to login', function () {
-    get(route('manage.sumup-readers.index'))->assertRedirect(route('login'));
+    get(route('admin.sumup-readers.index'))->assertRedirect(route('login'));
 });
 
 test('an attendee cannot reach the reader list at all', function () {
     actingAs($this->attendee);
 
-    get(route('manage.sumup-readers.index'))->assertForbidden();
+    get(route('admin.sumup-readers.index'))->assertForbidden();
 });
 
 test('a reviewer holds access-manage but is refused every reader ability', function () {
     actingAs($this->reviewer);
 
-    get(route('manage.sumup-readers.index'))->assertForbidden();
-    get(route('manage.sumup-readers.create'))->assertForbidden();
-    post(route('manage.sumup-readers.store'), manageSumUpPayload())->assertForbidden();
-    get(route('manage.sumup-readers.edit', $this->reader))->assertForbidden();
-    put(route('manage.sumup-readers.update', $this->reader), manageSumUpPayload())->assertForbidden();
-    post(route('manage.sumup-readers.reveal', $this->reader))->assertForbidden();
-    delete(route('manage.sumup-readers.destroy', $this->reader))->assertForbidden();
-    delete(route('manage.sumup-readers.bulk.destroy'), ['ids' => [$this->reader->id]])->assertForbidden();
+    get(route('admin.sumup-readers.index'))->assertForbidden();
+    get(route('admin.sumup-readers.create'))->assertForbidden();
+    post(route('admin.sumup-readers.store'), manageSumUpPayload())->assertForbidden();
+    get(route('admin.sumup-readers.edit', $this->reader))->assertForbidden();
+    put(route('admin.sumup-readers.update', $this->reader), manageSumUpPayload())->assertForbidden();
+    post(route('admin.sumup-readers.reveal', $this->reader))->assertForbidden();
+    delete(route('admin.sumup-readers.destroy', $this->reader))->assertForbidden();
+    delete(route('admin.sumup-readers.bulk.destroy'), ['ids' => [$this->reader->id]])->assertForbidden();
 
     // Nothing was written, and nothing was revealed, on the way to any of those 403s.
     assertDatabaseHas('sumup_readers', ['id' => $this->reader->id]);
@@ -109,7 +109,7 @@ test('a reviewer holds access-manage but is refused every reader ability', funct
 test('an admin gets the list', function () {
     actingAs($this->admin);
 
-    get(route('manage.sumup-readers.index'))
+    get(route('admin.sumup-readers.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component('Manage/SumUpReaders/Index'));
 });
@@ -138,7 +138,7 @@ test('no column is sortable, searchable or toggleable, matching the audit', func
 test('the table declares no filters', function () {
     actingAs($this->admin);
 
-    get(route('manage.sumup-readers.index'))
+    get(route('admin.sumup-readers.index'))
         ->assertInertia(fn (Assert $page) => $page->where('filters', [])->etc());
 });
 
@@ -184,7 +184,7 @@ test('the rendered index page does not contain the raw pairing code anywhere', f
     // The whole response, not just the cell: the props are serialised into the root
     // view's data-page attribute, so a value smuggled in under any other key shows up
     // here. `false` keeps the needle unescaped, since data-page is JSON.
-    get(route('manage.sumup-readers.index'))
+    get(route('admin.sumup-readers.index'))
         ->assertSuccessful()
         ->assertDontSee(MANAGE_SUMUP_CODE, false);
 });
@@ -192,7 +192,7 @@ test('the rendered index page does not contain the raw pairing code anywhere', f
 test('the index Inertia payload does not contain the raw pairing code either', function () {
     actingAs($this->admin);
 
-    $response = get(route('manage.sumup-readers.index'), [
+    $response = get(route('admin.sumup-readers.index'), [
         'X-Inertia' => 'true',
         // Without the asset version Inertia answers 409 rather than the page object.
         'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
@@ -206,7 +206,7 @@ test('the index Inertia payload does not contain the raw pairing code either', f
 test('the edit page does not carry the pairing code into the form', function () {
     actingAs($this->admin);
 
-    get(route('manage.sumup-readers.edit', $this->reader))
+    get(route('admin.sumup-readers.edit', $this->reader))
         ->assertSuccessful()
         ->assertDontSee(MANAGE_SUMUP_CODE, false)
         ->assertInertia(fn (Assert $page) => $page
@@ -224,9 +224,9 @@ test('the edit page does not carry the pairing code into the form', function () 
 test('reveal hands the code back once, logs who asked, and changes nothing', function () {
     actingAs($this->admin);
 
-    from(route('manage.sumup-readers.index'))
-        ->post(route('manage.sumup-readers.reveal', $this->reader))
-        ->assertRedirect(route('manage.sumup-readers.index'));
+    from(route('admin.sumup-readers.index'))
+        ->post(route('admin.sumup-readers.reveal', $this->reader))
+        ->assertRedirect(route('admin.sumup-readers.index'));
 
     assertDatabaseHas('activity_log', [
         'description' => 'Revealed SumUp pairing code',
@@ -236,7 +236,7 @@ test('reveal hands the code back once, logs who asked, and changes nothing', fun
     ]);
 
     // The redirect target is where the code surfaces, as a prop of that one response.
-    get(route('manage.sumup-readers.index'))
+    get(route('admin.sumup-readers.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('revealed.id', $this->reader->id)
             ->where('revealed.paring_code', MANAGE_SUMUP_CODE)
@@ -244,7 +244,7 @@ test('reveal hands the code back once, logs who asked, and changes nothing', fun
         );
 
     // And it is gone again on the next load: it was flashed, not stored.
-    get(route('manage.sumup-readers.index'))
+    get(route('admin.sumup-readers.index'))
         ->assertDontSee(MANAGE_SUMUP_CODE, false)
         ->assertInertia(fn (Assert $page) => $page->where('revealed', null)->etc());
 
@@ -262,7 +262,7 @@ test('the page action is New sum up reader and it points at the create page', fu
 
     expect($actions)->toHaveCount(1)
         ->and($actions[0]['label'])->toBe('New sum up reader')
-        ->and($actions[0]['url'])->toBe(route('manage.sumup-readers.create'))
+        ->and($actions[0]['url'])->toBe(route('admin.sumup-readers.create'))
         ->and($actions[0]['method'])->toBe('get');
 });
 
@@ -279,7 +279,7 @@ test('each row offers Reveal and Edit, and no delete', function () {
     $reveal = collect($row['actions'])->firstWhere('name', 'reveal');
 
     expect($reveal['method'])->toBe('post')
-        ->and($reveal['url'])->toBe(route('manage.sumup-readers.reveal', $this->reader))
+        ->and($reveal['url'])->toBe(route('admin.sumup-readers.reveal', $this->reader))
         ->and($reveal['confirm']['submit'])->toBe('Reveal');
 });
 
@@ -291,7 +291,7 @@ test('the bulk action is Delete selected, with Filament default bulk delete copy
     expect($bulkActions)->toHaveCount(1)
         ->and($bulkActions[0]['label'])->toBe('Delete selected')
         ->and($bulkActions[0]['method'])->toBe('delete')
-        ->and($bulkActions[0]['url'])->toBe(route('manage.sumup-readers.bulk.destroy'))
+        ->and($bulkActions[0]['url'])->toBe(route('admin.sumup-readers.bulk.destroy'))
         ->and($bulkActions[0]['confirm'])->toBe([
             'heading' => 'Delete selected sum up readers',
             'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
@@ -304,7 +304,7 @@ test('the edit page header carries Reveal and the delete the Filament Edit page 
     // table missed the single delete; it is registered and offered here.
     actingAs($this->admin);
 
-    get(route('manage.sumup-readers.edit', $this->reader))
+    get(route('admin.sumup-readers.edit', $this->reader))
         ->assertInertia(function (Assert $page) {
             $actions = collect($page->toArray()['props']['actions']);
 
@@ -324,7 +324,7 @@ test('the edit page header carries Reveal and the delete the Filament Edit page 
 test('the create page renders the form with no record', function () {
     actingAs($this->admin);
 
-    get(route('manage.sumup-readers.create'))
+    get(route('admin.sumup-readers.create'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/SumUpReaders/Form')
@@ -337,12 +337,12 @@ test('the create page renders the form with no record', function () {
 test('creating a reader writes name and paring code and flashes the Filament copy', function () {
     actingAs($this->admin);
 
-    post(route('manage.sumup-readers.store'), manageSumUpPayload([
+    post(route('admin.sumup-readers.store'), manageSumUpPayload([
         'name' => 'Cashdesk 9',
         'paring_code' => 'NEWCODE-1',
     ]))
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('manage.sumup-readers.index'))
+        ->assertRedirect(route('admin.sumup-readers.index'))
         ->assertSessionHas(MANAGE_SUMUP_TOAST_TITLE, 'Created');
 
     assertDatabaseHas('sumup_readers', [
@@ -354,12 +354,12 @@ test('creating a reader writes name and paring code and flashes the Filament cop
 test('editing a reader saves the name and flashes the Filament copy', function () {
     actingAs($this->admin);
 
-    put(route('manage.sumup-readers.update', $this->reader), manageSumUpPayload([
+    put(route('admin.sumup-readers.update', $this->reader), manageSumUpPayload([
         'name' => 'Cashdesk renamed',
         'paring_code' => '',
     ]))
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('manage.sumup-readers.index'))
+        ->assertRedirect(route('admin.sumup-readers.index'))
         ->assertSessionHas(MANAGE_SUMUP_TOAST_TITLE, 'Saved');
 
     expect($this->reader->refresh()->name)->toBe('Cashdesk renamed');
@@ -370,7 +370,7 @@ test('an empty paring code on update keeps the stored one rather than blanking i
     // must not wipe the credential the card terminal is paired with.
     actingAs($this->admin);
 
-    put(route('manage.sumup-readers.update', $this->reader), [
+    put(route('admin.sumup-readers.update', $this->reader), [
         'name' => 'Cashdesk 1',
         'paring_code' => '',
     ])->assertSessionHasNoErrors();
@@ -381,7 +381,7 @@ test('an empty paring code on update keeps the stored one rather than blanking i
 test('a paring code sent on update replaces the stored one', function () {
     actingAs($this->admin);
 
-    put(route('manage.sumup-readers.update', $this->reader), [
+    put(route('admin.sumup-readers.update', $this->reader), [
         'name' => 'Cashdesk 1',
         'paring_code' => 'ROTATED-2',
     ])->assertSessionHasNoErrors();
@@ -396,7 +396,7 @@ test('a paring code sent on update replaces the stored one', function () {
 test('a remote_id in the create payload is dropped rather than written', function () {
     actingAs($this->admin);
 
-    post(route('manage.sumup-readers.store'), manageSumUpPayload([
+    post(route('admin.sumup-readers.store'), manageSumUpPayload([
         'name' => 'Crafted',
         'remote_id' => 'rdr_INJECTED',
     ]))->assertSessionHasNoErrors();
@@ -410,7 +410,7 @@ test('a remote_id in the create payload is dropped rather than written', functio
 test('a remote_id in the update payload cannot rewrite the SumUp side binding', function () {
     actingAs($this->admin);
 
-    put(route('manage.sumup-readers.update', $this->reader), manageSumUpPayload([
+    put(route('admin.sumup-readers.update', $this->reader), manageSumUpPayload([
         'name' => 'Cashdesk 1',
         'remote_id' => 'rdr_INJECTED',
     ]))->assertSessionHasNoErrors();
@@ -425,14 +425,14 @@ test('a remote_id in the update payload cannot rewrite the SumUp side binding', 
 test('name and paring code are both required on create', function () {
     actingAs($this->admin);
 
-    post(route('manage.sumup-readers.store'), [])
+    post(route('admin.sumup-readers.store'), [])
         ->assertSessionHasErrors(['name', 'paring_code']);
 });
 
 test('name stays required on update while the paring code becomes optional', function () {
     actingAs($this->admin);
 
-    put(route('manage.sumup-readers.update', $this->reader), [])
+    put(route('admin.sumup-readers.update', $this->reader), [])
         ->assertSessionHasErrors('name')
         ->assertSessionDoesntHaveErrors('paring_code');
 });
@@ -440,7 +440,7 @@ test('name stays required on update while the paring code becomes optional', fun
 test('both text fields cap at 255', function () {
     actingAs($this->admin);
 
-    post(route('manage.sumup-readers.store'), manageSumUpPayload([
+    post(route('admin.sumup-readers.store'), manageSumUpPayload([
         'name' => str_repeat('a', 256),
         'paring_code' => str_repeat('b', 256),
     ]))->assertSessionHasErrors(['name', 'paring_code']);
@@ -453,8 +453,8 @@ test('both text fields cap at 255', function () {
 test('deleting a reader removes the row and flashes the Filament copy', function () {
     actingAs($this->admin);
 
-    delete(route('manage.sumup-readers.destroy', $this->reader))
-        ->assertRedirect(route('manage.sumup-readers.index'))
+    delete(route('admin.sumup-readers.destroy', $this->reader))
+        ->assertRedirect(route('admin.sumup-readers.index'))
         ->assertSessionHas(MANAGE_SUMUP_TOAST_TITLE, 'Deleted');
 
     assertDatabaseMissing('sumup_readers', ['id' => $this->reader->id]);
@@ -465,7 +465,7 @@ test('bulk delete removes every selected reader', function () {
 
     $survivor = manageSumUpReader(['name' => 'Keep me', 'remote_id' => 'rdr_3', 'paring_code' => 'keep']);
 
-    delete(route('manage.sumup-readers.bulk.destroy'), ['ids' => [$this->reader->id]])
+    delete(route('admin.sumup-readers.bulk.destroy'), ['ids' => [$this->reader->id]])
         ->assertRedirect()
         ->assertSessionHas(MANAGE_SUMUP_TOAST_TITLE, 'Deleted');
 
@@ -478,7 +478,7 @@ test('bulk delete needs at least one id, and bulk is not read as a record id', f
     // "bulk" as a model and 404 before the controller ever ran.
     actingAs($this->admin);
 
-    delete(route('manage.sumup-readers.bulk.destroy'), ['ids' => []])
+    delete(route('admin.sumup-readers.bulk.destroy'), ['ids' => []])
         ->assertSessionHasErrors('ids');
 });
 

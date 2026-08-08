@@ -10,8 +10,9 @@
  * Filament is gone (plan part 5). /admin-legacy is now a redirect kept for one release so
  * bookmarked deep links land on the new panel, and that is what is pinned below.
  *
- * The route names are still manage.*: admin.* belongs to admin.badge-pdf.* until the
- * rename phase.
+ * The route names are admin.* (plan part 5 step 14). The panel group is the only thing
+ * that registers them, admin.badge-pdf.* included, which is what the URL and name
+ * assertions below are for.
  */
 
 use App\Models\Event;
@@ -43,18 +44,33 @@ beforeEach(function () {
 test('a guest is redirected to login rather than shown a manage login form', function () {
     // There is no /admin/login. The `auth` middleware pushes guests into the existing
     // Identity SSO flow, which is what the Filament panel already does.
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertRedirect(route('login'));
 });
 
 test('the panel is mounted at /admin and the Filament route names are gone', function () {
-    expect(route('manage.dashboard', absolute: false))->toBe('/admin');
+    expect(route('admin.dashboard', absolute: false))->toBe('/admin');
     expect(Route::has('filament.admin.pages.dashboard'))->toBeFalse();
 });
 
-test('the admin.badge-pdf routes still resolve under /admin', function () {
-    // They share the /admin prefix with the panel and are registered first, so the
-    // panel's own routes must not be able to swallow them.
+test('no manage.* route name survives the rename', function () {
+    // The rename is a sweep over a string, so the thing worth asserting is that the
+    // sweep was total: one leftover manage.* is a 500 from route() at the one moment
+    // someone opens that page, and Navigation silently drops a rail item instead.
+    $names = collect(Route::getRoutes()->getRoutesByName())->keys();
+
+    expect($names->filter(fn (string $name) => str_starts_with($name, 'manage.'))->all())
+        ->toBe([]);
+
+    // And the panel really did land on admin.*, rather than losing its prefix entirely.
+    expect($names->filter(fn (string $name) => str_starts_with($name, 'admin.'))->count())
+        ->toBeGreaterThan(100);
+});
+
+test('the admin.badge-pdf routes keep their names and URLs inside the panel group', function () {
+    // They were a hand-named second /admin group in routes/web.php and moved into the
+    // panel when it took the admin.* prefix. Nothing an operator or a bookmark can see
+    // was allowed to change, so both the name and the URL are pinned here.
     expect(route('admin.badge-pdf.view', ['customId' => 'EF29-1'], absolute: false))
         ->toBe('/admin/badge-pdf/EF29-1/view');
 
@@ -62,7 +78,7 @@ test('the admin.badge-pdf routes still resolve under /admin', function () {
         ->toBe('admin.badge-pdf.view');
 
     expect(Route::getRoutes()->match(Request::create('/admin', 'GET'))->getName())
-        ->toBe('manage.dashboard');
+        ->toBe('admin.dashboard');
 });
 
 test('the admin.badge-pdf routes refuse a signed-in attendee', function () {
@@ -93,13 +109,13 @@ test('the admin.badge-pdf routes stay open to the panel users that link to them'
 test('a signed-in user who is neither admin nor reviewer gets 403', function () {
     actingAs($this->attendee);
 
-    get(route('manage.dashboard'))->assertForbidden();
+    get(route('admin.dashboard'))->assertForbidden();
 });
 
 test('an admin gets the dashboard with the expected Inertia component', function () {
     actingAs($this->admin);
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Dashboard')
@@ -113,7 +129,7 @@ test('an admin gets the dashboard with the expected Inertia component', function
 test('a reviewer gets the dashboard too', function () {
     actingAs($this->reviewer);
 
-    get(route('manage.dashboard'))
+    get(route('admin.dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Dashboard')

@@ -12,7 +12,7 @@
  * of the toolbar dismiss and refocus identically.
  *
  * The visibility state itself deliberately stays in DataTable. That component owns the
- * `hidden` list and the POST to manage.tables.columns that persists it per user per table;
+ * `hidden` list and the POST to admin.tables.columns that persists it per user per table;
  * this one only draws it and says which key was clicked.
  */
 import { ref } from 'vue';

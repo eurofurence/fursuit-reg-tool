@@ -5,7 +5,6 @@ import Layout from "@/Layouts/Layout.vue";
 import BadgeListItem from "@/Components/BadgeListItem.vue";
 import Button from "@/Components/UI/UiButton.vue"
 import Message from "@/Components/UI/UiMessage.vue"
-import PaymentInfoWidget from "@/Components/PaymentInfoWidget.vue";
 import BadgePickupInfo from "@/Components/BadgePickupInfo.vue";
 import Card from "@/Components/UI/UiCard.vue";
 import { computed, ref } from "vue";
@@ -105,8 +104,6 @@ const showPickupInfo = computed(() =>
             </Message>
 
         </div>
-
-        <PaymentInfoWidget />
 
         <!-- Badge List -->
         <Card v-if="badges.length > 0" class="mt-6">

@@ -14,12 +14,53 @@ import { router } from '@inertiajs/vue3';
 export const FILTER_CLEARED = '__none';
 
 /**
- * All list-page state lives in the query string: search, sort, dir, page, per_page and
+ * Which preset view a URL is showing.
+ *
+ * Mirrors App\Support\Manage\Table::resolveTab, and has to keep mirroring it: a missing
+ * `tab` key is the first declared tab, and so is a key that matches nothing, so that a
+ * stale or hand-edited link highlights the same tab whose rows the server sent back.
+ *
+ * Takes the URL rather than reading `window.location`, because both callers have the
+ * reactive one from `usePage()` and a strip that only updated on a full page load would
+ * freeze on the first tab the moment anyone switched.
+ */
+export function activeTabKey(tabs, url) {
+  const requested = new URLSearchParams(String(url).split('?')[1] ?? '').get('tab');
+
+  return tabs.some((tab) => tab.key === requested) ? requested : (tabs[0]?.key ?? null);
+}
+
+/**
+ * All list-page state lives in the query string: tab, search, sort, dir, page, per_page and
  * filter[...]. That keeps every view linkable and shareable, and means a poll can reload
  * just the data props without losing where the operator was.
  */
 export function useTableQuery(only = ['rows', 'meta', 'filters', 'sort', 'search']) {
   const current = () => Object.fromEntries(new URLSearchParams(window.location.search));
+
+  /**
+   * The query a visit would send, with `null` and '' removed.
+   *
+   * Split out of `visit` so a control that is a link as well as a click - the tab strip,
+   * whose anchors have to carry a real href for middle-click and copy-link - builds its
+   * href from the same merge that its click performs. Two code paths writing the same URL
+   * is how they end up disagreeing.
+   */
+  const merge = (params, { resetPage = true } = {}) => {
+    const query = { ...current(), ...params };
+
+    if (resetPage) {
+      delete query.page;
+    }
+
+    for (const [key, value] of Object.entries(query)) {
+      if (value === '' || value === null || value === undefined) {
+        delete query[key];
+      }
+    }
+
+    return query;
+  };
 
   /**
    * `null` in `params` removes a key. An empty string is dropped too, which is right for
@@ -33,24 +74,18 @@ export function useTableQuery(only = ['rows', 'meta', 'filters', 'sort', 'search
    * thing an operator navigates between and expects Back to undo.
    */
   const visit = (params, { resetPage = true, replace = true } = {}) => {
-    const query = { ...current(), ...params };
-
-    if (resetPage) {
-      delete query.page;
-    }
-
-    for (const [key, value] of Object.entries(query)) {
-      if (value === '' || value === null || value === undefined) {
-        delete query[key];
-      }
-    }
-
-    router.get(window.location.pathname, query, {
+    router.get(window.location.pathname, merge(params, { resetPage }), {
       only,
       preserveState: true,
       preserveScroll: true,
       replace,
     });
+  };
+
+  const urlFor = (params, options = {}) => {
+    const query = new URLSearchParams(merge(params, options)).toString();
+
+    return query ? `${window.location.pathname}?${query}` : window.location.pathname;
   };
 
   const toggleSort = (column, sort) => {
@@ -171,12 +206,40 @@ export function useTableQuery(only = ['rows', 'meta', 'filters', 'sort', 'search
 
   const clearFilter = (key, options = {}) => clearFilters([{ key, ...options }]);
 
+  /**
+   * Switching the preset view.
+   *
+   * `param` is null for the module's default tab, which is written into the URL by the
+   * absence of the key so the canonical link to the unnarrowed list stays the bare URL.
+   * App\Support\Manage\Table reads a missing `tab` as the first declared one.
+   *
+   * What moves and what does not. The page is dropped, because page 7 of one view is not
+   * a place in another and landing on an empty page 7 looks like the tab is broken.
+   * Chip filters, sort and search are all kept, deliberately: the tab is the view and the
+   * chips narrow within it, so flipping the view an operator is refining has to keep the
+   * refinement, and the two exist precisely so a slice can be compared across views. It
+   * is also the recoverable choice - a chip that is now unwanted is one click from gone,
+   * whereas a chip set discarded on a mistaken tab click has to be retyped - and the
+   * chips stay visible on the row below the strip, so an empty result explains itself.
+   * Resetting them would also be a lie for any filter with a declared default, which
+   * cannot be reset to nothing; it snaps back to its default.
+   *
+   * Pushes rather than replaces, for the same reason a filter change does: the view is
+   * the thing an operator navigates between and expects Back to undo.
+   */
+  const setTab = (param) => visit({ tab: param }, { replace: false });
+
+  const tabUrl = (param) => urlFor({ tab: param });
+
   const setPage = (page) => visit({ page }, { resetPage: false });
 
   const setPerPage = (perPage) => visit({ per_page: perPage });
 
   return {
     visit,
+    urlFor,
+    setTab,
+    tabUrl,
     toggleSort,
     setSearch,
     setFilter,

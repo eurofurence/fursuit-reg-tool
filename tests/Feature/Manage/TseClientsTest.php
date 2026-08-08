@@ -73,7 +73,7 @@ beforeEach(function () {
         'state' => TseClientStateEnum::REGISTERED,
     ]);
 
-    $this->props = fn (array $query = []) => get(route('manage.tse-clients.index', $query))
+    $this->props = fn (array $query = []) => get(route('admin.tse-clients.index', $query))
         ->viewData('page')['props'];
 });
 
@@ -84,27 +84,27 @@ beforeEach(function () {
  */
 
 test('a guest is redirected to login', function () {
-    get(route('manage.tse-clients.index'))->assertRedirect(route('login'));
+    get(route('admin.tse-clients.index'))->assertRedirect(route('login'));
 });
 
 test('an attendee cannot reach the client list at all', function () {
     actingAs($this->attendee);
 
-    get(route('manage.tse-clients.index'))->assertForbidden();
-    get(route('manage.tse-clients.show', $this->client))->assertForbidden();
+    get(route('admin.tse-clients.index'))->assertForbidden();
+    get(route('admin.tse-clients.show', $this->client))->assertForbidden();
 });
 
 test('a reviewer holds access-manage but is refused both client abilities', function () {
     actingAs($this->reviewer);
 
-    get(route('manage.tse-clients.index'))->assertForbidden();
-    get(route('manage.tse-clients.show', $this->client))->assertForbidden();
+    get(route('admin.tse-clients.index'))->assertForbidden();
+    get(route('admin.tse-clients.show', $this->client))->assertForbidden();
 });
 
 test('an admin gets the list', function () {
     actingAs($this->admin);
 
-    get(route('manage.tse-clients.index'))
+    get(route('admin.tse-clients.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component('Manage/TseClients/Index'));
 });
@@ -138,7 +138,7 @@ test('no column is sortable or toggleable, matching the audit', function () {
 test('the table declares no filters', function () {
     actingAs($this->admin);
 
-    get(route('manage.tse-clients.index'))
+    get(route('admin.tse-clients.index'))
         ->assertInertia(fn (Assert $page) => $page->where('filters', [])->etc());
 });
 
@@ -211,7 +211,7 @@ test('the list sorts nothing and paginates under the partial visit the client se
             'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
             'X-Inertia-Partial-Component' => 'Manage/TseClients/Index',
             'X-Inertia-Partial-Data' => 'rows,meta,filters,sort,search',
-        ])->get(route('manage.tse-clients.index', $query));
+        ])->get(route('admin.tse-clients.index', $query));
 
         $response->assertOk();
 
@@ -278,7 +278,7 @@ test('a stored state the enum does not know renders as itself instead of throwin
 
     expect($legacy['cells']['state'])->toBe('INITIALIZED');
 
-    get(route('manage.tse-clients.show', DB::table('tse_clients')->where('state', 'INITIALIZED')->value('id')))
+    get(route('admin.tse-clients.show', DB::table('tse_clients')->where('state', 'INITIALIZED')->value('id')))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('client.state.label', 'INITIALIZED')->etc());
 });
@@ -295,8 +295,8 @@ test('the row carries View and nothing else, and there are no page or bulk actio
 
     expect(collect($row['actions'])->pluck('name')->all())->toBe(['view'])
         ->and($row['actions'][0]['method'])->toBe('get')
-        ->and($row['actions'][0]['url'])->toBe(route('manage.tse-clients.show', $this->client))
-        ->and($row['url'])->toBe(route('manage.tse-clients.show', $this->client))
+        ->and($row['actions'][0]['url'])->toBe(route('admin.tse-clients.show', $this->client))
+        ->and($row['url'])->toBe(route('admin.tse-clients.show', $this->client))
         // `createnew` was the only header action the resource had and it does not come
         // across (plan 2.10 #13); the table declared no bulk actions to begin with.
         ->and($props['pageActions'])->toBe([])
@@ -326,11 +326,11 @@ test('no action anywhere in the module deletes, creates or edits', function () {
 
 test('the module registers no write route at all', function () {
     foreach (['create', 'store', 'edit', 'update', 'destroy', 'bulk.destroy'] as $name) {
-        expect(Route::has('manage.tse-clients.'.$name))->toBeFalse();
+        expect(Route::has('admin.tse-clients.'.$name))->toBeFalse();
     }
 
-    expect(Route::has('manage.tse-clients.index'))->toBeTrue()
-        ->and(Route::has('manage.tse-clients.show'))->toBeTrue();
+    expect(Route::has('admin.tse-clients.index'))->toBeTrue()
+        ->and(Route::has('admin.tse-clients.show'))->toBeTrue();
 });
 
 test('the policy is untouched, so the legacy panel keeps the screens it still has', function () {
@@ -362,9 +362,9 @@ test('an admin cannot write to a client through the URLs the Filament resource h
     get('/admin/tse-clients/create')->assertNotFound();
     get('/admin/tse-clients/'.$this->client->id.'/edit')->assertNotFound();
 
-    post(route('manage.tse-clients.index'), $payload)->assertMethodNotAllowed();
-    put(route('manage.tse-clients.show', $this->client), $payload)->assertMethodNotAllowed();
-    delete(route('manage.tse-clients.show', $this->client))->assertMethodNotAllowed();
+    post(route('admin.tse-clients.index'), $payload)->assertMethodNotAllowed();
+    put(route('admin.tse-clients.show', $this->client), $payload)->assertMethodNotAllowed();
+    delete(route('admin.tse-clients.show', $this->client))->assertMethodNotAllowed();
 
     $this->client->refresh();
 
@@ -380,8 +380,8 @@ test('rendering the list or a record writes nothing and calls Fiskaly not at all
 
     $before = $this->client->updated_at;
 
-    get(route('manage.tse-clients.index'))->assertSuccessful();
-    get(route('manage.tse-clients.show', $this->client))->assertSuccessful();
+    get(route('admin.tse-clients.index'))->assertSuccessful();
+    get(route('admin.tse-clients.show', $this->client))->assertSuccessful();
 
     $this->client->refresh();
 
@@ -404,7 +404,7 @@ test('the show page carries the identity, the state and the bound machine', func
 
     actingAs($this->admin);
 
-    get(route('manage.tse-clients.show', $this->client))
+    get(route('admin.tse-clients.show', $this->client))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/TseClients/Show')
@@ -426,7 +426,7 @@ test('the show page carries the identity, the state and the bound machine', func
 test('an unbound client shows no machine rather than failing', function () {
     actingAs($this->admin);
 
-    get(route('manage.tse-clients.show', $this->client))
+    get(route('admin.tse-clients.show', $this->client))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('client.machine', null)->etc());
 });
@@ -437,7 +437,7 @@ test('the show page ships no actions prop for a header that has none', function 
     // Not an empty array that a later change could quietly fill: there is no edit, no
     // delete, and no register or deregister button, because none of those is a local
     // decision. The lifecycle is tse:update-state and tse:change-admin-pin.
-    get(route('manage.tse-clients.show', $this->client))
+    get(route('admin.tse-clients.show', $this->client))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->missing('actions')->etc());
 });

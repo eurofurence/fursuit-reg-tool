@@ -71,7 +71,7 @@ beforeEach(function () {
 test('the list renders the four columns in order, with their labels', function () {
     ($this->code)();
 
-    ($this->scoped)(null)->get(route('manage.special-codes.index'))
+    ($this->scoped)(null)->get(route('admin.special-codes.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/SpecialCodes/Index')
@@ -87,7 +87,7 @@ test('the Class column renders the option label, and an unknown class as itself'
     ($this->code)();
     ($this->code)(['code' => 'ZZZ99', 'class_name' => 'App\\Something\\Else']);
 
-    $cells = ($this->scoped)(null)->get(route('manage.special-codes.index'))
+    $cells = ($this->scoped)(null)->get(route('admin.special-codes.index'))
         ->viewData('page')['props']['rows'];
 
     expect(collect($cells)->pluck('cells.class_name')->sort()->values()->all())
@@ -100,7 +100,7 @@ test('a code with no class does not take the whole table down', function () {
     // is what production rows that predate the NOT NULL column actually hold.
     ($this->code)(['class_name' => '']);
 
-    ($this->scoped)(null)->get(route('manage.special-codes.index'))
+    ($this->scoped)(null)->get(route('admin.special-codes.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('rows.0.cells.class_name', null));
 
@@ -118,7 +118,7 @@ test('a code whose event row is gone renders an empty cell instead of a 500', fu
 
     $orphan = ($this->code)(['event_id' => 999999, 'code' => 'ORP01']);
 
-    ($this->scoped)(null)->get(route('manage.special-codes.index'))
+    ($this->scoped)(null)->get(route('admin.special-codes.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('rows.0.id', $orphan->id)
@@ -137,7 +137,7 @@ test('the Event column shows the event name and costs one query however many row
             }
         });
 
-        ($this->scoped)(null)->get(route('manage.special-codes.index'))->assertSuccessful();
+        ($this->scoped)(null)->get(route('admin.special-codes.index'))->assertSuccessful();
 
         return $queries;
     };
@@ -154,7 +154,7 @@ test('the Event column shows the event name and costs one query however many row
 
     expect($countEventQueries())->toBe($withThree);
 
-    ($this->scoped)(null)->get(route('manage.special-codes.index'))
+    ($this->scoped)(null)->get(route('admin.special-codes.index'))
         ->assertInertia(fn (Assert $page) => $page->where('rows.0.cells.event_id', 'Eurofurence 29'));
 });
 
@@ -162,7 +162,7 @@ test('the Data column renders the stored JSON and nothing for an empty one', fun
     ($this->code)(['constructor_data' => ['amount' => 100, 'reason' => 'An Example']]);
     ($this->code)(['code' => 'NUL01', 'constructor_data' => null]);
 
-    $rows = ($this->scoped)(null)->get(route('manage.special-codes.index'))
+    $rows = ($this->scoped)(null)->get(route('admin.special-codes.index'))
         ->viewData('page')['props']['rows'];
 
     expect(collect($rows)->pluck('cells.constructor_data')->sort()->values()->all())
@@ -174,7 +174,7 @@ test('the list carries no filters and is sorted newest first', function () {
     $older->forceFill(['created_at' => now()->subDay()])->save();
     $newer = ($this->code)(['code' => 'NEW01']);
 
-    ($this->scoped)(null)->get(route('manage.special-codes.index'))
+    ($this->scoped)(null)->get(route('admin.special-codes.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->count('filters', 0)
             ->where('sort.key', 'created_at')
@@ -202,7 +202,7 @@ test('sorting and paging survive the partial reload the client actually sends', 
             'X-Inertia-Partial-Component' => 'Manage/SpecialCodes/Index',
             'X-Inertia-Partial-Data' => 'rows,meta,filters,sort,search',
         ])
-        ->get(route('manage.special-codes.index', $query));
+        ->get(route('admin.special-codes.index', $query));
 
     // A partial visit answers with JSON rather than the page view, so these read the
     // props off the response directly: assertInertia only ever sees a full page load,
@@ -233,20 +233,20 @@ test('the list is scoped by the global event selector', function () {
     $mine = ($this->code)();
     ($this->code)(['event_id' => $this->otherEvent->id, 'code' => 'OTH01']);
 
-    ($this->scoped)($this->event->id)->get(route('manage.special-codes.index'))
+    ($this->scoped)($this->event->id)->get(route('admin.special-codes.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->count('rows', 1)
             ->where('rows.0.id', $mine->id)
         );
 
-    ($this->scoped)(null)->get(route('manage.special-codes.index'))
+    ($this->scoped)(null)->get(route('admin.special-codes.index'))
         ->assertInertia(fn (Assert $page) => $page->count('rows', 2));
 });
 
 test('the row, bulk and page actions carry Filament default copy', function () {
     ($this->code)();
 
-    ($this->scoped)(null)->get(route('manage.special-codes.index'))
+    ($this->scoped)(null)->get(route('admin.special-codes.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('rows.0.actions.0.name', 'edit')
             ->where('rows.0.actions.0.label', 'Edit')
@@ -265,7 +265,7 @@ test('the row, bulk and page actions carry Filament default copy', function () {
 
 test('the create form ships its options and the live catch-url base', function () {
     actingAs($this->admin)
-        ->get(route('manage.special-codes.create'))
+        ->get(route('admin.special-codes.create'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/SpecialCodes/Form')
@@ -288,7 +288,7 @@ test('the edit form prefills the record and its action data', function () {
     $code = ($this->code)(['constructor_data' => ['amount' => 100]]);
 
     actingAs($this->admin)
-        ->get(route('manage.special-codes.edit', $code))
+        ->get(route('admin.special-codes.edit', $code))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/SpecialCodes/Form')
@@ -307,12 +307,12 @@ test('the edit form prefills the record and its action data', function () {
 
 test('storing a code writes it and flashes the stock Created toast', function () {
     actingAs($this->admin)
-        ->post(route('manage.special-codes.store'), [
+        ->post(route('admin.special-codes.store'), [
             'event_id' => $this->event->id,
             'class_name' => BUG_BOUNTY,
             'code' => 'ABC45',
         ])
-        ->assertRedirect(route('manage.special-codes.index'))
+        ->assertRedirect(route('admin.special-codes.index'))
         ->assertInertiaFlash('toast', ['tone' => 'success', 'title' => 'Created', 'body' => null]);
 
     $code = SpecialCode::sole();
@@ -338,27 +338,27 @@ test('the action data is a form, and each field is validated on its own path', f
     ];
 
     // Required, typed, and the field's own extra rules all report on data.<field>.
-    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload)
+    actingAs($this->admin)->post(route('admin.special-codes.store'), $payload)
         ->assertSessionHasErrors(['data.amount' => 'The Amount field is required.'])
         ->assertSessionDoesntHaveErrors('constructor_data');
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + [
+    actingAs($this->admin)->post(route('admin.special-codes.store'), $payload + [
         'data' => ['amount' => 'lots'],
     ])->assertSessionHasErrors(['data.amount' => 'The Amount field must be an integer.']);
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + [
+    actingAs($this->admin)->post(route('admin.special-codes.store'), $payload + [
         'data' => ['amount' => 0],
     ])->assertSessionHasErrors('data.amount');
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + [
+    actingAs($this->admin)->post(route('admin.special-codes.store'), $payload + [
         'data' => ['amount' => 5, 'tier' => 'platinum'],
     ])->assertSessionHasErrors('data.tier')->assertSessionDoesntHaveErrors('data.amount');
 
     expect(SpecialCode::count())->toBe(0);
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + [
+    actingAs($this->admin)->post(route('admin.special-codes.store'), $payload + [
         'data' => ['amount' => '250', 'reason' => 'Found a crash', 'tier' => 'gold', 'single_use' => true],
-    ])->assertRedirect(route('manage.special-codes.index'));
+    ])->assertRedirect(route('admin.special-codes.index'));
 
     $stored = SpecialCode::sole()->constructor_data;
 
@@ -374,12 +374,12 @@ test('the action data is a form, and each field is validated on its own path', f
 test('an omitted field is stored as its declared default, not as a missing key', function () {
     SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), [
+    actingAs($this->admin)->post(route('admin.special-codes.store'), [
         'event_id' => $this->event->id,
         'class_name' => ConfiguredCodeAction::class,
         'code' => 'DEF01',
         'data' => ['amount' => 1],
-    ])->assertRedirect(route('manage.special-codes.index'));
+    ])->assertRedirect(route('admin.special-codes.index'));
 
     $stored = SpecialCode::sole()->constructor_data;
 
@@ -392,12 +392,12 @@ test('an omitted field is stored as its declared default, not as a missing key',
 test('a key the request invents is not stored, whatever the class declares', function () {
     SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), [
+    actingAs($this->admin)->post(route('admin.special-codes.store'), [
         'event_id' => $this->event->id,
         'class_name' => ConfiguredCodeAction::class,
         'code' => 'EXT01',
         'data' => ['amount' => 1, 'is_admin' => true],
-    ])->assertRedirect(route('manage.special-codes.index'));
+    ])->assertRedirect(route('admin.special-codes.index'));
 
     expect((array) SpecialCode::sole()->constructor_data)->not->toHaveKey('is_admin');
 });
@@ -408,7 +408,7 @@ test('the class the form offers decides which fields exist, so the schemas ship 
     // not need another request, and the Vue file must not hold a second copy of the shape.
     SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
 
-    $schemas = actingAs($this->admin)->get(route('manage.special-codes.create'))
+    $schemas = actingAs($this->admin)->get(route('admin.special-codes.create'))
         ->assertSuccessful()
         ->viewData('page')['props']['actionSchemas'];
 
@@ -442,7 +442,7 @@ test('class_name must be one of the offered options', function () {
     // The Select offered one option and validated nothing against it, while
     // createActionInstance() does `new $className(...)` on whatever is stored.
     actingAs($this->admin)
-        ->post(route('manage.special-codes.store'), [
+        ->post(route('admin.special-codes.store'), [
             'event_id' => $this->event->id,
             'class_name' => 'App\\Something\\Else',
             'code' => 'BAD01',
@@ -452,12 +452,12 @@ test('class_name must be one of the offered options', function () {
     expect(SpecialCode::count())->toBe(0);
 
     actingAs($this->admin)
-        ->post(route('manage.special-codes.store'), [
+        ->post(route('admin.special-codes.store'), [
             'event_id' => $this->event->id,
             'class_name' => BUG_BOUNTY,
             'code' => 'OKA01',
         ])
-        ->assertRedirect(route('manage.special-codes.index'));
+        ->assertRedirect(route('admin.special-codes.index'));
 
     expect(SpecialCode::sole()->class_name)->toBe(BUG_BOUNTY);
 });
@@ -477,14 +477,14 @@ test('constructor_data cannot be anything but an object, because the request nev
 
     foreach ($blobs as $index => $notAnObject) {
         actingAs($this->admin)
-            ->post(route('manage.special-codes.store'), [
+            ->post(route('admin.special-codes.store'), [
                 'event_id' => $this->event->id,
                 'class_name' => ConfiguredCodeAction::class,
                 'constructor_data' => $notAnObject,
                 'data' => ['amount' => 1],
                 'code' => 'ARR0'.$index,
             ])
-            ->assertRedirect(route('manage.special-codes.index'));
+            ->assertRedirect(route('admin.special-codes.index'));
     }
 
     // Every write is an object built from the fields, and the smuggled input reached
@@ -497,7 +497,7 @@ test('constructor_data cannot be anything but an object, because the request nev
 
     // `data` itself is not a way in either: it is an array of declared keys, nothing else.
     actingAs($this->admin)
-        ->post(route('manage.special-codes.store'), [
+        ->post(route('admin.special-codes.store'), [
             'event_id' => $this->event->id,
             'class_name' => ConfiguredCodeAction::class,
             'data' => 'a string',
@@ -513,13 +513,13 @@ test('a stored constructor_data never trips the action constructor type hint', f
     SpecialCodeActionRegistry::register(ConfiguredCodeAction::class, 'Configured Test Action');
 
     actingAs($this->admin)
-        ->post(route('manage.special-codes.store'), [
+        ->post(route('admin.special-codes.store'), [
             'event_id' => $this->event->id,
             'class_name' => ConfiguredCodeAction::class,
             'data' => ['amount' => 100, 'reason' => 'An Example'],
             'code' => 'OBJ02',
         ])
-        ->assertRedirect(route('manage.special-codes.index'));
+        ->assertRedirect(route('admin.special-codes.index'));
 
     expect(SpecialCode::sole()->createActionInstance())->toBeInstanceOf(ConfiguredCodeAction::class);
 });
@@ -536,19 +536,19 @@ test('an existing row round-trips through the form unchanged', function () {
     $before = $code->getRawOriginal('constructor_data');
 
     $props = actingAs($this->admin)
-        ->get(route('manage.special-codes.edit', $code))
+        ->get(route('admin.special-codes.edit', $code))
         ->viewData('page')['props']['specialCode'];
 
     // Exactly what the form submits: the record's own values, with the data half being
     // the declared fields of its class (Bug Hunter Bounty declares none).
     actingAs($this->admin)
-        ->put(route('manage.special-codes.update', $code), [
+        ->put(route('admin.special-codes.update', $code), [
             'event_id' => $props['event_id'],
             'class_name' => $props['class_name'],
             'data' => $props['data'],
             'code' => $props['code'],
         ])
-        ->assertRedirect(route('manage.special-codes.index'))
+        ->assertRedirect(route('admin.special-codes.index'))
         ->assertSessionHasNoErrors();
 
     expect($code->fresh()->getRawOriginal('constructor_data'))->toBe($before)
@@ -565,7 +565,7 @@ test('an undeclared key survives an edit, and is dropped when the class changes'
     ]);
 
     $save = fn (array $attributes) => actingAs($this->admin)
-        ->put(route('manage.special-codes.update', $code), [
+        ->put(route('admin.special-codes.update', $code), [
             'event_id' => $this->event->id,
             'class_name' => ConfiguredCodeAction::class,
             'code' => 'ABC45',
@@ -581,7 +581,7 @@ test('an undeclared key survives an edit, and is dropped when the class changes'
 
     // A different class: the keys described the previous action, so they go with it.
     actingAs($this->admin)
-        ->put(route('manage.special-codes.update', $code), [
+        ->put(route('admin.special-codes.update', $code), [
             'event_id' => $this->event->id,
             'class_name' => BUG_BOUNTY,
             'code' => 'ABC45',
@@ -606,7 +606,7 @@ test('a stored value that does not fit the schema does not break the edit page',
         'constructor_data' => ['amount' => ['not', 'a', 'number']],
     ]);
 
-    $props = actingAs($this->admin)->get(route('manage.special-codes.edit', $wrongType))
+    $props = actingAs($this->admin)->get(route('admin.special-codes.edit', $wrongType))
         ->assertSuccessful()
         ->viewData('page')['props']['specialCode'];
 
@@ -624,7 +624,7 @@ test('a stored value that does not fit the schema does not break the edit page',
     // A document that is not an object at all: what the pre-fix `json` rule allowed in.
     $notAnObject = ($this->code)(['code' => 'LST01', 'constructor_data' => [1, 2, 3]]);
 
-    $props = actingAs($this->admin)->get(route('manage.special-codes.edit', $notAnObject))
+    $props = actingAs($this->admin)->get(route('admin.special-codes.edit', $notAnObject))
         ->assertSuccessful()
         ->viewData('page')['props']['specialCode'];
 
@@ -634,7 +634,7 @@ test('a stored value that does not fit the schema does not break the edit page',
     // Saving it replaces it with a real object rather than writing the list back, because
     // the list is the shape that raises a TypeError in the redeem path.
     actingAs($this->admin)
-        ->put(route('manage.special-codes.update', $notAnObject), [
+        ->put(route('admin.special-codes.update', $notAnObject), [
             'event_id' => $this->event->id,
             'class_name' => BUG_BOUNTY,
             'code' => 'LST01',
@@ -654,7 +654,7 @@ test('a class the panel no longer offers is shown, not silently swapped', functi
      */
     $code = ($this->code)(['class_name' => 'App\\Something\\Gone', 'constructor_data' => ['amount' => 1]]);
 
-    $props = actingAs($this->admin)->get(route('manage.special-codes.edit', $code))
+    $props = actingAs($this->admin)->get(route('admin.special-codes.edit', $code))
         ->assertSuccessful()
         ->viewData('page')['props'];
 
@@ -666,7 +666,7 @@ test('a class the panel no longer offers is shown, not silently swapped', functi
         ->and($props['specialCode']['unmanagedData'])->toBe('{"amount":1}');
 
     actingAs($this->admin)
-        ->put(route('manage.special-codes.update', $code), [
+        ->put(route('admin.special-codes.update', $code), [
             'event_id' => $this->event->id,
             'class_name' => 'App\\Something\\Gone',
             'code' => 'ABC45',
@@ -681,11 +681,11 @@ test('a class the panel no longer offers is shown, not silently swapped', functi
 test('a code without a class saves rather than failing at the database', function () {
     // The field is not required, and `special_codes.class_name` is NOT NULL.
     actingAs($this->admin)
-        ->post(route('manage.special-codes.store'), [
+        ->post(route('admin.special-codes.store'), [
             'event_id' => $this->event->id,
             'code' => 'NOC01',
         ])
-        ->assertRedirect(route('manage.special-codes.index'));
+        ->assertRedirect(route('admin.special-codes.index'));
 
     expect(SpecialCode::sole()->class_name)->toBe('');
 });
@@ -693,13 +693,13 @@ test('a code without a class saves rather than failing at the database', functio
 test('code is required and must be exactly five characters', function () {
     $payload = ['event_id' => $this->event->id];
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload)
+    actingAs($this->admin)->post(route('admin.special-codes.store'), $payload)
         ->assertSessionHasErrors('code');
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + ['code' => 'ABC4'])
+    actingAs($this->admin)->post(route('admin.special-codes.store'), $payload + ['code' => 'ABC4'])
         ->assertSessionHasErrors('code');
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), $payload + ['code' => 'ABC456'])
+    actingAs($this->admin)->post(route('admin.special-codes.store'), $payload + ['code' => 'ABC456'])
         ->assertSessionHasErrors('code');
 
     expect(SpecialCode::count())->toBe(0);
@@ -710,7 +710,7 @@ test('code is unique among special codes, ignoring the record being edited', fun
     $other = ($this->code)(['code' => 'XYZ99']);
 
     actingAs($this->admin)
-        ->post(route('manage.special-codes.store'), [
+        ->post(route('admin.special-codes.store'), [
             'event_id' => $this->event->id,
             'code' => 'ABC45',
         ])
@@ -718,7 +718,7 @@ test('code is unique among special codes, ignoring the record being edited', fun
 
     // Saving a record without touching its own code must not collide with itself.
     actingAs($this->admin)
-        ->put(route('manage.special-codes.update', $existing), [
+        ->put(route('admin.special-codes.update', $existing), [
             'event_id' => $this->event->id,
             'class_name' => BUG_BOUNTY,
             'code' => 'ABC45',
@@ -726,7 +726,7 @@ test('code is unique among special codes, ignoring the record being edited', fun
         ->assertSessionHasNoErrors();
 
     actingAs($this->admin)
-        ->put(route('manage.special-codes.update', $other), [
+        ->put(route('admin.special-codes.update', $other), [
             'event_id' => $this->event->id,
             'code' => 'ABC45',
         ])
@@ -739,7 +739,7 @@ test('code is cross-checked against fursuit catch codes, with the message verbat
     Fursuit::whereKey($fursuit->id)->update(['catch_code' => 'CAT01']);
 
     actingAs($this->admin)
-        ->post(route('manage.special-codes.store'), [
+        ->post(route('admin.special-codes.store'), [
             'event_id' => $this->event->id,
             'code' => 'CAT01',
         ])
@@ -749,10 +749,10 @@ test('code is cross-checked against fursuit catch codes, with the message verbat
 });
 
 test('event_id is required and must exist', function () {
-    actingAs($this->admin)->post(route('manage.special-codes.store'), ['code' => 'ABC45'])
+    actingAs($this->admin)->post(route('admin.special-codes.store'), ['code' => 'ABC45'])
         ->assertSessionHasErrors('event_id');
 
-    actingAs($this->admin)->post(route('manage.special-codes.store'), ['code' => 'ABC45', 'event_id' => 99999])
+    actingAs($this->admin)->post(route('admin.special-codes.store'), ['code' => 'ABC45', 'event_id' => 99999])
         ->assertSessionHasErrors('event_id');
 });
 
@@ -760,12 +760,12 @@ test('catch_url is never written, whatever the request carries', function () {
     // `dehydrated(false)` in Filament. The model is `$guarded = []`, so the request has
     // to be the thing that refuses it.
     actingAs($this->admin)
-        ->post(route('manage.special-codes.store'), [
+        ->post(route('admin.special-codes.store'), [
             'event_id' => $this->event->id,
             'code' => 'ABC45',
             'catch_url' => 'https://evil.example/?code=ABC45&auto',
         ])
-        ->assertRedirect(route('manage.special-codes.index'));
+        ->assertRedirect(route('admin.special-codes.index'));
 
     expect(SpecialCode::sole()->getAttributes())->not->toHaveKey('catch_url');
 });
@@ -775,14 +775,14 @@ test('a code is hard deleted, one at a time or in bulk', function () {
     $second = ($this->code)(['code' => 'XYZ99']);
 
     actingAs($this->admin)
-        ->delete(route('manage.special-codes.destroy', $first))
+        ->delete(route('admin.special-codes.destroy', $first))
         ->assertRedirect()
         ->assertInertiaFlash('toast', ['tone' => 'success', 'title' => 'Deleted', 'body' => null]);
 
     expect(SpecialCode::whereKey($first->id)->exists())->toBeFalse();
 
     actingAs($this->admin)
-        ->delete(route('manage.special-codes.bulk.destroy'), ['ids' => [$second->id]])
+        ->delete(route('admin.special-codes.bulk.destroy'), ['ids' => [$second->id]])
         ->assertRedirect()
         ->assertInertiaFlash('toast', ['tone' => 'success', 'title' => 'Deleted', 'body' => null]);
 
@@ -790,7 +790,7 @@ test('a code is hard deleted, one at a time or in bulk', function () {
 });
 
 test('DELETE /admin/special-codes/bulk is not read as a record id', function () {
-    expect(route('manage.special-codes.bulk.destroy', absolute: false))->toBe('/admin/special-codes/bulk');
+    expect(route('admin.special-codes.bulk.destroy', absolute: false))->toBe('/admin/special-codes/bulk');
 });
 
 test('every ability belongs to an admin, so a reviewer is shut out of the whole module', function () {
@@ -800,14 +800,14 @@ test('every ability belongs to an admin, so a reviewer is shut out of the whole 
 
     actingAs($this->reviewer);
 
-    get(route('manage.special-codes.index'))->assertForbidden();
-    get(route('manage.special-codes.create'))->assertForbidden();
-    post(route('manage.special-codes.store'), ['event_id' => $this->event->id, 'code' => 'ZZZ99'])->assertForbidden();
-    get(route('manage.special-codes.edit', $code))->assertForbidden();
-    put(route('manage.special-codes.update', $code), ['event_id' => $this->event->id, 'code' => 'ABC45'])->assertForbidden();
-    delete(route('manage.special-codes.destroy', $code))->assertForbidden();
+    get(route('admin.special-codes.index'))->assertForbidden();
+    get(route('admin.special-codes.create'))->assertForbidden();
+    post(route('admin.special-codes.store'), ['event_id' => $this->event->id, 'code' => 'ZZZ99'])->assertForbidden();
+    get(route('admin.special-codes.edit', $code))->assertForbidden();
+    put(route('admin.special-codes.update', $code), ['event_id' => $this->event->id, 'code' => 'ABC45'])->assertForbidden();
+    delete(route('admin.special-codes.destroy', $code))->assertForbidden();
 
-    delete(route('manage.special-codes.bulk.destroy'), ['ids' => [$code->id]])->assertForbidden();
+    delete(route('admin.special-codes.bulk.destroy'), ['ids' => [$code->id]])->assertForbidden();
 
     expect(SpecialCode::count())->toBe(1);
 });
@@ -820,12 +820,12 @@ test('bulk delete refuses an unauthorized caller even when the ids match nothing
     ($this->code)();
 
     actingAs($this->reviewer)
-        ->delete(route('manage.special-codes.bulk.destroy'), ['ids' => [999999]])
+        ->delete(route('admin.special-codes.bulk.destroy'), ['ids' => [999999]])
         ->assertForbidden();
 
     // And an admin still gets the all-or-nothing behaviour rather than a 403.
     actingAs($this->admin)
-        ->delete(route('manage.special-codes.bulk.destroy'), ['ids' => [999999]])
+        ->delete(route('admin.special-codes.bulk.destroy'), ['ids' => [999999]])
         ->assertRedirect();
 
     expect(SpecialCode::count())->toBe(1);
@@ -838,13 +838,13 @@ test('the policy is registered, which auto-discovery would never have managed', 
 });
 
 test('the rail links to the module for an admin and hides it from a reviewer', function () {
-    actingAs($this->admin)->get(route('manage.dashboard'))
+    actingAs($this->admin)->get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where(
             'manageNav',
             fn ($groups) => collect($groups)->flatMap(fn ($group) => $group['items'])->contains(fn ($item) => $item['label'] === 'Special Codes')
         ));
 
-    actingAs($this->reviewer)->get(route('manage.dashboard'))
+    actingAs($this->reviewer)->get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where(
             'manageNav',
             fn ($groups) => ! collect($groups)->flatMap(fn ($group) => $group['items'])->contains(fn ($item) => $item['label'] === 'Special Codes')

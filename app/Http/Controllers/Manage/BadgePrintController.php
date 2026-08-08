@@ -242,7 +242,7 @@ class BadgePrintController extends Controller
             return null;
         }
 
-        return Action::post('printBadge', self::ROW_LABEL, route('manage.badges.print', $badge))
+        return Action::post('printBadge', self::ROW_LABEL, route('admin.badges.print', $badge))
             // heroicon-o-printer.
             ->icon('printer')
             ->tone(Status::WARN)
@@ -260,7 +260,7 @@ class BadgePrintController extends Controller
             return null;
         }
 
-        return Action::post('printBadgeBulk', self::BULK_LABEL, route('manage.badges.bulk.print'))
+        return Action::post('printBadgeBulk', self::BULK_LABEL, route('admin.badges.bulk.print'))
             ->icon('printer')
             ->tone(Status::WARN)
             ->confirm(self::BULK_HEADING, self::BULK_DESCRIPTION)

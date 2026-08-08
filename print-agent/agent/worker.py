@@ -277,6 +277,9 @@ class _BaseWorker:
         on_progress: Optional[Callable[[str, str, str], None]] = None,
         on_log: Optional[Callable[[str], None]] = None,
         on_card: Optional[Callable[[str, str, Dict[str, Any], str], None]] = None,
+        on_stock: Optional[Callable[[int], None]] = None,
+        count_cards: bool = False,
+        low_card_threshold: int = 10,
         heartbeat_seconds: float = 45.0,
         poll_seconds: float = 1.0,
         idle_seconds: float = 3.0,
@@ -313,6 +316,9 @@ class _BaseWorker:
         # Set directly by the UI rather than threaded through every subclass
         # constructor, because only the card console displays it.
         self.on_card = on_card
+        self.on_stock = on_stock
+        self.count_cards = count_cards
+        self.low_card_threshold = low_card_threshold
 
         self.heartbeat_seconds = heartbeat_seconds
         self.poll_seconds = poll_seconds
@@ -495,6 +501,9 @@ class _BaseWorker:
             ),
         )
 
+        # A blank left the hopper whether or not the camera liked the result.
+        self._take_card()
+
         if delivered:
             self.store_status(job_id, JOB_DONE)
             self._call(self.store.forget_job, job_id)
@@ -504,6 +513,45 @@ class _BaseWorker:
             # job being printed a second time after a restart.
             self.store_status(job_id, JOB_REPORTED)
             self._progress(STEP_REPORT, SKIPPED, "server unreachable, queued locally")
+
+    def _take_card(self) -> None:
+        """Count one blank off the hopper and warn before it runs out.
+
+        The printer only reports empty once it already is, which strands a run
+        mid-batch while somebody goes to find the box. Counting down from a
+        figure the operator entered gives enough notice to refill in time.
+
+        Never allowed to stop a print: an uncountable card is a worse readout,
+        not a reason to stop the machine.
+        """
+        if not self.count_cards:
+            return
+
+        remaining = self._call(self.store.take_card)
+
+        if remaining is None:
+            return
+
+        if self.on_stock is not None:
+            _safely(self.on_stock, remaining)
+
+        if remaining == 0:
+            self._alert(
+                "cards-out",
+                "Card printer is out of blanks",
+                "%s has printed its last counted card. Refill before the next run."
+                % (self.printer_name or "The card printer"),
+            )
+        elif remaining <= self.low_card_threshold:
+            # Keyed per level, so a warning arrives for each of the last few
+            # cards rather than one alert at ten and silence down to zero.
+            self._alert(
+                "cards-low-%d" % remaining,
+                "Card printer is nearly empty",
+                "%d blank%s left in %s. Refill soon."
+                % (remaining, "" if remaining == 1 else "s",
+                   self.printer_name or "the card printer"),
+            )
 
     def _record_history(self, job: Dict[str, Any], outcome: str, detail: str = "") -> None:
         """Write a line of local history.
@@ -624,10 +672,13 @@ class _BaseWorker:
                 return False
 
             self._log("Server refused %s for job %s: %s" % (kind, payload.get("job_id"), error.message))
+            # The card printed; only the bookkeeping failed, and the outbox
+            # keeps retrying. Nobody needs waking for it.
             self._alert(
                 "report:%s" % payload.get("job_id"),
                 "Server refused a print result",
                 "%s for job %s: %s" % (kind, payload.get("job_id"), error.message),
+                stops_printing=False,
             )
             return True
 
@@ -709,11 +760,20 @@ class _BaseWorker:
         if self.on_log is not None:
             _safely(self.on_log, message)
 
-    def _alert(self, key: str, title: str, message: str) -> None:
+    def _alert(self, key: str, title: str, message: str,
+               stops_printing: bool = True) -> None:
+        """Raise an alert.
+
+        `stops_printing` marks the ones worth waking somebody for: the run has
+        stopped, or it is about to. Those reach Pushover. The rest go to the
+        chat only -- a phone that buzzes for a single blank card in a run of
+        four hundred is a phone that gets silenced before the jam arrives.
+        """
         if self.notifier is None:
             return
 
-        _safely(self.notifier.alert, key, title, message)
+        _safely(self.notifier.alert, key, title, message,
+                stops_printing=stops_printing)
 
     def _call(self, function: Callable, *args) -> Any:
         """Best-effort call for anything that must not stop the printer.
@@ -762,6 +822,9 @@ class PrintWorker(_BaseWorker):
         on_decision: Optional[Callable[[ReprintDecision], None]] = None,
         on_log: Optional[Callable[[str], None]] = None,
         on_batch_change: Optional[Callable[[Optional[int]], None]] = None,
+        on_stock: Optional[Callable[[int], None]] = None,
+        count_cards: bool = False,
+        low_card_threshold: int = 10,
         heartbeat_seconds: float = 45.0,
         firmware_timeout: float = 180.0,
         poll_seconds: float = 1.0,
@@ -781,6 +844,9 @@ class PrintWorker(_BaseWorker):
             cache_dir=cache_dir,
             on_progress=on_progress,
             on_log=on_log,
+            on_stock=on_stock,
+            count_cards=count_cards,
+            low_card_threshold=low_card_threshold,
             heartbeat_seconds=heartbeat_seconds,
             poll_seconds=poll_seconds,
             idle_seconds=idle_seconds,
@@ -1158,8 +1224,11 @@ class PrintWorker(_BaseWorker):
         reason = ("Card %s came out blank. The ribbon or transfer film has "
                   "probably run out." % card)
 
+        # One bad card in a run that carries on. Worth a line in the chat, not
+        # worth a phone call.
         self._alert("blank:%s:%s" % (self.printer_name, card),
-                    "Card %s came out blank" % card, reason)
+                    "Card %s came out blank" % card, reason,
+                    stops_printing=False)
         self._log(reason)
         self._record_history(job, outcome="blank", detail=reason)
 
@@ -1840,10 +1909,12 @@ class ReceiptWorker(_BaseWorker):
         The server-side failure call pauses the job's batch, and a receipt has
         no batch, so a card run in progress on the same station is untouched.
         """
+        # Receipts do not hold up the badge run.
         self._alert(
             "receipt:%s:%s" % (self.printer_name, self._card_number(job)),
             "A receipt did not print",
             reason,
+            stops_printing=False,
         )
 
         self._fail(job, reason)
@@ -1924,9 +1995,9 @@ def _as_verification(value: Any) -> Verification:
     )
 
 
-def _safely(callback: Callable, *args) -> None:
+def _safely(callback: Callable, *args, **kwargs) -> None:
     """A broken callback must never take the printer down with it."""
     try:
-        callback(*args)
+        callback(*args, **kwargs)
     except Exception:  # noqa: BLE001
         return

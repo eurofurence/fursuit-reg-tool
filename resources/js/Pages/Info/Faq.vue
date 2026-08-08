@@ -56,10 +56,10 @@ const entries = computed(() => [
         ],
     },
     {
-        q: 'Can I wear my fursuit badge instead of my attendee badge?',
+        q: 'Do I still have to wear my convention badge while in fursuit?',
         parts: [
-            'Yes. While you are in fursuit you may wear your fursuit badge instead of your attendee badge.',
-            'Keep your attendee badge on you though, in a pocket or a bag, so you can show it if security asks.',
+            'In the convention-exclusive areas everyone has to have their issued convention badge on display.',
+            'Fursuiters are the exception: you do not have to wear it openly, but you must have it with you, in a pocket or a bag, so you can show it when asked.',
         ],
     },
     {

@@ -70,7 +70,7 @@ function manageMachinesPartial(array $query = []): array
         'X-Inertia-Version' => (string) $version,
         'X-Inertia-Partial-Component' => 'Manage/Machines/Index',
         'X-Inertia-Partial-Data' => 'rows,meta,filters,sort,search',
-    ])->get(route('manage.machines.index', $query));
+    ])->get(route('admin.machines.index', $query));
 
     $response->assertOk();
 
@@ -102,7 +102,7 @@ beforeEach(function () {
 
     $this->machine = fn (array $attributes = []) => Machine::factory()->create($attributes);
 
-    $this->props = fn (array $query = []) => get(route('manage.machines.index', $query))
+    $this->props = fn (array $query = []) => get(route('admin.machines.index', $query))
         ->viewData('page')['props'];
 });
 
@@ -112,13 +112,13 @@ beforeEach(function () {
  */
 
 test('a guest is redirected to login', function () {
-    get(route('manage.machines.index'))->assertRedirect(route('login'));
+    get(route('admin.machines.index'))->assertRedirect(route('login'));
 });
 
 test('an attendee cannot reach the machine list at all', function () {
     actingAs($this->attendee);
 
-    get(route('manage.machines.index'))->assertForbidden();
+    get(route('admin.machines.index'))->assertForbidden();
 });
 
 test('a reviewer holds access-manage but is refused every machine ability', function () {
@@ -126,16 +126,16 @@ test('a reviewer holds access-manage but is refused every machine ability', func
 
     $machine = ($this->machine)(['name' => 'Desk 1', 'should_discover_printers' => true]);
 
-    get(route('manage.machines.index'))->assertForbidden();
-    get(route('manage.machines.create'))->assertForbidden();
-    post(route('manage.machines.store'), manageMachinePayload())->assertForbidden();
-    get(route('manage.machines.edit', $machine))->assertForbidden();
-    put(route('manage.machines.update', $machine), manageMachinePayload())->assertForbidden();
-    post(route('manage.machines.archive', $machine))->assertForbidden();
-    delete(route('manage.machines.unarchive', $machine))->assertForbidden();
-    post(route('manage.machines.bulk.archive'), ['ids' => [$machine->id]])->assertForbidden();
-    delete(route('manage.machines.bulk.unarchive'), ['ids' => [$machine->id]])->assertForbidden();
-    post(route('manage.machines.login-link', $machine))->assertForbidden();
+    get(route('admin.machines.index'))->assertForbidden();
+    get(route('admin.machines.create'))->assertForbidden();
+    post(route('admin.machines.store'), manageMachinePayload())->assertForbidden();
+    get(route('admin.machines.edit', $machine))->assertForbidden();
+    put(route('admin.machines.update', $machine), manageMachinePayload())->assertForbidden();
+    post(route('admin.machines.archive', $machine))->assertForbidden();
+    delete(route('admin.machines.unarchive', $machine))->assertForbidden();
+    post(route('admin.machines.bulk.archive'), ['ids' => [$machine->id]])->assertForbidden();
+    delete(route('admin.machines.bulk.unarchive'), ['ids' => [$machine->id]])->assertForbidden();
+    post(route('admin.machines.login-link', $machine))->assertForbidden();
 
     // Nothing was written on the way to any of those 403s, and no credential was minted.
     expect($machine->fresh()->archived_at)->toBeNull();
@@ -145,7 +145,7 @@ test('a reviewer holds access-manage but is refused every machine ability', func
 test('an admin gets the list', function () {
     actingAs($this->admin);
 
-    get(route('manage.machines.index'))
+    get(route('admin.machines.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component('Manage/Machines/Index'));
 });
@@ -357,8 +357,8 @@ test('nothing in the module offers a delete, single, bulk or on the page', funct
     expect($names)->not->toContain('delete');
 
     // And there is no route to reach one with either (audit 131).
-    expect(route('manage.machines.index'))->toBeString();
-    expect(fn () => route('manage.machines.destroy', 1))->toThrow(Exception::class);
+    expect(route('admin.machines.index'))->toBeString();
+    expect(fn () => route('admin.machines.destroy', 1))->toThrow(Exception::class);
 });
 
 test('the page offers Create', function () {
@@ -367,7 +367,7 @@ test('the page offers Create', function () {
     $pageActions = collect(($this->props)()['pageActions'])->keyBy('name');
 
     expect($pageActions->keys()->all())->toBe(['create'])
-        ->and($pageActions['create']['url'])->toBe(route('manage.machines.create'));
+        ->and($pageActions['create']['url'])->toBe(route('admin.machines.create'));
 });
 
 /*
@@ -379,7 +379,7 @@ test('archiving stamps archived_at and says so', function () {
 
     $machine = ($this->machine)(['name' => 'Desk 1']);
 
-    post(route('manage.machines.archive', $machine))
+    post(route('admin.machines.archive', $machine))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_MACHINE_TOAST_TITLE, 'Archived');
 
@@ -391,7 +391,7 @@ test('restoring clears archived_at and says so', function () {
 
     $machine = ($this->machine)(['name' => 'Retired', 'archived_at' => now()]);
 
-    delete(route('manage.machines.unarchive', $machine))
+    delete(route('admin.machines.unarchive', $machine))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_MACHINE_TOAST_TITLE, 'Restored');
 
@@ -405,7 +405,7 @@ test('bulk archive and bulk restore move every selected machine', function () {
     $second = ($this->machine)(['name' => 'Desk 2']);
     $untouched = ($this->machine)(['name' => 'Desk 3']);
 
-    post(route('manage.machines.bulk.archive'), ['ids' => [$first->id, $second->id]])
+    post(route('admin.machines.bulk.archive'), ['ids' => [$first->id, $second->id]])
         ->assertRedirect()
         ->assertSessionHas(MANAGE_MACHINE_TOAST_TITLE, 'Archived');
 
@@ -413,7 +413,7 @@ test('bulk archive and bulk restore move every selected machine', function () {
         ->and($second->fresh()->archived_at)->not->toBeNull()
         ->and($untouched->fresh()->archived_at)->toBeNull();
 
-    delete(route('manage.machines.bulk.unarchive'), ['ids' => [$first->id, $second->id]])
+    delete(route('admin.machines.bulk.unarchive'), ['ids' => [$first->id, $second->id]])
         ->assertRedirect()
         ->assertSessionHas(MANAGE_MACHINE_TOAST_TITLE, 'Restored');
 
@@ -424,7 +424,7 @@ test('bulk archive and bulk restore move every selected machine', function () {
 test('a bulk action without ids is a validation error, not a no-op that reports success', function () {
     actingAs($this->admin);
 
-    post(route('manage.machines.bulk.archive'), [])->assertSessionHasErrors('ids');
+    post(route('admin.machines.bulk.archive'), [])->assertSessionHasErrors('ids');
 });
 
 /*
@@ -437,7 +437,7 @@ test('the create page carries both relation option lists', function () {
     $client = TseClient::create(['remote_id' => 'tse-1', 'serial_number' => 'SN-1', 'state' => 'REGISTERED']);
     $reader = SumUpReader::create(['name' => 'Reader A', 'paring_code' => 'abcd']);
 
-    get(route('manage.machines.create'))
+    get(route('admin.machines.create'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Machines/Form')
@@ -458,19 +458,19 @@ test('the create page carries both relation option lists', function () {
 test('creating and saving a machine both work', function () {
     actingAs($this->admin);
 
-    post(route('manage.machines.store'), manageMachinePayload(['name' => 'Desk 1']))
-        ->assertRedirect(route('manage.machines.index'))
+    post(route('admin.machines.store'), manageMachinePayload(['name' => 'Desk 1']))
+        ->assertRedirect(route('admin.machines.index'))
         ->assertSessionHas(MANAGE_MACHINE_TOAST_TITLE, 'Created');
 
     assertDatabaseHas('machines', ['name' => 'Desk 1', 'should_discover_printers' => true]);
 
     $machine = Machine::where('name', 'Desk 1')->firstOrFail();
 
-    put(route('manage.machines.update', $machine), manageMachinePayload([
+    put(route('admin.machines.update', $machine), manageMachinePayload([
         'name' => 'Desk 1 renamed',
         'should_discover_printers' => false,
     ]))
-        ->assertRedirect(route('manage.machines.index'))
+        ->assertRedirect(route('admin.machines.index'))
         ->assertSessionHas(MANAGE_MACHINE_TOAST_TITLE, 'Saved');
 
     assertDatabaseHas('machines', ['id' => $machine->id, 'name' => 'Desk 1 renamed', 'should_discover_printers' => false]);
@@ -486,7 +486,7 @@ test('the edit page prefills the record', function () {
         'should_discover_printers' => false,
     ]);
 
-    get(route('manage.machines.edit', $machine))
+    get(route('admin.machines.edit', $machine))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Machines/Form')
@@ -500,16 +500,16 @@ test('the edit page prefills the record', function () {
 test('the form validates the audit rules and refuses an unknown relation id', function () {
     actingAs($this->admin);
 
-    post(route('manage.machines.store'), manageMachinePayload(['name' => '']))
+    post(route('admin.machines.store'), manageMachinePayload(['name' => '']))
         ->assertSessionHasErrors('name');
 
-    post(route('manage.machines.store'), manageMachinePayload(['name' => str_repeat('a', 256)]))
+    post(route('admin.machines.store'), manageMachinePayload(['name' => str_repeat('a', 256)]))
         ->assertSessionHasErrors('name');
 
-    post(route('manage.machines.store'), manageMachinePayload(['tse_client_id' => 9999]))
+    post(route('admin.machines.store'), manageMachinePayload(['tse_client_id' => 9999]))
         ->assertSessionHasErrors('tse_client_id');
 
-    post(route('manage.machines.store'), manageMachinePayload(['sumup_reader_id' => 9999]))
+    post(route('admin.machines.store'), manageMachinePayload(['sumup_reader_id' => 9999]))
         ->assertSessionHasErrors('sumup_reader_id');
 });
 
@@ -518,10 +518,10 @@ test('archived_at cannot be written through the form, even though the model guar
 
     $machine = ($this->machine)(['name' => 'Desk 1']);
 
-    put(route('manage.machines.update', $machine), manageMachinePayload([
+    put(route('admin.machines.update', $machine), manageMachinePayload([
         'name' => 'Desk 1',
         'archived_at' => now()->toDateTimeString(),
-    ]))->assertRedirect(route('manage.machines.index'));
+    ]))->assertRedirect(route('admin.machines.index'));
 
     // Machine::$guarded = [], so the only thing keeping this out is the request's rule
     // list: archiving is an action of its own, not a field.
@@ -537,7 +537,7 @@ test('the edit page declares the Login Link action but mints nothing', function 
 
     $machine = ($this->machine)(['name' => 'Desk 1']);
 
-    $response = get(route('manage.machines.edit', $machine))->assertSuccessful();
+    $response = get(route('admin.machines.edit', $machine))->assertSuccessful();
 
     $props = $response->viewData('page')['props'];
 
@@ -545,7 +545,7 @@ test('the edit page declares the Login Link action but mints nothing', function 
         ->and($props['actions'][0]['name'])->toBe('login-link')
         ->and($props['actions'][0]['label'])->toBe('Login Link')
         ->and($props['actions'][0]['method'])->toBe('post')
-        ->and($props['actions'][0]['url'])->toBe(route('manage.machines.login-link', $machine));
+        ->and($props['actions'][0]['url'])->toBe(route('admin.machines.login-link', $machine));
 
     // Nothing was generated by opening the page: no signature anywhere in the payload.
     expect(json_encode($props))->not->toContain('signature');
@@ -568,7 +568,7 @@ test('minting a login link returns a signed URL that logs the machine in', funct
 
     $machine = ($this->machine)(['name' => 'Desk 1']);
 
-    $response = post(route('manage.machines.login-link', $machine))
+    $response = post(route('admin.machines.login-link', $machine))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_MACHINE_TOAST_TITLE, 'Login link created');
 
@@ -591,7 +591,7 @@ test('the link stops working once its fifteen minutes are up', function () {
 
     $machine = ($this->machine)(['name' => 'Desk 1']);
 
-    $response = post(route('manage.machines.login-link', $machine));
+    $response = post(route('admin.machines.login-link', $machine));
     $url = $response->getSession()->get('inertia.flash_data')['machineLoginLink']['url'];
 
     travel(16)->minutes();
@@ -606,7 +606,7 @@ test('minting is logged against the machine and names the operator', function ()
 
     $machine = ($this->machine)(['name' => 'Desk 1']);
 
-    post(route('manage.machines.login-link', $machine));
+    post(route('admin.machines.login-link', $machine));
 
     assertDatabaseHas('activity_log', [
         'description' => 'POS login link created',

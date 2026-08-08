@@ -58,24 +58,24 @@ beforeEach(function () {
 });
 
 test('a guest is redirected to login', function () {
-    get(route('manage.tools.badge-preview'))->assertRedirect();
+    get(route('admin.tools.badge-preview'))->assertRedirect();
 });
 
 test('an attendee cannot reach the tool at all', function () {
-    actingAs($this->nobody)->get(route('manage.tools.badge-preview'))->assertForbidden();
+    actingAs($this->nobody)->get(route('admin.tools.badge-preview'))->assertForbidden();
 });
 
 // Checklist line 83: no extra gate beyond access-manage, so reviewers keep the page.
 test('a reviewer reaches the page, because access-manage is the whole guard', function () {
     actingAs($this->reviewer)
-        ->get(route('manage.tools.badge-preview'))
+        ->get(route('admin.tools.badge-preview'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Manage/Tools/BadgePreview'));
 });
 
 test('the page opens empty, with no badge and no actions', function () {
     actingAs($this->admin)
-        ->get(route('manage.tools.badge-preview'))
+        ->get(route('admin.tools.badge-preview'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Tools/BadgePreview')
             ->where('customId', null)
@@ -87,8 +87,8 @@ test('the page opens empty, with no badge and no actions', function () {
 test('the lookup is required and capped at 255', function () {
     actingAs($this->admin);
 
-    post(route('manage.tools.badge-preview.lookup'), [])->assertSessionHasErrors('custom_id');
-    post(route('manage.tools.badge-preview.lookup'), ['custom_id' => str_repeat('a', 256)])
+    post(route('admin.tools.badge-preview.lookup'), [])->assertSessionHasErrors('custom_id');
+    post(route('admin.tools.badge-preview.lookup'), ['custom_id' => str_repeat('a', 256)])
         ->assertSessionHasErrors('custom_id');
 });
 
@@ -96,16 +96,16 @@ test('a found badge flashes the Filament copy and redirects to its own url', fun
     ($this->badge)();
 
     actingAs($this->admin)
-        ->post(route('manage.tools.badge-preview.lookup'), ['custom_id' => 'ABC123'])
-        ->assertRedirect(route('manage.tools.badge-preview', ['custom_id' => 'ABC123']))
+        ->post(route('admin.tools.badge-preview.lookup'), ['custom_id' => 'ABC123'])
+        ->assertRedirect(route('admin.tools.badge-preview', ['custom_id' => 'ABC123']))
         ->assertSessionHas(MANAGE_PREVIEW_TOAST.'.title', 'Badge loaded')
         ->assertSessionHas(MANAGE_PREVIEW_TOAST.'.body', 'Badge found for: Fluffy');
 });
 
 test('a missing badge flashes the danger copy and still carries the typed id back', function () {
     actingAs($this->admin)
-        ->post(route('manage.tools.badge-preview.lookup'), ['custom_id' => 'NOPE'])
-        ->assertRedirect(route('manage.tools.badge-preview', ['custom_id' => 'NOPE']))
+        ->post(route('admin.tools.badge-preview.lookup'), ['custom_id' => 'NOPE'])
+        ->assertRedirect(route('admin.tools.badge-preview', ['custom_id' => 'NOPE']))
         ->assertSessionHas(MANAGE_PREVIEW_TOAST.'.tone', 'danger')
         ->assertSessionHas(MANAGE_PREVIEW_TOAST.'.title', 'Badge not found')
         ->assertSessionHas(MANAGE_PREVIEW_TOAST.'.body', 'No badge found with custom ID: NOPE');
@@ -115,7 +115,7 @@ test('the details panel carries the six rows the blade showed', function () {
     ($this->badge)();
 
     actingAs($this->admin)
-        ->get(route('manage.tools.badge-preview', ['custom_id' => 'ABC123']))
+        ->get(route('admin.tools.badge-preview', ['custom_id' => 'ABC123']))
         ->assertInertia(fn (Assert $page) => $page
             ->where('customId', 'ABC123')
             ->where('badge.custom_id', 'ABC123')
@@ -135,7 +135,7 @@ test('the badge class falls back to EF30_Badge, which is what the renderer uses'
     expect(BadgePreviewController::DEFAULT_BADGE_CLASS)->toBe('EF30_Badge');
 
     actingAs($this->admin)
-        ->get(route('manage.tools.badge-preview', ['custom_id' => 'ABC123']))
+        ->get(route('admin.tools.badge-preview', ['custom_id' => 'ABC123']))
         ->assertInertia(fn (Assert $page) => $page->where('badge.badge_class', 'EF30_Badge'));
 });
 
@@ -150,7 +150,7 @@ test('the panel survives a soft-deleted fursuit rather than throwing', function 
     DB::table('fursuits')->where('id', $badge->fursuit_id)->update(['deleted_at' => now()]);
 
     actingAs($this->admin)
-        ->get(route('manage.tools.badge-preview', ['custom_id' => 'ABC123']))
+        ->get(route('admin.tools.badge-preview', ['custom_id' => 'ABC123']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('badge.custom_id', 'ABC123')
@@ -166,13 +166,13 @@ test('the two PDF buttons are GET links and only the view one opens a new tab', 
     ($this->badge)();
 
     actingAs($this->admin)
-        ->get(route('manage.tools.badge-preview', ['custom_id' => 'ABC123']))
+        ->get(route('admin.tools.badge-preview', ['custom_id' => 'ABC123']))
         ->assertInertia(fn (Assert $page) => $page
             ->where('actions.0.name', 'view-pdf')
             ->where('actions.0.label', 'View PDF in Browser')
             ->where('actions.0.method', 'get')
             ->where('actions.0.newTab', true)
-            ->where('actions.0.url', route('manage.tools.badge-preview.pdf.view', ['customId' => 'ABC123']))
+            ->where('actions.0.url', route('admin.tools.badge-preview.pdf.view', ['customId' => 'ABC123']))
             ->where('actions.1.name', 'download-pdf')
             ->where('actions.1.label', 'Download PDF')
             ->where('actions.1.method', 'get')
@@ -180,20 +180,20 @@ test('the two PDF buttons are GET links and only the view one opens a new tab', 
             // is served `Content-Disposition: attachment`, so it needs no tab of its own.
             ->where('actions.1.newTab', false)
             ->where('actions.1.tone', 'ok')
-            ->where('actions.1.url', route('manage.tools.badge-preview.pdf.download', ['customId' => 'ABC123']))
+            ->where('actions.1.url', route('admin.tools.badge-preview.pdf.download', ['customId' => 'ABC123']))
         );
 });
 
 test('an unknown id on either PDF route warns rather than rendering', function () {
     actingAs($this->admin);
 
-    get(route('manage.tools.badge-preview.pdf.view', ['customId' => 'NOPE']))
-        ->assertRedirect(route('manage.tools.badge-preview', ['custom_id' => 'NOPE']))
+    get(route('admin.tools.badge-preview.pdf.view', ['customId' => 'NOPE']))
+        ->assertRedirect(route('admin.tools.badge-preview', ['custom_id' => 'NOPE']))
         ->assertSessionHas(MANAGE_PREVIEW_TOAST.'.title', 'No badge loaded')
         ->assertSessionHas(MANAGE_PREVIEW_TOAST.'.body', 'Please load a badge first');
 
-    get(route('manage.tools.badge-preview.pdf.download', ['customId' => 'NOPE']))
-        ->assertRedirect(route('manage.tools.badge-preview', ['custom_id' => 'NOPE']))
+    get(route('admin.tools.badge-preview.pdf.download', ['customId' => 'NOPE']))
+        ->assertRedirect(route('admin.tools.badge-preview', ['custom_id' => 'NOPE']))
         ->assertSessionHas(MANAGE_PREVIEW_TOAST.'.title', 'No badge loaded')
         ->assertSessionHas(MANAGE_PREVIEW_TOAST.'.body', 'Please load a badge first');
 });
@@ -203,16 +203,18 @@ test('the PDF routes are behind access-manage, unlike the routes they replace', 
     ($this->badge)();
 
     actingAs($this->nobody)
-        ->get(route('manage.tools.badge-preview.pdf.view', ['customId' => 'ABC123']))
+        ->get(route('admin.tools.badge-preview.pdf.view', ['customId' => 'ABC123']))
         ->assertForbidden();
 });
 
-test('the tool is reachable from the sidebar', function () {
-    $groups = actingAs($this->admin)
-        ->get(route('manage.dashboard'))
-        ->viewData('page')['props']['manageNav'];
+// The rail carries one "Tools" entry now, not a row per tool, so the card on the Tools
+// index is what makes this page reachable.
+test('the tool is reachable from the Tools index', function () {
+    $tools = actingAs($this->admin)
+        ->get(route('admin.tools.index'))
+        ->viewData('page')['props']['tools'];
 
-    $labels = collect($groups)->flatMap(fn (array $group) => collect($group['items'])->pluck('label'));
-
-    expect($labels)->toContain('Badge Preview');
+    expect(collect($tools)->pluck('label'))->toContain('Badge Preview')
+        ->and(collect($tools)->firstWhere('label', 'Badge Preview')['url'])
+        ->toBe(route('admin.tools.badge-preview'));
 });

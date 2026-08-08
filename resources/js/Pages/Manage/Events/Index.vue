@@ -2,6 +2,11 @@
 /**
  * The event list, successor to EventResource's table and its ManageEvents page.
  *
+ * Rendered inside SettingsLayout, not ManageLayout: Events is a Settings pane rather than a
+ * rail entry of its own (see routes/manage/events.php), so the settings submenu stays beside
+ * it and the header reads "Settings / Events". The page-level actions the table declares go
+ * into that layout's header slot, which is why there is no PageHeader here.
+ *
  * The envelope arrives as top-level props rather than one nested object, because
  * useTableQuery reloads rows/meta/filters/sort/search as an Inertia partial visit and
  * partials are filtered by top-level key. DataTable still wants one object, so the props
@@ -15,9 +20,9 @@
  */
 import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
-import ManageLayout from '@/Layouts/ManageLayout.vue';
+import SettingsLayout from '@/Layouts/SettingsLayout.vue';
+import ActionButton from '@/Components/Manage/ActionButton.vue';
 import DataTable from '@/Components/Manage/DataTable.vue';
-import PageHeader from '@/Components/Manage/PageHeader.vue';
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -49,9 +54,11 @@ const table = computed(() => ({
 <template>
   <Head title="Events" />
 
-  <ManageLayout>
-    <PageHeader title="Events" :actions="pageActions" />
+  <SettingsLayout flush>
+    <template #actions>
+      <ActionButton v-for="action in pageActions" :key="action.name" :action="action" />
+    </template>
 
     <DataTable :table="table" />
-  </ManageLayout>
+  </SettingsLayout>
 </template>

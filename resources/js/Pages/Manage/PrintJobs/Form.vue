@@ -64,12 +64,12 @@ const title = computed(() => (editing.value ? `Edit print job #${props.job.id}` 
 
 const submit = () => {
   if (editing.value) {
-    form.put(route('manage.print-jobs.update', props.job.id));
+    form.put(route('admin.print-jobs.update', props.job.id));
 
     return;
   }
 
-  form.post(route('manage.print-jobs.store'));
+  form.post(route('admin.print-jobs.store'));
 };
 </script>
 

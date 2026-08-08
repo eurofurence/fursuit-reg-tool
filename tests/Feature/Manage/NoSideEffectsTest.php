@@ -180,16 +180,15 @@ dataset('manage read pages', function () {
     return [
         // Phase 9. DashboardTest covers the numbers; this covers the one thing it cannot,
         // that computing them moves nothing in any other module's tables.
-        'dashboard' => [fn () => route('manage.dashboard'), ['stats', 'charts']],
-        'badges list' => [fn () => route('manage.badges.index'), ['rows', 'meta', 'bulkActions']],
-        'badges edit page' => [fn () => route('manage.badges.edit', test()->badge), []],
-        'corrupted totals report' => [fn () => route('manage.badges.corrupted-totals'), []],
-        'print batches list' => [fn () => route('manage.print-batches.index'), ['rows', 'meta']],
-        'print batch detail' => [fn () => route('manage.print-batches.show', test()->batch), ['batch', 'actions', 'rows', 'meta']],
-        'checkouts list' => [fn () => route('manage.checkouts.index'), []],
-        'checkout detail' => [fn () => route('manage.checkouts.show', test()->checkout), []],
-        'tse clients list' => [fn () => route('manage.tse-clients.index'), []],
-        'tse client detail' => [fn () => route('manage.tse-clients.show', test()->tseClient), []],
+        'dashboard' => [fn () => route('admin.dashboard'), ['stats', 'charts']],
+        'badges list' => [fn () => route('admin.badges.index'), ['rows', 'meta', 'bulkActions']],
+        'badges edit page' => [fn () => route('admin.badges.edit', test()->badge), []],
+        'print batches list' => [fn () => route('admin.print-batches.index'), ['rows', 'meta']],
+        'print batch detail' => [fn () => route('admin.print-batches.show', test()->batch), ['batch', 'actions', 'rows', 'meta']],
+        'checkouts list' => [fn () => route('admin.checkouts.index'), []],
+        'checkout detail' => [fn () => route('admin.checkouts.show', test()->checkout), []],
+        'tse clients list' => [fn () => route('admin.tse-clients.index'), []],
+        'tse client detail' => [fn () => route('admin.tse-clients.show', test()->tseClient), []],
     ];
 });
 
@@ -231,15 +230,14 @@ test('walking every read page in one session still writes nothing', function () 
     actingAs($this->admin);
 
     foreach ([
-        route('manage.badges.index'),
-        route('manage.badges.edit', $this->badge),
-        route('manage.badges.corrupted-totals'),
-        route('manage.print-batches.index'),
-        route('manage.print-batches.show', $this->batch),
-        route('manage.checkouts.index'),
-        route('manage.checkouts.show', $this->checkout),
-        route('manage.tse-clients.index'),
-        route('manage.tse-clients.show', $this->tseClient),
+        route('admin.badges.index'),
+        route('admin.badges.edit', $this->badge),
+        route('admin.print-batches.index'),
+        route('admin.print-batches.show', $this->batch),
+        route('admin.checkouts.index'),
+        route('admin.checkouts.show', $this->checkout),
+        route('admin.tse-clients.index'),
+        route('admin.tse-clients.show', $this->tseClient),
     ] as $url) {
         $this->get($url)->assertSuccessful();
     }
@@ -266,18 +264,18 @@ test('walking every read page in one session still writes nothing', function () 
 
 test('checkouts and TSE clients register no create, update or delete route', function () {
     foreach ([
-        'manage.checkouts.create',
-        'manage.checkouts.store',
-        'manage.checkouts.edit',
-        'manage.checkouts.update',
-        'manage.checkouts.destroy',
-        'manage.checkouts.bulk.destroy',
-        'manage.tse-clients.create',
-        'manage.tse-clients.store',
-        'manage.tse-clients.edit',
-        'manage.tse-clients.update',
-        'manage.tse-clients.destroy',
-        'manage.tse-clients.bulk.destroy',
+        'admin.checkouts.create',
+        'admin.checkouts.store',
+        'admin.checkouts.edit',
+        'admin.checkouts.update',
+        'admin.checkouts.destroy',
+        'admin.checkouts.bulk.destroy',
+        'admin.tse-clients.create',
+        'admin.tse-clients.store',
+        'admin.tse-clients.edit',
+        'admin.tse-clients.update',
+        'admin.tse-clients.destroy',
+        'admin.tse-clients.bulk.destroy',
     ] as $name) {
         expect(Route::has($name))->toBeFalse("route $name must not exist");
     }
@@ -440,20 +438,20 @@ test('the dashboard, the DB Service preview and both PDFs write nothing', functi
     actingAs($this->admin)->withSession([EventScope::SESSION_ID => $this->event->id]);
 
     // 1. The dashboard, twice: the poll re-runs every aggregate.
-    $this->get(route('manage.dashboard'))->assertSuccessful();
-    $this->get(route('manage.dashboard'))->assertSuccessful();
+    $this->get(route('admin.dashboard'))->assertSuccessful();
+    $this->get(route('admin.dashboard'))->assertSuccessful();
 
     /*
      * 2. The DB Service preview, both halves. The POST is the button, the GET is the review
      * screen it redirects to, and the review recomputes the report on every load - so the
      * GET is walked twice, which is what a reload does.
      */
-    $this->post(route('manage.maintenance.db-service.preview'))
-        ->assertRedirect(route('manage.maintenance.db-service', ['review' => 1]));
+    $this->post(route('admin.maintenance.db-service.preview'))
+        ->assertRedirect(route('admin.maintenance.db-service', ['review' => 1]));
 
-    $review = $this->get(route('manage.maintenance.db-service', ['review' => 1]));
+    $review = $this->get(route('admin.maintenance.db-service', ['review' => 1]));
     $review->assertSuccessful();
-    $this->get(route('manage.maintenance.db-service', ['review' => 1]))->assertSuccessful();
+    $this->get(route('admin.maintenance.db-service', ['review' => 1]))->assertSuccessful();
 
     // Non-vacuity: the preview really did find the seeded badge and really did price it.
     $report = $review->viewData('page')['props']['report'];
@@ -464,7 +462,7 @@ test('the dashboard, the DB Service preview and both PDFs write nothing', functi
         ->and($report['rows'][0]['badge_id'])->toBe($repairable->id);
 
     // 3. Each PDF type, each rendered end to end rather than merely requested.
-    $badgeList = $this->get(route('manage.tools.pdf.badge-list', [
+    $badgeList = $this->get(route('admin.tools.pdf.badge-list', [
         'pdf_type' => 'badge_list',
         'payment_status' => 'all',
         'badge_ranges' => '0-999,1000-1999',
@@ -472,7 +470,7 @@ test('the dashboard, the DB Service preview and both PDFs write nothing', functi
 
     $badgeList->assertSuccessful();
 
-    $boxLabels = $this->get(route('manage.tools.pdf.box-labels', [
+    $boxLabels = $this->get(route('admin.tools.pdf.box-labels', [
         'pdf_type' => 'box_labels',
         'title' => 'Box 1',
         'subtitle' => '1000-1099',
@@ -520,15 +518,15 @@ test('the DB Service apply flow is closed to a reviewer at the route and the gat
     // The reviewer is admitted to the panel at large, so a 403 below is this page's gate
     // and not a failed login.
     actingAs($reviewer);
-    $this->get(route('manage.dashboard'))->assertSuccessful();
+    $this->get(route('admin.dashboard'))->assertSuccessful();
 
     expect(Gate::forUser($reviewer)->allows('access-manage'))->toBeTrue()
         ->and(Gate::forUser($reviewer)->allows('manage-admin'))->toBeFalse();
 
     foreach ([
-        ['get', route('manage.maintenance.db-service')],
-        ['post', route('manage.maintenance.db-service.preview')],
-        ['post', route('manage.maintenance.db-service.apply')],
+        ['get', route('admin.maintenance.db-service')],
+        ['post', route('admin.maintenance.db-service.preview')],
+        ['post', route('admin.maintenance.db-service.apply')],
     ] as [$verb, $url]) {
         $this->{$verb}($url)->assertForbidden();
     }

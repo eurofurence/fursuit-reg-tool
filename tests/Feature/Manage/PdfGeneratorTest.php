@@ -86,26 +86,26 @@ beforeEach(function () {
 });
 
 test('a guest is redirected to login', function () {
-    get(route('manage.tools.pdf'))->assertRedirect();
+    get(route('admin.tools.pdf'))->assertRedirect();
 });
 
 test('an attendee cannot reach the tool at all', function () {
-    actingAs($this->nobody)->get(route('manage.tools.pdf'))->assertForbidden();
-    actingAs($this->nobody)->get(route('manage.tools.pdf.badge-list'))->assertForbidden();
-    actingAs($this->nobody)->get(route('manage.tools.pdf.box-labels', ['title' => 'x']))->assertForbidden();
+    actingAs($this->nobody)->get(route('admin.tools.pdf'))->assertForbidden();
+    actingAs($this->nobody)->get(route('admin.tools.pdf.badge-list'))->assertForbidden();
+    actingAs($this->nobody)->get(route('admin.tools.pdf.box-labels', ['title' => 'x']))->assertForbidden();
 });
 
 // Checklist line 83: no extra gate beyond access-manage, so reviewers keep the page.
 test('a reviewer reaches the page, because access-manage is the whole guard', function () {
     actingAs($this->reviewer)
-        ->get(route('manage.tools.pdf'))
+        ->get(route('admin.tools.pdf'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Manage/Tools/PdfGenerator'));
 });
 
 test('the form opens on the Filament defaults', function () {
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf'))
+        ->get(route('admin.tools.pdf'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('event.name', 'Eurofurence 29')
             ->where('defaults.pdf_type', 'badge_list')
@@ -122,7 +122,7 @@ test('the form opens on the Filament defaults', function () {
 
 test('the selects carry their Filament labels, with the box-label count corrected', function () {
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf'))
+        ->get(route('admin.tools.pdf'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('pdfTypes.0.value', 'badge_list')
             ->where('pdfTypes.0.label', 'Badge List (Badges by Range)')
@@ -142,8 +142,8 @@ test('all events selected reports that no event is selected, rather than guessin
     ($this->badge)('10-1');
 
     ($this->scoped)(null)
-        ->get(route('manage.tools.pdf.badge-list'))
-        ->assertRedirect(route('manage.tools.pdf'))
+        ->get(route('admin.tools.pdf.badge-list'))
+        ->assertRedirect(route('admin.tools.pdf'))
         ->assertSessionHas(MANAGE_PDF_TOAST.'.tone', 'danger')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.title', 'Error')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.body', 'No event selected in the header.');
@@ -154,13 +154,13 @@ test('the badge list covers the selected event and nothing else', function () {
     ($this->badge)('10-1', $this->newerEvent);
 
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list'))
-        ->assertRedirect(route('manage.tools.pdf'))
+        ->get(route('admin.tools.pdf.badge-list'))
+        ->assertRedirect(route('admin.tools.pdf'))
         ->assertSessionHas(MANAGE_PDF_TOAST.'.title', 'No Data')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.body', 'No badges found for the current event.');
 
     ($this->scoped)($this->newerEvent->id)
-        ->get(route('manage.tools.pdf.badge-list'))
+        ->get(route('admin.tools.pdf.badge-list'))
         ->assertOk();
 });
 
@@ -168,7 +168,7 @@ test('the No Data body names the payment filter that found nothing', function ()
     ($this->badge)('10-1', null, Paid::$name);
 
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['payment_status' => 'unpaid']))
+        ->get(route('admin.tools.pdf.badge-list', ['payment_status' => 'unpaid']))
         ->assertSessionHas(MANAGE_PDF_TOAST.'.tone', 'warning')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.title', 'No Data')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.body', 'No unpaid badges found for the current event.');
@@ -176,7 +176,7 @@ test('the No Data body names the payment filter that found nothing', function ()
     ($this->badge)('11-1', null, Unpaid::$name);
 
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['payment_status' => 'unpaid']))
+        ->get(route('admin.tools.pdf.badge-list', ['payment_status' => 'unpaid']))
         ->assertOk();
 });
 
@@ -184,8 +184,8 @@ test('an unparsable range list is refused with the Filament copy', function () {
     ($this->badge)('10-1');
 
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['badge_ranges' => 'not a range']))
-        ->assertRedirect(route('manage.tools.pdf'))
+        ->get(route('admin.tools.pdf.badge-list', ['badge_ranges' => 'not a range']))
+        ->assertRedirect(route('admin.tools.pdf'))
         ->assertSessionHas(MANAGE_PDF_TOAST.'.tone', 'danger')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.title', 'Invalid Range Format')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.body', 'Please enter valid badge ranges in the format: 1-1699,1700-2400');
@@ -195,8 +195,8 @@ test('a range list no badge falls into is refused with the Filament copy', funct
     ($this->badge)('10-1');
 
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['badge_ranges' => '2000-2999']))
-        ->assertRedirect(route('manage.tools.pdf'))
+        ->get(route('admin.tools.pdf.badge-list', ['badge_ranges' => '2000-2999']))
+        ->assertRedirect(route('admin.tools.pdf'))
         ->assertSessionHas(MANAGE_PDF_TOAST.'.tone', 'warning')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.title', 'No Badges in Ranges')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.body', 'No badges found within the specified ranges. Please check your range settings.');
@@ -205,7 +205,7 @@ test('a range list no badge falls into is refused with the Filament copy', funct
 test('the badge list streams a PDF', function () {
     ($this->badge)('10-1');
 
-    $response = ($this->scoped)($this->event->id)->get(route('manage.tools.pdf.badge-list'));
+    $response = ($this->scoped)($this->event->id)->get(route('admin.tools.pdf.badge-list'));
 
     $response->assertOk();
 
@@ -219,7 +219,7 @@ test('the badge-list filename is slugged, so an event name cannot break the head
     ($this->badge)('10-1', null, Paid::$name);
 
     $disposition = ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['payment_status' => 'paid']))
+        ->get(route('admin.tools.pdf.badge-list', ['payment_status' => 'paid']))
         ->assertOk()
         ->headers->get('content-disposition');
 
@@ -232,11 +232,11 @@ test('the payment filter names itself in the filename, or does not', function ()
     ($this->badge)('10-1', null, Unpaid::$name);
 
     $unpaid = ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['payment_status' => 'unpaid']))
+        ->get(route('admin.tools.pdf.badge-list', ['payment_status' => 'unpaid']))
         ->headers->get('content-disposition');
 
     $all = ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['payment_status' => 'all']))
+        ->get(route('admin.tools.pdf.badge-list', ['payment_status' => 'all']))
         ->headers->get('content-disposition');
 
     expect($unpaid)->toContain('badge-list-eurofurence-29-unpaid-2026-03-04.pdf')
@@ -252,7 +252,7 @@ test('badges outside every declared range are reported, not dropped', function (
 
     // The form's own default, which is exactly the range list that loses badge 5000 and up.
     $response = ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['badge_ranges' => PdfGeneratorController::DEFAULT_RANGES]))
+        ->get(route('admin.tools.pdf.badge-list', ['badge_ranges' => PdfGeneratorController::DEFAULT_RANGES]))
         ->assertOk()
         ->assertHeader(PdfGeneratorController::OUT_OF_RANGE_HEADER, '2');
 
@@ -266,7 +266,7 @@ test('a range list that covers every badge reports nothing out of range', functi
     ($this->badge)('5000-1');
 
     $response = ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['badge_ranges' => '0-9999']))
+        ->get(route('admin.tools.pdf.badge-list', ['badge_ranges' => '0-9999']))
         ->assertHeader(PdfGeneratorController::OUT_OF_RANGE_HEADER, '0');
 
     // One range, one page, and no leftovers page behind it.
@@ -275,7 +275,7 @@ test('a range list that covers every badge reports nothing out of range', functi
     // No range list at all keeps Filament's fallback to computed 1000-wide buckets, which
     // cover every number there is, so nothing can fall outside them.
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list'))
+        ->get(route('admin.tools.pdf.badge-list'))
         ->assertHeader(PdfGeneratorController::OUT_OF_RANGE_HEADER, '0');
 });
 
@@ -292,7 +292,7 @@ test('an attendee id longer than four characters renders instead of killing the 
     ($this->badge)('12345-1');
 
     $response = ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['badge_ranges' => PdfGeneratorController::DEFAULT_RANGES]))
+        ->get(route('admin.tools.pdf.badge-list', ['badge_ranges' => PdfGeneratorController::DEFAULT_RANGES]))
         ->assertOk()
         ->assertHeader(PdfGeneratorController::OUT_OF_RANGE_HEADER, '1');
 
@@ -307,7 +307,7 @@ test('a range holding more badges than one page fits is paged, not truncated', f
     }
 
     $response = ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', [
+        ->get(route('admin.tools.pdf.badge-list', [
             'badge_ranges' => '0-999',
             // Four numbers to a page, five badges to print.
             'rows_per_column' => 2,
@@ -368,22 +368,22 @@ test('the layout numbers are integers with a ceiling', function () {
     ($this->badge)('10-1');
 
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['columns' => 100000]))
+        ->get(route('admin.tools.pdf.badge-list', ['columns' => 100000]))
         ->assertSessionHasErrors('columns');
 
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['rows_per_column' => 'lots']))
+        ->get(route('admin.tools.pdf.badge-list', ['rows_per_column' => 'lots']))
         ->assertSessionHasErrors('rows_per_column');
 
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.badge-list', ['payment_status' => 'refunded']))
+        ->get(route('admin.tools.pdf.badge-list', ['payment_status' => 'refunded']))
         ->assertSessionHasErrors('payment_status');
 });
 
 test('box labels refuse an empty title with the Filament copy', function () {
     ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.box-labels'))
-        ->assertRedirect(route('manage.tools.pdf'))
+        ->get(route('admin.tools.pdf.box-labels'))
+        ->assertRedirect(route('admin.tools.pdf'))
         ->assertSessionHas(MANAGE_PDF_TOAST.'.tone', 'danger')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.title', 'Error')
         ->assertSessionHas(MANAGE_PDF_TOAST.'.body', 'Title is required for box labels.');
@@ -391,7 +391,7 @@ test('box labels refuse an empty title with the Filament copy', function () {
 
 test('box labels stream a PDF under a slugged filename', function () {
     $response = ($this->scoped)($this->event->id)
-        ->get(route('manage.tools.pdf.box-labels', ['title' => 'Badge Range 1-999', 'subtitle' => 'Free Badges']));
+        ->get(route('admin.tools.pdf.box-labels', ['title' => 'Badge Range 1-999', 'subtitle' => 'Free Badges']));
 
     $response->assertOk();
 
@@ -420,19 +420,21 @@ test('generating either PDF writes nothing', function () {
 
     $before = Badge::query()->get()->toArray();
 
-    ($this->scoped)($this->event->id)->get(route('manage.tools.pdf.badge-list'))->assertOk();
-    ($this->scoped)($this->event->id)->get(route('manage.tools.pdf.box-labels', ['title' => 'Box']))->assertOk();
+    ($this->scoped)($this->event->id)->get(route('admin.tools.pdf.badge-list'))->assertOk();
+    ($this->scoped)($this->event->id)->get(route('admin.tools.pdf.box-labels', ['title' => 'Box']))->assertOk();
 
     expect($writes)->toBe([])
         ->and(Badge::query()->get()->toArray())->toBe($before);
 });
 
-test('the tool is reachable from the sidebar', function () {
-    $groups = actingAs($this->admin)
-        ->get(route('manage.dashboard'))
-        ->viewData('page')['props']['manageNav'];
+// The rail carries one "Tools" entry now, not a row per tool, so the card on the Tools
+// index is what makes this page reachable.
+test('the tool is reachable from the Tools index', function () {
+    $tools = actingAs($this->admin)
+        ->get(route('admin.tools.index'))
+        ->viewData('page')['props']['tools'];
 
-    $labels = collect($groups)->flatMap(fn (array $group) => collect($group['items'])->pluck('label'));
-
-    expect($labels)->toContain('PDF Generator');
+    expect(collect($tools)->pluck('label'))->toContain('PDF Generator')
+        ->and(collect($tools)->firstWhere('label', 'PDF Generator')['url'])
+        ->toBe(route('admin.tools.pdf'));
 });

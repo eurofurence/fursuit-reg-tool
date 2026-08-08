@@ -2,8 +2,8 @@
  * POS terminal — "Cool Ledger" skin.
  *
  * Everything here is scoped to .pos (set on the POSLayout root), so the public
- * site and Filament keep their own look. Colours are tokens: a different skin
- * is a different value block, not a component rewrite.
+ * site and the admin panel keep their own look. Colours are tokens: a different
+ * skin is a different value block, not a component rewrite.
  *
  * Structure rule of this skin: related cards give up their gaps and share
  * borders, so a stat strip, a nav list or a badge list reads as ONE ruled
@@ -51,7 +51,8 @@
  * Tailwind utilities (bg-surface-100, border-surface-200, …) rather than
  * p-* hooks. Re-pointing the surface ramp inside .pos re-skins every
  * widget at once: the zinc greys become the ledger's cool blue-greys.
- * The public site and Filament keep the ramp defined in app.css.
+ * The public site keeps the ramp defined in app.css; /admin has its own in
+ * manage.css.
  *
  * .pos-surface carries the same ramp for the overlays PrimeVue teleports to
  * <body> — dialog masks, dropdown panels — which render outside .pos.

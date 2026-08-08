@@ -119,6 +119,72 @@ class SessionCards(ttk.Frame):
             self._values[key].config(text=getattr(self.tally, key) or "-")
 
 
+class CardStock(ttk.Frame):
+    """How many blanks are left, and the two ways that number changes.
+
+    The printer says nothing until it is empty, which strands a run mid-batch
+    while somebody goes to find the box. A counted-down figure warns in time.
+
+    Refills are a shrink-wrapped stack of a hundred, so that is a button rather
+    than a number to type. Set is there for the odd part-used stack and for
+    correcting the count after a jam ate a few.
+    """
+
+    def __init__(self, parent, on_set, on_refill):
+        super().__init__(parent)
+
+        self.on_set = on_set
+        self.on_refill = on_refill
+
+        self.value = ttk.Label(self, text="not counted", font=("Menlo", 14))
+        self.value.grid(row=0, column=0, columnspan=3, sticky="w")
+
+        self.entry = ttk.Entry(self, width=7)
+        self.entry.grid(row=1, column=0, sticky="w", pady=(8, 0))
+
+        ttk.Button(self, text="Set", width=5,
+                   command=self._set).grid(row=1, column=1, sticky="w", padx=4, pady=(8, 0))
+
+        self.refill = ttk.Button(self, text="+100", width=6, command=self.on_refill)
+        self.refill.grid(row=1, column=2, sticky="w", pady=(8, 0))
+
+    def set_refill_size(self, size: int) -> None:
+        self.refill.config(text="+%d" % int(size))
+
+    def show(self, remaining, low_threshold: int = 10) -> None:
+        if remaining is None:
+            self.value.config(text="not counted", foreground="#8a8a8a")
+            return
+
+        remaining = int(remaining)
+
+        if remaining == 0:
+            colour = "#a81f1f"
+        elif remaining <= low_threshold:
+            colour = "#a86a00"
+        else:
+            colour = "#1b7f3b"
+
+        self.value.config(
+            text="%d blank%s left" % (remaining, "" if remaining == 1 else "s"),
+            foreground=colour,
+        )
+
+    def _set(self) -> None:
+        raw = self.entry.get().strip()
+
+        if not raw:
+            return
+
+        try:
+            count = int(raw)
+        except ValueError:
+            return
+
+        self.entry.delete(0, "end")
+        self.on_set(max(0, count))
+
+
 PENDING = "pending"
 ACTIVE = "active"
 DONE = "done"

@@ -110,7 +110,7 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('access-manage', fn (User $user) => (bool) ($user->is_admin || $user->is_reviewer));
 
         /*
-         * Admin-only inside /manage. Successor to DbService::canAccess(), reused
+         * Admin-only inside /admin. Successor to DbService::canAccess(), reused
          * wherever admin-only is meant.
          */
         Gate::define('manage-admin', fn (User $user) => (bool) $user->is_admin);

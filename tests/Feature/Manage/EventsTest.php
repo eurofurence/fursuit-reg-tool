@@ -66,7 +66,7 @@ beforeEach(function () {
         ...$attributes,
     ]);
 
-    $this->props = fn (array $query = []) => get(route('manage.events.index', $query))
+    $this->props = fn (array $query = []) => get(route('admin.settings.events.index', $query))
         ->viewData('page')['props'];
 
     /** The complete form payload, so a test can vary one field and leave the rest valid. */
@@ -95,7 +95,7 @@ test('the list renders the audit nine columns, in order, with their labels', fun
     ($this->event)();
 
     actingAs($this->admin)
-        ->get(route('manage.events.index'))
+        ->get(route('admin.settings.events.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Events/Index')
@@ -227,7 +227,7 @@ test('the list carries no filters and defaults to starts_at descending', functio
     $newer = ($this->event)();
 
     actingAs($this->admin)
-        ->get(route('manage.events.index'))
+        ->get(route('admin.settings.events.index'))
         ->assertInertia(fn (Assert $page) => $page
             // EventResource declares ->filters([ // ]).
             ->where('filters', [])
@@ -271,7 +271,7 @@ test('sorting and paging survive the partial reload the client actually sends', 
             'X-Inertia-Partial-Component' => 'Manage/Events/Index',
             'X-Inertia-Partial-Data' => 'rows,meta,filters,sort,search',
         ])
-        ->get(route('manage.events.index', $query));
+        ->get(route('admin.settings.events.index', $query));
 
     // A partial visit answers with JSON rather than the page view, so these read the props
     // off the response directly: assertInertia only ever sees a full page load.
@@ -304,7 +304,7 @@ test('the list is not scoped to the selected event', function () {
             EventScope::SESSION_ID => $selected->id,
             EventScope::SESSION_CHOSEN => true,
         ])
-        ->get(route('manage.events.index'))
+        ->get(route('admin.settings.events.index'))
         ->assertInertia(fn (Assert $page) => $page->count('rows', 2));
 });
 
@@ -312,9 +312,9 @@ test('the row, bulk and page actions carry Filament default copy', function () {
     $event = ($this->event)();
 
     actingAs($this->admin)
-        ->get(route('manage.events.index'))
+        ->get(route('admin.settings.events.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('rows.0.url', route('manage.events.edit', $event))
+            ->where('rows.0.url', route('admin.settings.events.edit', $event))
             ->where('rows.0.actions.0.name', 'edit')
             ->where('rows.0.actions.0.label', 'Edit')
             ->where('rows.0.actions.1.label', 'Delete')
@@ -329,7 +329,7 @@ test('the row, bulk and page actions carry Filament default copy', function () {
             ->where('bulkActions.0.confirm.submit', 'Delete')
             // CreateAction default copy on ManageEvents::getHeaderActions().
             ->where('pageActions.0.label', 'New event')
-            ->where('pageActions.0.url', route('manage.events.create'))
+            ->where('pageActions.0.url', route('admin.settings.events.create'))
         );
 });
 
@@ -339,7 +339,7 @@ test('the row, bulk and page actions carry Filament default copy', function () {
 
 test('the create form ships the three hardcoded badge classes and no record', function () {
     actingAs($this->admin)
-        ->get(route('manage.events.create'))
+        ->get(route('admin.settings.events.create'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Events/Form')
@@ -366,7 +366,7 @@ test('the edit form prefills each date at the granularity its control reads', fu
     $event->forceFill(['archival_notice' => 'Historical.'])->save();
 
     actingAs($this->admin)
-        ->get(route('manage.events.edit', $event))
+        ->get(route('admin.settings.events.edit', $event))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Events/Form')
@@ -389,14 +389,14 @@ test('the edit form ships no state field, because there is nothing to ship', fun
     $event = ($this->event)();
 
     actingAs($this->admin)
-        ->get(route('manage.events.edit', $event))
+        ->get(route('admin.settings.events.edit', $event))
         ->assertInertia(fn (Assert $page) => $page->where('event', fn ($data) => ! $data->has('state')));
 });
 
 test('storing an event writes every field and flashes the stock Created toast', function () {
     actingAs($this->admin)
-        ->post(route('manage.events.store'), ($this->payload)())
-        ->assertRedirect(route('manage.events.index'))
+        ->post(route('admin.settings.events.store'), ($this->payload)())
+        ->assertRedirect(route('admin.settings.events.index'))
         ->assertSessionHas(MANAGE_EVENT_TOAST_TITLE, 'Created');
 
     $event = Event::sole();
@@ -418,16 +418,16 @@ test('archival_notice actually persists, which mass assignment never let it do',
     // so every save of it is silently dropped today. The request is the allow-list here and
     // the write goes through forceFill, so the value has to survive both create and update.
     actingAs($this->admin)
-        ->post(route('manage.events.store'), ($this->payload)(['archival_notice' => 'Archived in 2026.']))
-        ->assertRedirect(route('manage.events.index'));
+        ->post(route('admin.settings.events.store'), ($this->payload)(['archival_notice' => 'Archived in 2026.']))
+        ->assertRedirect(route('admin.settings.events.index'));
 
     $event = Event::sole();
 
     expect($event->archival_notice)->toBe('Archived in 2026.');
 
     actingAs($this->admin)
-        ->put(route('manage.events.update', $event), ($this->payload)(['archival_notice' => 'Rewritten.']))
-        ->assertRedirect(route('manage.events.index'))
+        ->put(route('admin.settings.events.update', $event), ($this->payload)(['archival_notice' => 'Rewritten.']))
+        ->assertRedirect(route('admin.settings.events.index'))
         ->assertSessionHas(MANAGE_EVENT_TOAST_TITLE, 'Saved');
 
     expect($event->fresh()->archival_notice)->toBe('Rewritten.');
@@ -438,21 +438,21 @@ test('the form offers no printing cost field, because nothing read it', function
     // it referenced a `total_revenue` attribute that never existed. A posted value must
     // not sneak back in through the request's allow-list.
     actingAs($this->admin)
-        ->post(route('manage.events.store'), ($this->payload)(['cost' => '1914.95']))
-        ->assertRedirect(route('manage.events.index'));
+        ->post(route('admin.settings.events.store'), ($this->payload)(['cost' => '1914.95']))
+        ->assertRedirect(route('admin.settings.events.index'));
 
     expect(Event::sole()->getAttribute('cost'))->toBeNull();
 });
 
 test('an unset badge class and the two optional catch dates save as null, not empty strings', function () {
     actingAs($this->admin)
-        ->post(route('manage.events.store'), ($this->payload)([
+        ->post(route('admin.settings.events.store'), ($this->payload)([
             'badge_class' => '',
             'catch_em_all_start' => '',
             'catch_em_all_end' => '',
             'archival_notice' => '',
         ]))
-        ->assertRedirect(route('manage.events.index'));
+        ->assertRedirect(route('admin.settings.events.index'));
 
     $event = Event::sole();
 
@@ -473,7 +473,7 @@ test('the required fields are required, free_badge_deadline among them', functio
 
     foreach ($required as $field) {
         actingAs($this->admin)
-            ->post(route('manage.events.store'), ($this->payload)([$field => null]))
+            ->post(route('admin.settings.events.store'), ($this->payload)([$field => null]))
             ->assertSessionHasErrors($field);
     }
 
@@ -482,14 +482,14 @@ test('the required fields are required, free_badge_deadline among them', functio
 
 test('badge_class must be one of the three options the form offers', function () {
     actingAs($this->admin)
-        ->post(route('manage.events.store'), ($this->payload)(['badge_class' => 'EF99_Badge']))
+        ->post(route('admin.settings.events.store'), ($this->payload)(['badge_class' => 'EF99_Badge']))
         ->assertSessionHasErrors('badge_class');
 
     expect(Event::count())->toBe(0);
 
     actingAs($this->admin)
-        ->post(route('manage.events.store'), ($this->payload)(['badge_class' => 'EF28_Badge']))
-        ->assertRedirect(route('manage.events.index'));
+        ->post(route('admin.settings.events.store'), ($this->payload)(['badge_class' => 'EF28_Badge']))
+        ->assertRedirect(route('admin.settings.events.index'));
 
     expect(Event::sole()->badge_class)->toBe('EF28_Badge')
         ->and(array_keys(EventController::BADGE_CLASS_OPTIONS))
@@ -502,11 +502,11 @@ test('nothing outside the form field list can round-trip through a save', functi
     $event = ($this->event)();
 
     actingAs($this->admin)
-        ->put(route('manage.events.update', $event), ($this->payload)([
+        ->put(route('admin.settings.events.update', $event), ($this->payload)([
             'id' => 999999,
             'state' => 'OPEN',
         ]))
-        ->assertRedirect(route('manage.events.index'));
+        ->assertRedirect(route('admin.settings.events.index'));
 
     expect($event->fresh()->id)->toBe($event->id)
         ->and(Event::sole()->getAttributes())->not->toHaveKey('state');
@@ -520,13 +520,13 @@ test('the order window fields are the only lever over the computed state', funct
     expect($event->state)->toBe(EventStateEnum::OPEN);
 
     actingAs($this->admin)
-        ->put(route('manage.events.update', $event), ($this->payload)([
+        ->put(route('admin.settings.events.update', $event), ($this->payload)([
             'starts_at' => now()->addDays(30)->format('Y-m-d'),
             'ends_at' => now()->addDays(35)->format('Y-m-d'),
             'order_starts_at' => now()->subDays(10)->format('Y-m-d\TH:i'),
             'order_ends_at' => now()->subDay()->format('Y-m-d\TH:i'),
         ]))
-        ->assertRedirect(route('manage.events.index'));
+        ->assertRedirect(route('admin.settings.events.index'));
 
     expect($event->fresh()->state)->toBe(EventStateEnum::CLOSED);
 });
@@ -541,14 +541,14 @@ test('an event is hard deleted, one at a time or in bulk', function () {
     $second = ($this->event)(['name' => 'Eurofurence 28', 'starts_at' => now()->subYear()]);
 
     actingAs($this->admin)
-        ->delete(route('manage.events.destroy', $first))
+        ->delete(route('admin.settings.events.destroy', $first))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_EVENT_TOAST_TITLE, 'Deleted');
 
     expect(Event::whereKey($first->id)->exists())->toBeFalse();
 
     actingAs($this->admin)
-        ->delete(route('manage.events.bulk.destroy'), ['ids' => [$second->id]])
+        ->delete(route('admin.settings.events.bulk.destroy'), ['ids' => [$second->id]])
         ->assertRedirect()
         ->assertSessionHas(MANAGE_EVENT_TOAST_TITLE, 'Deleted');
 
@@ -570,7 +570,7 @@ test('deleting an event that still owns fursuits is refused, single and bulk', f
     $badge = Badge::factory()->create(['fursuit_id' => $fursuit->id]);
 
     actingAs($this->admin)
-        ->delete(route('manage.events.destroy', $event))
+        ->delete(route('admin.settings.events.destroy', $event))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_EVENT_TOAST_TITLE, 'Nothing was deleted');
 
@@ -579,7 +579,7 @@ test('deleting an event that still owns fursuits is refused, single and bulk', f
         ->and(Badge::withTrashed()->whereKey($badge->id)->exists())->toBeTrue();
 
     actingAs($this->admin)
-        ->delete(route('manage.events.bulk.destroy'), ['ids' => [$event->id]])
+        ->delete(route('admin.settings.events.bulk.destroy'), ['ids' => [$event->id]])
         ->assertRedirect()
         ->assertSessionHas(MANAGE_EVENT_TOAST_TITLE, 'Nothing was deleted');
 
@@ -595,7 +595,7 @@ test('a soft-deleted fursuit still blocks the delete', function () {
     $fursuit->delete();
 
     actingAs($this->admin)
-        ->delete(route('manage.events.destroy', $event))
+        ->delete(route('admin.settings.events.destroy', $event))
         ->assertSessionHas(MANAGE_EVENT_TOAST_TITLE, 'Nothing was deleted');
 
     expect(Event::whereKey($event->id)->exists())->toBeTrue();
@@ -608,14 +608,14 @@ test('a bulk selection spanning an empty and a populated event deletes neither',
     Fursuit::factory()->create(['event_id' => $populated->id]);
 
     actingAs($this->admin)
-        ->delete(route('manage.events.bulk.destroy'), ['ids' => [$empty->id, $populated->id]])
+        ->delete(route('admin.settings.events.bulk.destroy'), ['ids' => [$empty->id, $populated->id]])
         ->assertSessionHas(MANAGE_EVENT_TOAST_TITLE, 'Nothing was deleted');
 
     expect(Event::count())->toBe(2);
 });
 
-test('DELETE /admin/events/bulk is not read as a record id', function () {
-    expect(route('manage.events.bulk.destroy', absolute: false))->toBe('/admin/events/bulk');
+test('DELETE /admin/settings/events/bulk is not read as a record id', function () {
+    expect(route('admin.settings.events.bulk.destroy', absolute: false))->toBe('/admin/settings/events/bulk');
 });
 
 test('bulk delete refuses an unauthorized caller even when the ids match nothing', function () {
@@ -624,11 +624,11 @@ test('bulk delete refuses an unauthorized caller even when the ids match nothing
     ($this->event)();
 
     actingAs($this->reviewer)
-        ->delete(route('manage.events.bulk.destroy'), ['ids' => [999999]])
+        ->delete(route('admin.settings.events.bulk.destroy'), ['ids' => [999999]])
         ->assertForbidden();
 
     actingAs($this->admin)
-        ->delete(route('manage.events.bulk.destroy'), ['ids' => [999999]])
+        ->delete(route('admin.settings.events.bulk.destroy'), ['ids' => [999999]])
         ->assertRedirect();
 
     expect(Event::count())->toBe(1);
@@ -644,13 +644,13 @@ test('every ability belongs to an admin, so a reviewer is shut out of the whole 
 
     actingAs($this->reviewer);
 
-    get(route('manage.events.index'))->assertForbidden();
-    get(route('manage.events.create'))->assertForbidden();
-    post(route('manage.events.store'), ($this->payload)())->assertForbidden();
-    get(route('manage.events.edit', $event))->assertForbidden();
-    put(route('manage.events.update', $event), ($this->payload)())->assertForbidden();
-    delete(route('manage.events.destroy', $event))->assertForbidden();
-    delete(route('manage.events.bulk.destroy'), ['ids' => [$event->id]])->assertForbidden();
+    get(route('admin.settings.events.index'))->assertForbidden();
+    get(route('admin.settings.events.create'))->assertForbidden();
+    post(route('admin.settings.events.store'), ($this->payload)())->assertForbidden();
+    get(route('admin.settings.events.edit', $event))->assertForbidden();
+    put(route('admin.settings.events.update', $event), ($this->payload)())->assertForbidden();
+    delete(route('admin.settings.events.destroy', $event))->assertForbidden();
+    delete(route('admin.settings.events.bulk.destroy'), ['ids' => [$event->id]])->assertForbidden();
 
     expect(Event::count())->toBe(1)
         ->and(Event::sole()->name)->toBe('Eurofurence 29');
@@ -660,7 +660,7 @@ test('an unauthorised write is a 403 rather than a 422 about its payload', funct
     // The gate lives in the FormRequest, which runs before validation. Gating in the
     // controller body would answer a reviewer with a complaint about their date fields.
     actingAs($this->reviewer)
-        ->post(route('manage.events.store'), ['name' => ''])
+        ->post(route('admin.settings.events.store'), ['name' => ''])
         ->assertForbidden()
         ->assertSessionHasNoErrors();
 });
@@ -669,16 +669,27 @@ test('the policy is registered', function () {
     expect(Gate::getPolicyFor(Event::class))->toBeInstanceOf(EventPolicy::class);
 });
 
-test('the rail links to the module for an admin and hides it from a reviewer', function () {
+test('the settings submenu links to the module for an admin and hides it from a reviewer', function () {
+    /*
+     * Events is a Settings pane rather than a rail entry: it is edited a handful of times per
+     * convention and every field on it configures the convention. So the visibility question
+     * the rail used to answer is now answered by the submenu, from the same policy.
+     */
     ($this->event)();
 
-    $labels = fn (User $user) => actingAs($user)->get(route('manage.dashboard'))
-        ->viewData('page')['props']['manageNav'];
+    $panes = fn (User $user) => collect(
+        actingAs($user)->get(route('admin.settings.general'))
+            ->viewData('page')['props']['manageSettingsNav']
+    );
 
-    $has = fn ($groups) => collect($groups)
+    expect($panes($this->admin)->pluck('key'))->toContain('events')
+        ->and($panes($this->reviewer)->pluck('key'))->not->toContain('events');
+
+    // And nothing left an Events entry behind in the rail.
+    $rail = collect(actingAs($this->admin)->get(route('admin.dashboard'))
+        ->viewData('page')['props']['manageNav'])
         ->flatMap(fn ($group) => $group['items'])
-        ->contains(fn ($item) => $item['label'] === 'Events');
+        ->pluck('label');
 
-    expect($has($labels($this->admin)))->toBeTrue()
-        ->and($has($labels($this->reviewer)))->toBeFalse();
+    expect($rail)->not->toContain('Events');
 });

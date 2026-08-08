@@ -159,7 +159,7 @@ class DashboardController extends Controller
                 'description' => 'Awaiting review',
                 'icon' => 'clock',
                 'tone' => $pending > 0 ? Status::WARN : Status::OK,
-                'url' => route('manage.fursuits.index'),
+                'url' => route('admin.fursuits.index'),
             ],
         ];
     }

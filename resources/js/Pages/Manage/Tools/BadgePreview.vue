@@ -44,7 +44,7 @@ const rows = [
 
 const form = useForm({ custom_id: props.customId ?? '' });
 
-const submit = () => form.post(route('manage.tools.badge-preview.lookup'), { preserveScroll: true });
+const submit = () => form.post(route('admin.tools.badge-preview.lookup'), { preserveScroll: true });
 </script>
 
 <template>

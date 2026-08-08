@@ -176,7 +176,7 @@ class FursuitController extends Controller
         // Filament's stock EditRecord toast; this resource declares none of its own.
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.fursuits.show', $fursuit);
+        return redirect()->route('admin.fursuits.show', $fursuit);
     }
 
     /**
@@ -191,7 +191,7 @@ class FursuitController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('manage.fursuits.index');
+        return redirect()->route('admin.fursuits.index');
     }
 
     /**
@@ -203,6 +203,45 @@ class FursuitController extends Controller
      * used by the tests, or a local dev disk - falls back to a plain URL rather than
      * taking the page down.
      */
+    /**
+     * The photo the panel shows for a fursuit: the gallery webp, not the print master.
+     *
+     * The master is archival - FursuitImageService stores it print-sized, and well over a
+     * megabyte at 2040x2720 is normal - so the review queue was pulling a print file over the
+     * wire to fill a 700px column, once per record, hundreds of records in a sitting.
+     * GenerateFursuitWebpJob renders the 1080x1920 variant the gallery uses the moment a photo
+     * is submitted or replaced (FursuitObserver), so on any record a reviewer sees it already
+     * exists.
+     *
+     * It falls back to the master rather than to nothing, because the variant is derived data:
+     * a queue backlog, or a fursuit imported before the renders existed, must still show a
+     * picture to judge.
+     */
+    public static function previewUrl(?Fursuit $fursuit): ?string
+    {
+        if ($fursuit === null) {
+            return null;
+        }
+
+        return Fursuit::variantUrl($fursuit->image_webp) ?? self::imageUrl($fursuit->image);
+    }
+
+    /**
+     * The same, at grid size: the 500px thumbnail behind a list row.
+     *
+     * A table of fifty rows used to sign and serve fifty print masters.
+     */
+    public static function thumbUrl(?Fursuit $fursuit): ?string
+    {
+        if ($fursuit === null) {
+            return null;
+        }
+
+        return Fursuit::variantUrl($fursuit->image_thumb)
+            ?? Fursuit::variantUrl($fursuit->image_webp)
+            ?? self::imageUrl($fursuit->image);
+    }
+
     public static function imageUrl(?string $path): ?string
     {
         if ($path === null || $path === '') {
@@ -307,16 +346,18 @@ class FursuitController extends Controller
                 'species_name' => $fursuit->species?->name,
                 'status' => Status::fursuit($fursuit->status),
                 'name' => $fursuit->name,
-                'image' => self::imageUrl($fursuit->image),
+                // The 500px gallery thumbnail. A row does not need the print master, and fifty
+                // rows of them was fifty signed multi-megabyte objects per page load.
+                'image' => self::thumbUrl($fursuit),
                 'published' => (bool) $fursuit->published,
                 'catch_em_all' => (bool) $fursuit->catch_em_all,
                 'publication_blocked' => $fursuit->isPublicationBlocked(),
             ])
-            ->recordUrl(fn (Fursuit $fursuit) => route('manage.fursuits.show', $fursuit))
+            ->recordUrl(fn (Fursuit $fursuit) => route('admin.fursuits.show', $fursuit))
             // ViewAction only. EditAction sits commented out in the resource (audit
             // 4.3), and the edit page is reached from the view page instead.
             ->rowActions(fn (Fursuit $fursuit) => [
-                Action::link('view', 'View', route('manage.fursuits.show', $fursuit))->icon('eye'),
+                Action::link('view', 'View', route('admin.fursuits.show', $fursuit))->icon('eye'),
             ])
             // FursuitResource declares no bulk actions, and the create header action is
             // hidden in practice because the policy refuses it.
@@ -325,7 +366,7 @@ class FursuitController extends Controller
             // backlog record page by record page is the thing the queue page exists to
             // stop.
             ->pageActions([
-                Action::link('review', 'Review queue', route('manage.fursuits.review'))->icon('shield-check'),
+                Action::link('review', 'Review queue', route('admin.fursuits.review'))->icon('shield-check'),
             ])
             ->toArray($request);
     }
@@ -383,7 +424,7 @@ class FursuitController extends Controller
             'id' => $fursuit->id,
             'name' => $fursuit->name,
             'species' => $fursuit->species?->name,
-            'image' => self::imageUrl($fursuit->image),
+            'image' => self::previewUrl($fursuit),
             'published' => (bool) $fursuit->published,
             'catch_em_all' => (bool) $fursuit->catch_em_all,
             'status' => Status::fursuit($fursuit->status),
@@ -416,7 +457,7 @@ class FursuitController extends Controller
              */
             'revisions' => $fursuit->submissionRevisions()->count(),
             'editUrl' => $viewer !== null && Gate::forUser($viewer)->allows('update', $fursuit)
-                ? route('manage.fursuits.edit', $fursuit)
+                ? route('admin.fursuits.edit', $fursuit)
                 : null,
         ];
     }
@@ -451,7 +492,7 @@ class FursuitController extends Controller
 
         return array_values(array_filter([
             $canApprove
-                ? Action::post('approve', 'Approve', route('manage.fursuits.approve', $fursuit))
+                ? Action::post('approve', 'Approve', route('admin.fursuits.approve', $fursuit))
                     ->icon('circle-check')
                     ->tone(Status::OK)
                     // A bare requiresConfirmation(): the label as the heading, the
@@ -460,7 +501,7 @@ class FursuitController extends Controller
                 : null,
 
             $canReject
-                ? Action::post('reject', 'Reject', route('manage.fursuits.reject', $fursuit))
+                ? Action::post('reject', 'Reject', route('admin.fursuits.reject', $fursuit))
                     ->icon('circle-x')
                     ->tone(Status::DANGER)
                     ->confirmDefault()
@@ -482,7 +523,7 @@ class FursuitController extends Controller
                 : null,
 
             $canBlock
-                ? Action::post('block-publication', 'Block from gallery', route('manage.fursuits.block-publication', $fursuit))
+                ? Action::post('block-publication', 'Block from gallery', route('admin.fursuits.block-publication', $fursuit))
                     ->icon('eye-off')
                     ->tone(Status::WARN)
                     ->confirm(
@@ -508,7 +549,7 @@ class FursuitController extends Controller
                 : null,
 
             $fursuit->isPublicationBlocked()
-                ? Action::delete('unblock-publication', 'Lift gallery block', route('manage.fursuits.unblock-publication', $fursuit))
+                ? Action::delete('unblock-publication', 'Lift gallery block', route('admin.fursuits.unblock-publication', $fursuit))
                     ->icon('eye')
                     ->tone(Status::INFO)
                     ->confirm(
@@ -519,7 +560,7 @@ class FursuitController extends Controller
                 : null,
 
             $status instanceof Rejected
-                ? Action::post('approve-rejected', 'Approve (Rejected)', route('manage.fursuits.approve-rejected', $fursuit))
+                ? Action::post('approve-rejected', 'Approve (Rejected)', route('admin.fursuits.approve-rejected', $fursuit))
                     ->icon('circle-check')
                     ->tone(Status::OK)
                     ->confirm(
@@ -531,7 +572,7 @@ class FursuitController extends Controller
 
             // No visibility predicate and no confirmation, as today: it sends mail
             // without changing state and without checking the current state.
-            Action::post('send-notification', 'Send Notification', route('manage.fursuits.notify', $fursuit))
+            Action::post('send-notification', 'Send Notification', route('admin.fursuits.notify', $fursuit))
                 ->icon('mail')
                 ->tone(Status::INFO)
                 ->fields([
@@ -550,7 +591,7 @@ class FursuitController extends Controller
                     ],
                 ]),
 
-            Action::link('next', 'Next Fursuit', route('manage.fursuits.next', $fursuit))
+            Action::link('next', 'Next Fursuit', route('admin.fursuits.next', $fursuit))
                 ->icon('arrow-right')
                 ->tone(Status::INFO),
 
@@ -559,7 +600,7 @@ class FursuitController extends Controller
              * exist. A reviewer who lands on a record from the list should not have to
              * work the rest of the afternoon through record pages.
              */
-            Action::link('review', 'Review in queue', route('manage.fursuits.review.show', $fursuit))
+            Action::link('review', 'Review in queue', route('admin.fursuits.review.show', $fursuit))
                 ->icon('shield-check')
                 ->tone(Status::INFO),
 
@@ -571,7 +612,7 @@ class FursuitController extends Controller
              * decides who sees it.
              */
             Gate::forUser($viewer)->allows('update', $fursuit)
-                ? Action::link('edit', 'Edit', route('manage.fursuits.edit', $fursuit))->icon('pencil')
+                ? Action::link('edit', 'Edit', route('admin.fursuits.edit', $fursuit))->icon('pencil')
                 : null,
         ]));
     }
@@ -671,7 +712,9 @@ class FursuitController extends Controller
                 'statusLabel' => Status::fursuit($fursuit->status),
                 'name' => $fursuit->name,
                 'image' => $fursuit->image,
-                'imageUrl' => self::imageUrl($fursuit->image),
+                // The preview beside the upload field, so replacing a photo does not first
+                // download a print file.
+                'imageUrl' => self::previewUrl($fursuit),
                 'published' => (bool) $fursuit->published,
                 'catch_em_all' => (bool) $fursuit->catch_em_all,
             ],
@@ -681,9 +724,9 @@ class FursuitController extends Controller
              * cascades it to the fursuit's badges.
              */
             'actions' => array_map(fn (Action $action) => $action->toArray(), array_values(array_filter([
-                Action::link('view', 'View', route('manage.fursuits.show', $fursuit))->icon('eye'),
+                Action::link('view', 'View', route('admin.fursuits.show', $fursuit))->icon('eye'),
                 Gate::forUser($reviewer)->allows('delete', $fursuit)
-                    ? Action::delete('delete', 'Delete', route('manage.fursuits.destroy', $fursuit))
+                    ? Action::delete('delete', 'Delete', route('admin.fursuits.destroy', $fursuit))
                         ->icon('trash-2')
                         ->tone(Status::DANGER)
                         ->confirmDelete(self::MODEL_LABEL)

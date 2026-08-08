@@ -104,7 +104,7 @@ beforeEach(function () {
 
     // Every read below is an admin read; the access cases below act for themselves.
     $this->props = fn (array $query = []) => actingAs($this->admin)
-        ->get(route('manage.print-jobs.index', $query))
+        ->get(route('admin.print-jobs.index', $query))
         ->viewData('page')['props'];
 });
 
@@ -114,15 +114,15 @@ beforeEach(function () {
  */
 
 test('a guest is redirected to login', function () {
-    get(route('manage.print-jobs.index'))->assertRedirect(route('login'));
+    get(route('admin.print-jobs.index'))->assertRedirect(route('login'));
 });
 
 test('an attendee cannot reach the print-job list at all', function () {
-    actingAs($this->attendee)->get(route('manage.print-jobs.index'))->assertForbidden();
+    actingAs($this->attendee)->get(route('admin.print-jobs.index'))->assertForbidden();
 });
 
 test('a reviewer cannot reach the print-job list', function () {
-    actingAs($this->reviewer)->get(route('manage.print-jobs.index'))->assertForbidden();
+    actingAs($this->reviewer)->get(route('admin.print-jobs.index'))->assertForbidden();
 });
 
 /* Columns. */
@@ -130,7 +130,7 @@ test('a reviewer cannot reach the print-job list', function () {
 test('the list renders the twelve columns in order, with their labels and types', function () {
     ($this->job)();
 
-    actingAs($this->admin)->get(route('manage.print-jobs.index'))
+    actingAs($this->admin)->get(route('admin.print-jobs.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/PrintJobs/Index')
@@ -232,7 +232,7 @@ test('a null priority or retry count no longer takes the table down', function (
         $job->setAttribute('retry_count', null);
     });
 
-    actingAs($this->admin)->get(route('manage.print-jobs.index'))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.print-jobs.index'))->assertSuccessful();
 
     expect(($this->props)()['rows'][0]['cells'])->toMatchArray([
         'priority' => ['label' => 'None', 'tone' => 'idle', 'icon' => null],
@@ -263,9 +263,9 @@ test('the batch cell names the run and the sequence in it', function () {
     $cell = ($this->props)()['rows'][0]['cells']['batch'];
 
     expect($cell['display'])->toBe('Friday morning #4')
-        // batchCell() falls back to plain text while manage.print-batches.show is missing.
+        // batchCell() falls back to plain text while admin.print-batches.show is missing.
         // Phase 7 shipped that module, so the cell is a live link now and must stay one.
-        ->and($cell['url'])->toBe(route('manage.print-batches.show', $batch));
+        ->and($cell['url'])->toBe(route('admin.print-batches.show', $batch));
 });
 
 /* Sorting, searching and paging, through the visit the client actually sends. */
@@ -283,7 +283,7 @@ test('the list opens newest first and flips through the partial reload the clien
             'X-Inertia-Partial-Component' => 'Manage/PrintJobs/Index',
             'X-Inertia-Partial-Data' => 'rows,meta,filters,sort,search',
         ])
-        ->get(route('manage.print-jobs.index', $query));
+        ->get(route('admin.print-jobs.index', $query));
 
     $opening = $partial([])->assertSuccessful();
 
@@ -418,7 +418,7 @@ test('the Retry confirm copy is the bare requiresConfirmation copy, verbatim', f
         ->and($retry['method'])->toBe('post')
         ->and($retry['icon'])->toBe('refresh-cw')
         ->and($retry['tone'])->toBe('warn')
-        ->and($retry['url'])->toBe(route('manage.print-jobs.retry', $job))
+        ->and($retry['url'])->toBe(route('admin.print-jobs.retry', $job))
         ->and($retry['confirm'])->toBe([
             'heading' => 'Retry',
             'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
@@ -436,7 +436,7 @@ test('Retry queues a new pending job and leaves the original failed', function (
     ]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-jobs.retry', $job))
+        ->post(route('admin.print-jobs.retry', $job))
         ->assertRedirect();
 
     $retry = PrintJob::where('retry_of', $job->id)->firstOrFail();
@@ -460,7 +460,7 @@ test('Retry flashes the audit notification title', function () {
     // PrintJobResource's only notification: success, title only, no body.
     $job = ($this->job)(['status' => PrintJobStatusEnum::Failed]);
 
-    $response = actingAs($this->admin)->post(route('manage.print-jobs.retry', $job));
+    $response = actingAs($this->admin)->post(route('admin.print-jobs.retry', $job));
 
     $retry = PrintJob::where('retry_of', $job->id)->firstOrFail();
 
@@ -471,7 +471,7 @@ test('Retry refuses a job that cannot be retried', function () {
     $job = ($this->job)(['status' => PrintJobStatusEnum::Printed]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-jobs.retry', $job))
+        ->post(route('admin.print-jobs.retry', $job))
         ->assertSessionHas(MANAGE_PRINT_JOB_TOAST, 'Nothing was retried');
 
     expect(PrintJob::where('retry_of', $job->id)->count())->toBe(0);
@@ -480,7 +480,7 @@ test('Retry refuses a job that cannot be retried', function () {
 test('Retry is an authorized POST and nothing else', function () {
     $job = ($this->job)(['status' => PrintJobStatusEnum::Failed]);
 
-    actingAs($this->reviewer)->post(route('manage.print-jobs.retry', $job))->assertForbidden();
+    actingAs($this->reviewer)->post(route('admin.print-jobs.retry', $job))->assertForbidden();
 
     // There is no GET form of it, so it cannot be reached by a pasted link or a preload.
     actingAs($this->admin)->get('/admin/print-jobs/'.$job->id.'/retry')->assertStatus(405);
@@ -491,9 +491,9 @@ test('Retry is an authorized POST and nothing else', function () {
 test('no page load and no poll ever queues a card', function () {
     $job = ($this->job)(['status' => PrintJobStatusEnum::Failed]);
 
-    actingAs($this->admin)->get(route('manage.print-jobs.index'))->assertSuccessful();
-    actingAs($this->admin)->get(route('manage.print-jobs.show', $job))->assertSuccessful();
-    actingAs($this->admin)->get(route('manage.print-jobs.edit', $job))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.print-jobs.index'))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.print-jobs.show', $job))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.print-jobs.edit', $job))->assertSuccessful();
     // The poll's own visit, and the printer scope that used to be a query-string side
     // effect on this very GET.
     ($this->props)(['filter' => ['printer' => $this->printer->id]]);
@@ -510,7 +510,7 @@ test('no page load and no poll ever queues a card', function () {
 test('the status picker offers only the edges the machine allows', function () {
     $job = ($this->job)(['status' => PrintJobStatusEnum::Pending]);
 
-    actingAs($this->admin)->get(route('manage.print-jobs.edit', $job))
+    actingAs($this->admin)->get(route('admin.print-jobs.edit', $job))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/PrintJobs/Form')
@@ -532,7 +532,7 @@ test('the status picker never offers a state only an agent can write', function 
     foreach (PrintJobStatusEnum::cases() as $case) {
         $job = ($this->job)(['status' => $case]);
 
-        $offered = collect(actingAs($this->admin)->get(route('manage.print-jobs.edit', $job))
+        $offered = collect(actingAs($this->admin)->get(route('admin.print-jobs.edit', $job))
             ->viewData('page')['props']['statusOptions'])
             ->pluck('value')
             // The picker's resting position is the state the record is in, which means
@@ -562,11 +562,11 @@ test('a failed job is put back in the queue rather than left Retrying', function
         'lease_expires_at' => now()->subMinute(),
     ]);
 
-    expect(collect(actingAs($this->admin)->get(route('manage.print-jobs.edit', $job))
+    expect(collect(actingAs($this->admin)->get(route('admin.print-jobs.edit', $job))
         ->viewData('page')['props']['statusOptions'])->pluck('value')->all())
         ->toBe(['failed', 'cancelled', 'pending']);
 
-    actingAs($this->admin)->put(route('manage.print-jobs.update', $job), [
+    actingAs($this->admin)->put(route('admin.print-jobs.update', $job), [
         'printer_id' => $this->printer->id,
         'type' => 'badge',
         'status' => 'pending',
@@ -591,7 +591,7 @@ test('a claimed job sent back to Pending drops its lease and its machine', funct
     $job->claim($machine);
     $this->printer->update(['current_job_id' => $job->id]);
 
-    actingAs($this->admin)->put(route('manage.print-jobs.update', $job), [
+    actingAs($this->admin)->put(route('admin.print-jobs.update', $job), [
         'printer_id' => $this->printer->id,
         'type' => 'badge',
         'status' => 'pending',
@@ -611,7 +611,7 @@ test('a status the machine would refuse is rejected by the request', function ()
     $job = ($this->job)(['status' => PrintJobStatusEnum::Pending]);
 
     actingAs($this->admin)
-        ->put(route('manage.print-jobs.update', $job), [
+        ->put(route('admin.print-jobs.update', $job), [
             'printer_id' => $this->printer->id,
             'type' => 'badge',
             'status' => 'printed',
@@ -637,14 +637,14 @@ test('marking a job printed from admin promotes the badge and recalculates the b
     $this->printer->update(['current_job_id' => $job->id]);
 
     actingAs($this->admin)
-        ->put(route('manage.print-jobs.update', $job), [
+        ->put(route('admin.print-jobs.update', $job), [
             'printer_id' => $this->printer->id,
             'type' => 'badge',
             'status' => 'printed',
             'priority' => 1,
             'retry_count' => 0,
         ])
-        ->assertRedirect(route('manage.print-jobs.show', $job))
+        ->assertRedirect(route('admin.print-jobs.show', $job))
         ->assertSessionHas(MANAGE_PRINT_JOB_TOAST, 'Saved');
 
     $job->refresh();
@@ -667,7 +667,7 @@ test('marking a job failed from admin pauses its batch the way the agent does', 
     ]);
 
     actingAs($this->admin)
-        ->put(route('manage.print-jobs.update', $job), [
+        ->put(route('admin.print-jobs.update', $job), [
             'printer_id' => $this->printer->id,
             'type' => 'badge',
             'status' => 'failed',
@@ -687,7 +687,7 @@ test('saving without touching the status leaves the job where it is', function (
     $job = ($this->job)(['status' => PrintJobStatusEnum::Pending, 'priority' => 1]);
 
     actingAs($this->admin)
-        ->put(route('manage.print-jobs.update', $job), [
+        ->put(route('admin.print-jobs.update', $job), [
             'printer_id' => $this->printer->id,
             'type' => 'badge',
             'status' => 'pending',
@@ -708,8 +708,8 @@ test('saving without touching the status leaves the job where it is', function (
 test('a reviewer cannot edit a print job', function () {
     $job = ($this->job)();
 
-    actingAs($this->reviewer)->get(route('manage.print-jobs.edit', $job))->assertForbidden();
-    actingAs($this->reviewer)->put(route('manage.print-jobs.update', $job), [
+    actingAs($this->reviewer)->get(route('admin.print-jobs.edit', $job))->assertForbidden();
+    actingAs($this->reviewer)->put(route('admin.print-jobs.update', $job), [
         'printer_id' => $this->printer->id,
         'type' => 'badge',
         'status' => 'pending',
@@ -724,7 +724,7 @@ test('a badge job cannot be created without a batch', function () {
     $badge = ($this->badge)();
 
     actingAs($this->admin)
-        ->post(route('manage.print-jobs.store'), [
+        ->post(route('admin.print-jobs.store'), [
             'printer_id' => $this->printer->id,
             'type' => 'badge',
             'status' => 'pending',
@@ -743,7 +743,7 @@ test('a created badge job joins the end of its batch and updates the counters', 
     ($this->job)(['print_batch_id' => $batch->id, 'sequence' => 1]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-jobs.store'), [
+        ->post(route('admin.print-jobs.store'), [
             'printer_id' => $this->printer->id,
             'print_batch_id' => $batch->id,
             'type' => 'badge',
@@ -767,7 +767,7 @@ test('a created job always starts pending, whatever the request asks for', funct
     $badge = ($this->badge)();
 
     actingAs($this->admin)
-        ->post(route('manage.print-jobs.store'), [
+        ->post(route('admin.print-jobs.store'), [
             'printer_id' => $this->printer->id,
             'type' => 'receipt',
             'status' => 'printed',
@@ -784,7 +784,7 @@ test('the receipt type is written as the enum, never as a raw string', function 
     // to a PrintJobStatusEnum. Nothing in this module does.
     $badge = ($this->badge)();
 
-    actingAs($this->admin)->post(route('manage.print-jobs.store'), [
+    actingAs($this->admin)->post(route('admin.print-jobs.store'), [
         'printer_id' => $this->printer->id,
         'type' => PrintJobTypeEnum::Receipt->value,
         'status' => 'pending',
@@ -817,8 +817,8 @@ test('deleting the last outstanding job lets its batch finish', function () {
 
     expect($batch->fresh()->status)->toBe(PrintBatchStatusEnum::Paused);
 
-    actingAs($this->admin)->delete(route('manage.print-jobs.destroy', $failed))
-        ->assertRedirect(route('manage.print-jobs.index'));
+    actingAs($this->admin)->delete(route('admin.print-jobs.destroy', $failed))
+        ->assertRedirect(route('admin.print-jobs.index'));
 
     expect($batch->fresh()->status)->toBe(PrintBatchStatusEnum::Completed)
         ->and($batch->fresh()->total_jobs)->toBe(1)
@@ -841,7 +841,7 @@ test('cancelling the last outstanding job lets its batch finish', function () {
     $failed->claim(Machine::factory()->create());
     $failed->markFailed('Ribbon out');
 
-    actingAs($this->admin)->put(route('manage.print-jobs.update', $failed), [
+    actingAs($this->admin)->put(route('admin.print-jobs.update', $failed), [
         'printer_id' => $this->printer->id,
         'type' => 'badge',
         'status' => 'cancelled',
@@ -860,16 +860,16 @@ test('a job a machine is holding cannot be deleted', function () {
     $job->claim(Machine::factory()->create());
 
     actingAs($this->admin)
-        ->from(route('manage.print-jobs.index'))
-        ->delete(route('manage.print-jobs.destroy', $job))
-        ->assertRedirect(route('manage.print-jobs.index'))
+        ->from(route('admin.print-jobs.index'))
+        ->delete(route('admin.print-jobs.destroy', $job))
+        ->assertRedirect(route('admin.print-jobs.index'))
         ->assertSessionHas(MANAGE_PRINT_JOB_TOAST, 'Nothing was deleted');
 
     expect(PrintJob::whereKey($job->id)->exists())->toBeTrue();
 
     actingAs($this->admin)
-        ->from(route('manage.print-jobs.index'))
-        ->delete(route('manage.print-jobs.bulk.destroy'), ['ids' => [$job->id]])
+        ->from(route('admin.print-jobs.index'))
+        ->delete(route('admin.print-jobs.bulk.destroy'), ['ids' => [$job->id]])
         ->assertSessionHas(MANAGE_PRINT_JOB_TOAST, 'Nothing was deleted');
 
     expect(PrintJob::whereKey($job->id)->exists())->toBeTrue();
@@ -885,8 +885,8 @@ test('deleting a badge last print job hands editing back to its owner', function
 
     $job = ($this->job)(['printable_id' => $badge->id]);
 
-    actingAs($this->admin)->delete(route('manage.print-jobs.destroy', $job))
-        ->assertRedirect(route('manage.print-jobs.index'));
+    actingAs($this->admin)->delete(route('admin.print-jobs.destroy', $job))
+        ->assertRedirect(route('admin.print-jobs.index'));
 
     expect($badge->fresh()->printing_locked_at)->toBeNull();
 });
@@ -903,8 +903,8 @@ test('a badge that still has a card or a queued job stays locked', function () {
 
     $doomed = ($this->job)(['printable_id' => $badge->id]);
 
-    actingAs($this->admin)->delete(route('manage.print-jobs.destroy', $doomed))
-        ->assertRedirect(route('manage.print-jobs.index'));
+    actingAs($this->admin)->delete(route('admin.print-jobs.destroy', $doomed))
+        ->assertRedirect(route('admin.print-jobs.index'));
 
     expect($badge->fresh()->printing_locked_at)->not->toBeNull()
         ->and(PrintJob::whereKey($printed->id)->exists())->toBeTrue();
@@ -923,8 +923,8 @@ test('deleting a job recalculates its batch counters', function () {
     expect($batch->fresh()->total_jobs)->toBe(2)->and($batch->fresh()->failed_count)->toBe(1);
 
     actingAs($this->admin)
-        ->delete(route('manage.print-jobs.destroy', $doomed))
-        ->assertRedirect(route('manage.print-jobs.index'))
+        ->delete(route('admin.print-jobs.destroy', $doomed))
+        ->assertRedirect(route('admin.print-jobs.index'))
         ->assertSessionHas(MANAGE_PRINT_JOB_TOAST, 'Deleted');
 
     expect($batch->fresh()->total_jobs)->toBe(1)
@@ -944,7 +944,7 @@ test('the bulk delete recalculates every batch it touched', function () {
     $second->recalculateCounters();
 
     actingAs($this->admin)
-        ->delete(route('manage.print-jobs.bulk.destroy'), ['ids' => [$a->id, $b->id]])
+        ->delete(route('admin.print-jobs.bulk.destroy'), ['ids' => [$a->id, $b->id]])
         ->assertSessionHas(MANAGE_PRINT_JOB_TOAST, 'Deleted');
 
     expect($first->fresh()->total_jobs)->toBe(0)
@@ -966,7 +966,7 @@ test('the bulk delete carries Filament default copy and is admin only', function
         ]);
 
     actingAs($this->reviewer)
-        ->delete(route('manage.print-jobs.bulk.destroy'), ['ids' => [PrintJob::first()->id]])
+        ->delete(route('admin.print-jobs.bulk.destroy'), ['ids' => [PrintJob::first()->id]])
         ->assertForbidden();
 
     expect(PrintJob::count())->toBe(1);
@@ -974,11 +974,11 @@ test('the bulk delete carries Filament default copy and is admin only', function
 
 /* Pages. */
 
-test('the view page renders the record read-only with an Edit header action', function () {
+test('the view page renders the record read-only with Back to batch and Edit', function () {
     $batch = PrintBatch::factory()->create(['name' => 'Friday morning', 'printer_id' => $this->printer->id]);
     $job = ($this->job)(['print_batch_id' => $batch->id, 'sequence' => 2]);
 
-    actingAs($this->admin)->get(route('manage.print-jobs.show', $job))
+    actingAs($this->admin)->get(route('admin.print-jobs.show', $job))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/PrintJobs/Show')
@@ -986,6 +986,21 @@ test('the view page renders the record read-only with an Edit header action', fu
             ->where('job.printer', 'Zebra 1')
             ->where('job.batch', 'Friday morning')
             ->where('job.sequence', 2)
+            ->where('actions.0.name', 'batch')
+            ->where('actions.0.url', route('admin.print-batches.show', $batch))
+            ->where('actions.1.name', 'edit')
+            ->count('actions', 2)
+        );
+});
+
+// The queue is reached through a batch now, so the one card that has no batch must not be
+// offered a way back to one.
+test('an unbatched card gets no Back to batch action', function () {
+    $job = ($this->job)(['print_batch_id' => null]);
+
+    actingAs($this->admin)->get(route('admin.print-jobs.show', $job))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
             ->where('actions.0.name', 'edit')
             ->count('actions', 1)
         );
@@ -994,7 +1009,7 @@ test('the view page renders the record read-only with an Edit header action', fu
 test('the edit page carries View and Delete with Filament delete copy', function () {
     $job = ($this->job)();
 
-    actingAs($this->admin)->get(route('manage.print-jobs.edit', $job))
+    actingAs($this->admin)->get(route('admin.print-jobs.edit', $job))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('actions.0.name', 'view')
@@ -1014,9 +1029,9 @@ test('the list header offers the create page', function () {
 
     expect($actions)->toHaveCount(1)
         ->and($actions[0]['label'])->toBe('New print job')
-        ->and($actions[0]['url'])->toBe(route('manage.print-jobs.create'));
+        ->and($actions[0]['url'])->toBe(route('admin.print-jobs.create'));
 
-    actingAs($this->admin)->get(route('manage.print-jobs.create'))
+    actingAs($this->admin)->get(route('admin.print-jobs.create'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/PrintJobs/Form')

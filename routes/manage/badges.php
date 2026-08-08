@@ -14,10 +14,8 @@ use Illuminate\Support\Facades\Route;
  * `bulk/print`: the badge print pipeline lands in phase 7 against BadgePrintQueue, so the
  * whole print path is reviewed in one PR (plan part 3).
  *
- * `corrupted-totals` is the read-only money report plan 2.10 #3 asks phase 4 to ship. It
- * is declared before `{badge}` for the usual reason: otherwise /admin/badges/corrupted-totals
- * binds "corrupted-totals" as a badge id and 404s. The parameter is constrained to digits
- * as well, so a stray word never reaches the binder.
+ * The `{badge}` parameter is constrained to digits, so a stray word never reaches the
+ * binder and a literal segment can never bind as a record id.
  *
  * The two print endpoints land in phase 7 (plan part 3), against `BadgePrintQueue`. Both
  * are POSTs on BadgePrintController, never GETs and never a side effect of the list's
@@ -26,7 +24,6 @@ use Illuminate\Support\Facades\Route;
  */
 Route::prefix('badges')->name('badges.')->group(function () {
     Route::get('/', [BadgeController::class, 'index'])->name('index');
-    Route::get('corrupted-totals', [BadgeController::class, 'corruptedTotals'])->name('corrupted-totals');
     Route::post('bulk/print', [BadgePrintController::class, 'bulk'])->name('bulk.print');
     Route::get('{badge}/edit', [BadgeController::class, 'edit'])->whereNumber('badge')->name('edit');
     Route::post('{badge}/print', [BadgePrintController::class, 'store'])->whereNumber('badge')->name('print');

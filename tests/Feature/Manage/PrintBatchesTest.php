@@ -126,7 +126,7 @@ beforeEach(function () {
     };
 
     $this->props = fn (array $query = []) => actingAs($this->admin)
-        ->get(route('manage.print-batches.index', $query))
+        ->get(route('admin.print-batches.index', $query))
         ->viewData('page')['props'];
 
     $this->rowActions = fn (array $actions, string $name) => collect($actions)->firstWhere('name', $name);
@@ -138,18 +138,18 @@ beforeEach(function () {
  */
 
 test('a guest is redirected to login', function () {
-    get(route('manage.print-batches.index'))->assertRedirect(route('login'));
+    get(route('admin.print-batches.index'))->assertRedirect(route('login'));
 });
 
 test('an attendee cannot reach the batch list at all', function () {
-    actingAs($this->attendee)->get(route('manage.print-batches.index'))->assertForbidden();
+    actingAs($this->attendee)->get(route('admin.print-batches.index'))->assertForbidden();
 });
 
 test('a reviewer can read the batch list and a batch', function () {
     $batch = ($this->batch)();
 
-    actingAs($this->reviewer)->get(route('manage.print-batches.index'))->assertSuccessful();
-    actingAs($this->reviewer)->get(route('manage.print-batches.show', $batch))->assertSuccessful();
+    actingAs($this->reviewer)->get(route('admin.print-batches.index'))->assertSuccessful();
+    actingAs($this->reviewer)->get(route('admin.print-batches.show', $batch))->assertSuccessful();
 });
 
 test('a reviewer is offered none of the run controls', function () {
@@ -157,7 +157,7 @@ test('a reviewer is offered none of the run controls', function () {
     $batch->update(['status' => PrintBatchStatusEnum::Printing]);
 
     $props = actingAs($this->reviewer)
-        ->get(route('manage.print-batches.index'))
+        ->get(route('admin.print-batches.index'))
         ->viewData('page')['props'];
 
     expect(array_column($props['rows'][0]['actions'], 'name'))->toBe(['view']);
@@ -169,10 +169,10 @@ test('a reviewer is refused pause, resume, cancel and verify', function () {
 
     actingAs($this->reviewer);
 
-    post(route('manage.print-batches.pause', $batch), ['reason' => 'Jam'])->assertForbidden();
-    post(route('manage.print-batches.resume', $batch))->assertForbidden();
-    post(route('manage.print-batches.cancel', $batch), ['reason' => 'No'])->assertForbidden();
-    post(route('manage.print-batches.jobs.verify', [$batch, $card]))->assertForbidden();
+    post(route('admin.print-batches.pause', $batch), ['reason' => 'Jam'])->assertForbidden();
+    post(route('admin.print-batches.resume', $batch))->assertForbidden();
+    post(route('admin.print-batches.cancel', $batch), ['reason' => 'No'])->assertForbidden();
+    post(route('admin.print-batches.jobs.verify', [$batch, $card]))->assertForbidden();
 
     expect($batch->fresh()->status)->toBe(PrintBatchStatusEnum::Printing)
         ->and($card->fresh()->verified_print_at)->toBeNull();
@@ -183,7 +183,7 @@ test('a reviewer is refused pause, resume, cancel and verify', function () {
 test('the list renders the eleven columns in order, with their labels and types', function () {
     ($this->batch)();
 
-    actingAs($this->admin)->get(route('manage.print-batches.index'))
+    actingAs($this->admin)->get(route('admin.print-batches.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/PrintBatches/Index')
@@ -397,7 +397,7 @@ test('the list offers no create button, no bulk action and no row delete', funct
 
 test('no create, store, edit, update or destroy route exists for a batch', function () {
     foreach (['create', 'store', 'edit', 'update', 'destroy', 'bulk.destroy'] as $name) {
-        expect(Route::has("manage.print-batches.{$name}"))->toBeFalse();
+        expect(Route::has("admin.print-batches.{$name}"))->toBeFalse();
     }
 });
 
@@ -413,7 +413,7 @@ test('pause carries its form field, its helper text and its confirm copy verbati
         'method' => 'post',
         'icon' => 'pause',
         'tone' => 'warn',
-        'url' => route('manage.print-batches.pause', $batch),
+        'url' => route('admin.print-batches.pause', $batch),
         'disabledReason' => null,
     ])
         ->and($pause['confirm'])->toMatchArray(['heading' => 'Pause', 'submit' => 'Confirm'])
@@ -490,7 +490,7 @@ test('pausing a printing batch stores the reason and flashes Batch paused', func
     $batch = ($this->batch)(['status' => PrintBatchStatusEnum::Printing, 'started_at' => now()]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.pause', $batch), ['reason' => 'Ribbon out'])
+        ->post(route('admin.print-batches.pause', $batch), ['reason' => 'Ribbon out'])
         ->assertRedirect()
         ->assertSessionHas(MANAGE_PRINT_BATCH_TOAST, 'Batch paused');
 
@@ -503,11 +503,11 @@ test('pause requires a reason of at most a thousand characters', function () {
     $batch = ($this->batch)(['status' => PrintBatchStatusEnum::Printing]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.pause', $batch), [])
+        ->post(route('admin.print-batches.pause', $batch), [])
         ->assertSessionHasErrors('reason');
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.pause', $batch), ['reason' => str_repeat('x', 1001)])
+        ->post(route('admin.print-batches.pause', $batch), ['reason' => str_repeat('x', 1001)])
         ->assertSessionHasErrors('reason');
 
     // A refused validation is not allowed to have moved anything either.
@@ -518,7 +518,7 @@ test('pausing a batch that is not printing changes nothing and says so', functio
     $batch = ($this->batch)(['status' => PrintBatchStatusEnum::Paused, 'pause_reason' => 'Card jam']);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.pause', $batch), ['reason' => 'Something else'])
+        ->post(route('admin.print-batches.pause', $batch), ['reason' => 'Something else'])
         ->assertSessionHas(MANAGE_PRINT_BATCH_TOAST, 'Cannot pause a batch that is Paused');
 
     expect($batch->fresh()->pause_reason)->toBe('Card jam');
@@ -531,7 +531,7 @@ test('resuming a paused batch restarts it and puts its failed cards back in the 
     $failed = ($this->card)($batch, ['status' => PrintJobStatusEnum::Failed, 'error_message' => 'Jam']);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.resume', $batch))
+        ->post(route('admin.print-batches.resume', $batch))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_PRINT_BATCH_TOAST, 'Batch resumed');
 
@@ -551,7 +551,7 @@ test('a refused resume does not requeue the failed cards on its way out', functi
     $failed = ($this->card)($batch, ['status' => PrintJobStatusEnum::Failed, 'error_message' => 'Jam']);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.resume', $batch))
+        ->post(route('admin.print-batches.resume', $batch))
         ->assertSessionHas(MANAGE_PRINT_BATCH_TOAST, 'Cannot resume a batch that is Printing');
 
     expect($failed->fresh()->status)->toBe(PrintJobStatusEnum::Failed);
@@ -577,7 +577,7 @@ test('cancelling stops the run, unlocks exactly the badges with no printed card 
     ]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.cancel', $batch), ['reason' => 'Wrong artwork'])
+        ->post(route('admin.print-batches.cancel', $batch), ['reason' => 'Wrong artwork'])
         ->assertRedirect()
         ->assertSessionHas(MANAGE_PRINT_BATCH_TOAST, 'Batch cancelled');
 
@@ -599,7 +599,7 @@ test('an empty cancel reason falls back to the admin-panel default', function ()
     $batch = ($this->batch)(['status' => PrintBatchStatusEnum::Printing]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.cancel', $batch), ['reason' => ''])
+        ->post(route('admin.print-batches.cancel', $batch), ['reason' => ''])
         ->assertSessionHas(MANAGE_PRINT_BATCH_TOAST, 'Batch cancelled');
 
     expect($batch->fresh()->pause_reason)->toBe('Cancelled from the admin panel');
@@ -610,7 +610,7 @@ test('cancelling a terminal batch cancels nothing and carries the resource copy 
     $card = ($this->card)($batch, ['status' => PrintJobStatusEnum::Pending]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.cancel', $batch), ['reason' => 'Too late'])
+        ->post(route('admin.print-batches.cancel', $batch), ['reason' => 'Too late'])
         ->assertSessionHas(MANAGE_PRINT_BATCH_TOAST, 'Cannot cancel a batch that is Completed');
 
     expect($batch->fresh()->status)->toBe(PrintBatchStatusEnum::Completed)
@@ -636,7 +636,7 @@ test('the detail page carries the three infolist sections', function () {
         'started_at' => now()->subHour(),
     ]);
 
-    actingAs($this->admin)->get(route('manage.print-batches.show', $batch))
+    actingAs($this->admin)->get(route('admin.print-batches.show', $batch))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/PrintBatches/Show')
@@ -658,7 +658,7 @@ test('the run controls are reachable from the detail page, not only from the row
     $batch = ($this->batch)(['status' => PrintBatchStatusEnum::Printing]);
 
     $props = actingAs($this->admin)
-        ->get(route('manage.print-batches.show', $batch))
+        ->get(route('admin.print-batches.show', $batch))
         ->viewData('page')['props'];
 
     expect(array_column($props['actions'], 'name'))->toBe(['pause', 'resume', 'cancel'])
@@ -680,7 +680,7 @@ test('the detail poll follows the run, so a batch paused by a jam can be resumed
     $card = ($this->card)($batch, ['status' => PrintJobStatusEnum::Printing]);
 
     $props = actingAs($this->admin)
-        ->get(route('manage.print-batches.show', $batch))
+        ->get(route('admin.print-batches.show', $batch))
         ->viewData('page')['props'];
 
     expect($props['batch']['status']['label'])->toBe('Printing')
@@ -704,7 +704,7 @@ test('the detail poll follows the run, so a batch paused by a jam can be resumed
             'X-Inertia-Partial-Component' => 'Manage/PrintBatches/Show',
             'X-Inertia-Partial-Data' => $only->implode(','),
         ])
-        ->get(route('manage.print-batches.show', $batch))
+        ->get(route('admin.print-batches.show', $batch))
         ->json('props');
 
     $resume = collect($polled['actions'] ?? [])->firstWhere('name', 'resume');
@@ -723,7 +723,7 @@ test('the card list renders the eight columns in order, in print order', functio
     ($this->card)($batch, ['sequence' => 2]);
     ($this->card)($batch, ['sequence' => 1]);
 
-    actingAs($this->admin)->get(route('manage.print-batches.show', $batch))
+    actingAs($this->admin)->get(route('admin.print-batches.show', $batch))
         ->assertInertia(fn (Assert $page) => $page
             ->where('columns.0', fn ($c) => $c['key'] === 'sequence' && $c['label'] === '#' && $c['sortable'])
             ->where('columns.1', fn ($c) => $c['key'] === 'badge' && $c['label'] === 'Badge' && $c['fallback'] === 'Deleted')
@@ -739,7 +739,7 @@ test('the card list renders the eight columns in order, in print order', functio
             ->etc()
         );
 
-    $props = actingAs($this->admin)->get(route('manage.print-batches.show', $batch))->viewData('page')['props'];
+    $props = actingAs($this->admin)->get(route('admin.print-batches.show', $batch))->viewData('page')['props'];
 
     expect(array_column($props['columns'], 'key'))->toBe(MANAGE_PRINT_BATCH_CARD_COLUMNS)
         ->and($props['hiddenColumns'])->toBe(['attempt_count', 'error_message']);
@@ -758,7 +758,7 @@ test('a card names its badge and its fursuit, and says who finished it', functio
     ]);
 
     $cells = actingAs($this->admin)
-        ->get(route('manage.print-batches.show', $batch))
+        ->get(route('admin.print-batches.show', $batch))
         ->viewData('page')['props']['rows'][0]['cells'];
 
     expect($cells['badge'])->toBe('1042-1')
@@ -779,7 +779,7 @@ test('the verified icon carries the audit tooltip while nobody has vouched for t
     ]);
 
     $rows = actingAs($this->admin)
-        ->get(route('manage.print-batches.show', $batch))
+        ->get(route('admin.print-batches.show', $batch))
         ->viewData('page')['props']['rows'];
 
     expect($rows[0]['cells']['verified_print_at'])->toMatchArray([
@@ -804,7 +804,7 @@ test('a card in the printer does not share a tone with one waiting behind a retr
         ($this->card)($batch, ['status' => $status]);
 
         return actingAs($this->admin)
-            ->get(route('manage.print-batches.show', $batch))
+            ->get(route('admin.print-batches.show', $batch))
             ->viewData('page')['props']['rows'][0]['cells']['status']['tone'];
     };
 
@@ -832,7 +832,7 @@ test('the card list declares the unverified toggle and all seven job statuses', 
     ($this->card)($batch);
 
     $filters = actingAs($this->admin)
-        ->get(route('manage.print-batches.show', $batch))
+        ->get(route('admin.print-batches.show', $batch))
         ->viewData('page')['props']['filters'];
 
     expect(array_column($filters, 'key'))->toBe(['unverified', 'status'])
@@ -854,7 +854,7 @@ test('the card filters narrow the run', function () {
     ]);
 
     $rows = fn (array $query) => actingAs($this->admin)
-        ->get(route('manage.print-batches.show', [$batch, ...$query]))
+        ->get(route('admin.print-batches.show', [$batch, ...$query]))
         ->viewData('page')['props']['rows'];
 
     expect($rows([]))->toHaveCount(3)
@@ -875,7 +875,7 @@ test('the card list searches the badge id and the fursuit name through the morph
     ($this->card)($batch, ['printable_id' => $two->id, 'sequence' => 2]);
 
     $rows = fn (string $term) => actingAs($this->admin)
-        ->get(route('manage.print-batches.show', [$batch, 'search' => $term]))
+        ->get(route('admin.print-batches.show', [$batch, 'search' => $term]))
         ->viewData('page')['props']['rows'];
 
     expect($rows('2099'))->toHaveCount(1)
@@ -899,18 +899,25 @@ test('verify is offered only for a printed card that nobody has vouched for', fu
     ]);
 
     $rows = actingAs($this->admin)
-        ->get(route('manage.print-batches.show', $batch))
+        ->get(route('admin.print-batches.show', $batch))
         ->viewData('page')['props']['rows'];
 
-    expect($rows[0]['actions'])->toBe([])
-        ->and($rows[2]['actions'])->toBe([])
-        ->and($rows[1]['actions'][0])->toMatchArray([
+    /*
+     * View is on every row - a card is opened from the run that owns it now that Print Jobs
+     * has no rail entry - so the predicate under test is which rows also carry verify.
+     */
+    $names = fn (array $row) => collect($row['actions'])->pluck('name')->all();
+
+    expect($names($rows[0]))->toBe(['view'])
+        ->and($names($rows[2]))->toBe(['view'])
+        ->and($names($rows[1]))->toBe(['view', 'verify'])
+        ->and($rows[1]['actions'][1])->toMatchArray([
             'name' => 'verify',
             'label' => 'Mark verified',
             'icon' => 'circle-check',
             'tone' => 'ok',
         ])
-        ->and($rows[1]['actions'][0]['confirm'])->toBe([
+        ->and($rows[1]['actions'][1]['confirm'])->toBe([
             'heading' => 'Confirm this card',
             'description' => 'Only do this with the printed card in front of you. This records that a human checked it.',
             'submit' => 'Confirm',
@@ -924,7 +931,7 @@ test('verifying stamps the card, mirrors onto the badge and recalculates the cou
     $card = ($this->card)($batch, ['printable_id' => $badge->id, 'status' => PrintJobStatusEnum::Printed]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.jobs.verify', [$batch, $card]))
+        ->post(route('admin.print-batches.jobs.verify', [$batch, $card]))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_PRINT_BATCH_TOAST, 'Card verified');
 
@@ -948,7 +955,7 @@ test('verifying a card that has already been vouched for changes nothing', funct
     ]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.jobs.verify', [$batch, $card]))
+        ->post(route('admin.print-batches.jobs.verify', [$batch, $card]))
         ->assertSessionHas(MANAGE_PRINT_BATCH_TOAST, 'Nothing was verified');
 
     expect($card->fresh()->verification_source)->toBe(PrintVerificationSourceEnum::Camera);
@@ -961,7 +968,7 @@ test('a card from another batch cannot be verified through this one', function (
     $card = ($this->card)($other, ['status' => PrintJobStatusEnum::Printed]);
 
     actingAs($this->admin)
-        ->post(route('manage.print-batches.jobs.verify', [$batch, $card]))
+        ->post(route('admin.print-batches.jobs.verify', [$batch, $card]))
         ->assertNotFound();
 
     expect($card->fresh()->verified_print_at)->toBeNull();
@@ -974,11 +981,11 @@ test('reading the list or a batch moves nothing', function () {
     $badge = ($this->badge)(['printing_locked_at' => now()]);
     $card = ($this->card)($batch, ['printable_id' => $badge->id, 'status' => PrintJobStatusEnum::Printed]);
 
-    actingAs($this->admin)->get(route('manage.print-batches.index'))->assertSuccessful();
-    actingAs($this->admin)->get(route('manage.print-batches.show', $batch))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.print-batches.index'))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.print-batches.show', $batch))->assertSuccessful();
     // The polls, twice each.
-    actingAs($this->admin)->get(route('manage.print-batches.index'))->assertSuccessful();
-    actingAs($this->admin)->get(route('manage.print-batches.show', $batch))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.print-batches.index'))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.print-batches.show', $batch))->assertSuccessful();
 
     expect($batch->fresh())
         ->status->toBe(PrintBatchStatusEnum::Printing)

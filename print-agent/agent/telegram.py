@@ -531,9 +531,18 @@ class AlertRelay:
         self.sent = 0
 
     def alert(self, key: str, title: str, message: str, *args, **kwargs) -> bool:
+        """Fan one alert out to the chat, and to Pushover if it is urgent.
+
+        `stops_printing` decides whether it reaches a phone. Pushover is for
+        the run having stopped or being about to, because an alert that goes
+        off for everything gets muted, and then it is there for nothing. The
+        chat gets all of them: it is a log somebody can scroll, not an
+        interruption.
+        """
+        stops_printing = bool(kwargs.pop("stops_printing", True))
         delivered = False
 
-        if self.inner is not None:
+        if self.inner is not None and stops_printing:
             try:
                 delivered = bool(self.inner.alert(key, title, message, *args, **kwargs))
             except Exception as error:  # noqa: BLE001 - see module docstring

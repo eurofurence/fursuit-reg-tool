@@ -1,8 +1,8 @@
 <script setup>
 /**
  * The strip an operator reads without navigating: which event everything is scoped to,
- * whether that event's order window is open, and the two counts staff act on, pending
- * fursuit approvals and printed-but-unverified cards.
+ * whether that event's order window is open, and the counts staff act on: fursuits waiting
+ * on a review, badges whose card has not been printed yet, and badges already printed.
  *
  * Every number is server-decided. The segments arrive shaped, tone and all, from
  * App\Support\Manage\Navigation::strip(), and a segment whose module has not been built

@@ -54,7 +54,7 @@ beforeEach(function () {
     $this->reviewer = User::factory()->create(['is_admin' => false, 'is_reviewer' => true]);
     $this->attendee = User::factory()->create(['is_admin' => false, 'is_reviewer' => false]);
 
-    $this->props = fn (array $query = []) => get(route('manage.users.index', $query))
+    $this->props = fn (array $query = []) => get(route('admin.settings.users.index', $query))
         ->viewData('page')['props'];
 });
 
@@ -64,13 +64,13 @@ beforeEach(function () {
  */
 
 test('a guest is redirected to login', function () {
-    get(route('manage.users.index'))->assertRedirect(route('login'));
+    get(route('admin.settings.users.index'))->assertRedirect(route('login'));
 });
 
 test('an attendee cannot reach the user list at all', function () {
     actingAs($this->attendee);
 
-    get(route('manage.users.index'))->assertForbidden();
+    get(route('admin.settings.users.index'))->assertForbidden();
 });
 
 test('a reviewer holds access-manage but is refused every user ability', function () {
@@ -78,13 +78,13 @@ test('a reviewer holds access-manage but is refused every user ability', functio
 
     $target = User::factory()->create();
 
-    get(route('manage.users.index'))->assertForbidden();
-    get(route('manage.users.create'))->assertForbidden();
-    post(route('manage.users.store'), manageUserPayload())->assertForbidden();
-    get(route('manage.users.edit', $target))->assertForbidden();
-    put(route('manage.users.update', $target), manageUserPayload())->assertForbidden();
-    delete(route('manage.users.destroy', $target))->assertForbidden();
-    delete(route('manage.users.bulk.destroy'), ['ids' => [$target->id]])->assertForbidden();
+    get(route('admin.settings.users.index'))->assertForbidden();
+    get(route('admin.settings.users.create'))->assertForbidden();
+    post(route('admin.settings.users.store'), manageUserPayload())->assertForbidden();
+    get(route('admin.settings.users.edit', $target))->assertForbidden();
+    put(route('admin.settings.users.update', $target), manageUserPayload())->assertForbidden();
+    delete(route('admin.settings.users.destroy', $target))->assertForbidden();
+    delete(route('admin.settings.users.bulk.destroy'), ['ids' => [$target->id]])->assertForbidden();
 
     // Nothing was written on the way to any of those 403s.
     assertDatabaseHas('users', ['id' => $target->id]);
@@ -93,7 +93,7 @@ test('a reviewer holds access-manage but is refused every user ability', functio
 test('an admin gets the list', function () {
     actingAs($this->admin);
 
-    get(route('manage.users.index'))
+    get(route('admin.settings.users.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component('Manage/Users/Index'));
 });
@@ -159,7 +159,7 @@ test('the two flags render as boolean cells', function () {
 test('the table declares no filters', function () {
     actingAs($this->admin);
 
-    get(route('manage.users.index'))
+    get(route('admin.settings.users.index'))
         ->assertInertia(fn (Assert $page) => $page->where('filters', [])->etc());
 });
 
@@ -230,7 +230,7 @@ test('the page action is New user and it points at the create page', function ()
 
     expect($actions)->toHaveCount(1)
         ->and($actions[0]['label'])->toBe('New user')
-        ->and($actions[0]['url'])->toBe(route('manage.users.create'))
+        ->and($actions[0]['url'])->toBe(route('admin.settings.users.create'))
         ->and($actions[0]['method'])->toBe('get');
 });
 
@@ -244,7 +244,7 @@ test('each row offers Edit and Delete, with Filament default delete copy', funct
     $delete = collect($row['actions'])->firstWhere('name', 'delete');
 
     expect($delete['method'])->toBe('delete')
-        ->and($delete['url'])->toBe(route('manage.users.destroy', $this->attendee))
+        ->and($delete['url'])->toBe(route('admin.settings.users.destroy', $this->attendee))
         ->and($delete['confirm'])->toBe([
             'heading' => 'Delete user',
             'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
@@ -261,7 +261,7 @@ test('the bulk action is Delete selected, with Filament default bulk delete copy
 
     expect($bulkActions[0]['label'])->toBe('Delete selected')
         ->and($bulkActions[0]['method'])->toBe('delete')
-        ->and($bulkActions[0]['url'])->toBe(route('manage.users.bulk.destroy'))
+        ->and($bulkActions[0]['url'])->toBe(route('admin.settings.users.bulk.destroy'))
         ->and($bulkActions[0]['confirm'])->toBe([
             'heading' => 'Delete selected users',
             'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
@@ -276,7 +276,7 @@ test('the bulk action is Delete selected, with Filament default bulk delete copy
 test('the create page renders the form with no record', function () {
     actingAs($this->admin);
 
-    get(route('manage.users.create'))
+    get(route('admin.settings.users.create'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Users/Form')
@@ -287,7 +287,7 @@ test('the create page renders the form with no record', function () {
 test('creating a user works, which it does not today', function () {
     actingAs($this->admin);
 
-    post(route('manage.users.store'), manageUserPayload([
+    post(route('admin.settings.users.store'), manageUserPayload([
         'remote_id' => 'IDP-1000',
         'name' => 'New Newt',
         'email' => 'newt@example.test',
@@ -296,7 +296,7 @@ test('creating a user works, which it does not today', function () {
         'is_admin' => false,
     ]))
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('manage.users.index'));
+        ->assertRedirect(route('admin.settings.users.index'));
 
     assertDatabaseHas('users', [
         'remote_id' => 'IDP-1000',
@@ -313,7 +313,7 @@ test('the edit page carries exactly the fields the form writes', function () {
 
     $target = User::factory()->create(['avatar' => 'https://example.test/a.png']);
 
-    get(route('manage.users.edit', $target))
+    get(route('admin.settings.users.edit', $target))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Users/Form')
@@ -334,14 +334,14 @@ test('editing a user works, which it does not today', function () {
 
     $target = User::factory()->create(['name' => 'Before']);
 
-    put(route('manage.users.update', $target), manageUserPayload([
+    put(route('admin.settings.users.update', $target), manageUserPayload([
         'remote_id' => (string) $target->remote_id,
         'name' => 'After',
         'email' => $target->email,
         'is_admin' => true,
     ]))
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('manage.users.index'));
+        ->assertRedirect(route('admin.settings.users.index'));
 
     expect($target->refresh()->name)->toBe('After')
         ->and($target->is_admin)->toBeTrue();
@@ -352,7 +352,7 @@ test('saving an unchanged record is not blocked by its own unique columns', func
 
     $target = User::factory()->create();
 
-    put(route('manage.users.update', $target), manageUserPayload([
+    put(route('admin.settings.users.update', $target), manageUserPayload([
         'remote_id' => (string) $target->remote_id,
         'name' => $target->name,
         'email' => $target->email,
@@ -364,13 +364,13 @@ test('a valid_registration value in the payload is dropped rather than written',
     // send it. It must not reach the model: the column does not exist.
     actingAs($this->admin);
 
-    post(route('manage.users.store'), manageUserPayload([
+    post(route('admin.settings.users.store'), manageUserPayload([
         'remote_id' => 'IDP-2000',
         'email' => 'stale@example.test',
         'valid_registration' => true,
     ]))
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('manage.users.index'));
+        ->assertRedirect(route('admin.settings.users.index'));
 
     $created = User::where('email', 'stale@example.test')->firstOrFail();
 
@@ -384,14 +384,14 @@ test('a valid_registration value in the payload is dropped rather than written',
 test('remote_id, name, email, is_reviewer and is_admin are all required', function () {
     actingAs($this->admin);
 
-    post(route('manage.users.store'), [])
+    post(route('admin.settings.users.store'), [])
         ->assertSessionHasErrors(['remote_id', 'name', 'email', 'is_reviewer', 'is_admin']);
 });
 
 test('avatar is optional', function () {
     actingAs($this->admin);
 
-    post(route('manage.users.store'), manageUserPayload([
+    post(route('admin.settings.users.store'), manageUserPayload([
         'remote_id' => 'IDP-3000',
         'email' => 'noavatar@example.test',
         'avatar' => null,
@@ -401,10 +401,10 @@ test('avatar is optional', function () {
 test('email must be an email and the two text fields cap at 255', function () {
     actingAs($this->admin);
 
-    post(route('manage.users.store'), manageUserPayload(['email' => 'not-an-email']))
+    post(route('admin.settings.users.store'), manageUserPayload(['email' => 'not-an-email']))
         ->assertSessionHasErrors('email');
 
-    post(route('manage.users.store'), manageUserPayload([
+    post(route('admin.settings.users.store'), manageUserPayload([
         'remote_id' => str_repeat('a', 256),
         'name' => str_repeat('b', 256),
     ]))->assertSessionHasErrors(['remote_id', 'name']);
@@ -413,7 +413,7 @@ test('email must be an email and the two text fields cap at 255', function () {
 test('a false toggle is accepted, because required means present and not empty', function () {
     actingAs($this->admin);
 
-    post(route('manage.users.store'), manageUserPayload([
+    post(route('admin.settings.users.store'), manageUserPayload([
         'remote_id' => 'IDP-4000',
         'email' => 'falsey@example.test',
         'is_reviewer' => false,
@@ -424,11 +424,11 @@ test('a false toggle is accepted, because required means present and not empty',
 test('a duplicate remote_id or email is a field error, not an SQL 1062', function () {
     actingAs($this->admin);
 
-    post(route('manage.users.store'), manageUserPayload([
+    post(route('admin.settings.users.store'), manageUserPayload([
         'remote_id' => (string) $this->attendee->remote_id,
     ]))->assertSessionHasErrors('remote_id');
 
-    post(route('manage.users.store'), manageUserPayload([
+    post(route('admin.settings.users.store'), manageUserPayload([
         'email' => $this->attendee->email,
     ]))->assertSessionHasErrors('email');
 });
@@ -442,7 +442,7 @@ test('deleting a user removes the row and flashes the Filament copy', function (
 
     $target = User::factory()->create();
 
-    delete(route('manage.users.destroy', $target))
+    delete(route('admin.settings.users.destroy', $target))
         ->assertRedirect()
         ->assertSessionHas(MANAGE_TOAST_TITLE, 'Deleted');
 
@@ -455,7 +455,7 @@ test('bulk delete removes every selected user', function () {
     $targets = User::factory()->count(3)->create();
     $survivor = User::factory()->create();
 
-    delete(route('manage.users.bulk.destroy'), ['ids' => $targets->modelKeys()])
+    delete(route('admin.settings.users.bulk.destroy'), ['ids' => $targets->modelKeys()])
         ->assertRedirect()
         ->assertSessionHas(MANAGE_TOAST_TITLE, 'Deleted');
 
@@ -469,19 +469,19 @@ test('bulk delete removes every selected user', function () {
 test('bulk delete needs at least one id', function () {
     actingAs($this->admin);
 
-    delete(route('manage.users.bulk.destroy'), ['ids' => []])
+    delete(route('admin.settings.users.bulk.destroy'), ['ids' => []])
         ->assertSessionHasErrors('ids');
 });
 
 test('create and update flash the Filament Created and Saved copy', function () {
     actingAs($this->admin);
 
-    post(route('manage.users.store'), manageUserPayload([
+    post(route('admin.settings.users.store'), manageUserPayload([
         'remote_id' => 'IDP-5000',
         'email' => 'toast@example.test',
     ]))->assertSessionHas(MANAGE_TOAST_TITLE, 'Created');
 
-    put(route('manage.users.update', $this->attendee), manageUserPayload([
+    put(route('admin.settings.users.update', $this->attendee), manageUserPayload([
         'remote_id' => (string) $this->attendee->remote_id,
         'email' => $this->attendee->email,
     ]))->assertSessionHas(MANAGE_TOAST_TITLE, 'Saved');

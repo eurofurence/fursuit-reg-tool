@@ -67,7 +67,7 @@ class SpecialCodeController extends Controller
         // Filament's stock create toast; this resource declares none of its own.
         Toast::flashSuccess('Created');
 
-        return redirect()->route('manage.special-codes.index');
+        return redirect()->route('admin.special-codes.index');
     }
 
     public function edit(SpecialCode $code): Response
@@ -83,7 +83,7 @@ class SpecialCodeController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.special-codes.index');
+        return redirect()->route('admin.special-codes.index');
     }
 
     /**
@@ -218,14 +218,14 @@ class SpecialCodeController extends Controller
                 'event_id' => $specialCode->event?->name,
             ])
             ->recordUrl(fn (SpecialCode $specialCode) => Gate::allows('update', $specialCode)
-                ? route('manage.special-codes.edit', $specialCode)
+                ? route('admin.special-codes.edit', $specialCode)
                 : null)
             ->rowActions(fn (SpecialCode $specialCode) => array_values(array_filter([
                 Gate::allows('update', $specialCode)
-                    ? Action::link('edit', 'Edit', route('manage.special-codes.edit', $specialCode))->icon('pencil')
+                    ? Action::link('edit', 'Edit', route('admin.special-codes.edit', $specialCode))->icon('pencil')
                     : null,
                 Gate::allows('delete', $specialCode)
-                    ? Action::delete('delete', 'Delete', route('manage.special-codes.destroy', $specialCode))
+                    ? Action::delete('delete', 'Delete', route('admin.special-codes.destroy', $specialCode))
                         ->icon('trash-2')
                         ->tone('danger')
                         ->confirmDelete(self::MODEL_LABEL)
@@ -237,7 +237,7 @@ class SpecialCodeController extends Controller
                 // argument and fail the type hint, hence the throwaway instance: the
                 // policy answers on the actor, not on the row.
                 Gate::allows('delete', new SpecialCode)
-                    ? Action::delete('bulk-delete', 'Delete selected', route('manage.special-codes.bulk.destroy'))
+                    ? Action::delete('bulk-delete', 'Delete selected', route('admin.special-codes.bulk.destroy'))
                         ->icon('trash-2')
                         ->tone('danger')
                         ->confirm(
@@ -249,7 +249,7 @@ class SpecialCodeController extends Controller
             ])))
             ->pageActions(array_values(array_filter([
                 Gate::allows('create', SpecialCode::class)
-                    ? Action::link('create', 'New special code', route('manage.special-codes.create'))->icon('plus')
+                    ? Action::link('create', 'New special code', route('admin.special-codes.create'))->icon('plus')
                     : null,
             ])))
             ->toArray($request);

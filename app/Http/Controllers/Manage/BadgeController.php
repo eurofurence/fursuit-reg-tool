@@ -38,8 +38,7 @@ use Inertia\Response;
  *    field is read-only for the mirror image of the same bug: it rendered euros and had
  *    no inverse on write, so saving an unchanged badge wrote "3.00" into a cents column
  *    and turned 300 cents into 3 (plan 2.10 #3, audit 3). Nothing on this module's write
- *    path touches a money column at all now, and `corruptedTotals()` reports the rows the
- *    old form already damaged.
+ *    path touches a money column at all now.
  *  - the attendee-id sort and the attendee range filter drop `CAST(x AS UNSIGNED)`, which
  *    is MySQL-only and breaks on the SQLite database `.env.example` defaults to
  *    (plan 2.10 #30, audit 16). The direction is no longer interpolated into raw SQL
@@ -136,7 +135,7 @@ class BadgeController extends Controller
         // own anywhere (audit 4.2).
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.badges.index');
+        return redirect()->route('admin.badges.index');
     }
 
     /**
@@ -152,30 +151,7 @@ class BadgeController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('manage.badges.index');
-    }
-
-    /**
-     * The corrupted-total report plan 2.10 #3 asks phase 4 to ship before anything else
-     * touches money.
-     *
-     * Every badge written by the ordering pipeline satisfies `total = subtotal + tax`
-     * exactly: BadgeController@store derives `subtotal = round(total / 1.19)` and then
-     * `tax = round(total - subtotal)`. A row that breaks the identity was not written by
-     * that pipeline, and the one other writer is the Filament edit form, which put a
-     * formatted euro string into a cents column. Where the difference has the signature
-     * of exactly that (the stored total is the euro figure truncated to a whole euro) the
-     * report says so; anything else is reported as a plain mismatch rather than guessed
-     * at.
-     *
-     * Read-only on purpose. Repairing follows FreeBadgeRepairService's pattern with a
-     * preview and an activity entry, on the DB Service page, in phase 9.
-     */
-    public function corruptedTotals(Request $request): Response
-    {
-        Gate::authorize('manage-admin');
-
-        return inertia('Manage/Badges/CorruptedTotals', $this->corruptedTable($request));
+        return redirect()->route('admin.badges.index');
     }
 
     /**
@@ -197,11 +173,11 @@ class BadgeController extends Controller
             ->perPageOptions([10, 25, 50, 100])
             ->rows(fn (Badge $badge) => $this->cells($badge))
             ->recordUrl(fn (Badge $badge) => Gate::allows('update', $badge)
-                ? route('manage.badges.edit', $badge)
+                ? route('admin.badges.edit', $badge)
                 : null)
             ->rowActions(fn (Badge $badge) => array_values(array_filter([
                 Gate::allows('update', $badge)
-                    ? Action::link('edit', 'Edit', route('manage.badges.edit', $badge))->icon('pencil')
+                    ? Action::link('edit', 'Edit', route('admin.badges.edit', $badge))->icon('pencil')
                     : null,
                 // `printBadge`. Declared by BadgePrintController, which owns the verb and
                 // the endpoint, so the button and the write cannot answer the "may this
@@ -219,7 +195,9 @@ class BadgeController extends Controller
             ->bulkActions(array_values(array_filter([
                 BadgePrintController::bulkAction(),
             ])))
-            ->pageActions($this->pageActions())
+            // ListBadges offers a CreateAction labelled `New badge`. It is not ported: the
+            // page it opens has never been able to save (plan 2.10 #6, audit 25).
+            ->pageActions([])
             ->toArray($request);
     }
 
@@ -332,7 +310,7 @@ class BadgeController extends Controller
                 $badge->fursuit?->user?->name,
                 $badge->fursuit?->user?->name === null
                     ? null
-                    : route('manage.users.index', ['search' => $badge->fursuit->user->name]),
+                    : route('admin.settings.users.index', ['search' => $badge->fursuit->user->name]),
             ),
             'custom_id' => $badge->custom_id,
             'sort_attendee_id' => $badge->sort_attendee_id,
@@ -385,8 +363,8 @@ class BadgeController extends Controller
 
         // Filament linked the chip at the print-jobs list filtered to this badge. That
         // module lands in phase 6; until its route exists the chip is just a chip.
-        if (Route::has('manage.print-jobs.index')) {
-            $status['url'] = route('manage.print-jobs.index', [
+        if (Route::has('admin.print-jobs.index')) {
+            $status['url'] = route('admin.print-jobs.index', [
                 'filter' => ['printable_id' => $badge->id, 'printable_type' => $badge::class],
             ]);
         }
@@ -489,93 +467,6 @@ class BadgeController extends Controller
     }
 
     /**
-     * @return array<int, Action>
-     */
-    private function pageActions(): array
-    {
-        // ListBadges offers a CreateAction labelled `New badge`. It is not ported: the
-        // page it opens has never been able to save (plan 2.10 #6, audit 25).
-        if (! Gate::allows('manage-admin')) {
-            return [];
-        }
-
-        return [
-            Action::link('corrupted-totals', 'Total check', route('manage.badges.corrupted-totals'))
-                ->icon('triangle-alert')
-                ->tone(Status::WARN),
-        ];
-    }
-
-    /**
-     * The corrupted-total report's own envelope. Same table machinery, no actions, no
-     * filters, no row url: there is nothing to do from here but read it.
-     *
-     * Deliberately not event-scoped. It answers "what is already wrong in this database",
-     * which is the same question the DB Service page asks, and that page is unscoped too
-     * (plan 2.9).
-     *
-     * @return array<string, mixed>
-     */
-    private function corruptedTable(Request $request): array
-    {
-        $query = Badge::query()
-            ->with(['fursuit.user'])
-            // The identity every badge the ordering pipeline writes satisfies. Portable:
-            // no CAST, no driver-specific function.
-            ->whereRaw('total <> subtotal + tax');
-
-        return Table::make($query)
-            ->name('badges-corrupted-totals')
-            ->columns([
-                Column::copyable('custom_id', 'Badge ID')->fallback('Not assigned'),
-                Column::text('fursuit', 'Fursuit'),
-                Column::text('owner', 'Owner'),
-                Column::money('total', 'Stored total'),
-                Column::money('subtotal', 'Subtotal'),
-                Column::money('tax', 'Tax'),
-                Column::money('expected', 'Subtotal + tax'),
-                Column::text('signature', 'Diagnosis'),
-                Column::datetime('updated_at', 'Last written')->sortable(),
-            ])
-            ->defaultSort('id')
-            ->filters([])
-            ->rows(fn (Badge $badge) => [
-                'custom_id' => $badge->custom_id,
-                'fursuit' => $badge->fursuit?->name,
-                'owner' => $badge->fursuit?->user?->name,
-                'total' => $badge->total,
-                'subtotal' => $badge->subtotal,
-                'tax' => $badge->tax,
-                'expected' => (int) $badge->subtotal + (int) $badge->tax,
-                'signature' => $this->signature($badge),
-                'updated_at' => $this->datetime($badge->updated_at),
-            ])
-            ->bulkActions([])
-            ->pageActions([])
-            ->toArray($request);
-    }
-
-    /**
-     * What a mismatched total most likely is.
-     *
-     * The Filament form rendered `number_format($state / 100, 2)` and wrote whatever came
-     * back straight into an unsignedBigInteger, so a 300-cent badge came back as the
-     * string "3.00" and was stored as 3. The signature of that is a stored total which,
-     * read as euros, lands within one euro of the correct figure.
-     */
-    private function signature(Badge $badge): string
-    {
-        $expected = (int) $badge->subtotal + (int) $badge->tax;
-        $asEuros = (int) $badge->total * 100;
-
-        if ($badge->total > 0 && $asEuros <= $expected && $expected - $asEuros < 100) {
-            return 'Euro amount stored as cents';
-        }
-
-        return 'Total does not match subtotal + tax';
-    }
-
-    /**
      * Everything the edit form renders, already formatted. Nothing here is written back
      * except the two statuses; see BadgeRequest.
      *
@@ -608,7 +499,7 @@ class BadgeController extends Controller
             'fulfillmentOptions' => self::fulfillmentOptions($badge),
             'paymentOptions' => self::paymentOptions($badge),
             'deleteAction' => Gate::allows('delete', $badge)
-                ? Action::delete('delete', 'Delete', route('manage.badges.destroy', $badge))
+                ? Action::delete('delete', 'Delete', route('admin.badges.destroy', $badge))
                     ->icon('trash-2')
                     ->tone(Status::DANGER)
                     // EditBadge's DeleteAction, never overridden: heading `Delete :label`
@@ -723,11 +614,11 @@ class BadgeController extends Controller
      */
     private function fursuitUrl(Badge $badge): ?string
     {
-        if ($badge->fursuit === null || ! Route::has('manage.fursuits.show')) {
+        if ($badge->fursuit === null || ! Route::has('admin.fursuits.show')) {
             return null;
         }
 
-        return route('manage.fursuits.show', $badge->fursuit);
+        return route('admin.fursuits.show', $badge->fursuit);
     }
 
     /**

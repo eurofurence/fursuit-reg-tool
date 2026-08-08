@@ -107,7 +107,7 @@ beforeEach(function () {
 test('the list renders the fourteen columns in order, with their labels and types', function () {
     ($this->badge)();
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Badges/Index')
@@ -136,7 +136,7 @@ test('the Total column renders euros from cents instead of a hundredfold', funct
     // as EUR 300.00. Column::money always divides; there is no undivided variant.
     ($this->badge)(['total' => 300]);
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page->where('rows.0.cells.total', '€3.00'));
 });
 
@@ -148,7 +148,7 @@ test('the list opens sorted by attendee id numerically, on SQLite', function () 
     $thousandth = ($this->badge)([], [], '1000');
     $first = ($this->badge)([], [], '0001');
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('sort', ['key' => 'sort_attendee_id', 'dir' => 'asc'])
@@ -175,7 +175,7 @@ test('the attendee-id sort flips through the partial reload the client actually 
             'X-Inertia-Partial-Component' => 'Manage/Badges/Index',
             'X-Inertia-Partial-Data' => 'rows,meta,filters,sort,search',
         ])
-        ->get(route('manage.badges.index', $query));
+        ->get(route('admin.badges.index', $query));
 
     $descending = $partial(['sort' => 'sort_attendee_id', 'dir' => 'desc'])->assertSuccessful();
 
@@ -192,7 +192,7 @@ test('the attendee-id sort flips through the partial reload the client actually 
 test('a badge with no attendee id renders N/A rather than an empty cell', function () {
     ($this->badge)([], [], null);
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('rows.0.cells.sort_attendee_id', null)
             ->where('columns.5.fallback', 'N/A')
@@ -210,7 +210,7 @@ test('the Print Jobs cell carries the audit state string and the colour ladder',
         'status' => $status,
     ]);
 
-    $cell = fn () => ($this->scoped)(null)->get(route('manage.badges.index'))
+    $cell = fn () => ($this->scoped)(null)->get(route('admin.badges.index'))
         ->viewData('page')['props']['rows'][0]['cells']['print_jobs_count'];
 
     expect($cell())->toMatchArray(['label' => '0', 'tone' => 'idle']);
@@ -236,7 +236,7 @@ test('the Print Jobs counts cost the same number of queries however many rows th
             }
         });
 
-        ($this->scoped)(null)->get(route('manage.badges.index'))->assertSuccessful();
+        ($this->scoped)(null)->get(route('admin.badges.index'))->assertSuccessful();
 
         return $queries;
     };
@@ -245,7 +245,7 @@ test('the Print Jobs counts cost the same number of queries however many rows th
 
     // One warm-up first: the rail caches its own counts for 5 seconds, so a cold request
     // and a warm one are not comparable and neither says anything about the row cost.
-    ($this->scoped)(null)->get(route('manage.badges.index'))->assertSuccessful();
+    ($this->scoped)(null)->get(route('admin.badges.index'))->assertSuccessful();
 
     $withOne = $count();
 
@@ -263,7 +263,7 @@ test('the Print Jobs counts cost the same number of queries however many rows th
 test('the two status cells carry the audit labels', function () {
     ($this->badge)(['status_fulfillment' => 'ready_for_pickup', 'status_payment' => 'paid']);
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('rows.0.cells.status_fulfillment.label', 'Ready for Pickup')
             ->where('rows.0.cells.status_payment.label', 'Paid')
@@ -280,7 +280,7 @@ test('a badge whose fursuit is soft-deleted still renders its row', function () 
     // badges, and the row this has to survive is one whose fursuit went without it.
     DB::table('fursuits')->where('id', $badge->fursuit_id)->update(['deleted_at' => now()]);
 
-    $response = ($this->scoped)(null)->get(route('manage.badges.index'))->assertSuccessful();
+    $response = ($this->scoped)(null)->get(route('admin.badges.index'))->assertSuccessful();
 
     // Read off the response rather than through assertInertia: these cell keys contain
     // dots of their own, so a dotted assertion path cannot address them.
@@ -296,7 +296,7 @@ test('the Owner cell links at the users list pre-filtered by that name', functio
     $badge = ($this->badge)();
     $owner = $badge->fursuit->user;
 
-    $row = ($this->scoped)(null)->get(route('manage.badges.index'))
+    $row = ($this->scoped)(null)->get(route('admin.badges.index'))
         ->viewData('page')['props']['rows'][0];
 
     // The Fursuit cell is plain text until phase 3 registers the fursuit view page, and a
@@ -305,7 +305,7 @@ test('the Owner cell links at the users list pre-filtered by that name', functio
 
     expect($row['cells']['fursuit.user.name'])->toBe([
         'display' => $owner->name,
-        'url' => route('manage.users.index', ['search' => $owner->name]),
+        'url' => route('admin.settings.users.index', ['search' => $owner->name]),
     ])
         ->and(is_array($fursuit) ? $fursuit['display'] : $fursuit)->toBe('Nibbles')
         ->and($row['cells']['fursuit.species.name'])->toBe('Blue Fox')
@@ -317,7 +317,7 @@ test('the Owner cell links at the users list pre-filtered by that name', functio
 test('the list declares the four filters with their labels, placeholders and option sets', function () {
     ($this->badge)();
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->count('filters', 4)
             ->where('filters.0.key', 'status_fulfillment')
@@ -361,7 +361,7 @@ test('the fulfillment and payment filters narrow the row set', function () {
     $picked = ($this->badge)(['status_fulfillment' => 'picked_up', 'status_payment' => 'paid']);
 
     $rows = fn (array $query) => collect(
-        ($this->scoped)(null)->get(route('manage.badges.index', $query))->viewData('page')['props']['rows']
+        ($this->scoped)(null)->get(route('admin.badges.index', $query))->viewData('page')['props']['rows']
     )->pluck('id')->all();
 
     expect($rows(['filter' => ['status_fulfillment' => ['picked_up']]]))->toBe([$picked->id])
@@ -374,7 +374,7 @@ test('the free-badge ternary separates free from paid, and blank means all', fun
     $paid = ($this->badge)(['is_free_badge' => false]);
 
     $rows = fn (array $query) => collect(
-        ($this->scoped)(null)->get(route('manage.badges.index', $query))->viewData('page')['props']['rows']
+        ($this->scoped)(null)->get(route('admin.badges.index', $query))->viewData('page')['props']['rows']
     )->pluck('id')->all();
 
     expect($rows(['filter' => ['is_free_badge' => '1']]))->toBe([$free->id])
@@ -390,7 +390,7 @@ test('the attendee range filters numerically, on SQLite, and only within the sel
 
     $rows = fn (?int $eventId, array $range) => collect(
         ($this->scoped)($eventId)
-            ->get(route('manage.badges.index', ['filter' => ['attendee_id_range' => $range]]))
+            ->get(route('admin.badges.index', ['filter' => ['attendee_id_range' => $range]]))
             ->viewData('page')['props']['rows']
     )->pluck('id')->all();
 
@@ -412,7 +412,7 @@ test('search matches exactly the three fields the audit marks searchable', funct
     $owner = $badge->fursuit->user;
 
     $rows = fn (string $term) => collect(
-        ($this->scoped)(null)->get(route('manage.badges.index', ['search' => $term]))->viewData('page')['props']['rows']
+        ($this->scoped)(null)->get(route('admin.badges.index', ['search' => $term]))->viewData('page')['props']['rows']
     )->pluck('id')->all();
 
     expect($rows('Nibbles'))->toBe([$badge->id])
@@ -429,13 +429,13 @@ test('the list is scoped by the global event selector through the fursuit', func
     $mine = ($this->badge)();
     $theirs = ($this->badge)([], [], '0143', $this->otherEvent);
 
-    ($this->scoped)($this->event->id)->get(route('manage.badges.index'))
+    ($this->scoped)($this->event->id)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page->count('rows', 1)->where('rows.0.id', $mine->id));
 
-    ($this->scoped)($this->otherEvent->id)->get(route('manage.badges.index'))
+    ($this->scoped)($this->otherEvent->id)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page->count('rows', 1)->where('rows.0.id', $theirs->id));
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page->count('rows', 2));
 });
 
@@ -447,7 +447,7 @@ test('the table offers Edit and Print Badge and nothing else, and no create acti
     // this table.
     ($this->badge)();
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->count('rows.0.actions', 2)
             ->where('rows.0.actions.0.name', 'edit')
@@ -463,7 +463,7 @@ test('the table offers Edit and Print Badge and nothing else, and no create acti
 test('the pager offers 10 / 25 / 50 / 100 and no all', function () {
     ($this->badge)();
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('meta.perPage', 25)
             ->where('meta.perPageOptions', [10, 25, 50, 100])
@@ -473,7 +473,7 @@ test('the pager offers 10 / 25 / 50 / 100 and no all', function () {
 test('the edit form ships the five sections, all read-only but the two statuses', function () {
     $badge = ($this->badge)(['custom_id' => '0142-1', 'total' => 300, 'subtotal' => 252, 'tax' => 48]);
 
-    actingAs($this->admin)->get(route('manage.badges.edit', $badge))
+    actingAs($this->admin)->get(route('admin.badges.edit', $badge))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Badges/Form')
@@ -501,7 +501,7 @@ test('the status pickers offer only the transitions the state machine allows', f
     // through the cast, so a badge could be put where no transition leads.
     $pending = ($this->badge)();
 
-    actingAs($this->admin)->get(route('manage.badges.edit', $pending))
+    actingAs($this->admin)->get(route('admin.badges.edit', $pending))
         ->assertInertia(fn (Assert $page) => $page
             ->where('fulfillmentOptions', [
                 ['value' => 'pending', 'label' => 'Pending'],
@@ -517,7 +517,7 @@ test('the status pickers offer only the transitions the state machine allows', f
     // therefore offered (plan 2.10 #8).
     $picked = ($this->badge)(['status_fulfillment' => 'picked_up', 'status_payment' => 'paid']);
 
-    actingAs($this->admin)->get(route('manage.badges.edit', $picked))
+    actingAs($this->admin)->get(route('admin.badges.edit', $picked))
         ->assertInertia(fn (Assert $page) => $page
             ->where('fulfillmentOptions', [
                 ['value' => 'picked_up', 'label' => 'Picked Up'],
@@ -532,11 +532,11 @@ test('saving a status runs the transition rather than writing the string', funct
     $badge = ($this->badge)();
 
     actingAs($this->admin)
-        ->put(route('manage.badges.update', $badge), [
+        ->put(route('admin.badges.update', $badge), [
             'status_fulfillment' => 'processing',
             'status_payment' => 'unpaid',
         ])
-        ->assertRedirect(route('manage.badges.index'))
+        ->assertRedirect(route('admin.badges.index'))
         ->assertInertiaFlash('toast', ['tone' => 'success', 'title' => 'Saved', 'body' => null]);
 
     $badge->refresh();
@@ -551,11 +551,11 @@ test('the payment transition stamps paid_at and logs, and runs before fulfillmen
     $badge = ($this->badge)(['status_fulfillment' => 'processing', 'paid_at' => null, 'custom_id' => '0142-1']);
 
     actingAs($this->admin)
-        ->put(route('manage.badges.update', $badge), [
+        ->put(route('admin.badges.update', $badge), [
             'status_fulfillment' => 'ready_for_pickup',
             'status_payment' => 'paid',
         ])
-        ->assertRedirect(route('manage.badges.index'));
+        ->assertRedirect(route('admin.badges.index'));
 
     $badge->refresh();
 
@@ -571,7 +571,7 @@ test('a badge cannot be moved to a state config() does not allow from its curren
     // printed, which no transition reaches at all.
     foreach (['picked_up', 'ready_for_pickup', 'printed', 'nonsense'] as $target) {
         actingAs($this->admin)
-            ->put(route('manage.badges.update', $badge), [
+            ->put(route('admin.badges.update', $badge), [
                 'status_fulfillment' => $target,
                 'status_payment' => 'unpaid',
             ])
@@ -584,7 +584,7 @@ test('a badge cannot be moved to a state config() does not allow from its curren
 test('both statuses are required', function () {
     $badge = ($this->badge)();
 
-    actingAs($this->admin)->put(route('manage.badges.update', $badge), [])
+    actingAs($this->admin)->put(route('admin.badges.update', $badge), [])
         ->assertSessionHasErrors(['status_fulfillment', 'status_payment']);
 });
 
@@ -595,7 +595,7 @@ test('no write path can put a euro string into a cents column', function () {
     $badge = ($this->badge)(['total' => 300, 'subtotal' => 252, 'tax' => 48]);
 
     actingAs($this->admin)
-        ->put(route('manage.badges.update', $badge), [
+        ->put(route('admin.badges.update', $badge), [
             'status_fulfillment' => 'pending',
             'status_payment' => 'unpaid',
             'total' => '3.00',
@@ -605,7 +605,7 @@ test('no write path can put a euro string into a cents column', function () {
             'custom_id' => 'HACKED',
             'fursuit_id' => 999,
         ])
-        ->assertRedirect(route('manage.badges.index'));
+        ->assertRedirect(route('admin.badges.index'));
 
     $badge->refresh();
 
@@ -620,56 +620,22 @@ test('a badge is soft deleted from the edit page with Filament default copy', fu
     $badge = ($this->badge)();
 
     actingAs($this->admin)
-        ->delete(route('manage.badges.destroy', $badge))
-        ->assertRedirect(route('manage.badges.index'))
+        ->delete(route('admin.badges.destroy', $badge))
+        ->assertRedirect(route('admin.badges.index'))
         ->assertInertiaFlash('toast', ['tone' => 'success', 'title' => 'Deleted', 'body' => null]);
 
     expect(Badge::whereKey($badge->id)->exists())->toBeFalse()
         ->and(Badge::withTrashed()->whereKey($badge->id)->exists())->toBeTrue();
 });
 
-test('the corrupted-total report lists exactly the badges whose total is out of step', function () {
-    // The report plan 2.10 #3 asks phase 4 to ship before anything else touches money.
-    $healthy = ($this->badge)(['total' => 300, 'subtotal' => 252, 'tax' => 48]);
-    $damaged = ($this->badge)(['total' => 3, 'subtotal' => 252, 'tax' => 48]);
-    $other = ($this->badge)(['total' => 900, 'subtotal' => 252, 'tax' => 48]);
-
-    actingAs($this->admin)->get(route('manage.badges.corrupted-totals'))
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Manage/Badges/CorruptedTotals')
-            ->count('rows', 2)
-            ->where('rows.0.id', $damaged->id)
-            ->where('rows.0.cells.total', '€0.03')
-            ->where('rows.0.cells.expected', '€3.00')
-            ->where('rows.0.cells.signature', 'Euro amount stored as cents')
-            ->where('rows.1.id', $other->id)
-            ->where('rows.1.cells.signature', 'Total does not match subtotal + tax')
-            // Read-only: nothing on this page changes data.
-            ->count('rows.0.actions', 0)
-            ->count('bulkActions', 0)
-            ->count('pageActions', 0)
-        );
-
-    expect(collect(
-        actingAs($this->admin)->get(route('manage.badges.corrupted-totals'))->viewData('page')['props']['rows']
-    )->pluck('id'))->not->toContain($healthy->id);
-});
-
-test('the report is offered to an admin only, and only as a link', function () {
+test('the list offers no page actions', function () {
     ($this->badge)();
 
-    ($this->scoped)(null)->get(route('manage.badges.index'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('pageActions.0.name', 'corrupted-totals')
-            ->where('pageActions.0.method', 'get')
-            ->where('pageActions.0.url', route('manage.badges.corrupted-totals'))
-        );
-
-    actingAs($this->reviewer)->get(route('manage.badges.index'))
+    ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page->count('pageActions', 0));
 
-    actingAs($this->reviewer)->get(route('manage.badges.corrupted-totals'))->assertForbidden();
+    actingAs($this->reviewer)->get(route('admin.badges.index'))
+        ->assertInertia(fn (Assert $page) => $page->count('pageActions', 0));
 });
 
 test('the module admits admins and reviewers to read, and shuts everyone else out', function () {
@@ -678,13 +644,13 @@ test('the module admits admins and reviewers to read, and shuts everyone else ou
 
     // Guests first: `auth` pushes them into the Identity SSO flow, and the panel owns no
     // login screen. Asserted before anyone signs in, because actingAs sticks.
-    get(route('manage.badges.index'))->assertRedirect();
+    get(route('admin.badges.index'))->assertRedirect();
 
-    actingAs($this->admin)->get(route('manage.badges.index'))->assertSuccessful();
-    actingAs($this->reviewer)->get(route('manage.badges.index'))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.badges.index'))->assertSuccessful();
+    actingAs($this->reviewer)->get(route('admin.badges.index'))->assertSuccessful();
 
-    actingAs($this->nobody)->get(route('manage.badges.index'))->assertForbidden();
-    actingAs($this->nobody)->get(route('manage.badges.edit', $badge))->assertForbidden();
+    actingAs($this->nobody)->get(route('admin.badges.index'))->assertForbidden();
+    actingAs($this->nobody)->get(route('admin.badges.edit', $badge))->assertForbidden();
 });
 
 test('an admin may edit any badge without the panel being Filament', function () {
@@ -695,14 +661,14 @@ test('an admin may edit any badge without the panel being Filament', function ()
 
     expect(Gate::forUser($this->admin)->allows('update', $badge))->toBeTrue();
 
-    actingAs($this->admin)->get(route('manage.badges.edit', $badge))->assertSuccessful();
+    actingAs($this->admin)->get(route('admin.badges.edit', $badge))->assertSuccessful();
 
     actingAs($this->admin)
-        ->put(route('manage.badges.update', $badge), [
+        ->put(route('admin.badges.update', $badge), [
             'status_fulfillment' => 'processing',
             'status_payment' => 'unpaid',
         ])
-        ->assertRedirect(route('manage.badges.index'));
+        ->assertRedirect(route('admin.badges.index'));
 
     // And someone with neither flag still gets the owner rules, which is the whole of the
     // public ordering side.
@@ -717,14 +683,14 @@ test('a reviewer may read but not write, and a stranger not even that', function
     $badge = ($this->badge)();
 
     actingAs($this->nobody)
-        ->put(route('manage.badges.update', $badge), ['status_fulfillment' => 'processing', 'status_payment' => 'unpaid'])
+        ->put(route('admin.badges.update', $badge), ['status_fulfillment' => 'processing', 'status_payment' => 'unpaid'])
         ->assertForbidden();
 
-    actingAs($this->nobody)->delete(route('manage.badges.destroy', $badge))->assertForbidden();
+    actingAs($this->nobody)->delete(route('admin.badges.destroy', $badge))->assertForbidden();
 
     // BadgePolicy::delete is is_admin or owner-with-conditions, so a reviewer is not a
     // deleter (audit 3) even though update is open to every access-manage holder.
-    actingAs($this->reviewer)->delete(route('manage.badges.destroy', $badge))->assertForbidden();
+    actingAs($this->reviewer)->delete(route('admin.badges.destroy', $badge))->assertForbidden();
 
     expect(Badge::whereKey($badge->id)->exists())->toBeTrue();
 });
@@ -734,22 +700,20 @@ test('the rail links to the module and carries the badge count for the selected 
     ($this->badge)([], [], '0143', $this->otherEvent);
 
     $item = collect(
-        ($this->scoped)($this->event->id)->get(route('manage.dashboard'))->viewData('page')['props']['manageNav']
+        ($this->scoped)($this->event->id)->get(route('admin.dashboard'))->viewData('page')['props']['manageNav']
     )
         ->flatMap(fn ($group) => $group['items'])
         ->firstWhere('label', 'Badges');
 
     expect($item)->not->toBeNull()
-        ->and($item['url'])->toBe(route('manage.badges.index'))
+        ->and($item['url'])->toBe(route('admin.badges.index'))
         // The chip counts badges in the selected event, through the fursuit, as today.
         ->and($item['badge']['label'] ?? null)->toBe('1');
 });
 
-test('DELETE /admin/badges/corrupted-totals is never read as a record id', function () {
-    expect(route('manage.badges.corrupted-totals', absolute: false))->toBe('/admin/badges/corrupted-totals');
-
-    // The literal segment is declared before {badge}, and {badge} only matches digits.
-    actingAs($this->admin)->get('/admin/badges/corrupted-totals')->assertSuccessful();
+test('a literal segment is never read as a record id', function () {
+    // {badge} only matches digits, so a stray word never reaches the binder.
+    actingAs($this->admin)->get('/admin/badges/bulk/edit')->assertNotFound();
 });
 
 test('the fulfillment states this app can reach are exactly the ones the machine declares', function () {

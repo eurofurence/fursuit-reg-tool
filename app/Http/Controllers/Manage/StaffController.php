@@ -85,7 +85,7 @@ class StaffController extends Controller
             'staff' => null,
             // The Generate button proposes a code into form state; it never writes
             // (plan 2.10 #23). Null until the operator asks for one.
-            'generatedSetupCode' => session('manage.staff.generated_setup_code'),
+            'generatedSetupCode' => session('admin.staff.generated_setup_code'),
             'headerActions' => [],
         ]);
     }
@@ -98,7 +98,7 @@ class StaffController extends Controller
         // (audit 4.10 notifications).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('manage.staff.index');
+        return redirect()->route('admin.staff.index');
     }
 
     /**
@@ -115,7 +115,7 @@ class StaffController extends Controller
 
         return inertia('Manage/Staff/Form', [
             'staff' => $this->formData($staff),
-            'generatedSetupCode' => session('manage.staff.generated_setup_code'),
+            'generatedSetupCode' => session('admin.staff.generated_setup_code'),
             'headerActions' => $this->headerActions($staff),
             // Read is gated as tightly as write: a tag value is a POS credential, so an
             // operator who may not write one may not read one either.
@@ -132,7 +132,7 @@ class StaffController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.staff.index');
+        return redirect()->route('admin.staff.index');
     }
 
     /**
@@ -152,7 +152,7 @@ class StaffController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('manage.staff.index');
+        return redirect()->route('admin.staff.index');
     }
 
     /**
@@ -215,14 +215,14 @@ class StaffController extends Controller
                 'created_at' => $this->datetime($staff->created_at),
             ])
             ->recordUrl(fn (Staff $staff) => Gate::allows('update', $staff)
-                ? route('manage.staff.edit', $staff)
+                ? route('admin.staff.edit', $staff)
                 : null)
             ->rowActions(fn (Staff $staff) => array_values(array_filter([
                 Gate::allows('update', $staff)
-                    ? Action::link('edit', 'Edit', route('manage.staff.edit', $staff))->icon('pencil')
+                    ? Action::link('edit', 'Edit', route('admin.staff.edit', $staff))->icon('pencil')
                     : null,
                 Gate::allows('delete', $staff)
-                    ? Action::delete('delete', 'Delete', route('manage.staff.destroy', $staff))
+                    ? Action::delete('delete', 'Delete', route('admin.staff.destroy', $staff))
                         ->icon('trash-2')
                         ->tone('danger')
                         // Filament's DeleteAction copy, never overridden in this
@@ -287,7 +287,7 @@ class StaffController extends Controller
         }
 
         return [
-            Action::delete('delete', 'Delete selected', route('manage.staff.bulk.destroy'))
+            Action::delete('delete', 'Delete selected', route('admin.staff.bulk.destroy'))
                 ->icon('trash-2')
                 ->tone('danger')
                 ->confirm('Delete selected staff', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete'),
@@ -304,7 +304,7 @@ class StaffController extends Controller
         }
 
         return [
-            Action::link('create', 'New staff', route('manage.staff.create'))->icon('plus'),
+            Action::link('create', 'New staff', route('admin.staff.create'))->icon('plus'),
         ];
     }
 
@@ -320,7 +320,7 @@ class StaffController extends Controller
         }
 
         return [
-            Action::delete('delete', 'Delete', route('manage.staff.destroy', $staff))
+            Action::delete('delete', 'Delete', route('admin.staff.destroy', $staff))
                 ->icon('trash-2')
                 ->tone('danger')
                 ->confirmDelete('staff')

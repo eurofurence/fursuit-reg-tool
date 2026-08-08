@@ -77,12 +77,12 @@ const form = useForm({
 
 const submit = () => {
   if (editing.value) {
-    form.put(route('manage.staff.update', props.staff.id));
+    form.put(route('admin.staff.update', props.staff.id));
 
     return;
   }
 
-  form.post(route('manage.staff.store'));
+  form.post(route('admin.staff.store'));
 };
 
 /*
@@ -101,8 +101,8 @@ const generate = () => {
 
   router.post(
     editing.value
-      ? route('manage.staff.setup-code', props.staff.id)
-      : route('manage.staff.setup-code.create'),
+      ? route('admin.staff.setup-code', props.staff.id)
+      : route('admin.staff.setup-code.create'),
     {},
     {
       preserveScroll: true,
@@ -195,12 +195,12 @@ const submitTag = () => {
   const options = { preserveScroll: true, onSuccess: closeTag };
 
   if (tag.value?.id) {
-    tagForm.put(route('manage.staff.rfid-tags.update', [props.staff.id, tag.value.id]), options);
+    tagForm.put(route('admin.staff.rfid-tags.update', [props.staff.id, tag.value.id]), options);
 
     return;
   }
 
-  tagForm.post(route('manage.staff.rfid-tags.store', props.staff.id), options);
+  tagForm.post(route('admin.staff.rfid-tags.store', props.staff.id), options);
 };
 </script>
 

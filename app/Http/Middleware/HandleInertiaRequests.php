@@ -80,7 +80,7 @@ class HandleInertiaRequests extends Middleware
      */
     private function getManageContent(Request $request): array
     {
-        if (! $request->routeIs('manage.*')) {
+        if (! $request->routeIs('admin.*')) {
             return [];
         }
 
@@ -88,6 +88,10 @@ class HandleInertiaRequests extends Middleware
             'manageNav' => fn () => $this->manageNavigation()->groups(),
             'manageEvent' => fn () => app(EventScope::class)->toArray(),
             'manageStrip' => fn () => $this->manageNavigation()->strip(),
+            // The Settings submenu. Shared rather than declared in SettingsLayout.vue
+            // because one of its panes (Events) is policy-gated, so the list has to be
+            // filtered server-side like the rail; see Navigation::settings().
+            'manageSettingsNav' => fn () => $this->manageNavigation()->settings(),
         ];
     }
 
@@ -111,7 +115,7 @@ class HandleInertiaRequests extends Middleware
 
     private function getAuthContent(Request $request): array
     {
-        if ($request->routeIs('manage.*')) {
+        if ($request->routeIs('admin.*')) {
             $user = $request->user();
 
             // The ability flags let the sidebar hide what the user cannot reach,

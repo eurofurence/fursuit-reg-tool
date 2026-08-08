@@ -7,9 +7,11 @@ use App\Http\Requests\Manage\UserRequest;
 use App\Models\User;
 use App\Support\Manage\Action;
 use App\Support\Manage\Column;
+use App\Support\Manage\Tab;
 use App\Support\Manage\Table;
 use App\Support\Manage\Toast;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -66,7 +68,7 @@ class UserController extends Controller
         // (audit 7.2).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('manage.users.index');
+        return redirect()->route('admin.settings.users.index');
     }
 
     public function edit(User $user): Response
@@ -84,7 +86,7 @@ class UserController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.users.index');
+        return redirect()->route('admin.settings.users.index');
     }
 
     /**
@@ -152,6 +154,7 @@ class UserController extends Controller
             // Stated rather than left implicit, so the order does not depend on whatever
             // the driver happens to return.
             ->defaultSort('id')
+            ->tabs($this->tabs())
             ->filters([])
             ->rows(fn (User $user) => [
                 'remote_id' => $user->remote_id,
@@ -163,14 +166,14 @@ class UserController extends Controller
                 'updated_at' => $this->datetime($user->updated_at),
             ])
             ->recordUrl(fn (User $user) => Gate::allows('update', $user)
-                ? route('manage.users.edit', $user)
+                ? route('admin.settings.users.edit', $user)
                 : null)
             ->rowActions(fn (User $user) => array_values(array_filter([
                 Gate::allows('update', $user)
-                    ? Action::link('edit', 'Edit', route('manage.users.edit', $user))->icon('pencil')
+                    ? Action::link('edit', 'Edit', route('admin.settings.users.edit', $user))->icon('pencil')
                     : null,
                 Gate::allows('delete', $user)
-                    ? Action::delete('delete', 'Delete', route('manage.users.destroy', $user))
+                    ? Action::delete('delete', 'Delete', route('admin.settings.users.destroy', $user))
                         ->icon('trash-2')
                         ->tone('danger')
                         // Filament's DeleteAction copy, never overridden in this
@@ -181,6 +184,39 @@ class UserController extends Controller
             ->bulkActions($this->bulkActions())
             ->pageActions($this->pageActions())
             ->toArray($request);
+    }
+
+    /**
+     * The three views of this list: everyone, the admins, the reviewers.
+     *
+     * Both roles are plain boolean columns on `users` - `is_admin` and `is_reviewer`, cast
+     * to bool on the model - and neither is exclusive, so a user who is both appears under
+     * Admins and under Reviewers. The counts therefore do not add up to the All count, and
+     * that is the truth about the data rather than something to reconcile: 4 + 3 with two
+     * people holding both roles is 5 users, not 7.
+     *
+     * All is first, so it is the default and its URL is the bare /admin/settings/users.
+     *
+     * Counted, because each is one `select count(*) from users where is_x = 1` against a
+     * table this page is already listing, with no join and no relation behind it. That is
+     * the case the count opt-in exists for; a tab that had to count through a relation
+     * would simply not ask.
+     *
+     * @return array<int, Tab>
+     */
+    private function tabs(): array
+    {
+        return [
+            // Counted like the other two, not left bare: a strip where one tab has no
+            // number reads as a number that failed to load.
+            Tab::make('all', 'All')->counted(),
+            Tab::make('admins', 'Admins')
+                ->apply(fn (Builder $query) => $query->where('is_admin', true))
+                ->counted(),
+            Tab::make('reviewers', 'Reviewers')
+                ->apply(fn (Builder $query) => $query->where('is_reviewer', true))
+                ->counted(),
+        ];
     }
 
     /**
@@ -215,7 +251,7 @@ class UserController extends Controller
         }
 
         return [
-            Action::delete('delete', 'Delete selected', route('manage.users.bulk.destroy'))
+            Action::delete('delete', 'Delete selected', route('admin.settings.users.bulk.destroy'))
                 ->icon('trash-2')
                 ->tone('danger')
                 ->confirm('Delete selected users', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete'),
@@ -232,7 +268,7 @@ class UserController extends Controller
         }
 
         return [
-            Action::link('create', 'New user', route('manage.users.create'))->icon('plus'),
+            Action::link('create', 'New user', route('admin.settings.users.create'))->icon('plus'),
         ];
     }
 

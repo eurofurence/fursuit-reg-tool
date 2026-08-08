@@ -78,7 +78,7 @@ const upload = (event) => {
   uploading.value = true;
 
   router.post(
-    route('manage.uploads.store'),
+    route('admin.uploads.store'),
     { purpose: props.uploadPurpose, file },
     {
       forceFormData: true,
@@ -101,7 +101,7 @@ const upload = (event) => {
   );
 };
 
-const submit = () => form.put(route('manage.fursuits.update', props.fursuit.id));
+const submit = () => form.put(route('admin.fursuits.update', props.fursuit.id));
 </script>
 
 <template>

@@ -65,10 +65,10 @@ class FursuitReviewController extends Controller
                 'No pending fursuits are waiting in the selected event.',
             );
 
-            return redirect()->route('manage.fursuits.index');
+            return redirect()->route('admin.fursuits.index');
         }
 
-        return redirect()->route('manage.fursuits.review.show', $next);
+        return redirect()->route('admin.fursuits.review.show', $next);
     }
 
     /**
@@ -100,16 +100,23 @@ class FursuitReviewController extends Controller
              * Only on the record the verdict applies to. It used to ride along to the next
              * fursuit, where "Approved on Fluffy - undo" sat above a different animal's photo:
              * the reviewer had to trust a name rather than see what they were taking back, and
-             * a stray click undid a record that was no longer on screen. Now the queue moves
-             * on cleanly and the way back is the browser's own Back button, which lands on the
-             * record and finds the undo bar there.
+             * a stray click undid a record that was no longer on screen.
              */
             'undo' => $this->undoBar($reviewer, $fursuit),
+            /*
+             * Where the left arrow goes: the record this reviewer last decided, while that verdict
+             * can still be taken back. It is navigation, not the undo itself - the reviewer lands
+             * on the fursuit, sees the photo and the verdict, and presses Undo there. That is the
+             * whole point of moving the bar off the next record, and it needs its own way back
+             * rather than relying on browser history, which a reviewer who has skipped twice since
+             * no longer has in a usable place.
+             */
+            'back' => $this->backTarget($reviewer, $fursuit),
             'queue' => [
                 'remaining' => $this->reviews->pendingCount($scope->apply(Fursuit::query())),
-                'skipUrl' => route('manage.fursuits.next', [$fursuit, 'queue' => 1]),
-                'indexUrl' => route('manage.fursuits.index'),
-                'recordUrl' => route('manage.fursuits.show', $fursuit),
+                'skipUrl' => route('admin.fursuits.next', [$fursuit, 'queue' => 1]),
+                'indexUrl' => route('admin.fursuits.index'),
+                'recordUrl' => route('admin.fursuits.show', $fursuit),
             ],
         ]);
     }
@@ -148,12 +155,17 @@ class FursuitReviewController extends Controller
             return back();
         }
 
+        /*
+         * The verdict named first and the fursuit second, rather than glued into one sentence:
+         * the labels are phrases now ("Rejected, must be fixed"), and reading one mid-sentence
+         * cost more than the sentence saved.
+         */
         Toast::flashSuccess(
             'Decision undone',
-            $decision->outcome->label().' on '.($fursuit->name ?? 'the fursuit').' was taken back. Nothing was sent to the attendee.',
+            'Took back "'.$decision->outcome->label().'" on '.($fursuit->name ?? 'the fursuit').'. Nothing was sent to the attendee.',
         );
 
-        return redirect()->route('manage.fursuits.review.show', $fursuit);
+        return redirect()->route('admin.fursuits.review.show', $fursuit);
     }
 
     /**
@@ -173,9 +185,14 @@ class FursuitReviewController extends Controller
             'id' => $fursuit->id,
             'name' => $fursuit->name,
             'species' => $fursuit->species?->name,
-            // The full-size photo, not a thumbnail: judging a submission is the whole job
-            // of this page.
-            'image' => FursuitController::imageUrl($fursuit->image),
+            /*
+             * The gallery webp, which is 1080x1920 - big enough to judge a submission on, and
+             * not the archival print master this page used to pull once per record.
+             * GenerateFursuitWebpJob renders it the moment the attendee submits or replaces a
+             * photo, so it exists by the time a reviewer gets here; the helper falls back to the
+             * master if a render is still queued.
+             */
+            'image' => FursuitController::previewUrl($fursuit),
             'status' => Status::fursuit($fursuit->status),
             'owner' => $fursuit->user?->name,
             'event' => $fursuit->event?->name,
@@ -195,7 +212,7 @@ class FursuitReviewController extends Controller
             'lastDecision' => $this->lastDecision($fursuit),
             // And what the submission looked like before, for the same reason.
             'history' => $this->history($fursuit),
-            'recordUrl' => route('manage.fursuits.show', $fursuit),
+            'recordUrl' => route('admin.fursuits.show', $fursuit),
         ];
     }
 
@@ -332,9 +349,9 @@ class FursuitReviewController extends Controller
     private function routeFor(FursuitReviewOutcomeEnum $outcome): string
     {
         return match ($outcome) {
-            FursuitReviewOutcomeEnum::Approved => 'manage.fursuits.approve',
-            FursuitReviewOutcomeEnum::Rejected => 'manage.fursuits.reject',
-            FursuitReviewOutcomeEnum::PublicationBlocked => 'manage.fursuits.block-publication',
+            FursuitReviewOutcomeEnum::Approved => 'admin.fursuits.approve',
+            FursuitReviewOutcomeEnum::Rejected => 'admin.fursuits.reject',
+            FursuitReviewOutcomeEnum::PublicationBlocked => 'admin.fursuits.block-publication',
         };
     }
 
@@ -355,11 +372,40 @@ class FursuitReviewController extends Controller
         }
 
         return [
-            'url' => route('manage.fursuits.review.undo'),
+            'url' => route('admin.fursuits.review.undo'),
             'outcome' => $decision->outcome->label(),
             'tone' => $decision->outcome->tone(),
             'fursuit' => $decision->fursuit?->name,
             'fursuitId' => $decision->fursuit_id,
+            'expiresAt' => $decision->notify_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * The record the left arrow walks back to, or null when there is nothing to go back to.
+     *
+     * The reviewer's last verdict that can still be erased, and only while it is a *different*
+     * record than the one on screen - there is no point offering a trip to the page you are already
+     * on, and on that page the undo bar is what answers.
+     *
+     * Deliberately not an undo. The key navigates; the button on the record undoes. A reviewer
+     * working at speed should never erase a verdict with a keystroke aimed at a record they cannot
+     * see - which is what the arrow used to do.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function backTarget(User $reviewer, Fursuit $fursuit): ?array
+    {
+        $decision = $this->reviews->undoable($reviewer);
+
+        if ($decision === null || $decision->fursuit === null || $decision->fursuit_id === $fursuit->getKey()) {
+            return null;
+        }
+
+        return [
+            'url' => route('admin.fursuits.review.show', $decision->fursuit),
+            'fursuit' => $decision->fursuit->name,
+            'outcome' => $decision->outcome->label(),
             'expiresAt' => $decision->notify_at?->toIso8601String(),
         ];
     }

@@ -242,6 +242,27 @@ class PushoverConfig:
 
 
 @dataclass
+class CardStockConfig:
+    """Blank plastic cards, which are finite and easy to forget about.
+
+    The printer only complains once it is empty, which is the worst moment to
+    find out: the run stops mid-batch with a card half-transferred and somebody
+    has to go and find the box. Counting down from a known figure and warning
+    early turns that into a refill nobody had to rush.
+    """
+
+    enabled: bool = True
+
+    # Warn with this many blanks left. Ten is roughly a minute of printing,
+    # which is enough to walk to the supply cupboard and back.
+    low_threshold: int = 10
+
+    # Cards come in shrink-wrapped stacks of a hundred, so that is what the
+    # refill button adds. Anything else is a typo waiting to happen.
+    refill_size: int = 100
+
+
+@dataclass
 class TelegramConfig:
     """A photo of every card, and a pause button, in a Telegram channel.
 
@@ -335,6 +356,7 @@ class AgentConfig:
 
     pushover: PushoverConfig = field(default_factory=PushoverConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
+    card_stock: CardStockConfig = field(default_factory=CardStockConfig)
 
     @property
     def path(self) -> Path:
@@ -384,6 +406,7 @@ class AgentConfig:
         printers = payload.pop("printers", None)
         pushover = payload.pop("pushover", None)
         telegram = payload.pop("telegram", None)
+        card_stock = payload.pop("card_stock", None)
 
         config = cls(**payload)
 
@@ -394,6 +417,7 @@ class AgentConfig:
 
         config.pushover = _build(PushoverConfig, pushover)
         config.telegram = _build(TelegramConfig, telegram)
+        config.card_stock = _build(CardStockConfig, card_stock)
 
         return config
 

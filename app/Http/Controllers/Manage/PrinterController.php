@@ -122,7 +122,7 @@ class PrinterController extends Controller
         // (audit 7.2).
         Toast::flashSuccess('Created');
 
-        return redirect()->route('manage.printers.index');
+        return redirect()->route('admin.printers.index');
     }
 
     public function edit(Printer $printer): Response
@@ -140,7 +140,7 @@ class PrinterController extends Controller
             'actions' => array_values(array_filter([
                 $this->clearErrorAction($printer),
                 Gate::allows('delete', $printer)
-                    ? Action::delete('delete', 'Delete', route('manage.printers.destroy', $printer))
+                    ? Action::delete('delete', 'Delete', route('admin.printers.destroy', $printer))
                         ->icon('trash-2')
                         ->tone('danger')
                         ->confirmDelete('printer')
@@ -157,7 +157,7 @@ class PrinterController extends Controller
 
         Toast::flashSuccess('Saved');
 
-        return redirect()->route('manage.printers.index');
+        return redirect()->route('admin.printers.index');
     }
 
     /**
@@ -188,7 +188,7 @@ class PrinterController extends Controller
 
         Toast::flashSuccess('Deleted');
 
-        return redirect()->route('manage.printers.index');
+        return redirect()->route('admin.printers.index');
     }
 
     /**
@@ -255,11 +255,11 @@ class PrinterController extends Controller
             ->perPage(self::PER_PAGE)
             ->rows(fn (Printer $printer) => $this->row($printer))
             ->recordUrl(fn (Printer $printer) => Gate::allows('update', $printer)
-                ? route('manage.printers.edit', $printer)
+                ? route('admin.printers.edit', $printer)
                 : null)
             ->rowActions(fn (Printer $printer) => array_values(array_filter([
                 Gate::allows('update', $printer)
-                    ? Action::link('edit', 'Edit', route('manage.printers.edit', $printer))->icon('pencil')
+                    ? Action::link('edit', 'Edit', route('admin.printers.edit', $printer))->icon('pencil')
                     : null,
                 $this->clearErrorAction($printer),
             ])))
@@ -351,7 +351,7 @@ class PrinterController extends Controller
                 // they are looking at, rather than "flip whatever is in the database when
                 // this arrives". A poll that refreshed the row in between rewrites the
                 // URL with it, so a click can never mean the opposite of what it showed.
-                'url' => route('manage.printers.active', [
+                'url' => route('admin.printers.active', [
                     'printer' => $printer->getKey(),
                     'active' => $printer->is_active ? 0 : 1,
                 ]),
@@ -378,12 +378,12 @@ class PrinterController extends Controller
     {
         $status = Status::make((string) $count, $count > 0 ? $tone : Status::IDLE);
 
-        if (! Route::has('manage.print-jobs.index')) {
+        if (! Route::has('admin.print-jobs.index')) {
             return $status;
         }
 
         return $status + [
-            'url' => route('manage.print-jobs.index', ['filter' => ['printer' => $printer->getKey()]]),
+            'url' => route('admin.print-jobs.index', ['filter' => ['printer' => $printer->getKey()]]),
         ];
     }
 
@@ -458,7 +458,7 @@ class PrinterController extends Controller
             return null;
         }
 
-        $action = Action::post('clear-error', 'Clear error', route('manage.printers.clear-error', $printer))
+        $action = Action::post('clear-error', 'Clear error', route('admin.printers.clear-error', $printer))
             ->icon('rotate-ccw')
             ->tone('warn')
             ->confirm(
@@ -487,7 +487,7 @@ class PrinterController extends Controller
         }
 
         return [
-            Action::delete('delete', 'Delete selected', route('manage.printers.bulk.destroy'))
+            Action::delete('delete', 'Delete selected', route('admin.printers.bulk.destroy'))
                 ->icon('trash-2')
                 ->tone('danger')
                 ->confirm('Delete selected printers', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete'),
@@ -509,7 +509,7 @@ class PrinterController extends Controller
         }
 
         return [
-            Action::link('create', 'New printer', route('manage.printers.create'))->icon('plus'),
+            Action::link('create', 'New printer', route('admin.printers.create'))->icon('plus'),
         ];
     }
 

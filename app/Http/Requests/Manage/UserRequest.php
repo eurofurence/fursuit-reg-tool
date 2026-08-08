@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * Create and update for /admin/users.
+ * Create and update for /admin/settings/users.
  *
  * The rules are UserResource's form schema (audit 4.13) with one field gone and two rules
  * added.

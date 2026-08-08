@@ -183,7 +183,7 @@ class CheckoutController extends Controller
             ->filters($this->filters())
             ->rows(fn (Checkout $checkout) => $this->cells($checkout))
             ->recordUrl(fn (Checkout $checkout) => Gate::allows('view', $checkout)
-                ? route('manage.checkouts.show', $checkout)
+                ? route('admin.checkouts.show', $checkout)
                 : null)
             ->rowActions(fn (Checkout $checkout) => $this->rowActions($checkout))
             // CheckoutResource: `// No bulk actions for checkouts` and
@@ -334,7 +334,7 @@ class CheckoutController extends Controller
         return [
             'display' => $name,
             'url' => Gate::allows('viewAny', User::class)
-                ? route('manage.users.index', ['search' => $name])
+                ? route('admin.settings.users.index', ['search' => $name])
                 : null,
         ];
     }
@@ -429,19 +429,19 @@ class CheckoutController extends Controller
     {
         return array_values(array_filter([
             Gate::allows('view', $checkout)
-                ? Action::link('view', 'View', route('manage.checkouts.show', $checkout))->icon('eye')
+                ? Action::link('view', 'View', route('admin.checkouts.show', $checkout))->icon('eye')
                 : null,
 
             Gate::allows('view', $checkout)
                 // heroicon-o-document-text, colour gray, opens in a new tab.
-                ? Action::link('receipt', 'Receipt', route('manage.checkouts.receipt', $checkout))
+                ? Action::link('receipt', 'Receipt', route('admin.checkouts.receipt', $checkout))
                     ->icon('file-text')
                     ->tone(Status::IDLE)
                     ->newTab()
                 : null,
 
             Gate::allows('printReceipt', $checkout)
-                ? Action::post('print', 'Print', route('manage.checkouts.print', $checkout))
+                ? Action::post('print', 'Print', route('admin.checkouts.print', $checkout))
                     // heroicon-o-printer, colour info.
                     ->icon('printer')
                     ->tone(Status::INFO)
@@ -463,13 +463,13 @@ class CheckoutController extends Controller
     {
         return array_values(array_filter([
             // heroicon-o-arrow-down-tray, colour gray, opens in a new tab.
-            Action::link('receipt', 'Download Receipt', route('manage.checkouts.receipt', $checkout))
+            Action::link('receipt', 'Download Receipt', route('admin.checkouts.receipt', $checkout))
                 ->icon('download')
                 ->tone(Status::IDLE)
                 ->newTab(),
 
             Gate::allows('printReceipt', $checkout)
-                ? Action::post('print', 'Print Receipt', route('manage.checkouts.print', $checkout))
+                ? Action::post('print', 'Print Receipt', route('admin.checkouts.print', $checkout))
                     ->icon('printer')
                     ->tone(Status::INFO)
                     ->confirm('Print Receipt', 'This will add the receipt to the print queue.')
@@ -608,7 +608,7 @@ class CheckoutController extends Controller
         return [
             'display' => $display,
             'url' => Gate::allows('update', $badge)
-                ? route('manage.badges.edit', $badge)
+                ? route('admin.badges.edit', $badge)
                 : null,
         ];
     }

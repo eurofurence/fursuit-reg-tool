@@ -60,7 +60,7 @@
     --state-info: 86 172 240;
 
     /* Density (plan 1.4). Table rows 28px, header row 24px. The deliberate
-       successor to filament-custom.css's 2px cell padding. */
+       successor to the old panel's 2px cell padding. */
     --mg-row: 28px;
     --mg-row-head: 24px;
     --mg-strip: 40px;
@@ -78,8 +78,8 @@
 
 /*
  * Restated under .dark so the panel is identical whether or not the app's
- * darkMode class is on the html element. The public site and Filament toggle
- * it; /manage does not follow them anywhere.
+ * darkMode class is on the html element. The public site toggles it; the admin
+ * panel does not follow it anywhere.
  */
 .dark {
     --mg-surface-0: 9 14 15;

@@ -207,7 +207,7 @@ class OnSiteDeskController extends Controller
 
     private function back(): RedirectResponse
     {
-        return redirect()->route('manage.settings.on-site-desk');
+        return redirect()->route('admin.settings.on-site-desk');
     }
 
     private function noEvent(string $action): RedirectResponse

@@ -9,25 +9,26 @@
  *
  * The layout is what makes it fast, so it is worth saying why it is this shape.
  *
- *  - **Verdicts on the right, photo on the left.** The photo is the work; it gets the width.
- *    A row of buttons under a tall image is below the fold on a laptop.
- *  - **Reasons are chips under their own verdict, not a dialog.** A modal with a select was
- *    three gestures (open, pick from a list, confirm) and hid the photo behind itself while
- *    the reviewer decided what to say about it. A chip is one click, it belongs visibly to
- *    the button above it, and the photo stays on screen.
- *  - **Nothing is submitted by picking a reason.** Pick, then confirm - because a mis-click
- *    on a reason chip must not mail an attendee. The undo window is the second net.
+ * - **Verdicts on the right, photo on the left.** The photo is the work; it gets the width.
+ * A row of buttons under a tall image is below the fold on a laptop.
+ * - **Reasons are chips under their own verdict, not a dialog.** A modal with a select was
+ * three gestures (open, pick from a list, confirm) and hid the photo behind itself while
+ * the reviewer decided what to say about it. A chip is one click, it belongs visibly to
+ * the button above it, and the photo stays on screen.
+ * - **Nothing is submitted by picking a reason.** Pick, then confirm - because a mis-click
+ * on a reason chip must not mail an attendee. The undo window is the second net.
  *
  * Four things it does that the Filament page did not.
  *
- *  - Three outcomes instead of yes/no, so a gallery rule no longer costs a badge.
- *  - Keyboard: A/R/G choose a verdict, 1-9 pick that verdict's reason, Enter confirms, the
- *    right arrow skips. Undo is a button and only a button - see onKey().
- *  - Undo, because every verdict waits out a window before the attendee is told.
- *  - Presence, which says who else is on the record instead of locking it.
+ * - Three outcomes instead of yes/no, so a gallery rule no longer costs a badge.
+ * - Keyboard: A/R/G choose a verdict, 1-9 pick that verdict's reason, Enter confirms, the left
+ * arrow walks back to the record you last decided and the right arrow skips forward. Neither
+ * arrow changes a verdict: undo is a button on that record, and only a button - see onKey().
+ * - Undo, because every verdict waits out a window before the attendee is told.
+ * - Presence, which says who else is on the record instead of locking it.
  *
- * The poll is a partial reload of the three props that go stale on their own - presence, the
- * undo bar and the queue count - and it doubles as the presence heartbeat, because the server
+ * The poll is a partial reload of the props that go stale on their own - presence, the undo bar, the
+ * back target and the queue count - and it doubles as the presence heartbeat, because the server
  * refreshes presence when it renders this page.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -42,8 +43,10 @@ const props = defineProps({
   /** The three outcomes, declared server-side with their reasons and shortcuts. */
   outcomes: { type: Array, default: () => [] },
   presence: { type: Object, required: true },
-  /** The last verdict this reviewer can still take back, or null. */
+  /** The last verdict this reviewer can still take back, or null. Only on its own record. */
   undo: { type: Object, default: null },
+  /** Where the left arrow goes: that record, when it is not the one on screen. */
+  back: { type: Object, default: null },
   queue: { type: Object, required: true },
 });
 
@@ -63,11 +66,18 @@ const canConfirm = computed(() => {
   return outcome !== null && (!outcome.requiresReason || form.custom_reason.trim() !== '');
 });
 
-/** Picking a chip fills the text that is actually sent; the reviewer may then edit it. */
+/**
+ * Picking a chip fills the text that is actually sent; the reviewer may then edit it.
+ *
+ * `label` is the keyword on the chip and `body` is the paragraph the attendee reads - two fields
+ * because a reviewer scans eleven options and an attendee needs a sentence that explains itself.
+ * Both come from Settings > Review Reasons; `body` falls back to the keyword so a reason saved
+ * without one can never send an empty message.
+ */
 const pickReason = (outcome, reason) => {
   chosen.value = outcome.value;
   form.reason = reason.value;
-  form.custom_reason = reason.label;
+  form.custom_reason = reason.body || reason.label;
 };
 
 const choose = (outcome) => {
@@ -131,6 +141,19 @@ const skip = () => {
   router.get(props.queue.skipUrl);
 };
 
+/**
+ * Back to the record this reviewer last decided.
+ *
+ * Navigation, not an undo: the reviewer lands on the fursuit, sees the photo and the verdict, and
+ * presses Undo there. The arrow used to *perform* the undo, which erased a verdict on a record that
+ * was no longer on screen - the one gesture in this page that deserves seeing what it acts on.
+ */
+const goBack = () => {
+  if (props.back) {
+    router.get(props.back.url);
+  }
+};
+
 /*
  * Keys. Bound on the window rather than on a focused element, because a reviewer's hands
  * never leave the keyboard - but anything typed into the reason box is left alone, and
@@ -161,11 +184,17 @@ const onKey = (event) => {
   }
 
   /*
-   * Undo is deliberately not on a key. Every other shortcut here moves work forward, and one
-   * that reaches back and rewrites the previous record is the one gesture that should cost a
-   * deliberate look at what it says it will undo - the bar names the fursuit and the verdict.
-   * A stray arrow key next to the one that skips is not that.
+   * The left arrow walks back to the last record this reviewer decided; the right arrow skips
+   * forward. Neither changes a verdict. Undo stays a button on that record, because rewriting a
+   * decision is the one gesture that should cost a deliberate look at what it acts on.
    */
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    goBack();
+
+    return;
+  }
+
   if (event.key === 'ArrowRight') {
     event.preventDefault();
     skip();
@@ -205,11 +234,23 @@ let clock = null;
 const now = ref(Date.now());
 
 const poll = () => {
-  router.reload({ only: ['presence', 'undo', 'queue', 'outcomes'] });
+  router.reload({ only: ['presence', 'undo', 'back', 'queue', 'outcomes'] });
+};
+
+/*
+ * The Back button is the way back to a record you just decided, and the undo bar lives on that
+ * record rather than travelling to the next one. Inertia serves a back navigation from its
+ * history cache, so without this the restored page is the one from *before* the verdict: the
+ * fursuit still pending, no undo bar, and the verdict apparently lost. popstate only fires on
+ * back and forward, so this cannot loop with the reload it triggers.
+ */
+const onPopState = () => {
+  router.reload();
 };
 
 onMounted(() => {
   window.addEventListener('keydown', onKey);
+  window.addEventListener('popstate', onPopState);
   timer = window.setInterval(poll, (props.presence.heartbeatSeconds ?? 15) * 1000);
   // A second, faster tick for the undo countdown only: counting down to the second over the
   // network would be one request per second per reviewer for a number the client can work out.
@@ -220,6 +261,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey);
+  window.removeEventListener('popstate', onPopState);
 
   if (timer !== null) {
     window.clearInterval(timer);
@@ -327,6 +369,21 @@ const textarea =
           <ManageIcon name="eye" />
           Full record
         </a>
+        <!--
+          Back to the last record decided. Present only while that verdict can still be taken
+          back, so the button never promises a trip to a page that can no longer act.
+        -->
+        <button
+          v-if="back"
+          type="button"
+          class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+          :title="`${back.outcome} on ${back.fursuit ?? 'the previous fursuit'} - go back to undo it`"
+          @click="goBack"
+        >
+          <ManageIcon name="arrow-left" />
+          Back to {{ back.fursuit ?? 'last' }}
+        </button>
+
         <button
           type="button"
           class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
@@ -409,8 +466,8 @@ const textarea =
                   Photo no longer stored
                 </div>
                 <figcaption class="pt-1 text-[11px] text-fg-3">
-                  <span class="block text-fg-1">{{ version.name ?? '—' }}</span>
-                  <span class="block">{{ version.species ?? '—' }}</span>
+                  <span class="block text-fg-1">{{ version.name ?? ' - ' }}</span>
+                  <span class="block">{{ version.species ?? ' - ' }}</span>
                   <span class="block">{{ shortDate(version.changedAt) ?? '' }}</span>
                   <span v-if="version.changedBy" class="block">by {{ version.changedBy }}</span>
                   <span class="block">
@@ -430,7 +487,7 @@ const textarea =
               <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">Name</span>
               <StatusBadge :status="fursuit.status" />
             </div>
-            <p class="text-[19px] font-bold text-fg-1">{{ fursuit.name ?? '—' }}</p>
+            <p class="text-[19px] font-bold text-fg-1">{{ fursuit.name ?? ' - ' }}</p>
             <p class="text-[13px] text-fg-2">{{ fursuit.species ?? 'No species' }}</p>
 
             <div class="mt-2 flex items-center gap-3 text-[11px] text-fg-3">
@@ -487,7 +544,7 @@ const textarea =
                 <ManageIcon :name="outcome.icon" :size="18" />
                 {{ outcome.label }}
                 <kbd class="ml-auto rounded border border-hairline px-1.5 py-0.5 text-[11px] uppercase text-fg-3">
-                  {{ outcome.shortcut }}
+                  {{ outcome.shortcuts.join(' / ') }}
                 </kbd>
               </span>
               <span class="text-[11px] text-fg-3">
@@ -513,6 +570,7 @@ const textarea =
                   :class="form.reason === reason.value
                     ? 'border-state-live bg-state-live/15 text-fg-1'
                     : 'border-hairline text-fg-2 hover:bg-mg-surface-3'"
+                  :title="reason.body"
                   @click="pickReason(outcome, reason)"
                 >
                   <span class="mr-1 text-fg-3">{{ index + 1 }}</span>
@@ -586,7 +644,7 @@ const textarea =
             </div>
             <div class="flex justify-between gap-3">
               <span class="text-fg-3">Event</span>
-              <span class="text-fg-1">{{ fursuit.event ?? '—' }}</span>
+              <span class="text-fg-1">{{ fursuit.event ?? ' - ' }}</span>
             </div>
             <div v-if="submitted" class="flex justify-between gap-3">
               <span class="text-fg-3">Submitted</span>
@@ -613,11 +671,12 @@ const textarea =
           <p class="text-[11px] text-fg-3">
             <template v-for="(outcome, index) in outcomes" :key="outcome.value">
               <span v-if="index > 0"> &middot; </span>
-              <kbd class="rounded border border-hairline px-1 uppercase">{{ outcome.shortcut }}</kbd>
+              <kbd class="rounded border border-hairline px-1 uppercase">{{ outcome.shortcuts.join('/') }}</kbd>
               {{ outcome.label }}
             </template>
             &middot; <kbd class="rounded border border-hairline px-1">1-9</kbd> reason
             &middot; <kbd class="rounded border border-hairline px-1">&crarr;</kbd> confirm
+            &middot; <kbd class="rounded border border-hairline px-1">&larr;</kbd> back to last
             &middot; <kbd class="rounded border border-hairline px-1">&rarr;</kbd> skip
           </p>
         </div>

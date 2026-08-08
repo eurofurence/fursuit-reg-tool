@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Badge\Badge;
 use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -11,7 +12,7 @@ return new class extends Migration
     {
         Schema::table('badges', function (Blueprint $table) {
             if (SchemaGuard::missingColumn('badges', 'extra_copy_of')) {
-                $table->foreignIdFor(\App\Models\Badge\Badge::class, 'extra_copy_of')
+                $table->foreignIdFor(Badge::class, 'extra_copy_of')
                     ->after('fursuit_id')
                     ->nullable()
                     ->constrained('badges')
