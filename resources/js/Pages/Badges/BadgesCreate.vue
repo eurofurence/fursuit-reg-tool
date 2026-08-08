@@ -14,6 +14,7 @@ import Tag from '@/Components/UI/UiTag.vue';
 import dayjs from "dayjs";
 import InputError from "@/Components/InputError.vue";
 import Message from "@/Components/UI/UiMessage.vue";
+import { formatPrintDate, massPrintRunIsOver } from "@/helpers.js";
 
 defineOptions({
     layout: Layout
@@ -223,10 +224,11 @@ const total = computed(() => {
             <p>Welcome to our badge configurator, please enter all the details and options you would like!</p>
         </div>
         <Message
-            v-if="new Date(usePage().props.event.mass_printed_at) < new Date()"
+            v-if="massPrintRunIsOver(usePage().props.event)"
             severity="info"
             :closable="false">
-            {{ "Late badge orders can be picked up starting from the 2nd convention day." }}
+            The printing deadline ({{ formatPrintDate(usePage().props.event.mass_printed_at) }}) has
+            passed, so you can collect this badge from the second convention day.
         </Message>
         <!-- Group 1 -- Fursuit Details -->
         <div class="space-y-8">

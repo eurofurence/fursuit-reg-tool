@@ -13,8 +13,8 @@
  * `TseClient::machine()` exists but nothing surfaced it, so there was no way to see which
  * POS terminal a client was signing for (audit 4.12).
  *
- * The header carries no actions, on purpose. There is no edit, no delete and no register
- * or deregister button, because none of those is a local decision.
+ * The header carries the two lifecycle actions and nothing else. There is no edit and no
+ * delete: the identity is what receipts were signed under, and only `state` may move.
  */
 import { Head } from '@inertiajs/vue3';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
@@ -26,6 +26,8 @@ import StatusBadge from '@/Components/Manage/StatusBadge.vue';
 
 defineProps({
   client: { type: Object, required: true },
+  /** Register or Deregister, whichever this client is not already. */
+  headerActions: { type: Array, default: () => [] },
 });
 </script>
 
@@ -33,7 +35,11 @@ defineProps({
   <Head :title="`TSE client ${client.remote_id}`" />
 
   <ManageLayout>
-    <PageHeader :title="`TSE client ${client.remote_id}`" :subtitle="client.serial_number" />
+    <PageHeader
+      :title="`TSE client ${client.remote_id}`"
+      :subtitle="client.serial_number"
+      :actions="headerActions"
+    />
 
     <div class="flex flex-col gap-3 p-4">
       <div class="rounded-md border border-state-warn/40 bg-state-warn/10 p-3">
@@ -70,13 +76,13 @@ defineProps({
           :model-value="client.state_value"
           readonly
           mono
-          helper="What the Fiskaly dashboard and the DSFinV-K export call this state. Changed with php artisan tse:update-state."
+          helper="What the Fiskaly dashboard and the DSFinV-K export call this state. Changed with Register and Deregister above, which call Fiskaly."
         />
       </FormSection>
 
       <FormSection
         title="Binding"
-        description="Which POS machine signs through this client. The old panel surfaced this nowhere."
+        description="Left over from when a machine named its own client. Every till now signs under whichever client is registered, so this is history, not configuration."
       >
         <FormField label="Machine" :model-value="client.machine" readonly />
         <FormField label="Created" :model-value="client.created_at" readonly />

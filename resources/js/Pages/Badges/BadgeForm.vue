@@ -15,6 +15,7 @@ import Card from '@/Components/UI/UiCard.vue';
 import Divider from 'primevue/divider';
 import Tag from '@/Components/UI/UiTag.vue';
 import { usePage } from '@inertiajs/vue3';
+import { formatPrintDate, massPrintRunIsOver } from '@/helpers.js';
 
 defineOptions({
     layout: Layout
@@ -368,13 +369,14 @@ const canEditFields = computed(() => {
                     <a class="underline" target="_blank" href="https://help.eurofurence.org">support</a> if you need help.
                 </Message>
 
-                <Message v-if="!isEditMode && new Date(usePage().props.event.mass_printed_at) < new Date()"
+                <Message v-if="!isEditMode && massPrintRunIsOver(usePage().props.event)"
                          severity="info" :closable="false" class="mb-4">
                     <template v-if="new Date() >= new Date(new Date(usePage().props.event.starts_at).getTime() + 24 * 60 * 60 * 1000)">
                         We will send you an email once your badge is ready. Processing usually takes ~30 minutes.
                     </template>
                     <template v-else>
-                        Late badge orders can be picked up from the 2nd convention day.
+                        The printing deadline ({{ formatPrintDate(usePage().props.event.mass_printed_at) }})
+                        has passed, so you can collect this badge from the second convention day.
                     </template>
                 </Message>
             </div>

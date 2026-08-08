@@ -27,7 +27,8 @@ export function badgeStatusTags(badge) {
         const fursuitStatus = badge.fursuit?.status;
 
         if (fursuitStatus === 'rejected') {
-            tags.push({ value: 'Rejected', severity: 'danger' });
+            // Same band as the rejection mail ("Needs a change") - "Rejected" reads as lost order.
+            tags.push({ value: 'Needs a change', severity: 'danger' });
         } else if (fursuitStatus === 'approved') {
             tags.push({ value: 'Waiting for print', severity: 'warning' });
         } else {

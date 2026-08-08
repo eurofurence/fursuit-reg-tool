@@ -9,15 +9,15 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * "We cannot print your badge as it is."
+ * "We cannot print your badge."
  *
  * Deliberately not about photos: what a reviewer refuses can be the image, the name or the species,
  * so the mail names none of them and the instruction is simply to fix the badge. The reviewer's own
- * sentence is the explanation, which is why - unlike the publication block - this mail carries the
- * specific finding inline. The attendee is being asked to change something, so they need to know
- * what.
+ * sentence carries the explanation, in the finding panel. The attendee is being asked to change
+ * something, so they need to know what.
  *
- * It opens by saying the badge is not lost, because that is the first thing anybody assumes.
+ * The badge page states the same finding (BadgeController::show passes it), so the two must not
+ * drift apart - change both together.
  */
 class FursuitRejectedNotification extends Notification
 {
@@ -42,21 +42,16 @@ class FursuitRejectedNotification extends Notification
             subject: $this->subjectFor($this->fursuit, 'your badge needs a change before we can print it'),
             band: 'Needs a change',
             tone: 'stop',
-            headline: 'We cannot print your badge as it is.',
+            headline: 'We cannot print your badge.',
             answers: [
                 [
-                    'q' => 'Did I lose my badge?',
-                    'a' => 'No. Your order and your place are kept, the badge is simply on hold until this is sorted out.',
-                ],
-                [
-                    'q' => 'What is the problem?',
-                    'a' => $this->reason,
-                ],
-                [
                     'q' => 'What do I do?',
-                    'a' => 'Please resolve the issue by editing your badge. We will review it again as soon as possible and see to it that it gets printed.',
+                    'a' => 'Check the reason below, then update your badge. We review it again after that.',
                 ],
             ],
+            // The reviewer's own sentence, kept apart from the prose so it reads as the
+            // finding rather than as our wording. The badge page shows the same sentence.
+            finding: $this->reason,
             action: $this->badge === null ? null : [
                 'label' => 'Edit my badge',
                 'url' => route('badges.edit', ['badge' => $this->badge->id]),

@@ -651,7 +651,8 @@ those are transcribed. The rules that carry real logic:
 - **Fursuits.** `status` stops being a free-text `TextInput` and becomes a transition picker
   (change 9). `event_id` stops being a numeric `TextInput` and becomes a relation select.
   `image` uploads to **s3**, not the default disk (change 5).
-- **Events.** Same seven date fields at the same granularity, `mass_printed_at` still required.
+- **Events.** Same seven date fields at the same granularity. `mass_printed_at` is the one
+  departure: it is nullable now (audit 106), and empty means the pre-print run is still ahead.
   `cost` stays in euros, not cents, and is labelled as such.
 - **Special codes.** `code` keeps `size:5`, `unique:special_codes,code` and the custom rule whose
   failure message is `This code is already used in Fursuits.`. `class_name` becomes `live` so

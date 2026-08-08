@@ -1,204 +1,195 @@
 <script setup>
-import { Head } from "@inertiajs/vue3";
+import { computed } from 'vue';
+import { Head, Link } from '@inertiajs/vue3';
 import Button from '@/Components/UI/UiButton.vue';
-import Card from '@/Components/UI/UiCard.vue';
-import { Link } from "@inertiajs/vue3";
-import Layout from "@/Layouts/Layout.vue";
+import Layout from '@/Layouts/Layout.vue';
 
-defineOptions({
-    layout: Layout
-})
-
+/*
+ * The one error page for every interface.
+ *
+ * Rendered from the respond() callback in bootstrap/app.php, which decides the
+ * status and hands over `context` so the page can pick a shell: the public site
+ * keeps its header, rail and footer, while POS/admin/Catch-Em-All get a bare
+ * centred card - their own layouts assume an authenticated session and a loaded
+ * machine, neither of which is guaranteed when we are here.
+ *
+ * `bare` is its own context. It means the request never reached the web
+ * middleware (a URI no route claimed), so there are no shared props at all -
+ * SiteHeader would render against an undefined `event` and `auth`.
+ *
+ * The layout is chosen inside the template rather than through
+ * defineOptions({ layout }) because that option is static, and this page has to
+ * serve five interfaces.
+ */
 const props = defineProps({
-    status: Number,
-    message: String
+    status: { type: Number, required: true },
+    message: { type: String, default: null },
+    context: { type: String, default: 'public' },
 });
 
-const errorInfo = {
-    404: {
-        title: 'Page Not Found',
-        description: 'The page you are looking for does not exist.',
-        icon: 'pi pi-search',
-        color: 'text-blue-500'
+const catalog = {
+    401: {
+        title: 'Not Signed In',
+        description: 'You need to sign in before you can view this page.',
+        icon: 'pi pi-sign-in',
     },
     403: {
         title: 'Access Forbidden',
-        description: 'You do not have permission to access this resource.',
+        description: 'You do not have permission to view this page.',
         icon: 'pi pi-lock',
-        color: 'text-red-500'
+    },
+    404: {
+        title: 'Page Not Found',
+        description: 'The page you are looking for does not exist, or it has moved.',
+        icon: 'pi pi-search',
+    },
+    405: {
+        title: 'Not Allowed',
+        description: 'That action is not available on this page.',
+        icon: 'pi pi-ban',
+    },
+    408: {
+        title: 'Request Timed Out',
+        description: 'The request took too long. Please try again.',
+        icon: 'pi pi-clock',
+    },
+    410: {
+        title: 'No Longer Available',
+        description: 'This page is gone and will not come back.',
+        icon: 'pi pi-trash',
+    },
+    413: {
+        title: 'Upload Too Large',
+        description: 'The file you tried to upload is bigger than we accept.',
+        icon: 'pi pi-file-excel',
     },
     419: {
         title: 'Session Expired',
-        description: 'Your session has expired. Please refresh the page and try again.',
+        description: 'Your session expired for security reasons. Refresh the page and try again.',
         icon: 'pi pi-clock',
-        color: 'text-yellow-500'
     },
     429: {
         title: 'Too Many Requests',
-        description: 'You have made too many requests. Please try again later.',
-        icon: 'pi pi-exclamation-triangle',
-        color: 'text-orange-500'
+        description: 'You have made too many requests in a short time. Wait a moment, then try again.',
+        icon: 'pi pi-hourglass',
     },
     500: {
         title: 'Server Error',
-        description: 'Something went wrong on our end. Please try again later.',
+        description: 'Something went wrong on our side. The team has been notified.',
+        icon: 'pi pi-exclamation-triangle',
+    },
+    502: {
+        title: 'Bad Gateway',
+        description: 'We could not reach part of the system. Please try again in a moment.',
         icon: 'pi pi-server',
-        color: 'text-red-500'
     },
     503: {
-        title: 'Service Unavailable',
-        description: 'The service is temporarily unavailable. Please try again later.',
+        title: 'Down for Maintenance',
+        description: 'The badge system is being updated and will be back shortly.',
         icon: 'pi pi-wrench',
-        color: 'text-gray-500'
-    }
+    },
+    504: {
+        title: 'Gateway Timeout',
+        description: 'A part of the system took too long to answer. Please try again.',
+        icon: 'pi pi-hourglass',
+    },
 };
 
-const currentError = errorInfo[props.status] || {
-    title: 'Error',
-    description: props.message || 'An unexpected error occurred.',
+const fallback = {
+    title: 'Something Went Wrong',
+    description: 'An unexpected error occurred.',
     icon: 'pi pi-exclamation-circle',
-    color: 'text-red-500'
 };
+
+const error = computed(() => catalog[props.status] ?? fallback);
+
+// The server only forwards 4xx messages; 5xx text is withheld on purpose, so
+// whatever arrives here is safe to show and beats the generic wording.
+const description = computed(() => props.message || error.value.description);
+
+const usesSiteChrome = computed(() => props.context === 'public' || props.context === 'gallery');
+const shell = computed(() => (usesSiteChrome.value ? Layout : 'div'));
+
+// Plain paths, not route() names: the error page is served on every domain the
+// app answers on, including the Catch-Em-All host, where the public route names
+// resolve to a different origin.
+const home = computed(() => ({
+    pos: '/pos',
+    admin: '/admin',
+    catch: '/',
+    gallery: '/gallery',
+}[props.context] ?? '/'));
+
+const homeLabel = computed(() => (props.context === 'pos' || props.context === 'admin' ? 'Back to Start' : 'Go Home'));
+
+// 5xx and 429 are worth retrying on the spot; a 404 is not.
+const canRetry = computed(() => props.status >= 500 || props.status === 408 || props.status === 429);
+
+function goBack() {
+    if (window.history.length > 1) {
+        window.history.back();
+
+        return;
+    }
+
+    window.location.assign(home.value);
+}
+
+function reload() {
+    window.location.reload();
+}
 </script>
 
 <template>
     <Head>
-        <title>{{ currentError.title }} - Fursuit Badge System</title>
-        <meta head-key="description" name="description" :content="currentError.description" />
+        <title>{{ status }} - {{ error.title }}</title>
+        <meta head-key="robots" name="robots" content="noindex" />
     </Head>
 
-    <!-- Hero Section -->
-    <div class="relative z-0 mb-8">
-        <div class="bannerImage flex flex-col items-center justify-center px-6 py-32 text-white text-center">
-            <div class="flex flex-col">
-                <div class="mb-6">
-                    <i :class="[currentError.icon, currentError.color]" class="text-6xl drop-shadow-xl"></i>
+    <component :is="shell" :class="usesSiteChrome ? null : 'min-h-screen bg-gray-100 flex items-center justify-center p-6'">
+        <div
+            class="mx-auto w-full max-w-xl"
+            :class="usesSiteChrome ? 'px-6 py-16 text-center' : 'text-center'"
+        >
+            <div class="rounded-2xl bg-white p-8 shadow-lg">
+                <i :class="error.icon" class="text-5xl text-gray-400"></i>
+
+                <p class="mt-6 font-main text-6xl font-bold text-gray-900">{{ status }}</p>
+
+                <h1 class="mt-2 text-2xl font-semibold text-gray-800">{{ error.title }}</h1>
+
+                <p class="mt-4 text-gray-600">{{ description }}</p>
+
+                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <Link :href="home" class="flex-1">
+                        <Button icon="pi pi-home" :label="homeLabel" size="large" class="w-full" />
+                    </Link>
+
+                    <Button
+                        v-if="canRetry"
+                        icon="pi pi-refresh"
+                        label="Try Again"
+                        size="large"
+                        outlined
+                        class="flex-1"
+                        @click="reload"
+                    />
+
+                    <Button
+                        v-else
+                        icon="pi pi-arrow-left"
+                        label="Go Back"
+                        size="large"
+                        outlined
+                        class="flex-1"
+                        @click="goBack"
+                    />
                 </div>
-                <h1 class="font-main text-4xl md:text-6xl font-bold drop-shadow-xl mb-4">
-                    {{ props.status }}
-                </h1>
-                <h2 class="text-2xl drop-shadow-lg max-w-3xl mx-auto leading-relaxed mb-4">
-                    {{ currentError.title }}
-                </h2>
-                <p class="text-lg drop-shadow-lg max-w-3xl mx-auto leading-relaxed opacity-90">
-                    {{ currentError.description }}
+
+                <p v-if="status >= 500" class="mt-6 text-sm text-gray-500">
+                    If this keeps happening, please tell a member of Fursuit Badge staff.
                 </p>
-
-                <!-- Action Buttons -->
-                <div class="w-full max-w-xl mx-auto mt-8">
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <Link :href="route('welcome')" class="flex-1">
-                            <Button 
-                                icon="pi pi-home"
-                                class="w-full text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-blue-600 hover:bg-blue-700 border-0 text-white"
-                                size="large"
-                                label="Go Home"
-                            />
-                        </Link>
-                        <Button 
-                            @click="window.history.back()"
-                            icon="pi pi-arrow-left"
-                            class="flex-1 font-semibold"
-                            size="large"
-                            label="Go Back"
-                        />
-                    </div>
-                </div>
             </div>
         </div>
-    </div>
-
-    <div>
-        <div class="site-container pt-3">
-            <!-- Error Details Card -->
-            <div class="flex justify-center mb-8">
-                <Card class="w-full max-w-2xl">
-                    <template #title>
-                        <div class="flex items-center gap-3">
-                            <i :class="[currentError.icon, currentError.color]" class="text-3xl"></i>
-                            <h2 class="text-2xl font-bold font-main">{{ currentError.title }}</h2>
-                        </div>
-                    </template>
-                    <template #content>
-                        <div class="space-y-4">
-                            <p>{{ currentError.description }}</p>
-                            
-                            <div v-if="props.status === 419" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                <div class="flex items-start gap-3">
-                                    <i class="pi pi-info-circle text-yellow-600 mt-1"></i>
-                                    <div>
-                                        <h4 class="font-semibold text-yellow-800 mb-2">What happened?</h4>
-                                        <p class="text-yellow-700 text-sm">
-                                            Your session has expired for security reasons. This usually happens when you've been inactive for a while or if you have multiple tabs open.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-if="props.status === 429" class="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                                <div class="flex items-start gap-3">
-                                    <i class="pi pi-info-circle text-orange-600 mt-1"></i>
-                                    <div>
-                                        <h4 class="font-semibold text-orange-800 mb-2">What happened?</h4>
-                                        <p class="text-orange-700 text-sm">
-                                            You've made too many requests in a short period. Please wait a moment before trying again.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-if="props.status >= 500" class="bg-red-50 border border-red-200 rounded-lg p-4">
-                                <div class="flex items-start gap-3">
-                                    <i class="pi pi-info-circle text-red-600 mt-1"></i>
-                                    <div>
-                                        <h4 class="font-semibold text-red-800 mb-2">What happened?</h4>
-                                        <p class="text-red-700 text-sm">
-                                            We're experiencing technical difficulties. Our team has been notified and is working to resolve the issue. Please try again in a few minutes.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="flex flex-col sm:flex-row gap-3 pt-4">
-                                <Link :href="route('welcome')" class="flex-1">
-                                    <Button 
-                                        icon="pi pi-home"
-                                        class="w-full"
-                                        size="large"
-                                        label="Return to Home"
-                                    />
-                                </Link>
-                                <Button 
-                                    v-if="props.status === 419"
-                                    @click="window.location.reload()"
-                                    icon="pi pi-refresh"
-                                    class="flex-1"
-                                    size="large"
-                                    label="Refresh Page"
-                                />
-                            </div>
-                        </div>
-                    </template>
-                </Card>
-            </div>
-        </div>
-    </div>
+    </component>
 </template>
-
-<style>
-.bannerImage {
-    background-color: #f3f4f6;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-image: linear-gradient(rgba(20, 20, 20, 0.75),
-            rgba(20, 20, 20, 0.75)), url("../../assets/images/banner-mobile.jpg");
-}
-
-@media (min-width: 405px) {
-    .bannerImage {
-        background-image: linear-gradient(rgba(20, 20, 20, 0.75),
-                rgba(20, 20, 20, 0.75)), url("../../assets/images/banner-desktop.jpg");
-    }
-}
-</style>

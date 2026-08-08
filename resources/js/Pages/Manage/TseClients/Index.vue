@@ -80,14 +80,14 @@ const table = computed(() => ({
     <div class="mx-4 mt-3 rounded-md border border-hairline bg-mg-surface-1 p-3">
       <div class="flex items-center gap-2 text-[13px] font-medium text-fg-1">
         <ManageIcon name="shield-check" :size="14" class="text-state-ok" />
-        Clients are issued by the TSE, not by this panel
+        One client signs at a time
       </div>
 
       <p class="mt-2 text-[11px] text-fg-3">
-        A client's serial number ties every signed receipt back to the security module that
-        signed it, so nothing here creates, edits or deletes one. Use
-        <code class="font-mono">php artisan tse:update-state</code> and
-        <code class="font-mono">php artisan tse:change-admin-pin</code>, which talk to Fiskaly.
+        Every till signs under whichever client is registered; machines do not choose one.
+        The usual move between conventions is to deregister the outgoing client and register
+        last year's again, rather than issuing a new one. Registering is refused while
+        another client is still registered.
       </p>
     </div>
 

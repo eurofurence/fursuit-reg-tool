@@ -97,6 +97,14 @@ and edit form all go through it).
   good - a file GD will not decode is logged once and never retried, and an imported row never had
   a job at all - and a submission must not be swallowed by one. Past the window the record returns
   to the queue with its master photo, as before.
+- **The grace window is counted from the photo, not from the row.** `image_uploaded_at` is stamped
+  by `FursuitObserver` when a photo is stored or replaced, and that is the only clock
+  `imageRenderPending()` and `scopeImageRenderSettled()` read (`created_at` covers rows written
+  before the column). It used to be `updated_at`, which every write to the row bumps: approving a
+  record whose render had failed for good pushed it straight back into "photo still processing" for
+  another fifteen minutes - the reviewer watched the photo they had just judged disappear - and out
+  of the queue with it. Any column that is really about the photo needs its own timestamp for this
+  reason; `updated_at` answers a different question.
 
 ## Surfaces
 

@@ -5,17 +5,19 @@
  *
  * A TSE client is the identity a Technical Security System signs fiscal transactions
  * under, and KassenSichV requires its serial to stay traceable from every signed receipt
- * back to the module that signed it. So the interesting assertions here are all about what
- * cannot happen: no create, no edit, no delete, no outbound call, and no write of any kind
- * as a side effect of looking at the list or a record.
+ * back to the module that signed it. So the interesting assertions here are about what
+ * cannot happen to that identity: no edit, no delete, and no write of any kind as a side
+ * effect of looking at the list or a record.
  *
- * Two of those are fixes the plan made, not parity. `createnew` fabricated a client from a
- * random UUID that Fiskaly had never issued (2.10 #13), and the edit form rewrote the
- * signing identity of a module past checkouts were already signed under (2.10 #14). Since
- * `remote_id`, `serial_number` and `state` are the whole record, dropping the second one
- * empties the form, so the row's EditAction becomes View and the module registers no
- * write routes at all. The cases below assert those route names do not exist rather than
- * that a button is hidden.
+ * `remote_id` and `serial_number` are still untouchable (2.10 #14): the edit form that
+ * rewrote them does not exist and neither does a destroy route. `state` is the one thing
+ * that moves, through register and deregister, and both go through Fiskaly.
+ *
+ * Registration is back, but not the way Filament had it. `createnew` minted a random UUID
+ * and never called anyone (2.10 #13), so the row named a client the TSS had never issued.
+ * `store` runs the creation inside a transaction with the observer's outbound PUT, so a
+ * refusal upstream leaves nothing behind - and it is refused outright while another client
+ * is registered, because only one may sign at a time.
  *
  * The third theme is the enum. Audit landmine 7 records that the fabricator wrote the raw
  * string `'REGISTERED'` and that the Filament Select duplicated the vocabulary by hand, so
@@ -287,50 +289,91 @@ test('a stored state the enum does not know renders as itself instead of throwin
  * Actions. The row opens the record; nothing on this screen changes one.
  */
 
-test('the row carries View and nothing else, and there are no page or bulk actions', function () {
+test('a registered client offers View and Deregister, and nothing may be issued alongside it', function () {
     actingAs($this->admin);
 
     $props = ($this->props)();
     $row = collect($props['rows'])->firstWhere('id', $this->client->id);
 
-    expect(collect($row['actions'])->pluck('name')->all())->toBe(['view'])
+    expect(collect($row['actions'])->pluck('name')->all())->toBe(['view', 'deregister'])
         ->and($row['actions'][0]['method'])->toBe('get')
         ->and($row['actions'][0]['url'])->toBe(route('admin.tse-clients.show', $this->client))
+        ->and($row['actions'][1]['method'])->toBe('delete')
+        ->and($row['actions'][1]['url'])->toBe(route('admin.tse-clients.deregister', $this->client))
         ->and($row['url'])->toBe(route('admin.tse-clients.show', $this->client))
-        // `createnew` was the only header action the resource had and it does not come
-        // across (plan 2.10 #13); the table declared no bulk actions to begin with.
+        // Issuing is not offered while one is already signing, so the one-at-a-time rule
+        // is visible on the page and not only enforced after the click.
         ->and($props['pageActions'])->toBe([])
         ->and($props['bulkActions'])->toBe([]);
 });
 
-test('no action anywhere in the module deletes, creates or edits', function () {
+test('with nothing registered the page offers Issue new client and each row offers Register', function () {
+    actingAs($this->admin);
+
+    $this->client->update(['state' => TseClientStateEnum::DEREGISTERED]);
+
+    $props = ($this->props)();
+    $row = collect($props['rows'])->firstWhere('id', $this->client->id);
+
+    expect(collect($props['pageActions'])->pluck('name')->all())->toBe(['store'])
+        ->and($props['pageActions'][0]['method'])->toBe('post')
+        ->and($props['pageActions'][0]['url'])->toBe(route('admin.tse-clients.store'))
+        ->and(collect($row['actions'])->pluck('name')->all())->toBe(['view', 'register'])
+        ->and($row['actions'][1]['url'])->toBe(route('admin.tse-clients.register', $this->client));
+});
+
+test('a second client is never offered Register while one is already signing', function () {
+    actingAs($this->admin);
+
+    $spare = TseClient::create([
+        'remote_id' => 'fiskaly-client-0002',
+        'serial_number' => 'TSE-SERIAL-BBB222',
+        'state' => TseClientStateEnum::DEREGISTERED,
+    ]);
+
+    $row = collect(($this->props)()['rows'])->firstWhere('id', $spare->id);
+
+    expect(collect($row['actions'])->pluck('name')->all())->toBe(['view']);
+});
+
+test('no action anywhere in the module deletes or edits the identity', function () {
     actingAs($this->admin);
 
     $props = ($this->props)();
 
-    $methods = collect($props['rows'])
-        ->flatMap(fn (array $row) => collect($row['actions'])->pluck('method'))
-        ->merge(collect($props['pageActions'])->pluck('method'))
-        ->merge(collect($props['bulkActions'])->pluck('method'))
-        ->unique()
+    $urls = collect($props['rows'])
+        ->flatMap(fn (array $row) => collect($row['actions'])->pluck('url'))
+        ->merge(collect($props['pageActions'])->pluck('url'))
+        ->merge(collect($props['bulkActions'])->pluck('url'))
         ->all();
 
     // Audit 133: only an empty getHeaderActions() kept the stock DeleteAction off the
-    // Filament edit page. Here nothing in the payload can write at all.
-    expect($methods)->toBe(['get']);
+    // Filament edit page. Nothing in this payload points at an edit or a destroy; the one
+    // DELETE here is deregistration, which changes `state` and nothing else.
+    foreach ($urls as $url) {
+        expect($url)->not->toContain('/edit');
+    }
+
+    expect(collect($props['rows'])->flatMap(fn (array $row) => collect($row['actions'])->pluck('name'))->unique()->values()->all())
+        ->toBe(['view', 'deregister']);
 });
 
 /*
  * Read-only, as a claim about the routing table rather than about the UI.
  */
 
-test('the module registers no write route at all', function () {
-    foreach (['create', 'store', 'edit', 'update', 'destroy', 'bulk.destroy'] as $name) {
+test('the module registers the lifecycle writes and nothing that edits or deletes', function () {
+    // The identity is not editable and a client is never removed: its serial is on every
+    // receipt it signed.
+    foreach (['create', 'edit', 'update', 'destroy', 'bulk.destroy'] as $name) {
         expect(Route::has('admin.tse-clients.'.$name))->toBeFalse();
     }
 
     expect(Route::has('admin.tse-clients.index'))->toBeTrue()
-        ->and(Route::has('admin.tse-clients.show'))->toBeTrue();
+        ->and(Route::has('admin.tse-clients.show'))->toBeTrue()
+        ->and(Route::has('admin.tse-clients.store'))->toBeTrue()
+        ->and(Route::has('admin.tse-clients.register'))->toBeTrue()
+        ->and(Route::has('admin.tse-clients.deregister'))->toBeTrue();
 });
 
 test('the policy is untouched, so the legacy panel keeps the screens it still has', function () {
@@ -362,9 +405,12 @@ test('an admin cannot write to a client through the URLs the Filament resource h
     get('/admin/tse-clients/create')->assertNotFound();
     get('/admin/tse-clients/'.$this->client->id.'/edit')->assertNotFound();
 
-    post(route('admin.tse-clients.index'), $payload)->assertMethodNotAllowed();
     put(route('admin.tse-clients.show', $this->client), $payload)->assertMethodNotAllowed();
     delete(route('admin.tse-clients.show', $this->client))->assertMethodNotAllowed();
+
+    // POST /admin/tse-clients is the register endpoint now, and it carries no fields: a
+    // payload aimed at the identity is simply not read.
+    post(route('admin.tse-clients.store'), $payload)->assertRedirect();
 
     $this->client->refresh();
 
@@ -431,13 +477,87 @@ test('an unbound client shows no machine rather than failing', function () {
         ->assertInertia(fn (Assert $page) => $page->where('client.machine', null)->etc());
 });
 
-test('the show page ships no actions prop for a header that has none', function () {
+test('the show page header carries the lifecycle action and nothing that edits', function () {
     actingAs($this->admin);
 
-    // Not an empty array that a later change could quietly fill: there is no edit, no
-    // delete, and no register or deregister button, because none of those is a local
-    // decision. The lifecycle is tse:update-state and tse:change-admin-pin.
+    // A registered client can only be deregistered from here. There is no edit and no
+    // delete: the identity is what receipts were signed under.
     get(route('admin.tse-clients.show', $this->client))
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->missing('actions')->etc());
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('headerActions.0.name', 'deregister')
+            ->where('headerActions.0.url', route('admin.tse-clients.deregister', $this->client))
+            ->count('headerActions', 1)
+            ->etc());
+
+    $this->client->update(['state' => TseClientStateEnum::DEREGISTERED]);
+
+    get(route('admin.tse-clients.show', $this->client))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('headerActions.0.name', 'register')
+            ->etc());
+});
+
+test('registering is refused while another client is already signing', function () {
+    actingAs($this->admin);
+
+    $spare = TseClient::create([
+        'remote_id' => 'fiskaly-client-0002',
+        'serial_number' => 'TSE-SERIAL-BBB222',
+        'state' => TseClientStateEnum::DEREGISTERED,
+    ]);
+
+    post(route('admin.tse-clients.register', $spare))
+        ->assertSessionHas('inertia.flash_data.toast.title', 'Nothing was registered');
+
+    post(route('admin.tse-clients.store'))
+        ->assertSessionHas('inertia.flash_data.toast.title', 'Nothing was registered');
+
+    expect($spare->fresh()->isRegistered())->toBeFalse();
+    assertDatabaseCount('tse_clients', 2);
+});
+
+test('deregistering frees the slot, and the previous client can be registered again', function () {
+    actingAs($this->admin);
+
+    $spare = TseClient::create([
+        'remote_id' => 'fiskaly-client-0002',
+        'serial_number' => 'TSE-SERIAL-BBB222',
+        'state' => TseClientStateEnum::DEREGISTERED,
+    ]);
+
+    delete(route('admin.tse-clients.deregister', $this->client))
+        ->assertSessionHas('inertia.flash_data.toast.title', 'Deregistered');
+
+    expect(TseClient::activeClient())->toBeNull();
+
+    post(route('admin.tse-clients.register', $spare))
+        ->assertSessionHas('inertia.flash_data.toast.title', 'Registered');
+
+    expect(TseClient::activeClient()?->id)->toBe($spare->id)
+        // The outgoing client is kept: its serial is on every receipt it signed.
+        ->and($this->client->fresh())->not->toBeNull();
+});
+
+test('issuing a client stores what Fiskaly was asked for, and only while nothing is signing', function () {
+    actingAs($this->admin);
+
+    delete(route('admin.tse-clients.deregister', $this->client));
+
+    post(route('admin.tse-clients.store'))
+        ->assertSessionHas('inertia.flash_data.toast.title', 'Registered');
+
+    $issued = TseClient::activeClient();
+
+    // FiskalyService::createClient() sends the id as the serial, so storing anything else
+    // would describe the client differently here than upstream.
+    expect($issued)->not->toBeNull()
+        ->and($issued->serial_number)->toBe($issued->remote_id)
+        ->and($issued->remote_id)->not->toBe($this->client->remote_id);
+
+    // And a second one is refused now that this is signing.
+    post(route('admin.tse-clients.store'))
+        ->assertSessionHas('inertia.flash_data.toast.title', 'Nothing was registered');
+
+    assertDatabaseCount('tse_clients', 2);
 });

@@ -262,7 +262,7 @@ test('walking every read page in one session still writes nothing', function () 
  * never consults it.
  */
 
-test('checkouts and TSE clients register no create, update or delete route', function () {
+test('checkouts register no write route, and TSE clients register nothing that edits or deletes', function () {
     foreach ([
         'admin.checkouts.create',
         'admin.checkouts.store',
@@ -271,7 +271,6 @@ test('checkouts and TSE clients register no create, update or delete route', fun
         'admin.checkouts.destroy',
         'admin.checkouts.bulk.destroy',
         'admin.tse-clients.create',
-        'admin.tse-clients.store',
         'admin.tse-clients.edit',
         'admin.tse-clients.update',
         'admin.tse-clients.destroy',
@@ -279,6 +278,12 @@ test('checkouts and TSE clients register no create, update or delete route', fun
     ] as $name) {
         expect(Route::has($name))->toBeFalse("route $name must not exist");
     }
+
+    // A TSE client's lifecycle is the one fiscal write the panel does own: `state` moves
+    // through Fiskaly, and the identity behind it still cannot be edited or removed.
+    expect(Route::has('admin.tse-clients.store'))->toBeTrue()
+        ->and(Route::has('admin.tse-clients.register'))->toBeTrue()
+        ->and(Route::has('admin.tse-clients.deregister'))->toBeTrue();
 });
 
 test('an admin is refused create, update and delete on both fiscal records at the URL', function () {
@@ -291,7 +296,6 @@ test('an admin is refused create, update and delete on both fiscal records at th
         ['delete', '/admin/checkouts/'.$this->checkout->id],
         ['get', '/admin/checkouts/create'],
         ['get', '/admin/checkouts/'.$this->checkout->id.'/edit'],
-        ['post', '/admin/tse-clients'],
         ['put', '/admin/tse-clients/'.$this->tseClient->id],
         ['patch', '/admin/tse-clients/'.$this->tseClient->id],
         ['delete', '/admin/tse-clients/'.$this->tseClient->id],
@@ -306,6 +310,12 @@ test('an admin is refused create, update and delete on both fiscal records at th
 
     expect(Checkout::count())->toBe(1)
         ->and(TseClient::count())->toBe(1);
+
+    // POST /admin/tse-clients is the one write, and it refuses while a client is signing,
+    // so nothing is created here either.
+    $this->post('/admin/tse-clients');
+
+    expect(TseClient::count())->toBe(1);
 });
 
 test('the checkout policy refuses create, update and delete for everyone', function () {

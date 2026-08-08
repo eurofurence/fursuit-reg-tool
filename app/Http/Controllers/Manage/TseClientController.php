@@ -9,8 +9,12 @@ use App\Support\Manage\Action;
 use App\Support\Manage\Column;
 use App\Support\Manage\Status;
 use App\Support\Manage\Table;
+use App\Support\Manage\Toast;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Inertia\Response;
 
 /**
@@ -22,22 +26,40 @@ use Inertia\Response;
  * Fiskaly-side handle the signing calls address. Neither is configuration this panel
  * owns, so this module reads and never writes.
  *
- * That makes it the shortest controller in the panel, and the two things it does not have
- * are the point.
+ * Identity is still read-only, and that is the point of the module.
  *
- *  - There is no `createnew`. The Filament list page fabricated a client locally from a
- *    random UUID used as both `remote_id` and `serial_number`, with `state` hardcoded as
- *    the raw string `'REGISTERED'`, no confirmation, no notification and no audit entry
- *    (plan 2.10 #13, audit landmine 7). Nothing about that row exists upstream, so every
- *    checkout later signed against it inherits a serial Fiskaly never issued. The real
- *    lifecycle is `tse:update-state` and `tse:change-admin-pin`, which talk to the TSE.
- *  - There is no write path at all. `remote_id`, `serial_number` and `state` become
- *    read-only (plan 2.10 #14, audit landmine 8): editing them silently rewrites the
- *    identity that past checkouts were signed under. Since those three fields are the
- *    whole record, an edit form would have nothing left to edit, so the Filament row's
- *    EditAction becomes View and the module registers no PUT. `TseClientsObserver`
- *    PATCHes Fiskaly on every `updated` event, so a form here would also have been a
- *    remote write dressed up as a local one.
+ *  - `remote_id` and `serial_number` are never edited (plan 2.10 #14, audit landmine 8):
+ *    rewriting them silently changes the identity that past checkouts were signed under.
+ *    There is no PUT and no delete - a client whose serial receipts still point at has to
+ *    stay readable for as long as those records are kept.
+ *  - `state` is the one thing that moves, and it only moves through Fiskaly.
+ *    `TseClientsObserver` PUTs on `created` and PATCHes on `updated`, so the three write
+ *    endpoints below are requests to the TSS that happen to leave a local row behind,
+ *    not local rows that happen to be mirrored.
+ *
+ * ## Registration
+ *
+ * Filament's `createnew` was dropped for what it did, not for what it was. It minted a
+ * random UUID as both `remote_id` and `serial_number`, hardcoded `state` to the raw
+ * string `'REGISTERED'`, and never spoke to Fiskaly at all (plan 2.10 #13, audit landmine
+ * 7) - so every checkout signed against that row carried a serial the TSS had never
+ * issued. `store()` does the same job the other way round: the row is created inside a
+ * transaction, the observer's PUT to the TSS happens inside it too, and a refusal from
+ * Fiskaly rolls the row back rather than leaving a client that exists only here.
+ *
+ * There are no fields to fill in. Fiskaly is asked for a client under an id we generate
+ * and takes that same value as the serial, which is exactly what
+ * `FiskalyService::createClient()` sends; a form would only offer new ways to collide
+ * with a client that already exists upstream.
+ *
+ * ## One registered client at a time
+ *
+ * `store()` and `register()` both refuse while another client is REGISTERED, and the
+ * buttons for them are not offered in that state either. Two live clients means two
+ * serials in circulation for the same till with nothing recording which signed what, and
+ * Fiskaly bills for each one that is left switched on. The yearly move is to deregister
+ * the outgoing client and register the previous one again, which is why `register()`
+ * exists as its own endpoint rather than being folded into `store()`.
  *
  * `state` is read through `TseClientStateEnum`, never as a hand-typed string. The Filament
  * side kept three copies of the same vocabulary - the fabricator's `'REGISTERED'`, the
@@ -101,7 +123,109 @@ class TseClientController extends Controller
                 'created_at' => $client->created_at?->format(self::DATETIME_FORMAT),
                 'updated_at' => $client->updated_at?->format(self::DATETIME_FORMAT),
             ],
+            // The same two lifecycle actions the row offers, so the record page is not a
+            // dead end an operator has to go back to the list from.
+            'headerActions' => collect($this->rowActions($client))
+                ->reject(fn (Action $action) => $action->name === 'view')
+                ->map->toArray()
+                ->values()
+                ->all(),
         ]);
+    }
+
+    /**
+     * Issue a new client on the TSS and keep the row it produced.
+     *
+     * The whole operation is one transaction, and `TseClientsObserver::created()` runs
+     * inside it: a refusal from Fiskaly throws out of the observer, the transaction rolls
+     * back, and nothing is left behind. That is the difference between this and the
+     * Filament action it replaces, which wrote the row first and never called anyone.
+     *
+     * The id is generated here and Fiskaly is asked to take it as the serial too, which is
+     * what `FiskalyService::createClient()` sends. Nothing is typed in, so nothing can
+     * collide with a client that already exists upstream.
+     */
+    public function store(): RedirectResponse
+    {
+        Gate::authorize('create', TseClient::class);
+
+        if ($active = TseClient::activeClient()) {
+            return $this->refuseSecondClient($active);
+        }
+
+        $id = (string) Str::uuid();
+
+        // `serial_number` is the same value on purpose: it is what
+        // `FiskalyService::createClient()` sends as the serial, so storing anything else
+        // would describe the client differently here than upstream.
+        $client = DB::transaction(fn () => TseClient::create([
+            'remote_id' => $id,
+            'serial_number' => $id,
+            'state' => TseClientStateEnum::REGISTERED,
+        ]));
+
+        Toast::flashSuccess('Registered', 'The TSS issued client '.$client->remote_id.'.');
+
+        return redirect()->route('admin.tse-clients.show', $client);
+    }
+
+    /**
+     * Bring a deregistered client back into service - the usual move between conventions.
+     */
+    public function register(TseClient $client): RedirectResponse
+    {
+        Gate::authorize('update', $client);
+
+        if ($active = TseClient::activeClient(exceptId: $client->getKey())) {
+            return $this->refuseSecondClient($active);
+        }
+
+        if ($client->isRegistered()) {
+            Toast::flashSuccess('Already registered', 'This client is the one currently signing.');
+
+            return back();
+        }
+
+        // The observer PATCHes the TSS on `updated`; if it refuses, nothing is saved.
+        $client->update(['state' => TseClientStateEnum::REGISTERED]);
+
+        Toast::flashSuccess('Registered', $client->remote_id.' is now the signing client.');
+
+        return back();
+    }
+
+    /**
+     * Take a client out of service. Its serial stays on every receipt it signed, so the
+     * row stays too.
+     */
+    public function deregister(TseClient $client): RedirectResponse
+    {
+        Gate::authorize('update', $client);
+
+        if (! $client->isRegistered()) {
+            Toast::flashSuccess('Already deregistered', 'This client is not signing anything.');
+
+            return back();
+        }
+
+        $client->update(['state' => TseClientStateEnum::DEREGISTERED]);
+
+        Toast::flashSuccess('Deregistered', $client->remote_id.' will not sign anything further.');
+
+        return back();
+    }
+
+    /**
+     * One registered client at a time; the reasoning is in the class docblock.
+     */
+    private function refuseSecondClient(TseClient $active): RedirectResponse
+    {
+        Toast::flashDanger(
+            'Nothing was registered',
+            'Client '.$active->remote_id.' is already registered. Deregister it first: only one client may sign at a time.'
+        );
+
+        return back();
     }
 
     /**
@@ -126,21 +250,80 @@ class TseClientController extends Controller
             ->recordUrl(fn (TseClient $client) => Gate::allows('view', $client)
                 ? route('admin.tse-clients.show', $client)
                 : null)
-            ->rowActions(fn (TseClient $client) => array_values(array_filter([
-                // Filament's row had EditAction only. The edit is gone with the write
-                // path (plan 2.10 #14), so the row opens the record instead of changing
-                // it. There is no delete here and none anywhere else either: audit 133
-                // records that only an empty `getHeaderActions()` kept the stock
-                // DeleteAction off the Filament edit page.
-                Gate::allows('view', $client)
-                    ? Action::link('view', 'View', route('admin.tse-clients.show', $client))->icon('eye')
-                    : null,
-            ])))
-            // No bulk actions and no page actions. `createnew` is the one header action
-            // the resource had and it does not come across (plan 2.10 #13).
+            ->rowActions(fn (TseClient $client) => $this->rowActions($client))
+            // No bulk actions: registering is a paid call against a live security module,
+            // and doing several at once is never the intent.
             ->bulkActions([])
-            ->pageActions([])
+            ->pageActions($this->pageActions())
             ->toArray($request);
+    }
+
+    /**
+     * View, plus whichever end of the lifecycle this client is not already at.
+     *
+     * A deregistered client is only offered `Register` while nothing else is signing, so
+     * the one-at-a-time rule is visible on the page rather than only enforced after the
+     * click.
+     *
+     * @return array<int, Action>
+     */
+    private function rowActions(TseClient $client): array
+    {
+        $blocked = TseClient::activeClient(exceptId: $client->getKey()) !== null;
+
+        return array_values(array_filter([
+            Gate::allows('view', $client)
+                ? Action::link('view', 'View', route('admin.tse-clients.show', $client))->icon('eye')
+                : null,
+
+            Gate::allows('update', $client) && $client->isRegistered()
+                ? Action::delete('deregister', 'Deregister', route('admin.tse-clients.deregister', $client))
+                    ->icon('shield-off')
+                    ->tone(Status::WARN)
+                    ->confirm(
+                        'Deregister this client',
+                        'It will stop signing and Fiskaly stops billing for it. Receipts it already signed keep its serial.',
+                        'Yes, deregister it',
+                    )
+                : null,
+
+            Gate::allows('update', $client) && ! $client->isRegistered() && ! $blocked
+                ? Action::post('register', 'Register', route('admin.tse-clients.register', $client))
+                    ->icon('shield-check')
+                    ->tone(Status::OK)
+                    ->confirm(
+                        'Register this client',
+                        'It becomes the client every till signs under, and Fiskaly bills for it from now on.',
+                        'Yes, register it',
+                    )
+                : null,
+        ]));
+    }
+
+    /**
+     * The one page action, and only while nothing is signing.
+     *
+     * Deliberately worded as issuing a new client rather than as a generic create: the
+     * usual move between conventions is to register the previous client again from its
+     * own row, and this button charges for a client that did not exist before.
+     *
+     * @return array<int, Action>
+     */
+    private function pageActions(): array
+    {
+        if (Gate::denies('create', TseClient::class) || TseClient::activeClient()) {
+            return [];
+        }
+
+        return [
+            Action::post('store', 'Issue new client', route('admin.tse-clients.store'))
+                ->icon('plus')
+                ->confirm(
+                    'Issue a new TSE client',
+                    'This asks the security module for a client that does not exist yet, and Fiskaly bills for it. To bring back last year, use Register on its row instead.',
+                    'Yes, issue one',
+                ),
+        ];
     }
 
     /**

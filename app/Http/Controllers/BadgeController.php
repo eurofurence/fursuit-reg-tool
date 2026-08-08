@@ -42,6 +42,9 @@ class BadgeController extends Controller
         return Inertia::render('Badges/BadgeShow', [
             'badge' => $badge,
             'canEdit' => $badge->canEdit,
+            // The page states the reviewer's finding itself instead of sending the attendee
+            // back to their mail to find out what to change. Null unless a rejection stands.
+            'rejectionReason' => $badge->fursuit->rejectionReason(),
         ]);
     }
 

@@ -184,9 +184,8 @@ const submit = () => {
             v-model="form.mass_printed_at"
             label="Mass Print Date"
             type="datetime-local"
-            helper="Cutoff for the bulk print run before the convention. Once it passes, badges are printed on site instead and the public pages tell attendees to collect them from the 2nd convention day."
+            helper="Cutoff for the bulk print run before the convention. Once it passes, badges are printed on site instead and the public pages tell attendees to collect them from the 2nd convention day. Leave it empty until the run is scheduled: empty reads the same as a date still ahead."
             :error="form.errors.mass_printed_at"
-            required
           >
             <div class="flex items-center gap-2">
               <input
@@ -202,6 +201,15 @@ const submit = () => {
                 @click="form.mass_printed_at = localNow()"
               >
                 Set to now
+              </button>
+
+              <button
+                v-if="form.mass_printed_at"
+                type="button"
+                class="inline-flex h-7 shrink-0 items-center rounded border border-hairline px-2 text-[12px] font-medium text-fg-2 transition-colors hover:bg-mg-surface-3 hover:text-fg-1"
+                @click="form.mass_printed_at = ''"
+              >
+                Clear
               </button>
             </div>
           </FormField>

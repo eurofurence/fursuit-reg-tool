@@ -8,6 +8,7 @@ import Message from '@/Components/UI/UiMessage.vue';
 import Layout from "@/Layouts/Layout.vue";
 import BadgePickupInfo from '@/Components/BadgePickupInfo.vue';
 import { badgeStatusTags } from '@/badgeStatus.js';
+import { formatPrintDate } from '@/helpers.js';
 import {
     AlertCircle,
     ArrowLeft,
@@ -22,6 +23,9 @@ defineOptions({
 const props = defineProps({
     badge: Object,
     canEdit: Boolean,
+    // The reviewer's own sentence on a standing rejection. Rendered as text, never through
+    // v-html: it is free text somebody typed into the review queue.
+    rejectionReason: { type: String, default: null },
 });
 
 const page = usePage();
@@ -54,13 +58,6 @@ function getActionableStatuses(badge) {
     return badgeStatusTags(badge);
 }
 
-// "1 August 2026", the same shape BuildsBadgeMail::collectionAnswer() sends by mail. The default
-// locale format would print the deadline as 8/1/2026 for half the attendees and 1/8/2026 for the
-// other half, which is the one date on the page nobody may misread.
-function formatPrintDate(date) {
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
 function getNextStepExplanation() {
     const badge = props.badge;
 
@@ -81,7 +78,13 @@ function getNextStepExplanation() {
     }
 
     if (badge.fursuit.status === 'rejected' && !isDuringEvent.value) {
-        return '<strong>Rejected in review</strong><br>Something is off with your submission. Check your email for the details, then edit the badge and send it back in.';
+        // Wording tracks FursuitRejectedNotification: the badge is not lost, the mail carries the
+        // reviewer's finding, and the fix is an edit. Keep the two in step when either changes.
+        // The reason is printed under this message when we have it, so only the mail-less
+        // case (legacy rejections carry no decision row) points at the email.
+        return props.rejectionReason
+            ? '<strong>We cannot print your badge</strong><br>Check the reason below, then update your badge. We review it again after that.'
+            : '<strong>We cannot print your badge</strong><br>Check your email for the reason, then update your badge. We review it again after that.';
     }
 
     if (badge.status_fulfillment === 'pending' && badge.fursuit.status === 'pending' && !isDuringEvent.value) {
@@ -94,21 +97,20 @@ function getNextStepExplanation() {
         const massPrintedAt = event?.mass_printed_at ? new Date(event.mass_printed_at) : null;
         const eventStarted = event && new Date(event.starts_at) <= now;
 
-        if (eventStarted) {
-            return '<strong>Queued for printing</strong><br>We email you as soon as it is at the desk. Collect it from the second convention day.';
-        }
-
-        if (massPrintedAt && massPrintedAt > now) {
-            return `<strong>Queued for printing</strong><br>We print all badges on ${formatPrintDate(massPrintedAt)}. Until then you can still edit yours. Collect it from the first convention day.`;
+        // Missed the pre-print run, during the event or after the cutoff: the card is printed at
+        // the desk, which is a fact about our workflow and not something the attendee has to act
+        // on. The only actionable part is where to go and from when, so that is all it says.
+        if (eventStarted || massPrintedAt !== null && massPrintedAt <= now) {
+            return '<strong>Come to the Fursuit Badge Desk</strong><br>Come to the badge desk in the Fursuit Lounge from the second convention day.';
         }
 
         if (massPrintedAt) {
-            return `<strong>Queued for printing</strong><br>The printing deadline (${formatPrintDate(massPrintedAt)}) has passed, so you can collect it from the second convention day.`;
+            return `<strong>In the pre-print run</strong><br>We print all badges on ${formatPrintDate(massPrintedAt)}. Until then you can still edit yours. Collect it from the first convention day.`;
         }
 
         // No print date set: the run has not been scheduled, so it is still ahead and this badge is
         // in it. Same reading as a future date, minus the date it cannot name.
-        return '<strong>Queued for printing</strong><br>You can still edit it. Collect it from the first convention day.';
+        return '<strong>In the pre-print run</strong><br>You can still edit it. Collect it from the first convention day.';
     }
 
     return 'Processing your badge request...';
@@ -156,6 +158,9 @@ function cancelBadge() {
         <div class="mb-6" v-if="getNextStepExplanation()">
             <Message :severity="getMessageSeverity()" class="text-sm" :closable="false">
                 <span v-html="getNextStepExplanation()"></span>
+                <p v-if="rejectionReason" class="mt-2 border-l-2 border-current/40 pl-3 whitespace-pre-line">
+                    {{ rejectionReason }}
+                </p>
             </Message>
         </div>
 

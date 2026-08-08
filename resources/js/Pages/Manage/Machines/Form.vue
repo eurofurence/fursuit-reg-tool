@@ -25,7 +25,6 @@ import PageHeader from '@/Components/Manage/PageHeader.vue';
 const props = defineProps({
   /** null on create. */
   machine: { type: Object, default: null },
-  tseClients: { type: Array, default: () => [] },
   sumupReaders: { type: Array, default: () => [] },
   /** Server-declared header actions; the Login Link on edit, nothing on create. */
   actions: { type: Array, default: () => [] },
@@ -35,7 +34,6 @@ const editing = computed(() => Boolean(props.machine?.id));
 
 const form = useForm({
   name: props.machine?.name ?? '',
-  tse_client_id: props.machine?.tse_client_id ?? '',
   sumup_reader_id: props.machine?.sumup_reader_id ?? '',
   // Unticked on create, which is what the Filament Checkbox did: it set no default, so
   // a new machine was saved with this off even though the column defaults to true. Kept
@@ -104,14 +102,6 @@ const submit = () => {
             label="Name"
             :error="form.errors.name"
             required
-          />
-
-          <FormField
-            v-model="form.tse_client_id"
-            label="TSE Client"
-            type="select"
-            :options="tseClients"
-            :error="form.errors.tse_client_id"
           />
 
           <FormField

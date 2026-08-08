@@ -3,11 +3,13 @@
 namespace App\Models\Fursuit;
 
 use App\Domain\CatchEmAll\Models\UserCatch;
+use App\Enum\FursuitReviewOutcomeEnum;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\Fursuit\States\Approved;
 use App\Models\Fursuit\States\FursuitStatusState;
+use App\Models\Fursuit\States\Rejected;
 use App\Models\Species;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,6 +42,7 @@ class Fursuit extends Model
         'published' => 'boolean',
         'catch_em_all' => 'boolean',
         'publication_blocked_at' => 'datetime',
+        'image_uploaded_at' => 'datetime',
     ];
 
     protected $appends = ['image_url', 'image_webp_url', 'image_thumb_url'];
@@ -121,6 +124,12 @@ class Fursuit extends Model
      * archival master (well over a megabyte at 1500x2000) into a preview box, and the
      * review queue skips them: a verdict is passed on the picture, and a reviewer should
      * not be handed a record whose picture is not there yet.
+     *
+     * The clock is `image_uploaded_at` - when the photo was stored - and never `updated_at`,
+     * which is what this used to read. `updated_at` moves on every write to the row, so a
+     * record whose render had failed for good went back to "still processing" the moment a
+     * reviewer approved it, and dropped out of the queue for another grace window with it.
+     * `created_at` covers rows written before the column existed.
      */
     public function imageRenderPending(): bool
     {
@@ -128,8 +137,10 @@ class Fursuit extends Model
             return false;
         }
 
-        return $this->updated_at === null
-            || $this->updated_at->gt(now()->subMinutes(self::IMAGE_RENDER_GRACE_MINUTES));
+        $uploadedAt = $this->image_uploaded_at ?? $this->created_at;
+
+        return $uploadedAt === null
+            || $uploadedAt->gt(now()->subMinutes(self::IMAGE_RENDER_GRACE_MINUTES));
     }
 
     /**
@@ -141,7 +152,10 @@ class Fursuit extends Model
             ->whereNotNull('image_webp')
             ->orWhereNull('image')
             ->orWhere('image', '')
-            ->orWhere('updated_at', '<=', now()->subMinutes(self::IMAGE_RENDER_GRACE_MINUTES)));
+            ->orWhereRaw(
+                'COALESCE(fursuits.image_uploaded_at, fursuits.created_at) <= ?',
+                [now()->subMinutes(self::IMAGE_RENDER_GRACE_MINUTES)]
+            ));
     }
 
     /**
@@ -232,6 +246,26 @@ class Fursuit extends Model
     public function latestReviewDecision(): ?FursuitReviewDecision
     {
         return $this->reviewDecisions()->latest('id')->first();
+    }
+
+    /**
+     * The reviewer's finding on a rejection that is still standing.
+     *
+     * The attendee has to change something, so the badge page shows the sentence itself rather
+     * than sending them to their mail for it. Null when the rejection came from the legacy
+     * transition, which logged its reason as activity and wrote no decision row.
+     */
+    public function rejectionReason(): ?string
+    {
+        if (! $this->status instanceof Rejected) {
+            return null;
+        }
+
+        $decision = $this->reviewDecisions()->whereNull('undone_at')->latest('id')->first();
+
+        return $decision?->outcome === FursuitReviewOutcomeEnum::Rejected
+            ? $decision->reason
+            : null;
     }
 
     /**

@@ -4,25 +4,32 @@ use App\Http\Controllers\Manage\TseClientController;
 use Illuminate\Support\Facades\Route;
 
 /*
- * TSE clients (phase 8). Two GETs, and that is the whole module.
+ * TSE clients (phase 8). Two GETs and three lifecycle writes.
  *
- * The Filament resource lived at /admin/tse-clients with index, create and edit pages.
- * None of the three writes survives. `createnew` fabricated a client that Fiskaly had
- * never heard of (plan 2.10 #13) and the form rewrote the signing identity of a security
- * module that past checkouts were signed under (plan 2.10 #14), so `remote_id`,
- * `serial_number` and `state` are read-only and there is nothing left for a PUT to carry.
- * The plan's route table still lists `edit` and `update`; they are dropped here because
- * change #14 empties them, and an inert PUT on a fiscal record is a write path waiting to
- * be filled in.
+ * The Filament resource's edit form does not come across, and neither does a delete.
+ * `remote_id` and `serial_number` are the signing identity past checkouts were signed
+ * under (plan 2.10 #14), so nothing here rewrites them and nothing removes a client whose
+ * serial receipts still point at. Only `state` moves, and it moves through Fiskaly.
  *
- * There is no DELETE either. Audit 133 records that the Filament edit page kept the stock
- * DeleteAction off only by overriding `getHeaderActions()` to an empty array; here the
- * route simply does not exist.
+ * What is new is registration. `createnew` was dropped because it fabricated a row from a
+ * random UUID and never called anyone (plan 2.10 #13, audit landmine 7) - not because
+ * issuing a client is something the panel may not do. `store` does the same job properly:
+ * one button, no fields to get wrong, and the row only survives if the TSS accepted it.
+ * `register` and `deregister` are the two ends of the yearly cycle, which is normally
+ * bringing the previous convention's client back rather than issuing another.
  *
- * The real lifecycle is `php artisan tse:update-state` and `php artisan tse:change-admin-pin`,
- * which talk to the TSE. This panel shows what those produced.
+ * Register and deregister are the same URI under two verbs, POST to bring a client into
+ * service and DELETE to take it out. The literal `/` POST is declared before `{client}`
+ * so it cannot be bound as a route model.
+ *
+ * `php artisan tse:update-state` and `php artisan tse:change-admin-pin` are still the way
+ * the TSS itself - as opposed to a client on it - is driven.
  */
 Route::prefix('tse-clients')->name('tse-clients.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [TseClientController::class, 'index'])->name('index');
+    Route::post('/', [TseClientController::class, 'store'])->name('store');
+
     Route::get('{client}', [TseClientController::class, 'show'])->whereNumber('client')->name('show');
+    Route::post('{client}/register', [TseClientController::class, 'register'])->whereNumber('client')->name('register');
+    Route::delete('{client}/register', [TseClientController::class, 'deregister'])->whereNumber('client')->name('deregister');
 });

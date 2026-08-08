@@ -701,6 +701,47 @@ test('a render that never lands stops hiding the record once the grace window pa
     $this->travelBack();
 });
 
+test('a verdict on a record that never rendered does not put it back into processing', function () {
+    /*
+     * The render clock is the photo's, not the row's. It used to read `updated_at`, so
+     * approving a record whose webp had failed for good bumped that column and the page the
+     * reviewer landed on replaced the photo they had just judged with "still processing" -
+     * for another grace window, and out of the queue with it.
+     */
+    $stuck = ($this->fursuit)(['name' => 'Never rendered', 'image' => 'fursuits/raw.jpg']);
+    $stuck->forceFill(['image_webp' => null, 'image_thumb' => null])->saveQuietly();
+
+    $this->travel(Fursuit::IMAGE_RENDER_GRACE_MINUTES + 1)->minutes();
+
+    ($this->scoped)($this->reviewer)->post(route('admin.fursuits.approve', $stuck))
+        ->assertRedirect();
+
+    expect($stuck->fresh()->imageRenderPending())->toBeFalse();
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.show', $stuck))
+        ->assertInertia(fn (Assert $page) => $page->where('fursuit.imageProcessing', false));
+
+    $this->travelBack();
+});
+
+test('replacing the photo restarts the render clock', function () {
+    // The other half of the same rule: a new photo is genuinely in flight again, whatever
+    // the record's own age.
+    $fursuit = ($this->fursuit)();
+
+    $this->travel(Fursuit::IMAGE_RENDER_GRACE_MINUTES + 1)->minutes();
+
+    $fursuit->update(['image' => 'fursuits/replacement.jpg']);
+
+    expect($fursuit->fresh()->imageRenderPending())->toBeTrue();
+
+    $this->travel(Fursuit::IMAGE_RENDER_GRACE_MINUTES + 1)->minutes();
+
+    expect($fursuit->fresh()->imageRenderPending())->toBeFalse();
+
+    $this->travelBack();
+});
+
 test('a submitted photo is queued for its gallery variants straight away', function () {
     // The admin surfaces read the variants, so they have to exist without anybody visiting the
     // gallery first. FursuitObserver dispatches on create and again whenever the photo changes.

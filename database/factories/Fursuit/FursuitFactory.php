@@ -43,6 +43,9 @@ class FursuitFactory extends Factory
              */
             'image_webp' => GenerateFursuitWebpJob::pathFor($image),
             'image_thumb' => GenerateFursuitWebpJob::thumbPathFor($image),
+            // The render clock, which FursuitObserver would stamp anyway on a created row;
+            // spelled out so a made-but-not-created fixture carries it too.
+            'image_uploaded_at' => now(),
             'published' => $this->faker->boolean(),
             'catch_em_all' => $this->faker->boolean(),
             'user_id' => User::factory(),

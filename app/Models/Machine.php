@@ -64,10 +64,30 @@ class Machine extends Model implements \Illuminate\Contracts\Auth\Authenticatabl
         return $this->hasMany(Checkout::class);
     }
 
-    // tse client
+    /**
+     * The stored `tse_client_id`, kept only for the machines that were pinned to a client
+     * by hand before that choice was removed.
+     *
+     * Nothing writes it any more and nothing should read it to decide what signs a
+     * receipt; {@see self::signingTseClient()} is the answer to that question.
+     */
     public function tseClient()
     {
         return $this->belongsTo(TseClient::class);
+    }
+
+    /**
+     * The TSE client this till signs under: whichever one is registered.
+     *
+     * Machines used to name their own, which was a choice with exactly one correct answer
+     * and several ways to get it wrong - a new till left unassigned signed nothing, and a
+     * till still pointing at last year's deregistered client failed at the counter with a
+     * queue in front of it. Only one client may be registered at a time
+     * ({@see TseClient::activeClient()}), so there is nothing left to choose.
+     */
+    public function signingTseClient(): ?TseClient
+    {
+        return TseClient::activeClient();
     }
 
     // sumupReader

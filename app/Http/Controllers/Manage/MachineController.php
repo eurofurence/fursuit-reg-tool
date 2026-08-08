@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Manage;
 
-use App\Domain\Checkout\Models\TseClient;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\MachineRequest;
 use App\Models\Machine;
@@ -63,7 +62,6 @@ class MachineController extends Controller
 
         return inertia('Manage/Machines/Form', [
             'machine' => null,
-            'tseClients' => $this->tseClientOptions(),
             'sumupReaders' => $this->sumupReaderOptions(),
             'actions' => [],
         ]);
@@ -86,7 +84,6 @@ class MachineController extends Controller
 
         return inertia('Manage/Machines/Form', [
             'machine' => $this->formData($machine),
-            'tseClients' => $this->tseClientOptions(),
             'sumupReaders' => $this->sumupReaderOptions(),
             // The Login Link header action of EditMachine, declared server-side so the
             // page can be looked at without minting anything. Nothing is generated until
@@ -202,7 +199,6 @@ class MachineController extends Controller
             ->perPageOptions([25, 50, 100, 200])
             ->rows(fn (Machine $machine) => [
                 'name' => $machine->name,
-                'tseClient.remote_id' => $machine->tseClient?->remote_id,
                 'sumupReader.name' => $machine->sumupReader?->name,
                 'should_discover_printers' => (bool) $machine->should_discover_printers,
             ])
@@ -229,7 +225,7 @@ class MachineController extends Controller
      */
     private function baseQuery(Request $request): Builder
     {
-        $query = Machine::query()->with(['tseClient', 'sumupReader']);
+        $query = Machine::query()->with('sumupReader');
 
         $archived = $request->input('filter.archived');
 
@@ -253,7 +249,6 @@ class MachineController extends Controller
     {
         return [
             Column::text('name', 'Name')->searchable(),
-            Column::text('tseClient.remote_id', 'TSE Client')->fallback('None assigned'),
             Column::text('sumupReader.name', 'SumUp Reader')->fallback('None assigned'),
             Column::bool('should_discover_printers', 'Auto-discover Printers'),
         ];
@@ -391,18 +386,6 @@ class MachineController extends Controller
     /**
      * @return array<int, array{value: string, label: string}>
      */
-    private function tseClientOptions(): array
-    {
-        return $this->options(
-            TseClient::query()->orderBy('id')->get(),
-            // MachineResource's getOptionLabelFromRecordUsing, verbatim.
-            fn (TseClient $client) => $client->remote_id ?? 'Unknown TSE Client',
-        );
-    }
-
-    /**
-     * @return array<int, array{value: string, label: string}>
-     */
     private function sumupReaderOptions(): array
     {
         return $this->options(
@@ -446,7 +429,6 @@ class MachineController extends Controller
         return [
             'id' => $machine->id,
             'name' => $machine->name,
-            'tse_client_id' => (string) ($machine->tse_client_id ?? ''),
             'sumup_reader_id' => (string) ($machine->sumup_reader_id ?? ''),
             'should_discover_printers' => (bool) $machine->should_discover_printers,
         ];

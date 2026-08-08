@@ -10,8 +10,9 @@
  *
  *  - `archival_notice` is in the form and in the table but not in `Event::$fillable`, so
  *    every save of it is silently dropped today (audit 107). It has to persist.
- *  - `mass_printed_at` is `->required()` while its own helper text says "if applicable"
- *    (audit 106). Plan 2.6 keeps it required, so the surprise is asserted, not fixed.
+ *  - `mass_printed_at` was `->required()` while its own helper text said "if applicable"
+ *    (audit 106). It is nullable now, and an empty value means the pre-print run is still
+ *    ahead - the same reading as a future date, which is what the public copy needs.
  *  - event state is computed by `Event::state()` from the dates and is not stored, so
  *    nothing here may ship a state column, filter or field (audit 4.1, landmine 105).
  */
@@ -527,13 +528,34 @@ test('an unset badge class and the two optional catch dates save as null, not em
         ->and($event->archival_notice)->toBeNull();
 });
 
+test('mass_printed_at saves empty as null, because no run scheduled is not a missed run', function () {
+    // The column used to be NOT NULL with a `useCurrent()` default, so a new event claimed the
+    // pre-print run had happened the moment it was created and the public pages told attendees
+    // to collect from the second day. Empty has to reach the database as null.
+    actingAs($this->admin)
+        ->post(route('admin.settings.events.store'), ($this->payload)(['mass_printed_at' => '']))
+        ->assertRedirect(route('admin.settings.events.index'));
+
+    expect(Event::sole()->mass_printed_at)->toBeNull();
+});
+
+test('a set mass_printed_at can be cleared again', function () {
+    $event = ($this->event)(['mass_printed_at' => now()->addDays(20)]);
+
+    actingAs($this->admin)
+        ->put(route('admin.settings.events.update', $event), ($this->payload)(['mass_printed_at' => '']))
+        ->assertRedirect(route('admin.settings.events.index'));
+
+    expect($event->refresh()->mass_printed_at)->toBeNull();
+});
+
 test('the required fields are required, free_badge_deadline among them', function () {
     // free_badge_deadline decides how long the badge included with registration is
     // honoured for free, and the front page and FAQ both quote it, so an event without
     // one is not a valid event.
     $required = [
         'name', 'starts_at', 'ends_at', 'order_starts_at', 'order_ends_at',
-        'free_badge_deadline', 'badge_price', 'mass_printed_at',
+        'free_badge_deadline', 'badge_price',
     ];
 
     foreach ($required as $field) {

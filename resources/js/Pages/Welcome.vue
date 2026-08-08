@@ -9,7 +9,7 @@ import { Link } from "@inertiajs/vue3";
 import Message from '@/Components/UI/UiMessage.vue';
 import { computed, ref, onMounted, onUnmounted } from "vue";
 import Layout from "@/Layouts/Layout.vue";
-import { formatEuroFromCents } from "@/helpers.js";
+import { formatEuroFromCents, formatPrintDate, massPrintRunIsOver } from "@/helpers.js";
 
 dayjs.extend(relativeTime);
 
@@ -377,11 +377,11 @@ const shouldShowRegMessage = computed(() => {
                 {{ usePage().props.flash.message }}
             </Message>
 
-            <Message v-if="event?.mass_printed_at && new Date(event.mass_printed_at) < new Date()" severity="info"
+            <Message v-if="massPrintRunIsOver(event)" severity="info"
                 :closable="false" class="mb-6">
                 <i class="pi pi-info-circle mr-2"></i>
-                Badges ordered now are printed on site and can be picked up from the 2nd convention day
-                (on day 1 only while nobody is waiting at the desk).
+                The printing deadline ({{ formatPrintDate(event.mass_printed_at) }}) has passed, so
+                badges ordered now can be collected from the second convention day.
             </Message>
 
             <!--

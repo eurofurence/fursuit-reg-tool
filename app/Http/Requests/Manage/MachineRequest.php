@@ -41,7 +41,6 @@ class MachineRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'tse_client_id' => ['nullable', 'integer', Rule::exists('tse_clients', 'id')],
             'sumup_reader_id' => ['nullable', 'integer', Rule::exists('sumup_readers', 'id')],
             // Filament's Checkbox: present and boolean. `required` accepts false, which
             // is what an unticked box sends.
@@ -58,7 +57,6 @@ class MachineRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'tse_client_id' => 'TSE Client',
             'sumup_reader_id' => 'SumUp Reader',
             'should_discover_printers' => 'should discover printers',
         ];

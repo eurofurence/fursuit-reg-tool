@@ -67,6 +67,18 @@ class FursuitObserver
         return true;
     }
 
+    /**
+     * Stamp when the photo arrived, which is what decides whether its render is still on
+     * its way (Fursuit::imageRenderPending). Here rather than in the controllers for the
+     * same reason the revision is: four write paths, one answer.
+     */
+    public function creating(Fursuit $fursuit): void
+    {
+        if ($fursuit->image && $fursuit->image_uploaded_at === null) {
+            $fursuit->image_uploaded_at = now();
+        }
+    }
+
     public function created(Fursuit $fursuit): void
     {
         if ($fursuit->catch_em_all === true) {
@@ -106,6 +118,8 @@ class FursuitObserver
         self::$replacedImage[$fursuit->id] = $fursuit->getOriginal('image');
         $fursuit->image_webp = null;
         $fursuit->image_thumb = null;
+        // A new photo restarts the render clock; see Fursuit::imageRenderPending().
+        $fursuit->image_uploaded_at = $fursuit->image ? now() : null;
     }
 
     /**

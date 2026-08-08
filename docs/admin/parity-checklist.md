@@ -153,7 +153,7 @@ description, and submit `Confirm`.
 - [x] `ends_at` DatePicker, **date only**, required
 - [x] `order_starts_at` DateTimePicker, label `Order Window Start`, required, helper `When badge orders can start`
 - [x] `order_ends_at` DateTimePicker, label `Order Window End`, required, helper `When badge orders must end`
-- [x] `mass_printed_at` DateTimePicker, label `Mass Print Date`, **required**, helper `When the badges were mass printed, if applicable`
+- [x] `mass_printed_at` DateTimePicker, label `Mass Print Date`, **nullable** (audit 106: Filament required it while its helper said "if applicable"), with `Set to now` / `Clear` buttons; empty means the pre-print run is still ahead
 - [x] `cost` TextInput, label `Printing Cost (€)`, numeric, step 0.01, suffix `€`, placeholder `1914.95`, helper `Total printing cost in euros that we need to cover for this event`, **in euros not cents**
 - [x] `catch_em_all_enabled` Toggle, label `Catch-Em-All Enabled`, default true, helper `Enable catch-em-all functionality for this event`
 - [x] `catch_em_all_start` DateTimePicker, nullable, helper `When the catch-em-all game should start (leave empty to start with event)`

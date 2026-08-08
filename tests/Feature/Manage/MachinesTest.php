@@ -44,7 +44,8 @@ use function Pest\Laravel\withHeaders;
 /** The audit's table, in order. */
 const MANAGE_MACHINE_COLUMNS = [
     'name',
-    'tseClient.remote_id',
+    // No TSE client column: a machine no longer names one, it signs under whichever
+    // client is registered.
     'sumupReader.name',
     'should_discover_printers',
 ];
@@ -166,36 +167,53 @@ test('the columns carry the audit labels, types and placeholders', function () {
     $columns = collect(($this->props)()['columns'])->keyBy('key');
 
     expect($columns['name']['label'])->toBe('Name')
-        ->and($columns['tseClient.remote_id']['label'])->toBe('TSE Client')
-        ->and($columns['tseClient.remote_id']['fallback'])->toBe('None assigned')
         ->and($columns['sumupReader.name']['label'])->toBe('SumUp Reader')
         ->and($columns['sumupReader.name']['fallback'])->toBe('None assigned')
         ->and($columns['should_discover_printers']['label'])->toBe('Auto-discover Printers')
         ->and($columns['should_discover_printers']['type'])->toBe('bool');
 });
 
-test('the relation columns render the assigned client and reader', function () {
+test('the reader column renders the assigned reader', function () {
     actingAs($this->admin);
 
-    $client = TseClient::create(['remote_id' => 'tse-9', 'serial_number' => 'SN-9', 'state' => 'REGISTERED']);
     $reader = SumUpReader::create(['name' => 'Reader A', 'paring_code' => 'abcd']);
 
     ($this->machine)([
         'name' => 'Desk 1',
-        'tse_client_id' => $client->id,
         'sumup_reader_id' => $reader->id,
         'should_discover_printers' => true,
     ]);
-    ($this->machine)(['name' => 'Desk 2', 'tse_client_id' => null, 'sumup_reader_id' => null]);
+    ($this->machine)(['name' => 'Desk 2', 'sumup_reader_id' => null]);
 
     $rows = collect(($this->props)()['rows'])->keyBy(fn ($row) => $row['cells']['name']);
 
-    expect($rows['Desk 1']['cells']['tseClient.remote_id'])->toBe('tse-9')
-        ->and($rows['Desk 1']['cells']['sumupReader.name'])->toBe('Reader A')
+    expect($rows['Desk 1']['cells']['sumupReader.name'])->toBe('Reader A')
         ->and($rows['Desk 1']['cells']['should_discover_printers'])->toBeTrue()
         // Nothing assigned leaves the cell empty; the column's fallback renders it.
-        ->and($rows['Desk 2']['cells']['tseClient.remote_id'])->toBeNull()
         ->and($rows['Desk 2']['cells']['sumupReader.name'])->toBeNull();
+});
+
+test('a machine no longer names a TSE client: it signs under whichever one is registered', function () {
+    actingAs($this->admin);
+
+    $registered = TseClient::create(['remote_id' => 'tse-now', 'serial_number' => 'SN-now', 'state' => 'REGISTERED']);
+    TseClient::create(['remote_id' => 'tse-old', 'serial_number' => 'SN-old', 'state' => 'DEREGISTERED']);
+
+    // Even a machine still pinned to last year's client by the column that used to be
+    // editable signs under the registered one.
+    $machine = ($this->machine)(['name' => 'Desk 1', 'tse_client_id' => TseClient::where('remote_id', 'tse-old')->value('id')]);
+
+    expect($machine->signingTseClient()?->id)->toBe($registered->id);
+
+    // And the choice is gone from the panel: no column, no option list, no field.
+    expect(collect(($this->props)()['columns'])->pluck('key')->all())->not->toContain('tseClient.remote_id');
+
+    get(route('admin.machines.edit', $machine))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Manage/Machines/Form')
+            ->missing('tseClients')
+            ->missing('machine.tse_client_id')
+            ->etc());
 });
 
 test('the search box narrows on name, which the Filament table made unreachable', function () {
@@ -431,10 +449,9 @@ test('a bulk action without ids is a validation error, not a no-op that reports 
  * The form.
  */
 
-test('the create page carries both relation option lists', function () {
+test('the create page carries the reader option list', function () {
     actingAs($this->admin);
 
-    $client = TseClient::create(['remote_id' => 'tse-1', 'serial_number' => 'SN-1', 'state' => 'REGISTERED']);
     $reader = SumUpReader::create(['name' => 'Reader A', 'paring_code' => 'abcd']);
 
     get(route('admin.machines.create'))
@@ -442,16 +459,13 @@ test('the create page carries both relation option lists', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Machines/Form')
             ->where('machine', null)
-            // Neither Select is required, so both keep the empty option.
-            ->where('tseClients', [
-                ['value' => '', 'label' => '-'],
-                ['value' => (string) $client->id, 'label' => 'tse-1'],
-            ])
+            // The Select is not required, so it keeps the empty option.
             ->where('sumupReaders', [
                 ['value' => '', 'label' => '-'],
                 ['value' => (string) $reader->id, 'label' => 'Reader A'],
             ])
             ->where('actions', [])
+            ->missing('tseClients')
         );
 });
 
@@ -479,10 +493,8 @@ test('creating and saving a machine both work', function () {
 test('the edit page prefills the record', function () {
     actingAs($this->admin);
 
-    $client = TseClient::create(['remote_id' => 'tse-1', 'serial_number' => 'SN-1', 'state' => 'REGISTERED']);
     $machine = ($this->machine)([
         'name' => 'Desk 1',
-        'tse_client_id' => $client->id,
         'should_discover_printers' => false,
     ]);
 
@@ -491,7 +503,6 @@ test('the edit page prefills the record', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Machines/Form')
             ->where('machine.name', 'Desk 1')
-            ->where('machine.tse_client_id', (string) $client->id)
             ->where('machine.sumup_reader_id', '')
             ->where('machine.should_discover_printers', false)
         );
@@ -505,9 +516,6 @@ test('the form validates the audit rules and refuses an unknown relation id', fu
 
     post(route('admin.machines.store'), manageMachinePayload(['name' => str_repeat('a', 256)]))
         ->assertSessionHasErrors('name');
-
-    post(route('admin.machines.store'), manageMachinePayload(['tse_client_id' => 9999]))
-        ->assertSessionHasErrors('tse_client_id');
 
     post(route('admin.machines.store'), manageMachinePayload(['sumup_reader_id' => 9999]))
         ->assertSessionHasErrors('sumup_reader_id');
@@ -631,7 +639,6 @@ function manageMachinePayload(array $overrides = []): array
 {
     return array_merge([
         'name' => 'Desk 1',
-        'tse_client_id' => null,
         'sumup_reader_id' => null,
         'should_discover_printers' => true,
     ], $overrides);

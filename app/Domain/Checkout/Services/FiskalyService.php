@@ -193,7 +193,7 @@ class FiskalyService
             throw new \InvalidArgumentException('Checkout must have a remote_id to update Fiskaly transaction');
         }
 
-        if (! $checkout->machine?->tseClient?->remote_id) {
+        if (! $checkout->machine?->signingTseClient()?->remote_id) {
             throw new \InvalidArgumentException('Checkout must have a valid TSE client with remote_id');
         }
 
@@ -212,7 +212,7 @@ class FiskalyService
 
         $response = $this->request()
             ->put('tss/'.config('services.fiskaly.tss_id').'/tx/'.$checkout->remote_id.'?tx_revision='.$checkout->remote_rev_count, [
-                'client_id' => $checkout->machine->tseClient->remote_id,
+                'client_id' => $checkout->machine->signingTseClient()->remote_id,
                 'type' => 'RECEIPT',
                 'state' => 'ACTIVE',
                 'schema' => [
@@ -333,7 +333,7 @@ class FiskalyService
             throw new \InvalidArgumentException('Checkout must have a remote_id to update Fiskaly transaction state');
         }
 
-        if (! $checkout->machine?->tseClient?->remote_id) {
+        if (! $checkout->machine?->signingTseClient()?->remote_id) {
             throw new \InvalidArgumentException('Checkout must have a valid TSE client with remote_id');
         }
 
@@ -351,7 +351,7 @@ class FiskalyService
 
         $response = $this->request()
             ->put('tss/'.config('services.fiskaly.tss_id').'/tx/'.$checkout->remote_id.'?tx_revision='.$checkout->remote_rev_count, [
-                'client_id' => $checkout->machine->tseClient->remote_id,
+                'client_id' => $checkout->machine->signingTseClient()->remote_id,
                 'type' => 'RECEIPT',
                 'state' => $newState,
                 'schema' => [
