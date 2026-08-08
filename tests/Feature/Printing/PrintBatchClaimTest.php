@@ -79,9 +79,9 @@ it('sets a lease and counts the attempt when claiming', function () {
 it('returns an abandoned job to the queue when its lease expires', function () {
     [$batch] = batchWithJobs(1);
     $job = $batch->claimNextJob(Machine::factory()->create());
-    $job->markPrinting();
 
-    // The agent dies here: no heartbeat, no completion, nothing.
+    // The agent dies here: no heartbeat, no completion, nothing. Claimed but
+    // never started, so no card exists and requeueing costs nothing.
     $job->update(['lease_expires_at' => now()->subMinute()]);
 
     $this->artisan('printing:reap-leases')->assertSuccessful();
@@ -89,6 +89,21 @@ it('returns an abandoned job to the queue when its lease expires', function () {
     expect($job->fresh()->status)->toBe(PrintJobStatusEnum::Pending)
         ->and($job->fresh()->processing_machine_id)->toBeNull()
         ->and($job->fresh()->attempt_count)->toBe(1);
+});
+
+it('holds a job that died mid-print instead of queueing it again', function () {
+    // This test used to assert the opposite, and the opposite is what printed
+    // duplicates: once markPrinting() has run the artwork is with the spooler
+    // and a card may be in the bin. Only a person can tell.
+    [$batch] = batchWithJobs(1);
+    $job = $batch->claimNextJob(Machine::factory()->create());
+    $job->markPrinting();
+
+    $job->update(['lease_expires_at' => now()->subMinute()]);
+
+    $this->artisan('printing:reap-leases')->assertSuccessful();
+
+    expect($job->fresh()->status)->not->toBe(PrintJobStatusEnum::Pending);
 });
 
 it('fails a job and pauses its batch once attempts are exhausted', function () {

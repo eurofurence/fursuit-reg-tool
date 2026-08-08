@@ -434,7 +434,15 @@ class PrintBatch extends Model
     {
         $requeued = 0;
 
-        foreach ($this->printJobs()->where('status', PrintJobStatusEnum::Failed)->get() as $job) {
+        // Deliberately skips jobs whose card may physically exist. Those need a
+        // person to look in the output bin, and requeueing them is exactly the
+        // duplicate this whole path was producing.
+        $failed = $this->printJobs()
+            ->where('status', PrintJobStatusEnum::Failed)
+            ->where('card_may_exist', false)
+            ->get();
+
+        foreach ($failed as $job) {
             if ($job->requeue()) {
                 $requeued++;
             }
