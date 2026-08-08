@@ -75,18 +75,29 @@ OID_SUPPLY_LEVEL = "1.3.6.1.2.1.43.11.1.1.9.1.1"
 OID_SUPPLY_MAX = "1.3.6.1.2.1.43.11.1.1.8.1.1"
 OID_SUPPLY_DESCRIPTION = "1.3.6.1.2.1.43.11.1.1.6.1.1"
 
-# Supply 2 exists and looks like the transfer film -- same type (7, ink ribbon)
-# and unit (8, sheets) as the ribbon, no description -- but it does not report
-# anything usable. Walked three times inside a few minutes on an idle ZXP9 that
-# printed nothing in between, it gave 626, then 2, then 1, against a max that
-# moved with it. Classifying on that produced film_low on a healthy printer and
-# would have gone on to stop the queue outright.
-#
-# Zebra's own media table (1.3.6.1.4.1.10642.8.6) has a single entry, the YMCK
-# ribbon, so there is no private OID for the film either. Read for the record
-# only; nothing decides anything on it.
+# The standard MIB's supply 2 looks like the transfer film -- same type (7, ink
+# ribbon) and unit (8, sheets), no description -- and is not. Walked repeatedly
+# on an idle ZXP9 it gave 626, then 2, then 1, then 624: sometimes the ribbon's
+# remaining count, sometimes its panel counter. Read for the record, never acted
+# on.
 OID_FILM_LEVEL = "1.3.6.1.2.1.43.11.1.1.9.1.2"
 OID_FILM_MAX = "1.3.6.1.2.1.43.11.1.1.8.1.2"
+
+# The film really is published, in Zebra's own media table. The column meanings
+# are not guesswork: 1.3.6.1.4.1.10642.8.12.0 returns an XML status document
+# that names every one of them, and the numbers line up exactly.
+#
+#   8.6.1.4  ribbon_initial_size     8.6.1.9   film_initial_size
+#   8.6.1.5  ribbon_panel_current    8.6.1.10  film_panel_current
+#
+# Both `panel_current` figures count UP as panels are used, so what is left is
+# initial minus current. Measured on the real unit mid-run: the ribbon counter
+# rose by two per card and the film counter by one, which is what the standard
+# MIB's ribbon level agrees with (627 - 3 = 624).
+OID_RIBBON_INITIAL = "1.3.6.1.4.1.10642.8.6.1.4.1"
+OID_RIBBON_PANEL_USED = "1.3.6.1.4.1.10642.8.6.1.5.1"
+OID_FILM_INITIAL = "1.3.6.1.4.1.10642.8.6.1.9.1"
+OID_FILM_PANEL_USED = "1.3.6.1.4.1.10642.8.6.1.10.1"
 
 OID_ZEBRA_STATE = "1.3.6.1.4.1.10642.8.4.1.1.1"
 OID_ZEBRA_ALARMS = (
@@ -226,6 +237,20 @@ class Reading:
     supply_description: str = ""
     film_level: Optional[int] = None
     film_max: Optional[int] = None
+    film_initial: Optional[int] = None
+    film_panel_used: Optional[int] = None
+
+    def film_panels_left(self) -> Optional[int]:
+        """Film panels remaining, from the two counters that do mean something."""
+        if self.film_initial is None or self.film_panel_used is None:
+            return None
+
+        return max(0, self.film_initial - self.film_panel_used)
+
+    def film_cards_left(self) -> Optional[int]:
+        panels = self.film_panels_left()
+
+        return None if panels is None else panels // FILM_UNITS_PER_CARD
     jobs: List[JobRow] = field(default_factory=list)
     raw: Dict[str, str] = field(default_factory=dict)
 
@@ -284,6 +309,16 @@ def decode_error_bits(hex_string: str) -> List[str]:
 # badge ever stops being dual-sided.
 SUPPLY_UNITS_PER_CARD = 2
 
+# The film is consumed a panel a card, half the ribbon's rate. Measured the same
+# way, on the same dual-sided badges: across one card the ribbon counter moved
+# two and the film counter one.
+#
+# The two are not interchangeable. A ribbon and a film of the same nominal size
+# do not run out together, and on this station the film was down to fifty cards
+# while the ribbon still had nearly three hundred -- so the film is usually what
+# stops a run, and it was the one nothing watched.
+FILM_UNITS_PER_CARD = 1
+
 # Words the ZXP9 uses while it is working through a card. Observed on the real
 # unit: standby -> initializing -> printing_heating -> feeding -> transfer_wait.
 #
@@ -339,8 +374,17 @@ def classify(reading: Reading, ribbon_warn_threshold: int = 50) -> str:
 
     # 3. Consumables. Exhausted is a stop, low is only a warning.
     #
-    # Only the ribbon. See OID_FILM_LEVEL for why the second supply row this
-    # printer publishes is not trusted to mean anything.
+    # Film before ribbon. Both run out and a printer with no film cannot print
+    # whatever the ribbon says, so naming the ribbon would send somebody to
+    # fetch the wrong box. On this station the film runs out first by a mile.
+    film_cards = reading.film_cards_left()
+
+    if film_cards is not None:
+        if film_cards <= 0:
+            return FILM_OUT
+        if film_cards <= ribbon_warn_threshold:
+            return FILM_LOW
+
     if reading.supply_level is not None:
         # Thresholds are quoted in cards, because that is what an operator
         # counts and what the queue length is measured in.
@@ -438,7 +482,9 @@ class ZebraPoller:
         for attribute, oid in (("supply_level", OID_SUPPLY_LEVEL),
                                ("supply_max", OID_SUPPLY_MAX),
                                ("film_level", OID_FILM_LEVEL),
-                               ("film_max", OID_FILM_MAX)):
+                               ("film_max", OID_FILM_MAX),
+                               ("film_initial", OID_FILM_INITIAL),
+                               ("film_panel_used", OID_FILM_PANEL_USED)):
             try:
                 setattr(reading, attribute, int(values[oid]))
             except (KeyError, TypeError, ValueError):
