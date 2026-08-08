@@ -201,6 +201,21 @@ what never came out of the printer, and is found in `/admin` by filtering the ba
 **Print Verified = Not verified** plus the fulfillment status and the attendee range that crate
 covers.
 
+**The same check-off from the admin list.** The badge list has a **Check off** column - a checkbox
+that writes on click, hidden by default, turned on from the column menu next to the search box. It
+is for the other way the crate gets reconciled: one person reads numbers out loud and somebody else
+ticks the rows off on screen. Turning the column on sticks per operator per table
+(`TableColumnController`), so it survives paging, sorting and filtering the list underneath it. Each
+click POSTs `admin.badges.verify` carrying the state it is asking for, not "flip it", so a row that
+refreshed under the cursor on the five-second poll cannot make a click mean the opposite of what it
+showed. Unticking is the undo, and clears the stamp on the badge and its print jobs.
+
+Both screens write through `BadgePrintVerification` (`app/Domain/Printing/Services/`), so a crate
+reconciled either way leaves the same stamp on the badge, the same stamp on the print job and the
+same batch counters. The one difference is `print_jobs.verified_by_id`: it points at `users`, so the
+admin panel fills it in and the desk, where the operator is a `staff` row, leaves it null and names
+them in the activity entry instead.
+
 Two rules on that screen, both learned from cards going out twice:
 
 - A bare number is copy 1. `1234` checks off `1234-1`; a second copy has to be typed as `1234-2`,

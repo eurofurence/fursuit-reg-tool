@@ -106,7 +106,7 @@ beforeEach(function () {
     ]);
 });
 
-test('the list renders the fifteen columns in order, with their labels and types', function () {
+test('the list renders the sixteen columns in order, with their labels and types', function () {
     ($this->badge)();
 
     ($this->scoped)(null)->get(route('admin.badges.index'))
@@ -118,22 +118,130 @@ test('the list renders the fifteen columns in order, with their labels and types
             ->where('columns.2', fn ($c) => $c['key'] === 'fursuit.species.name' && $c['label'] === 'Species' && $c['toggleable'] && ! $c['hiddenByDefault'])
             ->where('columns.3', fn ($c) => $c['key'] === 'fursuit.user.name' && $c['label'] === 'Owner' && $c['toggleable'] && ! $c['hiddenByDefault'])
             ->where('columns.4', fn ($c) => $c['key'] === 'custom_id' && $c['label'] === 'Badge ID' && $c['type'] === 'copyable' && $c['toggleable'] && ! $c['hiddenByDefault'])
-            ->where('columns.5', fn ($c) => $c['key'] === 'sort_attendee_id' && $c['label'] === 'Attendee ID' && $c['sortable'] && $c['fallback'] === 'N/A')
-            ->where('columns.6', fn ($c) => $c['key'] === 'print_jobs_count' && $c['label'] === 'Print Jobs' && $c['type'] === 'badge' && $c['align'] === 'center')
-            ->where('columns.7', fn ($c) => $c['key'] === 'status_fulfillment' && $c['label'] === 'Fulfillment' && $c['type'] === 'badge')
-            ->where('columns.8', fn ($c) => $c['key'] === 'status_payment' && $c['label'] === 'Payment' && $c['type'] === 'badge')
-            ->where('columns.9', fn ($c) => $c['key'] === 'extra_copy' && $c['label'] === 'Extra Copy' && $c['hiddenByDefault'])
-            ->where('columns.10', fn ($c) => $c['key'] === 'total' && $c['label'] === 'Total' && $c['type'] === 'money' && $c['align'] === 'right' && $c['hiddenByDefault'])
-            ->where('columns.11', fn ($c) => $c['key'] === 'created_at' && $c['label'] === 'Created' && $c['hiddenByDefault'])
-            ->where('columns.12', fn ($c) => $c['key'] === 'printed_at' && $c['label'] === 'Printed At' && $c['fallback'] === 'Not printed' && $c['hiddenByDefault'])
-            ->where('columns.13', fn ($c) => $c['key'] === 'picked_up_at' && $c['label'] === 'Picked Up' && $c['fallback'] === 'Not picked up' && $c['hiddenByDefault'])
-            // Column 15 is not the audit's: it is the desk check-off, added with the POS
-            // verification screen so the printed-but-never-seen cards can be listed.
-            ->where('columns.14', fn ($c) => $c['key'] === 'verified_print_at' && $c['label'] === 'Verified' && $c['fallback'] === 'Not verified' && $c['hiddenByDefault'])
-            ->count('columns', 15)
-            // The five isToggledHiddenByDefault: true flags from the audit, plus Verified.
-            ->where('hiddenColumns', ['extra_copy', 'total', 'created_at', 'printed_at', 'picked_up_at', 'verified_print_at'])
+            // Not the audit's: the inline check-off, next to the number it is checked
+            // against.
+            ->where('columns.5', fn ($c) => $c['key'] === 'verify_print' && $c['label'] === 'Check off' && $c['type'] === 'toggle' && $c['toggleable'] && $c['hiddenByDefault'])
+            ->where('columns.6', fn ($c) => $c['key'] === 'sort_attendee_id' && $c['label'] === 'Attendee ID' && $c['sortable'] && $c['fallback'] === 'N/A')
+            ->where('columns.7', fn ($c) => $c['key'] === 'print_jobs_count' && $c['label'] === 'Print Jobs' && $c['type'] === 'badge' && $c['align'] === 'center')
+            ->where('columns.8', fn ($c) => $c['key'] === 'status_fulfillment' && $c['label'] === 'Fulfillment' && $c['type'] === 'badge')
+            ->where('columns.9', fn ($c) => $c['key'] === 'status_payment' && $c['label'] === 'Payment' && $c['type'] === 'badge')
+            ->where('columns.10', fn ($c) => $c['key'] === 'extra_copy' && $c['label'] === 'Extra Copy' && $c['hiddenByDefault'])
+            ->where('columns.11', fn ($c) => $c['key'] === 'total' && $c['label'] === 'Total' && $c['type'] === 'money' && $c['align'] === 'right' && $c['hiddenByDefault'])
+            ->where('columns.12', fn ($c) => $c['key'] === 'created_at' && $c['label'] === 'Created' && $c['hiddenByDefault'])
+            ->where('columns.13', fn ($c) => $c['key'] === 'printed_at' && $c['label'] === 'Printed At' && $c['fallback'] === 'Not printed' && $c['hiddenByDefault'])
+            ->where('columns.14', fn ($c) => $c['key'] === 'picked_up_at' && $c['label'] === 'Picked Up' && $c['fallback'] === 'Not picked up' && $c['hiddenByDefault'])
+            // Also not the audit's: the desk check-off, added with the POS verification
+            // screen so the printed-but-never-seen cards can be listed.
+            ->where('columns.15', fn ($c) => $c['key'] === 'verified_print_at' && $c['label'] === 'Verified' && $c['fallback'] === 'Not verified' && $c['hiddenByDefault'])
+            ->count('columns', 16)
+            // The five isToggledHiddenByDefault: true flags from the audit, plus the two
+            // check-off columns.
+            ->where('hiddenColumns', ['verify_print', 'extra_copy', 'total', 'created_at', 'printed_at', 'picked_up_at', 'verified_print_at'])
         );
+});
+
+test('the check-off column is not offered to a reviewer, who cannot write it either', function () {
+    $badge = ($this->badge)();
+
+    actingAs($this->reviewer)->withSession([
+        EventScope::SESSION_ID => null,
+        EventScope::SESSION_CHOSEN => true,
+    ])->get(route('admin.badges.index'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->count('columns', 15)
+            ->where('columns', fn ($columns) => collect($columns)->pluck('key')->doesntContain('verify_print'))
+        );
+
+    actingAs($this->reviewer)
+        ->post(route('admin.badges.verify', $badge), ['verified' => 1])
+        ->assertForbidden();
+
+    expect($badge->fresh()->verified_print_at)->toBeNull();
+});
+
+test('the check-off cell carries the state it is asking for, flipped from the row', function () {
+    $badge = ($this->badge)();
+
+    ($this->scoped)(null)->get(route('admin.badges.index'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rows.0.cells.verify_print.value', false)
+            ->where('rows.0.cells.verify_print.url', route('admin.badges.verify', ['badge' => $badge->id, 'verified' => 1]))
+        );
+
+    $badge->forceFill(['verified_print_at' => now()])->saveQuietly();
+
+    ($this->scoped)(null)->get(route('admin.badges.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rows.0.cells.verify_print.value', true)
+            ->where('rows.0.cells.verify_print.url', route('admin.badges.verify', ['badge' => $badge->id, 'verified' => 0]))
+        );
+});
+
+test('ticking a badge off stamps it and its print job, exactly as the desk numpad does', function () {
+    $badge = ($this->badge)(['status_fulfillment' => 'printed', 'printed_at' => now()->subHour()]);
+
+    $job = PrintJob::factory()->create([
+        'printable_type' => $badge::class,
+        'printable_id' => $badge->id,
+        'printer_id' => Printer::factory()->create()->id,
+        'status' => PrintJobStatusEnum::Printed,
+        'printed_at' => now()->subHour(),
+        'verified_print_at' => null,
+    ]);
+
+    actingAs($this->admin)
+        ->post(route('admin.badges.verify', $badge), ['verified' => 1])
+        ->assertRedirect();
+
+    expect($badge->fresh()->verified_print_at)->not->toBeNull()
+        ->and($job->fresh()->verified_print_at)->not->toBeNull()
+        // The admin panel runs on the web guard, so unlike the desk there is a real user
+        // row to hang the job's verified_by_id on.
+        ->and($job->fresh()->verified_by_id)->toBe($this->admin->id);
+});
+
+test('a badge with no print job left is still checkable off', function () {
+    $badge = ($this->badge)(['status_fulfillment' => 'printed', 'printed_at' => now()->subHour()]);
+
+    actingAs($this->admin)
+        ->post(route('admin.badges.verify', $badge), ['verified' => 1])
+        ->assertRedirect();
+
+    expect($badge->fresh()->verified_print_at)->not->toBeNull();
+});
+
+test('unticking a badge puts it back on the missing list, jobs included', function () {
+    $badge = ($this->badge)(['verified_print_at' => now()->subMinute()]);
+
+    $job = PrintJob::factory()->create([
+        'printable_type' => $badge::class,
+        'printable_id' => $badge->id,
+        'printer_id' => Printer::factory()->create()->id,
+        'status' => PrintJobStatusEnum::Printed,
+        'printed_at' => now()->subHour(),
+        'verified_print_at' => now()->subMinute(),
+    ]);
+
+    actingAs($this->admin)
+        ->post(route('admin.badges.verify', $badge), ['verified' => 0])
+        ->assertRedirect();
+
+    expect($badge->fresh()->verified_print_at)->toBeNull()
+        ->and($job->fresh()->verified_print_at)->toBeNull()
+        ->and($job->fresh()->verification_source)->toBeNull();
+});
+
+test('a tick asking for the state the badge is already in writes nothing', function () {
+    $stamped = now()->subHour();
+    $badge = ($this->badge)(['verified_print_at' => $stamped]);
+
+    actingAs($this->admin)
+        ->post(route('admin.badges.verify', $badge), ['verified' => 1])
+        ->assertRedirect();
+
+    expect($badge->fresh()->verified_print_at->timestamp)->toBe($stamped->timestamp);
 });
 
 test('the Total column renders euros from cents instead of a hundredfold', function () {
@@ -200,7 +308,7 @@ test('a badge with no attendee id renders N/A rather than an empty cell', functi
     ($this->scoped)(null)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('rows.0.cells.sort_attendee_id', null)
-            ->where('columns.5.fallback', 'N/A')
+            ->where('columns.6.fallback', 'N/A')
         );
 });
 
