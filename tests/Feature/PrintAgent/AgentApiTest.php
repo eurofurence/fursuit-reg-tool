@@ -219,3 +219,104 @@ it('records agent liveness on every call', function () {
     expect($machine->fresh()->agent_last_seen_at)->not->toBeNull()
         ->and($machine->fresh()->agent_version)->toBe('1.0.0');
 });
+
+/*
+ * Late results. The lease says how long a claim survives an agent that has died;
+ * it does not decide who printed a card. An agent that lost the network mid-run
+ * still holds the card, and has to be able to say so when it comes back - the
+ * alternative is a printed card sitting in the queue waiting to be printed again.
+ */
+
+it('accepts a completion for a job whose lease was reaped', function () {
+    [, , $batch] = agentSetup(1);
+    $job = $this->postJson('/api/print-agent/jobs/claim', ['batch_id' => $batch->id])->json('job');
+
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printing")->assertOk();
+
+    // The network drops for longer than the lease, and the reaper hands the card
+    // back to the queue while it is physically printing.
+    $this->travel(20)->minutes();
+    $this->artisan('printing:reap-leases')->assertSuccessful();
+
+    expect(PrintJob::find($job['id'])->status)->toBe(PrintJobStatusEnum::Pending);
+
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printed", [
+        'completion_source' => 'firmware',
+        'firmware_job_id' => '58',
+    ])->assertOk()->assertJson(['marked' => true]);
+
+    expect(PrintJob::find($job['id'])->status)->toBe(PrintJobStatusEnum::Printed);
+});
+
+it('accepts a failure for a job whose lease was reaped', function () {
+    [, , $batch] = agentSetup(1);
+    $job = $this->postJson('/api/print-agent/jobs/claim', ['batch_id' => $batch->id])->json('job');
+
+    $this->travel(20)->minutes();
+    $this->artisan('printing:reap-leases')->assertSuccessful();
+
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/failed", ['reason' => 'Ribbon out'])
+        ->assertOk()
+        ->assertJson(['status' => 'failed', 'batch_status' => 'paused']);
+});
+
+it('treats a repeated completion as recorded rather than refused', function () {
+    // The agent's outbox resends anything it never got a reply to, so a delivery
+    // that crossed with a network drop arrives twice. Answering the repeat with
+    // "not marked" made the agent alert about a card that is recorded fine.
+    [, , $batch] = agentSetup(1);
+    $job = $this->postJson('/api/print-agent/jobs/claim', ['batch_id' => $batch->id])->json('job');
+
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printing")->assertOk();
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printed", ['completion_source' => 'firmware'])
+        ->assertOk()
+        ->assertJson(['marked' => true]);
+
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printed", ['completion_source' => 'firmware'])
+        ->assertOk()
+        ->assertJson(['marked' => true, 'already_recorded' => true]);
+});
+
+it('refuses a late failure for a card that is already printed', function () {
+    [, , $batch] = agentSetup(1);
+    $job = $this->postJson('/api/print-agent/jobs/claim', ['batch_id' => $batch->id])->json('job');
+
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printing")->assertOk();
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printed", ['completion_source' => 'firmware'])->assertOk();
+
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/failed", ['reason' => 'Card jam'])
+        ->assertStatus(409);
+
+    expect(PrintJob::find($job['id'])->status)->toBe(PrintJobStatusEnum::Printed)
+        ->and($batch->fresh()->status)->not->toBe(PrintBatchStatusEnum::Paused);
+});
+
+it('refuses a late result for a job another machine has since claimed', function () {
+    [, $printer, $batch] = agentSetup(1);
+    $job = $this->postJson('/api/print-agent/jobs/claim', ['batch_id' => $batch->id])->json('job');
+
+    $this->travel(20)->minutes();
+    $this->artisan('printing:reap-leases')->assertSuccessful();
+
+    // Somebody else picked the card up in the meantime. Overwriting their work
+    // with our late result is how one badge becomes two cards.
+    PrintJob::find($job['id'])->claim(Machine::factory()->create());
+
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printed", ['completion_source' => 'firmware'])
+        ->assertStatus(409);
+
+    expect(PrintJob::find($job['id'])->status)->toBe(PrintJobStatusEnum::Queued);
+});
+
+it('keeps a claim alive for long enough to print a card', function () {
+    // A ZXP9 warming up can hold the Windows spooler for minutes with no
+    // heartbeat getting out. At three minutes the reaper took the card back
+    // while it was printing, and the badge was queued again behind it.
+    [, , $batch] = agentSetup(1);
+    $job = $this->postJson('/api/print-agent/jobs/claim', ['batch_id' => $batch->id])->json('job');
+
+    $this->travel(10)->minutes();
+    $this->artisan('printing:reap-leases')->assertSuccessful();
+
+    expect(PrintJob::find($job['id'])->status)->toBe(PrintJobStatusEnum::Queued);
+});

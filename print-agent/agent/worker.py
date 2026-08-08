@@ -67,7 +67,7 @@ from .api import (
     ApiError,
     NetworkError,
 )
-from . import autostart
+from . import autostart, zebra
 from .config import ROLE_CARD, ROLE_RECEIPT
 from .store import OUTBOX_FAILED, OUTBOX_PRINTED, OUTBOX_VERIFY
 
@@ -333,6 +333,10 @@ class _BaseWorker:
         # True only when paused because there is nothing to print, as opposed
         # to paused because something needs a human. See pause().
         self.waiting_for_work = False
+
+        # What would have to become true for this pause to clear itself. Set by
+        # whichever step knew why we stopped; see pause(resume_when=...).
+        self._resume_when: Optional[Callable[[], bool]] = None
         self._thread: Optional[threading.Thread] = None
 
         self.state = IDLE
@@ -379,18 +383,28 @@ class _BaseWorker:
     def _unblock(self) -> None:
         """Release anything the loop might be sitting on when stop() arrives."""
 
-    def pause(self, reason: str = "", waiting_for_work: bool = False) -> None:
+    def pause(self, reason: str = "", waiting_for_work: bool = False,
+              resume_when: Optional[Callable[[], bool]] = None) -> None:
         """Stop between cards.
 
         ``waiting_for_work`` distinguishes "there is nothing to print" from
         "something is wrong". Only the first may be cleared automatically:
         switching on unattended mode should pick a parked worker back up, but
         it must never shrug off a jam nobody has looked at.
+
+        ``resume_when`` is how a fault clears itself. Some faults are fixed by
+        doing the obvious physical thing -- emptying the tray, clearing a jam,
+        closing the cover -- and the machine can see that it happened. Those
+        pass a check here and the loop carries on by itself once it passes,
+        rather than leaving a station idle because nobody walked back to it and
+        pressed Resume. Faults nothing can observe (a blank card, an unanswered
+        reprint question) deliberately pass nothing and still wait for a human.
         """
         self._paused.set()
         self.state = PAUSED
         self.status_detail = reason
         self.waiting_for_work = bool(waiting_for_work)
+        self._resume_when = resume_when
 
         if reason:
             self._log(reason)
@@ -400,6 +414,32 @@ class _BaseWorker:
         self.state = RUNNING if self.is_alive() else IDLE
         self.status_detail = ""
         self.waiting_for_work = False
+        self._resume_when = None
+
+    def _resume_if_cleared(self) -> bool:
+        """Take a paused worker off pause once its fault has gone away.
+
+        Never guesses: a check that raises, or that has not been given, leaves
+        the worker paused. Being stuck is recoverable by a person; printing
+        onto a printer that is still broken is not.
+        """
+        check = self._resume_when
+
+        if check is None:
+            return False
+
+        try:
+            cleared = bool(check())
+        except Exception:  # noqa: BLE001 - an unreadable printer is not a fixed one
+            return False
+
+        if not cleared:
+            return False
+
+        self._log("The printer is ready again. Carrying on.")
+        self.resume()
+
+        return True
 
     def is_alive(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
@@ -449,6 +489,34 @@ class _BaseWorker:
             return self.sender(job, path, self.binding)
         except Exception as error:  # noqa: BLE001 - a broken sender is a failed job, not a crash
             return SpoolResult(False, str(error))
+
+    def _spool_holding_lease(self, job: Dict[str, Any], path: str, job_id: int) -> Any:
+        """Hand the file to the spooler while keeping the lease alive.
+
+        The sender blocks until Windows has taken the job, and a ZXP9 that is
+        warming up leaves it blocked for minutes. Nothing renewed the lease in
+        that window: the card was physically printing, the server heard nothing,
+        and the reaper handed the job back to the queue to be printed again.
+
+        Real seconds, not the injected clock. This waits on the spooler, not on
+        the print timeouts the clock exists to drive.
+        """
+        done = threading.Event()
+        interval = self.heartbeat_seconds if self.heartbeat_seconds > 0 else 1.0
+
+        def keep_lease() -> None:
+            while not done.wait(interval):
+                self._call(self.api.heartbeat, job_id)
+
+        keeper = threading.Thread(
+            target=keep_lease, name="lease-%s" % job_id, daemon=True
+        )
+        keeper.start()
+
+        try:
+            return self._spool(job, path)
+        finally:
+            done.set()
 
     def _report(
         self,
@@ -635,13 +703,15 @@ class _BaseWorker:
             return True
 
         if entry.kind == OUTBOX_PRINTED:
-            self.api.mark_printed(
+            # Same rule as the live call: a reply that says the job was not
+            # recorded is not a delivery, and marking the row sent would drop
+            # the only evidence that this card exists.
+            return _recorded(self.api.mark_printed(
                 job_id,
                 payload.get("completion_source"),
                 payload.get("firmware_job_id"),
                 payload.get("firmware_job_uuid"),
-            )
-            return True
+            ))
 
         if entry.kind == OUTBOX_VERIFY:
             self.api.verify(job_id, payload.get("source", VERIFY_CAMERA))
@@ -656,8 +726,24 @@ class _BaseWorker:
     def _deliver(self, kind: str, payload: Dict[str, Any], call: Callable[[], Any]) -> bool:
         """Make one confirmation call, falling back to the outbox."""
         try:
-            call()
-            return True
+            if _recorded(call()):
+                return True
+
+            # A 200 that says "not recorded". The call went through and the
+            # server declined to move the job, which used to count as delivered:
+            # the agent forgot the card, the job stayed queued server side, and
+            # the next claim printed it again. Keep it and say so.
+            self._call(self.store.enqueue_outbox, kind, payload)
+            self._log("Server did not record %s for job %s; kept locally."
+                      % (kind, payload.get("job_id")))
+            self._alert(
+                "report:%s" % payload.get("job_id"),
+                "A print result was not recorded",
+                "%s for job %s was refused by the server. The card exists; the "
+                "job may still be queued." % (kind, payload.get("job_id")),
+            )
+
+            return False
         except NetworkError as error:
             self._call(self.store.enqueue_outbox, kind, payload)
             self._log("Server unreachable; %s for job %s queued locally (%s)."
@@ -672,6 +758,22 @@ class _BaseWorker:
                 return False
 
             self._log("Server refused %s for job %s: %s" % (kind, payload.get("job_id"), error.message))
+
+            if error.status == 409:
+                # The job moved on without us: another machine holds it, or it
+                # is already recorded some other way. A card exists here that
+                # the server is not crediting to this job, and that is the shape
+                # a duplicate print comes in. Keep the record and say so loudly.
+                self._call(self.store.enqueue_outbox, kind, payload)
+                self._alert(
+                    "report:%s" % payload.get("job_id"),
+                    "A printed card is not recorded against its job",
+                    "%s for job %s was refused: %s. Check the card before it is "
+                    "printed again." % (kind, payload.get("job_id"), error.message),
+                )
+
+                return False
+
             # The card printed; only the bookkeeping failed, and the outbox
             # keeps retrying. Nobody needs waking for it.
             self._alert(
@@ -827,6 +929,7 @@ class PrintWorker(_BaseWorker):
         low_card_threshold: int = 10,
         heartbeat_seconds: float = 45.0,
         firmware_timeout: float = 180.0,
+        max_print_seconds: float = 1200.0,
         poll_seconds: float = 1.0,
         idle_seconds: float = 3.0,
         stop_confirmations: int = 2,
@@ -863,7 +966,16 @@ class PrintWorker(_BaseWorker):
         self.on_decision = on_decision
         self.on_batch_change = on_batch_change
 
+        # How long the printer may say nothing at all about a card before we
+        # settle for the spooler's word. Silence, not print time: the deadline
+        # is pushed forward while the printer is visibly working.
         self.firmware_timeout = firmware_timeout
+
+        # The ceiling on one card, however busy the printer claims to be. Twenty
+        # minutes covers a cold start with a heating cycle several times over,
+        # and still ends a run rather than leaving it hanging on a machine stuck
+        # in "printing".
+        self.max_print_seconds = max_print_seconds
 
         # How many consecutive polls must agree that the printer has stopped
         # before we fail the card in flight. One flaky SNMP timeout is not a jam,
@@ -879,9 +991,14 @@ class PrintWorker(_BaseWorker):
 
         self.pending_decision: Optional[ReprintDecision] = None
 
-        # Latched by the tray-full checkpoint. Cleared only by resume(), because
-        # clearing it any other way means printing into a tray nobody emptied.
+        # Latched by the tray-full checkpoint. Cleared by resume(), or by the
+        # camera seeing an empty tray again -- never by anything that has not
+        # actually looked, because that means printing into a full tray.
         self.tray_full = False
+
+        # What the step that stopped us would accept as "fixed", handed to
+        # pause() by the run loop. None means only a person can clear it.
+        self._recheck: Optional[Callable[[], bool]] = None
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -895,7 +1012,8 @@ class PrintWorker(_BaseWorker):
             # was made, and the card stays failed rather than guessed at.
             decision._answered.set()
 
-    def pause(self, reason: str = "", waiting_for_work: bool = False) -> None:
+    def pause(self, reason: str = "", waiting_for_work: bool = False,
+              resume_when: Optional[Callable[[], bool]] = None) -> None:
         """Stop between cards, and tell the server the batch is paused.
 
         Reporting matters as much as stopping. The server used to be told
@@ -905,7 +1023,7 @@ class PrintWorker(_BaseWorker):
 
         Best-effort: a network problem must never stop the worker pausing.
         """
-        super().pause(reason, waiting_for_work=waiting_for_work)
+        super().pause(reason, waiting_for_work=waiting_for_work, resume_when=resume_when)
 
         if self.batch_id is not None:
             self._call(getattr(self.api, "pause_batch", None), self.batch_id,
@@ -967,7 +1085,12 @@ class PrintWorker(_BaseWorker):
 
         while not self._stop.is_set():
             if self._paused.is_set():
-                self._sleep(self.idle_seconds)
+                # A fault that can be seen to be fixed clears itself: the tray
+                # gets emptied, the jam gets cleared, and the run carries on
+                # without somebody walking back to press Resume.
+                if not self._resume_if_cleared():
+                    self._sleep(self.idle_seconds)
+
                 continue
 
             outcome = self.print_next()
@@ -999,8 +1122,10 @@ class PrintWorker(_BaseWorker):
                 # Pausing to ask a second time would be pointless.
                 continue
 
-            # Everything else stopped the queue and needs somebody to look at it.
-            self.pause(outcome.detail)
+            # Everything else stopped the queue and needs somebody to look at
+            # it. The step that stopped says whether "looked at" is something
+            # the machine can notice for itself; see pause(resume_when=...).
+            self.pause(outcome.detail, resume_when=self._recheck)
 
         self.state = HALTED if self._stop.is_set() else self.state
 
@@ -1012,11 +1137,16 @@ class PrintWorker(_BaseWorker):
         self._reset_pipeline()
         self.current_job = None
 
+        # Nothing has stopped us yet, so no pause of ours is recoverable yet.
+        self._recheck = None
+
         if self.tray_full or self._tray_is_full():
             self.tray_full = True
             detail = "Output tray is full. Empty it before printing more cards."
             self._progress(STEP_CLAIM, FAILED, "tray full")
             self._alert("tray:%s" % self.printer_name, "Output tray full", detail)
+            self._recheck = self._tray_cleared
+
             return Outcome(TRAY_FULL, detail)
 
         blocked = self._gate()
@@ -1038,6 +1168,11 @@ class PrintWorker(_BaseWorker):
                 "%s stopped" % (self.printer_name or "Printer"),
                 blocked,
             )
+
+            # A jam, an open cover, an empty hopper: the printer itself tells us
+            # when it has been dealt with, so the run picks itself back up.
+            self._recheck = self._printer_ready
+
             return Outcome(BLOCKED, blocked)
 
         if self.batch_id is None:
@@ -1146,6 +1281,12 @@ class PrintWorker(_BaseWorker):
         if attempt > 1:
             self._reset_pipeline()
 
+        if attempt == 1:
+            already = self._already_handled(job)
+
+            if already is not None:
+                return already
+
         self._progress(STEP_CLAIM, DONE, "card %s" % self._card_number(job))
 
         # Cached before anything is printed. From here on the card is committed
@@ -1172,7 +1313,7 @@ class PrintWorker(_BaseWorker):
         # a picture taken afterwards would already contain it.
         self._arm_camera()
 
-        spooled = _as_spool_result(self._spool(job, path))
+        spooled = _as_spool_result(self._spool_holding_lease(job, path, job_id))
 
         if not spooled.ok:
             self._progress(STEP_SPOOL, FAILED, spooled.detail or "the spooler refused the job")
@@ -1200,6 +1341,29 @@ class PrintWorker(_BaseWorker):
 
         verification = self._verify(job)
 
+        if verification.blank and self._tray_is_full():
+            # A full tray moves the card. The ink points are calibrated for a
+            # card lying where cards normally land, and once the stack has risen
+            # they read the bin, the rim or a card standing half out of the
+            # chute -- bright and colourless, which is exactly what bare card
+            # stock looks like. Failing the job on that reading loses a card
+            # that is sitting in the tray: the badge goes back in the queue and
+            # a second one gets printed for it.
+            #
+            # So the card is reported, honestly unverified, and the run stops
+            # for the tray rather than for a consumable that has not run out.
+            self.tray_full = True
+            detail = ("Card %s printed, but the tray is full and the blank check "
+                      "cannot be trusted with the stack this high."
+                      % self._card_number(job))
+            self._log(detail)
+            self._alert("tray:%s" % self.printer_name, "Output tray full", detail)
+            self._report(job, completion,
+                         Verification(True, False, "tray full; blank check not trusted"))
+            self._recheck = self._tray_cleared
+
+            return Outcome(TRAY_FULL, detail, job_id)
+
         if verification.blank:
             # A card came out, but with nothing on it: the ribbon or the
             # transfer film has run out. Deliberately not reported as printed.
@@ -1211,6 +1375,79 @@ class PrintWorker(_BaseWorker):
         self._report(job, completion, verification)
 
         return Outcome(PRINTED, completion.detail, job_id)
+
+    def _already_handled(self, job: Dict[str, Any]) -> Optional[Outcome]:
+        """Refuse to print a card this agent has already put through the printer.
+
+        The server can hand the same job out twice. A lease that lapsed during a
+        network outage is returned to the queue by the reaper, and the next claim
+        is allowed to pick it up -- so without this, a printer that went quiet for
+        a few minutes comes back and prints the same badge again, and keeps doing
+        it for as long as the outage lasts.
+
+        The local store is the record that survives all of it: a job row is written
+        before the file is sent and is not deleted until the server has confirmed
+        the result. What that row says decides what happens here.
+
+        Returns None when there is nothing on file and the card should be printed.
+        """
+        try:
+            record = self.store.job(int(job["id"]))
+        except Exception:  # noqa: BLE001 - an unreadable store is no information
+            return None
+
+        status = (record or {}).get("status")
+
+        if status in (None, JOB_CLAIMED):
+            # Claimed and no further: nothing was ever sent to the printer.
+            return None
+
+        job_id = int(job["id"])
+        card = self._card_number(job)
+
+        if status in (JOB_REPORTED, JOB_DONE):
+            # The card exists and we already know how it went; only the
+            # bookkeeping is outstanding. Deliver that instead of a second card.
+            detail = "Card %s was already printed here; sending the result again." % card
+            self._log(detail)
+            self._progress(STEP_CLAIM, SKIPPED, "already printed")
+            self.flush_outbox()
+
+            return Outcome(PRINTED, detail, job_id)
+
+        # JOB_PRINTING: the file went to the spooler and we never recorded what
+        # came of it. The card may well be in the stack. Nobody here can tell,
+        # and guessing either way is how a badge goes missing or gets printed
+        # twice, so it goes to the person who can look at the stack.
+        reason = ("Card %s was already sent to the printer before the connection "
+                  "dropped. Check the stack before it is printed again." % card)
+        self._log(reason)
+
+        answer = self._ask_operator(job, reason)
+
+        if answer is None:
+            self.status_detail = reason
+            return Outcome(WAITING, reason, job_id)
+
+        if answer == CHOICE_PRINTED:
+            self._report(
+                job,
+                Completion(COMPLETION_OPERATOR, "operator found the card in the stack"),
+                Verification(True, True, "operator"),
+                verification_source=VERIFY_OPERATOR,
+            )
+
+            return Outcome(PRINTED, "operator confirmed the card is in the stack", job_id)
+
+        if answer == CHOICE_SKIP:
+            detail = "Operator skipped card %s (%s)" % (card, reason)
+            self._log(detail)
+            self._fail(job, detail)
+
+            return Outcome(JOB_SKIPPED, detail, job_id)
+
+        # CHOICE_REPRINT: the operator looked and there is no card. Print it.
+        return None
 
     def _handle_blank(self, job: Dict[str, Any]) -> Outcome:
         """A card came out of the printer unprinted.
@@ -1333,13 +1570,26 @@ class PrintWorker(_BaseWorker):
 
         The lease is renewed throughout: a retransfer card takes well over a
         minute and an unrenewed lease is reaped out from under us mid-print.
+
+        ``firmware_timeout`` bounds *silence*, not the card. A ZXP9 coming up to
+        temperature takes several minutes before it prints anything, and a fixed
+        deadline gave up on a card that was visibly still being worked on: the
+        job was reported ``spooler_only`` while it was in the machine, the camera
+        was then asked about a bin with nothing in it yet, and the run moved on
+        to the next card. So the deadline is pushed forward for as long as the
+        printer is demonstrably busy -- a job row in flight, or a printing or
+        warming-up state -- and ``max_print_seconds`` is the ceiling that stops a
+        printer stuck in "printing" from holding the queue forever.
         """
         self._progress(STEP_FIRMWARE, ACTIVE, "waiting for the printer to confirm")
 
-        deadline = self._clock() + self.firmware_timeout
+        started = self._clock()
+        deadline = started + self.firmware_timeout
+        ceiling = started + max(self.firmware_timeout, self.max_print_seconds)
         last_beat = self._clock()
         matched = None
         stop_streak = 0
+        said_slow = False
 
         while True:
             reading = self._read_printer()
@@ -1384,6 +1634,16 @@ class PrintWorker(_BaseWorker):
 
             now = self._clock()
 
+            # Still working on it. The clock for "the printer never said
+            # anything" restarts every time it shows that it is doing something.
+            if self._card_in_progress(row):
+                deadline = min(now + self.firmware_timeout, ceiling)
+
+                if not said_slow and now - started >= self.firmware_timeout:
+                    said_slow = True
+                    self._progress(STEP_FIRMWARE, ACTIVE,
+                                   "the printer is still working on this card")
+
             if now - last_beat >= self.heartbeat_seconds:
                 self._call(self.api.heartbeat, job_id)
                 last_beat = now
@@ -1400,6 +1660,20 @@ class PrintWorker(_BaseWorker):
                 )
 
             self._sleep(self.poll_seconds)
+
+    def _card_in_progress(self, row: Optional[Any]) -> bool:
+        """Whether the printer is visibly still working on this card.
+
+        Two independent signs, either of which is enough. The firmware's own job
+        row is the better one: a row that is neither done nor failed is a card in
+        the machine. The printer's state word covers the window before the row
+        appears at all, which on a cold ZXP9 is the several minutes it spends
+        heating the transfer roller.
+        """
+        if row is not None and row.is_in_flight():
+            return True
+
+        return self._condition() in (zebra.PRINTING, zebra.INITIALIZING)
 
     def _verify(self, job: Dict[str, Any]) -> Verification:
         """Ask the camera whether the right card came out.
@@ -1524,6 +1798,29 @@ class PrintWorker(_BaseWorker):
             return None
 
         return self._blocking_reason() or "The printer is not ready."
+
+    def _printer_ready(self) -> bool:
+        """Whether the thing that stopped the run has been dealt with.
+
+        Asked while paused, so it must be the whole question and not just the
+        printer's own opinion: a cleared jam with a full tray underneath it is
+        still a station that must not print.
+        """
+        return self._gate() is None and not self._tray_is_full()
+
+    def _tray_cleared(self) -> bool:
+        """Whether the output tray has been emptied.
+
+        Drops the latch as well as answering, because the latch is what
+        print_next() reads on its way in and a stale one would stop the very
+        card this check just allowed.
+        """
+        if self._tray_is_full():
+            return False
+
+        self.tray_full = False
+
+        return self._gate() is None
 
     def _wait_until_healthy(self) -> bool:
         """Block until the printer is printable again, or we are told to stop."""
@@ -1921,6 +2218,21 @@ class ReceiptWorker(_BaseWorker):
 
 
 # --- Helpers ------------------------------------------------------------------
+
+
+def _recorded(response: Any) -> bool:
+    """Whether the server actually wrote down what we told it.
+
+    A 200 is not the same answer as "recorded". ``printed`` replies with
+    ``marked: false`` when it declined to move the job, and treating that as a
+    delivery is how a card that exists goes back into the queue to be printed
+    again. Anything that is not an explicit refusal counts as recorded, so a
+    stub client or an endpoint that returns nothing behaves as it always did.
+    """
+    if isinstance(response, dict) and response.get("marked") is False:
+        return False
+
+    return True
 
 
 def _row_key(row: Any) -> tuple:

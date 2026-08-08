@@ -514,8 +514,15 @@ test('the status picker offers only the edges the machine allows', function () {
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/PrintJobs/Form')
+            // Printed and Failed are on the list because a queued card can turn out to
+            // have been printed already: the agent reports a card late when its lease
+            // lapsed mid-print, and an operator holding the card can record the same
+            // thing here. Both go through markPrinted() / markFailed(), so the badge is
+            // promoted and the batch settled exactly as an agent's report would.
             ->where('statusOptions', [
                 ['value' => 'pending', 'label' => 'Pending'],
+                ['value' => 'printed', 'label' => 'Printed'],
+                ['value' => 'failed', 'label' => 'Failed'],
                 ['value' => 'cancelled', 'label' => 'Cancelled'],
             ])
         );
@@ -614,7 +621,7 @@ test('a status the machine would refuse is rejected by the request', function ()
         ->put(route('admin.print-jobs.update', $job), [
             'printer_id' => $this->printer->id,
             'type' => 'badge',
-            'status' => 'printed',
+            'status' => 'printing',
         ])
         ->assertSessionHasErrors('status');
 
