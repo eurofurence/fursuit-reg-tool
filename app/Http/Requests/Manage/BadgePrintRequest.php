@@ -42,8 +42,17 @@ class BadgePrintRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'ids' => ['required', 'array'],
+            // Either an explicit selection, or `all` - "every badge the list's current
+            // filter matches", which the server resolves. Never both: `ids` is what the
+            // tick boxes send and is ignored when `all` is set.
+            'all' => ['sometimes', 'boolean'],
+            'ids' => ['required_without:all', 'array'],
             'ids.*' => ['integer'],
+            // The list's own query string, forwarded verbatim by the bulk bar and parsed
+            // back into filters by BadgeController. Only read when `all` is set.
+            // Nullable: an unfiltered list forwards an empty string, which the framework
+            // has already converted to null by the time the rules run.
+            'query' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'printer_id' => ['required', 'integer', Rule::in(BadgePrintController::printerIds())],
         ];
     }
@@ -54,6 +63,7 @@ class BadgePrintRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'ids.required_without' => 'Select the badges to print, or select everything the filter matches.',
             'printer_id.required' => 'Select a printer to send these badges to.',
             'printer_id.in' => 'That printer is not an active badge printer.',
         ];

@@ -13,6 +13,7 @@ use App\Http\Requests\Manage\BadgePrintRequest;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\Processing;
 use App\Support\Manage\Action;
+use App\Support\Manage\EventScope;
 use App\Support\Manage\Status;
 use App\Support\Manage\Toast;
 use Carbon\Carbon;
@@ -87,6 +88,16 @@ class BadgePrintController extends Controller
     private const NOTHING_QUEUED = 'Nothing was queued';
 
     /**
+     * How many badges one "select all matching" may queue.
+     *
+     * High enough that no real filter reaches it - the whole convention is a few thousand
+     * cards and a run is a slice of that - and low enough that a filter cleared by
+     * accident cannot commit the entire table to a printer in one click. When it bites,
+     * the toast says so; see bulk().
+     */
+    private const SELECT_ALL_CAP = 2000;
+
+    /**
      * `printBadge`, the row action.
      *
      * The request does not move the badge to Processing, and must not. That transition is
@@ -135,16 +146,31 @@ class BadgePrintController extends Controller
     /**
      * `printBadgeBulk`, the bulk action.
      *
-     * The selection can never cross a page, which is `->selectCurrentPageOnly()` and a
-     * deliberate operational cap the panel keeps.
+     * Two selections reach here. The tick boxes send `ids` and cannot cross a page, which
+     * is `->selectCurrentPageOnly()` and a cap the panel keeps. `all: true` sends no ids
+     * at all and means "every badge the list's current filter matches", resolved by
+     * BadgeController against the same Table the page was drawn from, so what is queued is
+     * by construction what the operator was looking at. That is the run a print session
+     * actually is: everything approved since the last cutoff, not twenty-five of it.
+     *
+     * `all` is capped at SELECT_ALL_CAP and the operator is told when the cap bit. A run
+     * silently trimmed to the cap would report as the whole of the filter and the
+     * remainder would be found missing at the desk, which is precisely the failure the
+     * verification screen exists to catch.
      *
      * The badges are read in a single query ordered by id, only so the request is
      * deterministic. The print order is `PrintBatch::build()`'s and nothing here competes
      * with it.
      */
-    public function bulk(BadgePrintRequest $request): RedirectResponse
+    public function bulk(BadgePrintRequest $request, BadgeController $list, EventScope $scope): RedirectResponse
     {
-        $badges = Badge::whereIn('id', $request->validated('ids'))
+        $selectAll = (bool) $request->validated('all', false);
+
+        $ids = $selectAll
+            ? $list->matchingIds($request, $scope, self::SELECT_ALL_CAP)
+            : $request->validated('ids', []);
+
+        $badges = Badge::whereIn('id', $ids)
             ->orderBy('id')
             ->get();
 
@@ -165,7 +191,9 @@ class BadgePrintController extends Controller
 
         Toast::flashSuccess(
             $badges->count() === 1 ? 'Badge queued for printing' : 'Badges queued for printing',
-            $this->queuedBody($batch),
+            $this->queuedBody($batch).($selectAll && count($ids) >= self::SELECT_ALL_CAP
+                ? ' Capped at '.self::SELECT_ALL_CAP.' badges: narrow the filter and run it again for the rest.'
+                : ''),
         );
 
         return $this->backWithCutoff($badges);
@@ -307,6 +335,9 @@ class BadgePrintController extends Controller
         return Action::post('printBadgeBulk', self::BULK_LABEL, route('admin.badges.bulk.print'))
             ->icon('printer')
             ->tone(Status::WARN)
+            // The one bulk action that understands "everything the filter matches"; the
+            // client offers that affordance only for actions carrying this flag.
+            ->selectAll()
             ->confirm(self::BULK_HEADING, self::BULK_DESCRIPTION)
             ->fields([
                 [
