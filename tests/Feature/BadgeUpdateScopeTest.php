@@ -110,13 +110,23 @@ test('the print lock still stops the owner, so the guard is the lock and not the
     get(route('badges.edit', $badge))->assertForbidden();
 });
 
-test('the panel override survives: an operator may still edit any badge from /admin', function () {
-    // `update` keeps answering yes for panel operators, which is what rebuild-plan 2.2
-    // asks for and what /admin/badges/{badge}/edit authorizes.
+test('the panel override survives for an admin and is gone for a reviewer', function () {
+    /*
+     * `update` keeps answering yes for an admin, which is what rebuild-plan 2.2 asks for.
+     * The reviewer half of the override is gone: reviewers were narrowed to Dashboard,
+     * Badges and Fursuits, and reading a badge is what they kept, not moving one between
+     * states (docs/admin/roles.md). /admin/badges/{badge}/edit authorizes `view` now and
+     * asks `update` only for whether the page renders as a form.
+     *
+     * `updateAsOwner` stays false for both. That is the point of the split: the operator
+     * override was never meant to walk an operator past the attendee write path's own
+     * guards, and it still does not.
+     */
     $badge = ($this->lockedBadge)();
 
     expect(Gate::forUser($this->admin)->allows('update', $badge))->toBeTrue()
-        ->and(Gate::forUser($this->reviewer)->allows('update', $badge))->toBeTrue()
+        ->and(Gate::forUser($this->reviewer)->allows('update', $badge))->toBeFalse()
+        ->and(Gate::forUser($this->reviewer)->allows('view', $badge))->toBeTrue()
         ->and(Gate::forUser($this->admin)->allows('updateAsOwner', $badge))->toBeFalse()
         ->and(Gate::forUser($this->reviewer)->allows('updateAsOwner', $badge))->toBeFalse();
 });

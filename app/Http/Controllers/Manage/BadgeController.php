@@ -8,6 +8,7 @@ use App\Http\Requests\Manage\BadgeRequest;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\BadgeFulfillmentStatusState;
 use App\Models\Badge\State_Payment\BadgePaymentStatusState;
+use App\Models\Fursuit\Fursuit;
 use App\Support\Manage\Action;
 use App\Support\Manage\Column;
 use App\Support\Manage\EventScope;
@@ -98,9 +99,16 @@ class BadgeController extends Controller
         return inertia('Manage/Badges/Index', $this->table($request, $scope));
     }
 
+    /**
+     * The badge detail. Authorized on `view`, not `update`, because this is the only badge
+     * detail the panel has - there is no separate show page - so a reviewer who may read
+     * badges must be able to open one. `canEdit` in formProps() is what decides whether it
+     * renders as a form or as a record; the PUT is separately gated. See
+     * docs/admin/roles.md.
+     */
     public function edit(Badge $badge): Response
     {
-        Gate::authorize('update', $badge);
+        Gate::authorize('view', $badge);
 
         return inertia('Manage/Badges/Form', $this->formProps($badge));
     }
@@ -172,12 +180,18 @@ class BadgeController extends Controller
             // list, stated here so a change to the default is visible.
             ->perPageOptions([10, 25, 50, 100])
             ->rows(fn (Badge $badge) => $this->cells($badge))
-            ->recordUrl(fn (Badge $badge) => Gate::allows('update', $badge)
+            // `view`, not `update`: the detail page is the record, and a reviewer reads
+            // badges. What they cannot do is save it; see BadgeController::edit().
+            ->recordUrl(fn (Badge $badge) => Gate::allows('view', $badge)
                 ? route('admin.badges.edit', $badge)
                 : null)
             ->rowActions(fn (Badge $badge) => array_values(array_filter([
-                Gate::allows('update', $badge)
-                    ? Action::link('edit', 'Edit', route('admin.badges.edit', $badge))->icon('pencil')
+                Gate::allows('view', $badge)
+                    ? Action::link(
+                        'edit',
+                        Gate::allows('update', $badge) ? 'Edit' : 'View',
+                        route('admin.badges.edit', $badge)
+                    )->icon(Gate::allows('update', $badge) ? 'pencil' : 'eye')
                     : null,
                 // `printBadge`. Declared by BadgePrintController, which owns the verb and
                 // the endpoint, so the button and the write cannot answer the "may this
@@ -303,7 +317,7 @@ class BadgeController extends Controller
     private function cells(Badge $badge): array
     {
         return [
-            'fursuit.image' => $this->imageUrl($badge->fursuit?->image),
+            'fursuit.image' => $this->thumbUrl($badge->fursuit),
             'fursuit.name' => $this->linked($badge->fursuit?->name, $this->fursuitUrl($badge)),
             'fursuit.species.name' => $badge->fursuit?->species?->name,
             'fursuit.user.name' => $this->linked(
@@ -498,6 +512,10 @@ class BadgeController extends Controller
             ],
             'fulfillmentOptions' => self::fulfillmentOptions($badge),
             'paymentOptions' => self::paymentOptions($badge),
+            // False for a reviewer, who reads badges but does not move them between
+            // states. The page then renders the two status selects as text and drops its
+            // save bar, the same shape the other twelve fields already have.
+            'canEdit' => Gate::allows('update', $badge),
             'deleteAction' => Gate::allows('delete', $badge)
                 ? Action::delete('delete', 'Delete', route('admin.badges.destroy', $badge))
                     ->icon('trash-2')
@@ -559,6 +577,21 @@ class BadgeController extends Controller
             ->values()
             ->map(fn (string $name) => ['value' => $name, 'label' => $label($name)])
             ->all();
+    }
+
+    /**
+     * The row avatar: the rendered thumbnail, falling back to the master photo.
+     *
+     * The masters are print-quality (2040x2720, comfortably over a megabyte), so a page
+     * of twenty-five rows pulled twenty-five full-size photos through a 40px circle.
+     * `image_thumb_url` is the gallery's grid render. That prefix is public, so the URL is
+     * plain and stable - no presign per row, and `Cache-Control` means the second page load
+     * costs nothing. A fursuit whose render has not landed - an old import, or a file GD
+     * refused - still shows its master, which stays private and signed.
+     */
+    private function thumbUrl(?Fursuit $fursuit): ?string
+    {
+        return $fursuit?->image_thumb_url ?? $this->imageUrl($fursuit?->image);
     }
 
     /**

@@ -36,7 +36,7 @@ class InfoController extends Controller
 
         return Inertia::render('Info/Faq', [
             'event' => $this->eventSummary($event),
-            'badgePrice' => BadgeCalculationService::calculate(),
+            'badgePrice' => BadgeCalculationService::calculate(event: $event),
             'freeBadgeDeadline' => $event?->free_badge_deadline?->toISOString(),
         ]);
     }

@@ -54,7 +54,7 @@ class WelcomeController extends Controller
             'canCreate' => $canCreate,
             'badgeSummary' => $badgeSummary,
             // Same source as the FAQ, so the landing page cannot quote a stale price.
-            'badgePrice' => BadgeCalculationService::calculate(),
+            'badgePrice' => BadgeCalculationService::calculate(event: $event),
         ]);
     }
 

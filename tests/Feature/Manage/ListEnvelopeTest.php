@@ -363,11 +363,18 @@ test('the machines list searches, filters and paginates under a partial visit', 
 test('the staff list sorts, searches, filters and paginates under a partial visit', function () {
     Staff::factory()->create(['name' => 'Alpha', 'last_login_at' => now()->subDays(9)]);
     Staff::factory()->create(['name' => 'Zulu', 'last_login_at' => now()->subDay()]);
-    Staff::factory()->count(10)->create(['is_active' => false]);
+    Staff::factory()->count(10)->archived()->create();
 
     actingAs($this->admin);
 
-    expect(manageListPartial('/admin/staff', 'Manage/Staff/Index')['rows'])->toHaveCount(12);
+    // Archived members are hidden unless asked for, so the bare list is the two active
+    // ones and every count below has to say which population it means.
+    $default = manageListPartial('/admin/staff', 'Manage/Staff/Index');
+    expect($default['rows'])->toHaveCount(2)
+        ->and(collect($default['rows'])->pluck('cells.name')->sort()->values()->all())->toBe(['Alpha', 'Zulu']);
+
+    expect(manageListPartial('/admin/staff?filter[archived]=1', 'Manage/Staff/Index')['rows'])->toHaveCount(10);
+    expect(manageListPartial('/admin/staff?filter[archived]=0', 'Manage/Staff/Index')['rows'])->toHaveCount(12);
 
     $searched = manageListPartial('/admin/staff?search=Alpha', 'Manage/Staff/Index');
     expect($searched['rows'])->toHaveCount(1)->and($searched['search'])->toBe('Alpha');
@@ -377,12 +384,8 @@ test('the staff list sorts, searches, filters and paginates under a partial visi
     expect($ascending['sort'])->toBe(['key' => 'last_login_at', 'dir' => 'asc'])
         ->and($ascending['rows'][0]['id'])->not->toBe($descending['rows'][0]['id']);
 
-    $active = manageListPartial('/admin/staff?filter[is_active]=1', 'Manage/Staff/Index');
-    expect($active['rows'])->toHaveCount(2)
-        ->and(collect($active['rows'])->pluck('cells.name')->sort()->values()->all())->toBe(['Alpha', 'Zulu']);
-
-    $first = manageListPartial('/admin/staff?per_page=10&page=1', 'Manage/Staff/Index');
-    $second = manageListPartial('/admin/staff?per_page=10&page=2', 'Manage/Staff/Index');
+    $first = manageListPartial('/admin/staff?filter[archived]=0&per_page=10&page=1', 'Manage/Staff/Index');
+    $second = manageListPartial('/admin/staff?filter[archived]=0&per_page=10&page=2', 'Manage/Staff/Index');
     expect($first['rows'])->toHaveCount(10)
         ->and($second['rows'])->toHaveCount(2)
         ->and($second['meta']['page'])->toBe(2)
@@ -822,7 +825,7 @@ test('the sidebar carries every module registered so far', function () {
     expect($labels)->not->toContain('DB Service');
 });
 
-test('the rail is the same for a reviewer, who is filtered inside the pages instead', function () {
+test('the rail a reviewer gets is three entries, not the admin one filtered', function () {
     $reviewer = User::factory()->create(['is_admin' => false, 'is_reviewer' => true]);
 
     actingAs($reviewer);
@@ -831,12 +834,12 @@ test('the rail is the same for a reviewer, who is filtered inside the pages inst
     $labels = collect($groups)->flatMap(fn (array $group) => collect($group['items'])->pluck('label'))->all();
 
     /*
-     * Tools is open to a reviewer because it is a menu; the admin-only card inside it is
-     * dropped by Navigation::tools(), which DbServiceTest asserts. Hiding the rail entry
-     * here would take Badge Preview and the PDF Generator - both of which a reviewer keeps
-     * (parity checklist line 83) - with it.
+     * A reviewer used to get the admin rail with a couple of rows missing, including Tools
+     * and Settings, on the reasoning that both are menus whose contents gate themselves.
+     * Every card and every pane behind those two is admin-only now, so the entries would
+     * open empty pages; they are dropped whole. See docs/admin/roles.md.
      */
-    expect($labels)->toContain('Badges', 'Tools', 'Settings');
+    expect($labels)->toBe(['Dashboard', 'Badges', 'Fursuits']);
 });
 
 test('the rail counts follow the selected event', function () {

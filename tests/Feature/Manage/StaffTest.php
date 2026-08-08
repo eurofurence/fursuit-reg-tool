@@ -25,6 +25,7 @@ use App\Models\RfidTag;
 use App\Models\Staff;
 use App\Models\User;
 use App\Support\Manage\Action;
+use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -40,10 +41,11 @@ use function Pest\Laravel\withHeaders;
 const MANAGE_STAFF_COLUMNS = [
     'name',
     'pin_code',
-    'is_active',
     // Added with the POS price override: who may approve one.
     'is_manager',
     'rfid_tags_count',
+    // Replaced the `is_active` boolean: staff are archived, never deleted.
+    'archived_at',
     'last_login_at',
     'created_at',
 ];
@@ -157,8 +159,10 @@ test('a reviewer holds access-manage but is refused every staff ability', functi
     post(route('admin.staff.store'), manageStaffPayload())->assertForbidden();
     get(route('admin.staff.edit', $staff))->assertForbidden();
     put(route('admin.staff.update', $staff), manageStaffPayload())->assertForbidden();
-    delete(route('admin.staff.destroy', $staff))->assertForbidden();
-    delete(route('admin.staff.bulk.destroy'), ['ids' => [$staff->id]])->assertForbidden();
+    post(route('admin.staff.archive', $staff))->assertForbidden();
+    delete(route('admin.staff.unarchive', $staff))->assertForbidden();
+    post(route('admin.staff.bulk.archive'), ['ids' => [$staff->id]])->assertForbidden();
+    delete(route('admin.staff.bulk.unarchive'), ['ids' => [$staff->id]])->assertForbidden();
     post(route('admin.staff.setup-code', $staff))->assertForbidden();
     post(route('admin.staff.setup-code.create'))->assertForbidden();
 
@@ -282,21 +286,23 @@ test('emptying the PIN field still clears the PIN, as the helper text says', fun
     expect($staff->fresh()->pin_code)->toBeNull();
 });
 
-test('the two hidden-by-default columns are the PIN and created_at', function () {
+test('the hidden-by-default columns are the PIN, archived_at and created_at', function () {
     actingAs($this->admin);
 
     $props = ($this->props)();
 
+    // `archived_at` is blank for everyone the default list shows, so it only earns its
+    // width once the filter is switched to archived members.
     expect(collect($props['columns'])->where('toggleable', true)->pluck('key')->all())
-        ->toBe(['pin_code', 'created_at'])
-        ->and($props['hiddenColumns'])->toBe(['pin_code', 'created_at']);
+        ->toBe(['pin_code', 'archived_at', 'created_at'])
+        ->and($props['hiddenColumns'])->toBe(['pin_code', 'archived_at', 'created_at']);
 });
 
-test('name, last login and created_at are the sortable columns', function () {
+test('name, archived_at, last login and created_at are the sortable columns', function () {
     actingAs($this->admin);
 
     expect(collect(($this->props)()['columns'])->where('sortable', true)->pluck('key')->all())
-        ->toBe(['name', 'last_login_at', 'created_at']);
+        ->toBe(['name', 'archived_at', 'last_login_at', 'created_at']);
 });
 
 test('the RFID tag count column counts the member tags', function () {
@@ -338,26 +344,28 @@ test('search covers the name only', function () {
     expect(($this->props)(['search' => 'ABC123'])['rows'])->toBe([]);
 });
 
-test('the active status filter narrows the row set through the partial visit', function () {
+test('the archived filter narrows the row set through the partial visit', function () {
     actingAs($this->admin);
 
-    $active = Staff::factory()->create(['is_active' => true]);
-    $inactive = Staff::factory()->create(['is_active' => false]);
+    $active = Staff::factory()->create();
+    $archived = Staff::factory()->archived()->create();
 
     $props = ($this->props)();
-    $filter = collect($props['filters'])->firstWhere('key', 'is_active');
+    $filter = collect($props['filters'])->firstWhere('key', 'archived');
 
     expect($filter['type'])->toBe('ternary')
-        ->and($filter['label'])->toBe('Active Status')
+        ->and($filter['label'])->toBe('Archived')
         ->and($filter['default'])->toBe('');
 
-    $all = manageStaffPartial('/admin/staff', 'Manage/Staff/Index');
-    $onlyActive = manageStaffPartial('/admin/staff?filter[is_active]=1', 'Manage/Staff/Index');
-    $onlyInactive = manageStaffPartial('/admin/staff?filter[is_active]=0', 'Manage/Staff/Index');
+    // Blank is not "everyone": it is baseQuery()'s notArchived(), so a retired member is
+    // out of the list unless the filter asks for them.
+    $blank = manageStaffPartial('/admin/staff', 'Manage/Staff/Index');
+    $all = manageStaffPartial('/admin/staff?filter[archived]=0', 'Manage/Staff/Index');
+    $onlyArchived = manageStaffPartial('/admin/staff?filter[archived]=1', 'Manage/Staff/Index');
 
-    expect(collect($all['rows'])->pluck('id')->all())->toContain($active->id, $inactive->id)
-        ->and(collect($onlyActive['rows'])->pluck('id')->all())->toContain($active->id)->not->toContain($inactive->id)
-        ->and(collect($onlyInactive['rows'])->pluck('id')->all())->toContain($inactive->id)->not->toContain($active->id);
+    expect(collect($blank['rows'])->pluck('id')->all())->toContain($active->id)->not->toContain($archived->id)
+        ->and(collect($all['rows'])->pluck('id')->all())->toContain($active->id, $archived->id)
+        ->and(collect($onlyArchived['rows'])->pluck('id')->all())->toContain($archived->id)->not->toContain($active->id);
 });
 
 test('the list sorts by last login through the partial visit', function () {
@@ -412,41 +420,44 @@ test('the page action is New staff', function () {
         ->and($actions[0]['method'])->toBe('get');
 });
 
-test('each row offers Edit and Delete, with Filament default delete copy', function () {
+test('a row offers Edit and Archive, and an archived row offers Restore instead', function () {
     actingAs($this->admin);
 
     $staff = Staff::factory()->create();
+    $archived = Staff::factory()->archived()->create();
+
     $row = collect(($this->props)()['rows'])->firstWhere('id', $staff->id);
 
-    expect(collect($row['actions'])->pluck('label')->all())->toBe(['Edit', 'Delete']);
+    expect(collect($row['actions'])->pluck('label')->all())->toBe(['Edit', 'Archive']);
 
-    $delete = collect($row['actions'])->firstWhere('name', 'delete');
+    $archive = collect($row['actions'])->firstWhere('name', 'archive');
 
-    expect($delete['method'])->toBe('delete')
-        ->and($delete['url'])->toBe(route('admin.staff.destroy', $staff))
-        ->and($delete['confirm'])->toBe([
-            'heading' => 'Delete staff',
-            'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
-            'submit' => 'Delete',
-        ]);
+    expect($archive['method'])->toBe('post')
+        ->and($archive['url'])->toBe(route('admin.staff.archive', $staff))
+        ->and($archive['confirm']['heading'])->toBe('Archive staff member');
+
+    $archivedRow = collect(
+        manageStaffPartial('/admin/staff?filter[archived]=1', 'Manage/Staff/Index')['rows']
+    )->firstWhere('id', $archived->id);
+
+    expect(collect($archivedRow['actions'])->pluck('label')->all())->toBe(['Edit', 'Restore'])
+        ->and(collect($archivedRow['actions'])->firstWhere('name', 'unarchive')['url'])
+        ->toBe(route('admin.staff.unarchive', $archived));
 });
 
-test('the bulk action is Delete selected, with Filament default bulk delete copy', function () {
+test('the bulk actions are Archive and Restore, and there is no bulk delete', function () {
     actingAs($this->admin);
 
     $bulk = ($this->props)()['bulkActions'];
 
-    expect($bulk)->toHaveCount(1)
-        ->and($bulk[0]['label'])->toBe('Delete selected')
-        ->and($bulk[0]['url'])->toBe(route('admin.staff.bulk.destroy'))
-        ->and($bulk[0]['confirm'])->toBe([
-            'heading' => 'Delete selected staff',
-            'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
-            'submit' => 'Delete',
-        ]);
+    expect(collect($bulk)->pluck('label')->all())->toBe(['Archive selected', 'Restore selected'])
+        ->and($bulk[0]['url'])->toBe(route('admin.staff.bulk.archive'))
+        ->and($bulk[0]['method'])->toBe('post')
+        ->and($bulk[1]['url'])->toBe(route('admin.staff.bulk.unarchive'))
+        ->and($bulk[1]['method'])->toBe('delete');
 });
 
-test('the edit page carries a header delete action', function () {
+test('the edit page carries no header action: the Active toggle is the control', function () {
     actingAs($this->admin);
 
     $staff = Staff::factory()->create();
@@ -454,35 +465,75 @@ test('the edit page carries a header delete action', function () {
     get(route('admin.staff.edit', $staff))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Manage/Staff/Form')
-            ->where('headerActions.0.label', 'Delete')
-            ->where('headerActions.0.confirm.heading', 'Delete staff')
+            ->where('headerActions', [])
+            ->where('staff.is_active', true)
             ->etc());
 });
 
-test('deleting a member is a hard delete that takes their tags with it', function () {
+test('there is no delete route for staff at all', function () {
+    expect(Route::has('admin.staff.destroy'))->toBeFalse()
+        ->and(Route::has('admin.staff.bulk.destroy'))->toBeFalse();
+});
+
+test('archiving a member keeps them and their tags, and locks them out of the POS', function () {
     actingAs($this->admin);
 
     $staff = Staff::factory()->create();
     $tag = $staff->rfidTags()->create(manageRfidPayload());
 
-    delete(route('admin.staff.destroy', $staff))
-        ->assertRedirect(route('admin.staff.index'))
-        ->assertSessionHas(MANAGE_STAFF_TOAST_TITLE, 'Deleted');
+    post(route('admin.staff.archive', $staff))
+        ->assertSessionHas(MANAGE_STAFF_TOAST_TITLE, 'Archived');
 
-    assertDatabaseMissing('staff', ['id' => $staff->id]);
-    // rfid_tags.staff_id is onDelete('cascade'), as today (audit 7.7).
-    assertDatabaseMissing('rfid_tags', ['id' => $tag->id]);
+    assertDatabaseHas('staff', ['id' => $staff->id]);
+    assertDatabaseHas('rfid_tags', ['id' => $tag->id]);
+
+    expect($staff->fresh()->isArchived())->toBeTrue()
+        ->and(Staff::active()->whereKey($staff->id)->exists())->toBeFalse();
+
+    delete(route('admin.staff.unarchive', $staff))
+        ->assertSessionHas(MANAGE_STAFF_TOAST_TITLE, 'Restored');
+
+    expect($staff->fresh()->isArchived())->toBeFalse();
 });
 
-test('the bulk delete removes the whole selection', function () {
+test('the bulk archive and restore move the whole selection', function () {
     actingAs($this->admin);
 
     $members = Staff::factory()->count(3)->create();
+    $ids = $members->pluck('id')->all();
 
-    delete(route('admin.staff.bulk.destroy'), ['ids' => $members->pluck('id')->all()])
-        ->assertSessionHas(MANAGE_STAFF_TOAST_TITLE, 'Deleted');
+    post(route('admin.staff.bulk.archive'), ['ids' => $ids])
+        ->assertSessionHas(MANAGE_STAFF_TOAST_TITLE, 'Archived');
 
-    expect(Staff::whereIn('id', $members->pluck('id'))->count())->toBe(0);
+    expect(Staff::active()->whereIn('id', $ids)->count())->toBe(0);
+
+    delete(route('admin.staff.bulk.unarchive'), ['ids' => $ids])
+        ->assertSessionHas(MANAGE_STAFF_TOAST_TITLE, 'Restored');
+
+    expect(Staff::active()->whereIn('id', $ids)->count())->toBe(3);
+});
+
+test('the Active toggle writes archived_at, and saving again does not re-stamp it', function () {
+    actingAs($this->admin);
+
+    $staff = Staff::factory()->create();
+
+    put(route('admin.staff.update', $staff), manageStaffPayload(['is_active' => false]))
+        ->assertRedirect(route('admin.staff.index'));
+
+    $archivedAt = $staff->fresh()->archived_at;
+    expect($archivedAt)->not->toBeNull();
+
+    // The date they stopped staffing is not today just because the form was saved today.
+    $this->travel(2)->days();
+
+    put(route('admin.staff.update', $staff), manageStaffPayload(['is_active' => false]));
+
+    expect($staff->fresh()->archived_at->toIso8601String())->toBe($archivedAt->toIso8601String());
+
+    put(route('admin.staff.update', $staff), manageStaffPayload(['is_active' => true]));
+
+    expect($staff->fresh()->archived_at)->toBeNull();
 });
 
 /*
@@ -510,7 +561,7 @@ test('a member is created and the toast is Filaments Created', function () {
     assertDatabaseHas('staff', [
         'name' => 'Nightshift Ferret',
         'pin_code' => '408271',
-        'is_active' => true,
+        'archived_at' => null,
     ]);
 });
 

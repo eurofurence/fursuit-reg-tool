@@ -2,6 +2,7 @@
 
 namespace Database\Factories\Fursuit;
 
+use App\Jobs\GenerateFursuitWebpJob;
 use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
 use App\Models\Fursuit\States\Approved;
@@ -26,16 +27,67 @@ class FursuitFactory extends Factory
      */
     public function definition(): array
     {
+        $image = $this->faker->filePath();
+
         return [
             'status' => Approved::$name,
             'name' => $this->faker->name(),
-            'image' => $this->faker->filePath(),
+            'image' => $image,
+            /*
+             * With the gallery renders in place, because that is what a row looks like
+             * everywhere but the couple of seconds between an upload and
+             * GenerateFursuitWebpJob. A fixture without them reads as "still processing"
+             * (Fursuit::imageRenderPending()), which the panel labels as such and the
+             * review queue holds back. Use the imageProcessing() state to describe that
+             * window on purpose.
+             */
+            'image_webp' => GenerateFursuitWebpJob::pathFor($image),
+            'image_thumb' => GenerateFursuitWebpJob::thumbPathFor($image),
             'published' => $this->faker->boolean(),
             'catch_em_all' => $this->faker->boolean(),
             'user_id' => User::factory(),
             'species_id' => Species::factory(),
             'event_id' => Event::factory(),
         ];
+    }
+
+    /**
+     * Put the renders back after the record is written.
+     *
+     * The columns in definition() are not enough on their own: FursuitObserver::created()
+     * saves again when it stamps a catch code, and that save arrives with every attribute
+     * dirty, so `updating` - which drops the variants whenever the photo changes - wipes
+     * them. Backfilling here lands after all of that.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Fursuit $fursuit) {
+            if (! $fursuit->image || $fursuit->image_webp) {
+                return;
+            }
+
+            $fursuit->forceFill([
+                'image_webp' => GenerateFursuitWebpJob::pathFor($fursuit->image),
+                'image_thumb' => GenerateFursuitWebpJob::thumbPathFor($fursuit->image),
+            ])->saveQuietly();
+        });
+    }
+
+    /**
+     * The photo is stored but its gallery render has not landed yet.
+     *
+     * The panel shows a "still processing" placeholder for these and the review queue
+     * skips them, so a reviewer is never handed a record without a picture to judge.
+     *
+     * Registered after configure()'s backfill and therefore wins over it.
+     */
+    public function imageProcessing(): self
+    {
+        return $this->afterCreating(
+            fn (Fursuit $fursuit) => $fursuit
+                ->forceFill(['image_webp' => null, 'image_thumb' => null])
+                ->saveQuietly()
+        );
     }
 
     /** Waiting for a verdict: nothing prints and nothing is handed out. */

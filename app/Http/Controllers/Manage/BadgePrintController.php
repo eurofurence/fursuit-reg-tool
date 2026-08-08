@@ -105,7 +105,9 @@ class BadgePrintController extends Controller
      */
     public function store(Badge $badge): RedirectResponse
     {
-        Gate::authorize('viewAny', Badge::class);
+        // manage-admin, not viewAny Badge: a reviewer reads badges but does not put cards
+        // through a printer. See docs/admin/roles.md.
+        Gate::authorize('manage-admin');
 
         Log::info('printBadge called', [
             'badge_id' => $badge->id,
@@ -238,7 +240,7 @@ class BadgePrintController extends Controller
      */
     public static function rowAction(Badge $badge): ?Action
     {
-        if (! Gate::allows('viewAny', Badge::class)) {
+        if (! Gate::allows('manage-admin')) {
             return null;
         }
 
@@ -256,7 +258,7 @@ class BadgePrintController extends Controller
      */
     public static function bulkAction(): ?Action
     {
-        if (! Gate::allows('viewAny', Badge::class)) {
+        if (! Gate::allows('manage-admin')) {
             return null;
         }
 

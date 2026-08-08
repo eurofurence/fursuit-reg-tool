@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Manage;
 
-use App\Enum\FursuitReviewOutcomeEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\FursuitRequest;
 use App\Models\Event;
@@ -14,7 +13,6 @@ use App\Models\Fursuit\States\Rejected;
 use App\Models\Species;
 use App\Models\User;
 use App\Services\FursuitPresence;
-use App\Services\FursuitReviewService;
 use App\Support\Manage\Action;
 use App\Support\Manage\Column;
 use App\Support\Manage\EventScope;
@@ -120,18 +118,12 @@ class FursuitController extends Controller
                 $this->moderationActions($fursuit, $request->user()),
             ),
             /*
-             * The two action forms the client renders itself rather than through
-             * ActionButton: the reject modal prefills its textarea from the reason
-             * picker, and the notification modal shows its reason field only for a
-             * rejection. Both are live behaviour ActionButton has no concept of, and
-             * the second is a bug fix in its own right (audit 73: the Filament Select
-             * was never ->live(), so the conditional field only appeared on the next
-             * form round-trip).
+             * The one action form the client renders itself rather than through ActionButton: the
+             * notification modal shows its reason field only for a rejection, which is live
+             * behaviour ActionButton has no concept of - and a bug fix in its own right (audit 73:
+             * the Filament Select was never ->live(), so the conditional field only appeared on the
+             * next form round-trip).
              */
-            'rejectReasons' => FursuitModerationController::rejectReasonOptions(),
-            // The publication block has its own list: the eight rejection strings all tell
-            // the attendee to fix a badge which, in this case, is fine and will be printed.
-            'publicationReasons' => FursuitReviewService::reasonOptions(FursuitReviewOutcomeEnum::PublicationBlocked),
             'notificationTypes' => FursuitNotificationController::typeOptions(),
             ...$this->activityTable($request, $fursuit),
         ]);
@@ -425,6 +417,12 @@ class FursuitController extends Controller
             'name' => $fursuit->name,
             'species' => $fursuit->species?->name,
             'image' => self::previewUrl($fursuit),
+            /*
+             * The render has not landed yet, so what `image` points at is the archival
+             * master - a print file in a preview box. The page says "still processing"
+             * instead and the reviewer reloads in a moment.
+             */
+            'imageProcessing' => $fursuit->imageRenderPending(),
             'published' => (bool) $fursuit->published,
             'catch_em_all' => (bool) $fursuit->catch_em_all,
             'status' => Status::fursuit($fursuit->status),
@@ -463,18 +461,22 @@ class FursuitController extends Controller
     }
 
     /**
-     * The record page's header actions.
+     * The record page's header actions, and deliberately not a second review surface.
      *
-     * Two deliberate departures from ViewFursuit, both of them plan decisions.
+     * Every verdict lives in the queue (`/admin/fursuits/review`) and nowhere else. This page used to
+     * offer Approve, Reject, Block from gallery, Lift gallery block, Approve (Rejected) and Next
+     * Fursuit as well, which meant two screens could hand down the same decision with different
+     * copy, different confirm dialogs and - because the queue carries the undo window and the
+     * presence banner - different safety. One of them had to go, and a record page is for reading a
+     * record.
      *
-     * Claim and Unclaim are gone. The lock they took refused verdicts, so a reviewer who
-     * opened a record by link could do nothing with it and a dead browser froze the record
-     * for five minutes (plan 2.10 #41, audit 69/71). Presence replaced it, and presence is
-     * advisory: it is shown, never enforced. A verdict therefore needs no claim first.
+     * What is left is what is not a verdict: the mail-only notification tool, the link into the
+     * queue, and the edit form. Two consequences worth knowing:
      *
-     * The publication block is new. Approval used to be a yes/no, so a photo that broke a
-     * gallery rule but no rule in the Code of Conduct could only be rejected - which stops
-     * the card as well, costing the attendee a badge over a gallery rule.
+     *  - Lifting a publication block without telling the attendee is no longer a button. Approving
+     *    the record in the queue clears the block, and that does mail them.
+     *  - The apology path for a rejection reversed in error (FursuitRejectionReversedNotification)
+     *    is reached through the edit form's status picker, which is admin-only.
      *
      * @return array<int, Action>
      */
@@ -484,92 +486,7 @@ class FursuitController extends Controller
             return [];
         }
 
-        $status = $fursuit->status;
-        $reviews = app(FursuitReviewService::class);
-        $canApprove = $reviews->can($fursuit, FursuitReviewOutcomeEnum::Approved, $viewer);
-        $canReject = $reviews->can($fursuit, FursuitReviewOutcomeEnum::Rejected, $viewer);
-        $canBlock = $reviews->can($fursuit, FursuitReviewOutcomeEnum::PublicationBlocked, $viewer);
-
         return array_values(array_filter([
-            $canApprove
-                ? Action::post('approve', 'Approve', route('admin.fursuits.approve', $fursuit))
-                    ->icon('circle-check')
-                    ->tone(Status::OK)
-                    // A bare requiresConfirmation(): the label as the heading, the
-                    // framework's default body, and Confirm to submit.
-                    ->confirmDefault()
-                : null,
-
-            $canReject
-                ? Action::post('reject', 'Reject', route('admin.fursuits.reject', $fursuit))
-                    ->icon('circle-x')
-                    ->tone(Status::DANGER)
-                    ->confirmDefault()
-                    ->fields([
-                        [
-                            'key' => 'reason',
-                            'label' => 'Reason',
-                            'type' => 'select',
-                            'options' => FursuitModerationController::rejectReasonOptions(),
-                            'required' => false,
-                        ],
-                        [
-                            'key' => 'custom_reason',
-                            'label' => 'Reason Sent to the User!',
-                            'type' => 'textarea',
-                            'required' => true,
-                        ],
-                    ])
-                : null,
-
-            $canBlock
-                ? Action::post('block-publication', 'Block from gallery', route('admin.fursuits.block-publication', $fursuit))
-                    ->icon('eye-off')
-                    ->tone(Status::WARN)
-                    ->confirm(
-                        'Block from gallery and game',
-                        'The badge is approved, printed and handed out. It will not appear in the gallery and cannot be caught in the game.',
-                        'Block publication',
-                    )
-                    ->fields([
-                        [
-                            'key' => 'reason',
-                            'label' => 'Reason',
-                            'type' => 'select',
-                            'options' => FursuitReviewService::reasonOptions(FursuitReviewOutcomeEnum::PublicationBlocked),
-                            'required' => false,
-                        ],
-                        [
-                            'key' => 'custom_reason',
-                            'label' => 'Reason Sent to the User!',
-                            'type' => 'textarea',
-                            'required' => true,
-                        ],
-                    ])
-                : null,
-
-            $fursuit->isPublicationBlocked()
-                ? Action::delete('unblock-publication', 'Lift gallery block', route('admin.fursuits.unblock-publication', $fursuit))
-                    ->icon('eye')
-                    ->tone(Status::INFO)
-                    ->confirm(
-                        'Lift the gallery block',
-                        'The gallery and the game follow the attendee\'s own setting again. The attendee is not notified.',
-                        'Lift block',
-                    )
-                : null,
-
-            $status instanceof Rejected
-                ? Action::post('approve-rejected', 'Approve (Rejected)', route('admin.fursuits.approve-rejected', $fursuit))
-                    ->icon('circle-check')
-                    ->tone(Status::OK)
-                    ->confirm(
-                        'Approve Rejected Fursuit',
-                        'This will send an apology email to the user and approve the fursuit.',
-                        'Yes, approve it',
-                    )
-                : null,
-
             // No visibility predicate and no confirmation, as today: it sends mail
             // without changing state and without checking the current state.
             Action::post('send-notification', 'Send Notification', route('admin.fursuits.notify', $fursuit))
@@ -590,10 +507,6 @@ class FursuitController extends Controller
                         'required' => false,
                     ],
                 ]),
-
-            Action::link('next', 'Next Fursuit', route('admin.fursuits.next', $fursuit))
-                ->icon('arrow-right')
-                ->tone(Status::INFO),
 
             /*
              * Into the queue surface. Not a ViewFursuit action: the queue page did not

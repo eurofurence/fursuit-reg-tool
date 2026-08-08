@@ -13,6 +13,10 @@ class PrintBadgeController extends Controller
         $batch = BadgePrintQueue::queue(
             badges: collect([$badge]),
             createdById: auth()->id(),
+            // The POS signs a clerk in on the machine-user guard, so auth()->id()
+            // is null here. Without this the run belongs to nobody and never
+            // reaches the clerk's own print list.
+            createdByStaffId: auth('machine-user')->id(),
         );
 
         if ($batch === null) {

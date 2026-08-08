@@ -7,6 +7,7 @@ use App\Http\Controllers\POS\BadgeManagementController;
 use App\Http\Controllers\POS\CheckoutController;
 use App\Http\Controllers\POS\DashboardController;
 use App\Http\Controllers\POS\MachineController;
+use App\Http\Controllers\POS\MyPrintsController;
 use App\Http\Controllers\POS\Printing\PrintBadgeController;
 use App\Http\Controllers\POS\PrintQueueController;
 use App\Http\Controllers\POS\StatisticsController;
@@ -49,6 +50,12 @@ Route::prefix('/print-queue')->name('print-queue.')->group(function () {
     Route::post('/{printJob}/mark-printed', [PrintQueueController::class, 'markAsPrinted'])->name('mark-printed');
     Route::post('/{printJob}/retry', [PrintQueueController::class, 'retry'])->name('retry');
     Route::delete('/{printJob}', [PrintQueueController::class, 'delete'])->name('delete');
+});
+// The runs this clerk started, and the notifications they raise on the dashboard
+Route::prefix('/my-prints')->name('my-prints.')->group(function () {
+    Route::get('/', [MyPrintsController::class, 'index'])->name('index');
+    Route::post('/dismiss-all', [MyPrintsController::class, 'dismissAll'])->name('dismiss-all');
+    Route::post('/{printBatch}/dismiss', [MyPrintsController::class, 'dismiss'])->name('dismiss');
 });
 // Statistics
 Route::get('/statistics', [StatisticsController::class, 'index'])->name('statistics');

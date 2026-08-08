@@ -54,6 +54,13 @@ function getActionableStatuses(badge) {
     return badgeStatusTags(badge);
 }
 
+// "1 August 2026", the same shape BuildsBadgeMail::collectionAnswer() sends by mail. The default
+// locale format would print the deadline as 8/1/2026 for half the attendees and 1/8/2026 for the
+// other half, which is the one date on the page nobody may misread.
+function formatPrintDate(date) {
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 function getNextStepExplanation() {
     const badge = props.badge;
 
@@ -88,18 +95,20 @@ function getNextStepExplanation() {
         const eventStarted = event && new Date(event.starts_at) <= now;
 
         if (eventStarted) {
-            return '<strong>Queued for printing</strong><br>We print on site, which takes a few minutes once the queue reaches your badge. We email you when it is ready. Badges ordered during the convention can be collected from the second convention day.';
+            return '<strong>Queued for printing</strong><br>We email you as soon as it is at the desk. Collect it from the second convention day.';
         }
 
         if (massPrintedAt && massPrintedAt > now) {
-            return `<strong>Queued for printing</strong><br>We print all badges on ${massPrintedAt.toLocaleDateString()}. Until then you can still edit yours; afterwards it is locked and waiting for you at the desk on the first convention day.`;
+            return `<strong>Queued for printing</strong><br>We print all badges on ${formatPrintDate(massPrintedAt)}. Until then you can still edit yours. Collect it from the first convention day.`;
         }
 
         if (massPrintedAt) {
-            return '<strong>Queued for printing</strong><br>The pre-print run is done, so your badge is printed on site and can be collected from the second convention day.';
+            return `<strong>Queued for printing</strong><br>The printing deadline (${formatPrintDate(massPrintedAt)}) has passed, so you can collect it from the second convention day.`;
         }
 
-        return '<strong>Accepted</strong><br>Your submission is through. Your badge will be waiting for you at Eurofurence.';
+        // No print date set: the run has not been scheduled, so it is still ahead and this badge is
+        // in it. Same reading as a future date, minus the date it cannot name.
+        return '<strong>Queued for printing</strong><br>You can still edit it. Collect it from the first convention day.';
     }
 
     return 'Processing your badge request...';

@@ -239,16 +239,17 @@ class FursuitModerationController extends Controller
     /**
      * The queue step: the next record waiting, or an explicit empty state.
      *
-     * Which page it lands on depends on where the verdict came from. `queue` is set by the
-     * review page, so a reviewer working the queue keeps working it, while a verdict handed
-     * down on a record page stays on record pages. The empty state is explicit: Filament
-     * redirected to the index and left the reviewer to work out whether the queue was
-     * empty or its three-try walk had simply given up.
+     * Always into the queue. It used to branch on where the verdict came from, because the record
+     * page offered the same verdicts and being thrown from a record you were reading onto a
+     * different fursuit is not what a record page should do. The record page has no verdicts any
+     * more - every one of them lives in the queue - so there is one destination and no flag to get
+     * wrong.
+     *
+     * The empty state is explicit: Filament redirected to the index and left the reviewer to work
+     * out whether the queue was empty or its three-try walk had simply given up.
      */
     private function advance(Request $request, Fursuit $fursuit, EventScope $scope): RedirectResponse
     {
-        $inQueue = $request->boolean('queue');
-
         $next = $this->reviews->nextPending(
             $scope->apply(Fursuit::query()),
             $request->user(),
@@ -264,9 +265,6 @@ class FursuitModerationController extends Controller
             return redirect()->route('admin.fursuits.index');
         }
 
-        return redirect()->route(
-            $inQueue ? 'admin.fursuits.review.show' : 'admin.fursuits.show',
-            $next,
-        );
+        return redirect()->route('admin.fursuits.review.show', $next);
     }
 }

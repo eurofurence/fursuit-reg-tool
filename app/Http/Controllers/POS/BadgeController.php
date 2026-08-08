@@ -61,6 +61,7 @@ class BadgeController extends Controller
             badges: $sortedBadges,
             printer: $printerId ? Printer::find($printerId) : null,
             createdById: auth()->id(),
+            createdByStaffId: auth('machine-user')->id(),
         );
 
         if ($batch === null) {

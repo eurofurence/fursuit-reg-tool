@@ -366,11 +366,18 @@ class FursuitReviewService
      * Falls back to a busy record only if every waiting fursuit has somebody on it, so a
      * reviewer is never told the queue is empty when it is not - the page says who else is
      * there and lets them decide.
+     *
+     * Records whose gallery render is still in flight are held back (imageRenderSettled):
+     * the verdict is passed on the photo, and for the seconds between an upload and
+     * GenerateFursuitWebpJob there is no photo to pass it on. They come back into the
+     * queue as soon as the render lands, and after Fursuit::IMAGE_RENDER_GRACE_MINUTES
+     * even if it never does, so a permanently failed encode cannot swallow a submission.
      */
     public function nextPending(Builder $scoped, ?User $viewer = null, ?Fursuit $after = null): ?Fursuit
     {
         $query = $scoped
             ->whereState('status', Pending::class)
+            ->imageRenderSettled()
             ->when($after !== null, fn (Builder $query) => $query->whereKeyNot($after->getKey()))
             ->orderBy('id');
 
@@ -389,10 +396,14 @@ class FursuitReviewService
 
     /**
      * How many fursuits are still waiting in the given scope.
+     *
+     * Counts what nextPending() would actually hand out, renders in flight excluded -
+     * otherwise the queue reads "3 remaining" and then tells the reviewer there is
+     * nothing left.
      */
     public function pendingCount(Builder $scoped): int
     {
-        return $scoped->whereState('status', Pending::class)->count();
+        return $scoped->whereState('status', Pending::class)->imageRenderSettled()->count();
     }
 
     /**

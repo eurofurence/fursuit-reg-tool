@@ -34,8 +34,6 @@ use function Pest\Laravel\withSession;
 dataset('settings panes', [
     'general' => ['admin.settings.general', 'Manage/Settings/General'],
     'on-site desk' => ['admin.settings.on-site-desk', 'Manage/Settings/OnSiteDesk'],
-    'printing' => ['admin.settings.printing', 'Manage/Settings/Printing'],
-    'badges' => ['admin.settings.badges', 'Manage/Settings/Badges'],
     'review reasons' => ['admin.settings.review-reasons', 'Manage/Settings/ReviewReasons'],
 ]);
 
@@ -47,8 +45,6 @@ dataset('settings panes', [
 dataset('event-scoped settings panes', [
     'general' => ['admin.settings.general', 'Manage/Settings/General'],
     'on-site desk' => ['admin.settings.on-site-desk', 'Manage/Settings/OnSiteDesk'],
-    'printing' => ['admin.settings.printing', 'Manage/Settings/Printing'],
-    'badges' => ['admin.settings.badges', 'Manage/Settings/Badges'],
 ]);
 
 beforeEach(function () {
@@ -73,8 +69,7 @@ beforeEach(function () {
 test('every pane is its own URL under /admin/settings', function () {
     expect(route('admin.settings.general', absolute: false))->toBe('/admin/settings')
         ->and(route('admin.settings.on-site-desk', absolute: false))->toBe('/admin/settings/on-site-desk')
-        ->and(route('admin.settings.printing', absolute: false))->toBe('/admin/settings/printing')
-        ->and(route('admin.settings.badges', absolute: false))->toBe('/admin/settings/badges');
+        ->and(route('admin.settings.review-reasons', absolute: false))->toBe('/admin/settings/review-reasons');
 });
 
 test('a pane renders its own component for an admin', function (string $name, string $component) {
@@ -125,21 +120,20 @@ test('a signed-in attendee is refused every pane', function (string $name) {
     withSession($this->session)->get(route($name))->assertForbidden();
 })->with('settings panes');
 
-test('a reviewer may read every pane but is not offered the writes', function (string $name, string $component) {
-    // Same split as every other configuration surface: `access-manage`
-    // opens the page, `manage-admin` decides whether anything on it can be saved.
+test('a reviewer is refused every pane', function (string $name) {
+    /*
+     * Reviewers could read every pane at cutover, on the reasoning that looking at how the
+     * convention is configured harms nothing. They were then narrowed to Dashboard, Badges
+     * and Fursuits, and Settings is not one of the three - review-reasons in particular
+     * configures the queue rather than being part of working it. Holding `access-manage`
+     * is no longer enough for anything here. See docs/admin/roles.md.
+     */
     actingAs($this->reviewer);
 
     expect(Gate::forUser($this->reviewer)->allows('access-manage'))->toBeTrue()
         ->and(Gate::forUser($this->reviewer)->allows('manage-admin'))->toBeFalse();
 
-    withSession($this->session)
-        ->get(route($name))
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component($component)
-            ->where('canEdit', false)
-        );
+    withSession($this->session)->get(route($name))->assertForbidden();
 })->with('settings panes');
 
 test('Settings appears once in the rail and points at the General pane', function () {
@@ -162,18 +156,18 @@ test('Settings appears once in the rail and points at the General pane', functio
     $railRoutes = collect($nav)->flatMap(fn (array $group) => $group['items'])->pluck('route');
 
     expect($railRoutes)->not->toContain('admin.settings.on-site-desk')
-        ->and($railRoutes)->not->toContain('admin.settings.printing')
-        ->and($railRoutes)->not->toContain('admin.settings.badges')
         ->and($railRoutes)->not->toContain('admin.settings.review-reasons')
         // Events moved in beside them and left the rail with them.
         ->and($railRoutes)->not->toContain('admin.settings.events.index');
 });
 
-test('the submenu is built server-side and drops the Events pane for a reviewer', function () {
+test('the submenu is built server-side and lists every pane for an admin', function () {
     /*
-     * The submenu used to be a constant in SettingsLayout.vue, which was fine while every
-     * pane was open to anyone who could open the panel. Events is not: EventPolicy gates it
-     * on `is_admin`, so a client-side list would offer a reviewer a card that 403s.
+     * The submenu used to be a constant in SettingsLayout.vue. It is server-side because
+     * the panes are policy-gated, and it stays server-side now that the whole of Settings
+     * is admin-only: the filtering still runs, it just has nobody left to filter for. The
+     * reviewer half of this assertion moved to ReviewerScopeTest, where a reviewer never
+     * reaches the page the submenu is attached to.
      */
     $panes = fn (User $user) => collect(
         actingAs($user)
@@ -183,9 +177,7 @@ test('the submenu is built server-side and drops the Events pane for a reviewer'
     )->pluck('key');
 
     expect($panes($this->admin)->all())
-        ->toBe(['general', 'events', 'on-site-desk', 'printing', 'badges', 'review-reasons', 'users'])
-        ->and($panes($this->reviewer)->all())
-        ->toBe(['general', 'on-site-desk', 'printing', 'badges', 'review-reasons']);
+        ->toBe(['general', 'events', 'on-site-desk', 'review-reasons', 'users']);
 });
 
 test('reading every pane writes nothing', function () {
@@ -211,8 +203,7 @@ test('reading every pane writes nothing', function () {
         foreach ([
             'admin.settings.general',
             'admin.settings.on-site-desk',
-            'admin.settings.printing',
-            'admin.settings.badges',
+            'admin.settings.review-reasons',
         ] as $name) {
             withSession($session)->get(route($name))->assertSuccessful();
         }

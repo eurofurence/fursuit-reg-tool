@@ -22,11 +22,26 @@ use Illuminate\Support\Facades\Route;
  * five-second poll: queueing a card is an explicit, authorised gesture. `bulk/print` is a
  * literal segment and is declared before `{badge}` so it can never bind "bulk" as a badge.
  */
+/*
+ * Reads are the group's `can:access-manage`, so a reviewer keeps the list and the detail.
+ * Everything that changes a badge or queues a card is `can:manage-admin`: a reviewer works
+ * the fursuit queue and reads badges to do it, and moving a badge between fulfillment
+ * states or sending cards to a printer is desk work, not review work. See
+ * docs/admin/roles.md.
+ *
+ * `{badge}/edit` is deliberately in the open half. It is the only badge detail the panel
+ * has - there is no separate show page - so gating it would take the record away, not just
+ * the form. BadgeController::edit authorizes `view` and hands the page a `canEdit` flag,
+ * and the PUT below is what actually refuses the write.
+ */
 Route::prefix('badges')->name('badges.')->group(function () {
     Route::get('/', [BadgeController::class, 'index'])->name('index');
-    Route::post('bulk/print', [BadgePrintController::class, 'bulk'])->name('bulk.print');
     Route::get('{badge}/edit', [BadgeController::class, 'edit'])->whereNumber('badge')->name('edit');
-    Route::post('{badge}/print', [BadgePrintController::class, 'store'])->whereNumber('badge')->name('print');
-    Route::put('{badge}', [BadgeController::class, 'update'])->whereNumber('badge')->name('update');
-    Route::delete('{badge}', [BadgeController::class, 'destroy'])->whereNumber('badge')->name('destroy');
+
+    Route::middleware('can:manage-admin')->group(function () {
+        Route::post('bulk/print', [BadgePrintController::class, 'bulk'])->name('bulk.print');
+        Route::post('{badge}/print', [BadgePrintController::class, 'store'])->whereNumber('badge')->name('print');
+        Route::put('{badge}', [BadgeController::class, 'update'])->whereNumber('badge')->name('update');
+        Route::delete('{badge}', [BadgeController::class, 'destroy'])->whereNumber('badge')->name('destroy');
+    });
 });

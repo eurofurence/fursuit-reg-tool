@@ -10,6 +10,7 @@ use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\Machine;
+use App\Models\Staff;
 use App\Models\User;
 use Database\Factories\PrintBatchFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -64,6 +65,17 @@ class PrintBatch extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
+    }
+
+    /**
+     * The desk clerk who sent this run to the printer, if it came from the POS.
+     *
+     * Separate from createdBy(): the POS authenticates staff against the `staff`
+     * table through the `machine-user` guard, not `users`.
+     */
+    public function createdByStaff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'created_by_staff_id');
     }
 
     public function printJobs(): HasMany
@@ -148,10 +160,11 @@ class PrintBatch extends Model
         ?Printer $printer = null,
         ?int $eventId = null,
         ?int $createdById = null,
+        ?int $createdByStaffId = null,
     ): self {
         self::assertPrintFilesAreCurrent($badges);
 
-        return DB::transaction(function () use ($name, $badges, $printer, $eventId, $createdById) {
+        return DB::transaction(function () use ($name, $badges, $printer, $eventId, $createdById, $createdByStaffId) {
             $ordered = self::sortBadgesForPrinting($badges);
 
             $batch = self::create([
@@ -159,6 +172,7 @@ class PrintBatch extends Model
                 'event_id' => $eventId,
                 'printer_id' => $printer?->id,
                 'created_by_id' => $createdById,
+                'created_by_staff_id' => $createdByStaffId,
                 'status' => PrintBatchStatusEnum::Draft,
                 'total_jobs' => $ordered->count(),
             ]);
@@ -429,6 +443,48 @@ class PrintBatch extends Model
         return $this->printJobs()
             ->where('status', PrintJobStatusEnum::Printed)
             ->whereNull('verified_print_at');
+    }
+
+    /**
+     * Runs one desk clerk started. Never every run: a clerk who queued nothing
+     * has no print jobs, and a null staff id must not match the batches the
+     * admin panel or the console queued.
+     */
+    public function scopeStartedByStaff($query, ?int $staffId)
+    {
+        return $query->where('created_by_staff_id', $staffId ?? 0);
+    }
+
+    /**
+     * Runs that have something to tell the clerk who started them.
+     *
+     * A run only speaks once it has stopped moving: finished, stuck behind a
+     * failed card, or cancelled. Printing and Ready say nothing, because
+     * "still going" is not news to the person standing at the counter.
+     *
+     * The comparison is against the status that was acknowledged, not a
+     * timestamp, so a run dismissed while paused comes back when it completes.
+     */
+    public function scopeNeedingDeskAttention($query)
+    {
+        return $query
+            ->whereIn('status', [
+                PrintBatchStatusEnum::Completed,
+                PrintBatchStatusEnum::Paused,
+                PrintBatchStatusEnum::Cancelled,
+            ])
+            ->where(function ($q) {
+                $q->whereNull('desk_dismissed_status')
+                    ->orWhereColumn('desk_dismissed_status', '!=', 'status');
+            });
+    }
+
+    /**
+     * Acknowledge the batch in its current state. Silences it until it moves on.
+     */
+    public function dismissForDesk(): bool
+    {
+        return $this->update(['desk_dismissed_status' => $this->status->value]);
     }
 
     public function scopeClaimable($query)

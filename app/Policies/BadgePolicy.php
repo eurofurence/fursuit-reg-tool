@@ -92,9 +92,14 @@ class BadgePolicy
      */
     public function update(User $user, Badge $badge): bool
     {
-        // Panel operators can override the owner rules. `access-manage` already covers
-        // `is_admin`; both halves are spelled out because rebuild-plan 2.2 does.
-        if ($user->is_admin || $user->can('access-manage')) {
+        /*
+         * The panel override is `is_admin`, not `access-manage`. A reviewer still reads
+         * the badge - `view` above is the ability the detail page authorizes - but moving
+         * a badge between fulfillment or payment states is desk work rather than review
+         * work, and this ability is what BadgeController::edit hands the page as
+         * `canEdit`. See docs/admin/roles.md.
+         */
+        if ($user->is_admin) {
             return true;
         }
 

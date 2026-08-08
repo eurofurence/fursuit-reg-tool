@@ -11,6 +11,10 @@
  * by anything), and Catch-Em-All is its own card rather than a sub-part of the gallery,
  * because the game and the public gallery are separate features.
  *
+ * "Price" is not that group returning. `cost` was written and never read; `badge_price` is
+ * the fee actually charged for an extra badge, which was a constant in
+ * BadgeCalculationService until it moved onto the event.
+ *
  * Every date field carries a description of what it actually decides, because most of them
  * decide nothing and the two that matter most (`order_starts_at`, `free_badge_deadline`)
  * are not self-explanatory from their labels.
@@ -32,6 +36,8 @@ const props = defineProps({
   /** null on create. */
   event: { type: Object, default: null },
   badgeClassOptions: { type: Array, required: true },
+  /** Euro string a new event starts at, off BadgeCalculationService::DEFAULT_FEE. */
+  defaultBadgePrice: { type: String, required: true },
 });
 
 const editing = computed(() => Boolean(props.event?.id));
@@ -51,6 +57,9 @@ const form = useForm({
   order_starts_at: props.event?.order_starts_at ?? '',
   order_ends_at: props.event?.order_ends_at ?? '',
   free_badge_deadline: props.event?.free_badge_deadline ?? '',
+  // Euros. The table stores cents; EventRequest converts on the way in and
+  // EventController on the way out, so this control never has to talk in cents.
+  badge_price: props.event?.badge_price ?? props.defaultBadgePrice,
   mass_printed_at: props.event?.mass_printed_at ?? '',
   // Toggle::make('catch_em_all_enabled')->default(true), which applies on create only.
   catch_em_all_enabled: props.event?.catch_em_all_enabled ?? true,
@@ -64,6 +73,18 @@ const badgeClasses = computed(() => [
   { value: '', label: 'Select an option' },
   ...props.badgeClassOptions,
 ]);
+
+/*
+ * "Set to now" on the mass print date, which is the one field an operator wants to stamp with
+ * the current moment: closing the pre-print run early flips the public pages over to the
+ * on-site printing copy. `datetime-local` wants `Y-m-dTH:i` in local time, and `toISOString()`
+ * would hand it UTC, so the offset is subtracted before slicing.
+ */
+const localNow = () => {
+  const now = new Date();
+
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
 
 const submit = () => {
   if (editing.value) {
@@ -165,6 +186,39 @@ const submit = () => {
             type="datetime-local"
             helper="Cutoff for the bulk print run before the convention. Once it passes, badges are printed on site instead and the public pages tell attendees to collect them from the 2nd convention day."
             :error="form.errors.mass_printed_at"
+            required
+          >
+            <div class="flex items-center gap-2">
+              <input
+                type="datetime-local"
+                :value="form.mass_printed_at"
+                class="h-8 w-full max-w-56 rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-none transition-colors focus:border-state-live/50"
+                @input="form.mass_printed_at = $event.target.value"
+              />
+
+              <button
+                type="button"
+                class="inline-flex h-7 shrink-0 items-center rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+                @click="form.mass_printed_at = localNow()"
+              >
+                Set to now
+              </button>
+            </div>
+          </FormField>
+        </FormSection>
+
+        <FormSection
+          title="Price"
+          description="What a badge costs here. The badge included with a registration is free regardless; this is the fee for every badge beyond it, and for spare copies."
+        >
+          <FormField
+            v-model="form.badge_price"
+            label="Badge Price"
+            type="number"
+            min="0"
+            step="0.01"
+            helper="In euros. Quoted on the front page and in the FAQ, and charged at checkout. Changing it does not reprice badges that are already ordered."
+            :error="form.errors.badge_price"
             required
             narrow
           />

@@ -43,6 +43,7 @@ class BadgePrintQueue
         ?Printer $printer = null,
         ?string $name = null,
         ?int $createdById = null,
+        ?int $createdByStaffId = null,
     ): ?PrintBatch {
         $badges = self::withoutCardsAlreadyOnTheirWay(
             self::withoutUnapprovedFursuits(
@@ -75,6 +76,7 @@ class BadgePrintQueue
             printer: $printer,
             eventId: $badges->first()?->fursuit?->event_id,
             createdById: $createdById,
+            createdByStaffId: $createdByStaffId,
         );
 
         // Built batches are drafts, and a draft is not selectable by the
@@ -87,6 +89,7 @@ class BadgePrintQueue
             'badges' => $badges->count(),
             'printer_id' => $printer?->id,
             'created_by_id' => $createdById,
+            'created_by_staff_id' => $createdByStaffId,
         ]);
 
         return $batch->fresh();

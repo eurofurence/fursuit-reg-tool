@@ -121,6 +121,8 @@ class StaffRequest extends FormRequest
                 'size:6',
                 Rule::unique('staff', 'setup_code')->ignore($id),
             ],
+            // Written as `archived_at` by StaffController::writable(); there is no
+            // `is_active` column any more.
             'is_active' => ['required', 'boolean'],
             'is_manager' => ['required', 'boolean'],
         ];

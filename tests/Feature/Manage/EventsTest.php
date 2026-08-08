@@ -24,6 +24,7 @@ use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
 use App\Policies\EventPolicy;
+use App\Services\BadgeCalculationService;
 use App\Support\Manage\Action;
 use App\Support\Manage\EventScope;
 use Illuminate\Support\Facades\Gate;
@@ -78,6 +79,7 @@ beforeEach(function () {
         'order_starts_at' => '2026-04-01T12:00',
         'order_ends_at' => '2026-08-01T23:59',
         'free_badge_deadline' => '2026-07-01T23:59',
+        'badge_price' => '7.50',
         'mass_printed_at' => '2026-08-15T09:30',
         'catch_em_all_enabled' => true,
         'catch_em_all_start' => '2026-09-09T10:00',
@@ -433,6 +435,69 @@ test('archival_notice actually persists, which mass assignment never let it do',
     expect($event->fresh()->archival_notice)->toBe('Rewritten.');
 });
 
+test('the badge price round-trips as euros and lands on the table as cents', function () {
+    // The fee was a constant in BadgeCalculationService. It is per-event now, and the form
+    // talks euros while the column stores cents, so the conversion has to survive both
+    // directions or an operator sets 7,50 EUR and the desk charges 7 cents.
+    actingAs($this->admin)
+        ->post(route('admin.settings.events.store'), ($this->payload)(['badge_price' => '7.50']))
+        ->assertRedirect(route('admin.settings.events.index'));
+
+    $event = Event::sole();
+
+    expect($event->badge_price_cents)->toBe(750);
+
+    actingAs($this->admin)
+        ->get(route('admin.settings.events.edit', $event))
+        ->assertInertia(fn (Assert $page) => $page->where('event.badge_price', '7.50'));
+});
+
+test('a price with an awkward third decimal rounds rather than truncating a cent away', function () {
+    // (int) 5.10 * 100 is 509 in float arithmetic. round() is the only reason this is 510.
+    actingAs($this->admin)
+        ->post(route('admin.settings.events.store'), ($this->payload)(['badge_price' => '5.10']))
+        ->assertRedirect(route('admin.settings.events.index'));
+
+    expect(Event::sole()->badge_price_cents)->toBe(510);
+});
+
+test('a negative price is refused, and a free-for-everyone price is allowed', function () {
+    actingAs($this->admin)
+        ->post(route('admin.settings.events.store'), ($this->payload)(['badge_price' => '-1']))
+        ->assertSessionHasErrors('badge_price');
+
+    expect(Event::count())->toBe(0);
+
+    actingAs($this->admin)
+        ->post(route('admin.settings.events.store'), ($this->payload)(['badge_price' => '0']))
+        ->assertRedirect(route('admin.settings.events.index'));
+
+    expect(Event::sole()->badge_price_cents)->toBe(0);
+});
+
+test('the create form offers the default price rather than making the operator invent one', function () {
+    actingAs($this->admin)
+        ->get(route('admin.settings.events.create'))
+        ->assertInertia(fn (Assert $page) => $page->where('defaultBadgePrice', '5.00'));
+});
+
+test('the charged fee follows the event, not the constant it used to be', function () {
+    // The point of the column: changing it here changes what a badge costs, without a deploy.
+    $event = ($this->event)(['badge_price_cents' => 1250]);
+
+    expect(BadgeCalculationService::calculate(event: $event))->toBe(1250)
+        // A spare copy is the same flat fee, and a prepaid badge is still free.
+        ->and(BadgeCalculationService::calculate(isSpareCopy: true, event: $event))->toBe(1250)
+        ->and(BadgeCalculationService::calculate(isFreeBadge: true, event: $event))->toBe(0);
+});
+
+test('with no event to ask, the fee falls back to the constant instead of to nothing', function () {
+    // Passing no event means "the active one", and a fresh install has none. The Welcome
+    // page and the FAQ still quote a price there, and it must not be 0,00 EUR.
+    expect(Event::count())->toBe(0)
+        ->and(BadgeCalculationService::calculate())->toBe(BadgeCalculationService::DEFAULT_FEE);
+});
+
 test('the form offers no printing cost field, because nothing read it', function () {
     // Financial tracking is gone: `cost` was write-only, and the accessors that consumed
     // it referenced a `total_revenue` attribute that never existed. A posted value must
@@ -468,7 +533,7 @@ test('the required fields are required, free_badge_deadline among them', functio
     // one is not a valid event.
     $required = [
         'name', 'starts_at', 'ends_at', 'order_starts_at', 'order_ends_at',
-        'free_badge_deadline', 'mass_printed_at',
+        'free_badge_deadline', 'badge_price', 'mass_printed_at',
     ];
 
     foreach ($required as $field) {
@@ -669,11 +734,15 @@ test('the policy is registered', function () {
     expect(Gate::getPolicyFor(Event::class))->toBeInstanceOf(EventPolicy::class);
 });
 
-test('the settings submenu links to the module for an admin and hides it from a reviewer', function () {
+test('the settings submenu links to the module for an admin', function () {
     /*
      * Events is a Settings pane rather than a rail entry: it is edited a handful of times per
      * convention and every field on it configures the convention. So the visibility question
      * the rail used to answer is now answered by the submenu, from the same policy.
+     *
+     * The reviewer half went with Settings itself, which is admin-only now
+     * (docs/admin/roles.md): a reviewer never reaches the page this submenu is attached to,
+     * so ReviewerScopeTest asserts the refusal instead.
      */
     ($this->event)();
 
@@ -682,8 +751,7 @@ test('the settings submenu links to the module for an admin and hides it from a 
             ->viewData('page')['props']['manageSettingsNav']
     );
 
-    expect($panes($this->admin)->pluck('key'))->toContain('events')
-        ->and($panes($this->reviewer)->pluck('key'))->not->toContain('events');
+    expect($panes($this->admin)->pluck('key'))->toContain('events');
 
     // And nothing left an Events entry behind in the rail.
     $rail = collect(actingAs($this->admin)->get(route('admin.dashboard'))

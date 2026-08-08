@@ -37,7 +37,16 @@ Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
  */
 Route::post('event', [DashboardController::class, 'selectEvent'])->name('event.select');
 
-Route::post('uploads', [UploadController::class, 'store'])->name('uploads.store');
+/*
+ * The one file-upload endpoint the panel has. `can:manage-admin`, not the group's
+ * `can:access-manage`: its only purpose today is replacing a fursuit image from the
+ * fursuit form, and FursuitPolicy::update is is_admin, so a reviewer has nothing to
+ * attach it to. An endpoint that writes to the bucket does not stay open on the chance a
+ * later form needs it. See docs/admin/roles.md.
+ */
+Route::post('uploads', [UploadController::class, 'store'])
+    ->middleware('can:manage-admin')
+    ->name('uploads.store');
 
 Route::post('tables/{table}/columns', [TableColumnController::class, 'update'])
     ->where('table', '[a-z0-9_-]+')

@@ -82,17 +82,22 @@ trait BuildsBadgeMail
     /**
      * When the attendee can collect, as a sentence.
      *
-     * Day one hands out badges from the pre-print run only, because printing on day one would stall
-     * the queue, so this is the one thing the mail can usefully promise about timing.
-     * `mass_printed_at` is the same signal the attendee's badge page reads.
+     * Day one hands out badges from the pre-print run only, so a badge that made the run needs no
+     * explanation and gets none. A badge that missed it does: without the date, "second day" reads
+     * as an arbitrary rule, and the missed deadline is what support gets asked about.
+     * `mass_printed_at` is the same signal the attendee's badge page reads, and the wording there
+     * matches this - change both together. An unset date reads as a run that is still ahead, the
+     * same as a future one: an event with no run scheduled has not missed it.
      */
     protected function collectionAnswer(?Event $event): string
     {
-        $preRun = $event?->mass_printed_at !== null && now()->lt($event->mass_printed_at);
+        $massPrintedAt = $event?->mass_printed_at;
 
-        return $preRun
-            ? 'From the first convention day. Yours is in the batch we print before the convention, so it will be at the desk when doors open.'
-            : 'From the second convention day. We print yours on site, and we keep day one free of printing so the queue keeps moving.';
+        if ($massPrintedAt === null || now()->lt($massPrintedAt)) {
+            return 'From the first convention day.';
+        }
+
+        return 'The printing deadline ('.$massPrintedAt->format('j F Y').') has passed, so you can collect it from the second convention day.';
     }
 
     /**

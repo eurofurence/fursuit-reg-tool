@@ -14,6 +14,10 @@ const props = defineProps({
     stats: Object,
     event: Object,
     badgeRange: Object,
+    printNotifications: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const page = usePage();
@@ -80,9 +84,12 @@ let statsTimer = null;
 
 onMounted(() => {
     focusInput();
+    // Every 10s rather than 30: this is also how a clerk learns their card came
+    // out, and half a minute is a long time to stand at the counter saying
+    // nothing. Two small props, no page state touched.
     statsTimer = setInterval(() => {
-        router.reload({ only: ['stats'], preserveState: true, preserveScroll: true });
-    }, 30000);
+        router.reload({ only: ['stats', 'printNotifications'], preserveState: true, preserveScroll: true });
+    }, 10000);
 });
 
 onUnmounted(() => clearInterval(statsTimer));
@@ -202,6 +209,16 @@ const actions = computed(() => [
         count: printQueueTotal.value || null,
     },
     {
+        label: 'My Print Jobs',
+        subtitle: props.stats?.my_print_batches_running
+            ? `${props.stats.my_print_batches_running} of yours still printing`
+            : 'Runs you started',
+        route: route('pos.my-prints.index'),
+        icon: 'pi pi-history',
+        key: 'F7',
+        count: props.printNotifications.length || null,
+    },
+    {
         label: 'Statistics',
         subtitle: 'Reports & totals',
         route: route('pos.statistics'),
@@ -209,6 +226,55 @@ const actions = computed(() => [
         key: 'F6',
     },
 ]);
+
+/* --- Print notifications -------------------------------------------------- */
+
+// Where a notification takes the clerk. One card goes straight to the attendee
+// waiting for it; a run of several has no single attendee, so it opens the list.
+function notificationTarget(notification) {
+    const single = notification.badges.length === 1 ? notification.badges[0] : null;
+
+    return single?.attendee_url ?? route('pos.my-prints.index');
+}
+
+// Seen is dismissed. The clerk is on their way to hand the card over, and
+// making them come back to clear the row is one tap of pure ceremony.
+function openNotification(notification) {
+    const target = notificationTarget(notification);
+
+    router.post(route('pos.my-prints.dismiss', { printBatch: notification.id }), {}, {
+        preserveScroll: true,
+        onFinish: () => router.visit(target),
+    });
+}
+
+function dismissNotification(notification) {
+    router.post(route('pos.my-prints.dismiss', { printBatch: notification.id }), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => router.reload({ only: ['stats', 'printNotifications'], preserveState: true, preserveScroll: true }),
+    });
+}
+
+function dismissAllNotifications() {
+    router.post(route('pos.my-prints.dismiss-all'), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => router.reload({ only: ['stats', 'printNotifications'], preserveState: true, preserveScroll: true }),
+    });
+}
+
+function notificationSub(notification) {
+    const single = notification.badges.length === 1 ? notification.badges[0] : null;
+
+    if (single) {
+        const who = single.attendee_id ? `#${single.attendee_id}` : 'unknown attendee';
+
+        return `${single.custom_id ?? notification.name} · ${who}${single.attendee_name ? ` · ${single.attendee_name}` : ''}`;
+    }
+
+    return `${notification.name} · ${notification.printed_count}/${notification.total_jobs} printed`;
+}
 </script>
 
 <template>
@@ -344,6 +410,7 @@ const actions = computed(() => [
                 </div>
             </section>
 
+            <div class="flex flex-col gap-2 self-start w-full">
             <!-- Navigation: one ruled block, rows share their borders -->
             <nav class="pos-block pos-block--rows self-start w-full">
                 <Link
@@ -366,6 +433,54 @@ const actions = computed(() => [
                     <span class="pos-kcap">{{ action.key }}</span>
                 </Link>
             </nav>
+
+            <!-- Print runs this clerk started that have something to say -->
+            <section v-if="printNotifications.length" class="pos-card">
+                <div class="pos-card__head">
+                    <h1>Your print jobs</h1>
+                    <button type="button" class="pos-btn pos-btn--sm" @click="dismissAllNotifications()">
+                        Clear all
+                    </button>
+                </div>
+
+                <div class="pos-block pos-block--rows w-full">
+                    <div
+                        v-for="notification in printNotifications"
+                        :key="notification.id"
+                        class="flex items-stretch"
+                    >
+                        <button
+                            type="button"
+                            class="pos-row flex-1 text-left"
+                            :class="notification.tone === 'bad' ? 'pos-row--bad' : 'pos-row--good'"
+                            @click="openNotification(notification)"
+                        >
+                            <span class="pos-row__glyph">
+                                <i :class="notification.tone === 'bad' ? 'pi pi-exclamation-triangle' : 'pi pi-check-circle'"></i>
+                            </span>
+                            <span class="pos-row__body">
+                                <span class="pos-row__title">{{ notification.headline }}</span>
+                                <span class="pos-row__sub" :class="notification.tone === 'bad' ? 'text-pos-bad font-semibold' : ''">
+                                    {{ notificationSub(notification) }}
+                                </span>
+                                <span v-if="notification.pause_reason" class="pos-row__sub text-pos-bad">
+                                    {{ notification.pause_reason }}
+                                </span>
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            class="pos-row px-4 shrink-0"
+                            title="Dismiss"
+                            aria-label="Dismiss notification"
+                            @click="dismissNotification(notification)"
+                        >
+                            <i class="pi pi-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+            </div>
         </div>
 
     </div>

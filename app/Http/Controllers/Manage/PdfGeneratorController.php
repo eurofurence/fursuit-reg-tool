@@ -11,6 +11,7 @@ use App\Support\Manage\EventScope;
 use App\Support\Manage\Toast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Inertia\Response;
 use Mpdf\HTMLParserMode;
@@ -99,6 +100,8 @@ class PdfGeneratorController extends Controller
      */
     public function index(EventScope $scope): Response
     {
+        Gate::authorize('manage-admin');
+
         return inertia('Manage/Tools/PdfGenerator', [
             'event' => $scope->event()?->only(['id', 'name']),
             'pdfTypes' => [

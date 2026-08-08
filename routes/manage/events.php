@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Route;
  * `bulk` is declared before `{event}` for the same reason as in users.php, and the
  * parameter is constrained to digits so a stray word cannot reach the binder at all.
  */
-Route::prefix('settings/events')->name('settings.events.')->group(function () {
+Route::prefix('settings/events')->name('settings.events.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [EventController::class, 'index'])->name('index');
     Route::get('create', [EventController::class, 'create'])->name('create');
     Route::post('/', [EventController::class, 'store'])->name('store');

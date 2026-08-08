@@ -87,6 +87,16 @@ and edit form all go through it).
   (500px) in list rows, both falling back to the master while a render is queued.
   `GenerateFursuitWebpJob` runs on submit and on every photo replacement, so the variants exist
   before a reviewer arrives.
+- **A record whose render has not landed is not handed out.** `Fursuit::imageRenderPending()` is
+  true while a photo has no `image_webp`; `scopeImageRenderSettled()` keeps those rows out of both
+  `nextPending()` and `pendingCount()`, so nobody is asked for a verdict on a picture that is not
+  there yet, and the count never promises records the queue will not hand over. Reaching such a
+  record by link still works: the review and record pages carry `fursuit.imageProcessing` and show
+  a "photo still processing" placeholder instead of pulling the print master into the frame.
+  The hold expires after `Fursuit::IMAGE_RENDER_GRACE_MINUTES` (15), because a render can fail for
+  good - a file GD will not decode is logged once and never retried, and an imported row never had
+  a job at all - and a submission must not be swallowed by one. Past the window the record returns
+  to the queue with its master photo, as before.
 
 ## Surfaces
 

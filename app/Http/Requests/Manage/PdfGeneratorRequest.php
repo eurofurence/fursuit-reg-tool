@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Manage;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
@@ -24,18 +25,21 @@ use Illuminate\Validation\Rule;
  * the form is refused; they exist so an input nobody can reach through the form cannot
  * hang a worker either.
  *
- * `authorize()` is true on purpose: `can:access-manage` on the route group is the whole
- * guard for this page, exactly as the Filament page had no `canAccess()` and was open to
- * reviewers as well as admins (parity checklist line 83).
+ * `authorize()` answers `manage-admin`. `can:manage-admin` on the route group already
+ * stops a reviewer, and this is the second half of the belt-and-braces pattern the panel
+ * uses everywhere it narrowed a surface: the middleware is what a route audit can see, the
+ * in-request gate is what stays attached if these routes are ever regrouped. It reverses
+ * parity checklist line 83, deliberately - the badge list and box labels enumerate the
+ * print run, which is desk work, not review work. See docs/admin/roles.md.
  *
  * Validation writes nothing, and neither does the request it guards. Generating a PDF is
- * a read.
+ * a read; it is the breadth of the read that is gated, not a write.
  */
 class PdfGeneratorRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return Gate::allows('manage-admin');
     }
 
     /**

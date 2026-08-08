@@ -46,7 +46,37 @@ const cashDenominations = {
     coins: [2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01]
 };
 
-const positions = props.checkout.items;
+/*
+ * The lines of the open transaction, in the shape the attendee screen uses for
+ * a badge: artwork, name, badge number. The clerk pays and hands out from this
+ * same screen, so the panel has to be lookup-able - a row that only said
+ * "Fursuit Badge  15,00 €" told them nothing about which card to fetch.
+ *
+ * Derived, never captured: a reload of `checkout` alone (the card-payment poll)
+ * and a repriced-and-reopened transaction both have to redraw these.
+ */
+const positions = computed(() => props.checkout.items.map((item) => {
+    const badge = item.payable ?? {};
+    const extras = [];
+
+    if (badge.dual_side_print) {
+        extras.push('double sided');
+    }
+    if (badge.extra_copy_of) {
+        extras.push('extra copy');
+    }
+
+    return {
+        id: item.id,
+        name: badge.fursuit?.name || item.name,
+        badgeNumber: badge.custom_id || `#${item.payable_id}`,
+        species: badge.fursuit?.species?.name || '',
+        image: badge.fursuit?.image_url || null,
+        printed: !! badge.printed_at,
+        extras,
+        total: item.total,
+    };
+}));
 
 const cardPaymentCheckInterval = ref(null);
 
@@ -383,18 +413,33 @@ function receiptForm(via) {
                     <template #content>
                         <!-- Items List -->
                         <div class="flex-1 ">
-                            <div class="mb-4 max-h-80 overflow-y-auto">
-                                <div v-for="pos in positions" :key="pos.id" class="mb-3 p-2 border-b border-pos-line">
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <div class="font-medium text-sm">{{ pos.name }}</div>
-                                            <div class="text-xs text-pos-muted">Fursuit Badge #{{ pos.payable_id }}</div>
-                                            <div v-if="pos.description && pos.description.length" class="text-xs text-pos-muted mt-1">
-                                                {{ pos.description.join(', ') }}
-                                            </div>
+                            <div class="mb-4 max-h-80 overflow-y-auto divide-y divide-pos-line">
+                                <div v-for="pos in positions" :key="pos.id" class="flex items-center gap-3 py-2">
+                                    <img
+                                        v-if="pos.image"
+                                        :src="pos.image"
+                                        :alt="`${pos.name} artwork`"
+                                        class="pos-badge__img"
+                                        loading="lazy"
+                                    />
+                                    <span v-else class="pos-badge__img pos-badge__img--empty">
+                                        <i class="pi pi-image text-xl"></i>
+                                    </span>
+
+                                    <div class="flex-1 min-w-0">
+                                        <div class="pos-badge__name">
+                                            <span class="pos-badge__nametext">{{ pos.name }}</span>
                                         </div>
-                                        <div class="font-bold">{{ formatEuroFromCents(pos.total) }}</div>
+                                        <div class="pos-badge__meta">
+                                            <span class="pos-num font-bold">{{ pos.badgeNumber }}</span>
+                                            <span v-if="pos.species">· {{ pos.species }}</span>
+                                            <span v-for="extra in pos.extras" :key="extra" class="pos-pill">{{ extra }}</span>
+                                            <!-- Not printed yet means there is no card in the box to hand over. -->
+                                            <span v-if="!pos.printed" class="pos-pill text-pos-warn">not printed</span>
+                                        </div>
                                     </div>
+
+                                    <div class="pos-badge__price">{{ formatEuroFromCents(pos.total) }}</div>
                                 </div>
                             </div>
                         </div>

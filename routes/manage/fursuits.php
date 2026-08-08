@@ -54,9 +54,19 @@ Route::prefix('fursuits')->name('fursuits.')->group(function () {
         ->name('review.show');
 
     Route::get('{fursuit}', [FursuitController::class, 'show'])->whereNumber('fursuit')->name('show');
-    Route::get('{fursuit}/edit', [FursuitController::class, 'edit'])->whereNumber('fursuit')->name('edit');
-    Route::put('{fursuit}', [FursuitController::class, 'update'])->whereNumber('fursuit')->name('update');
-    Route::delete('{fursuit}', [FursuitController::class, 'destroy'])->whereNumber('fursuit')->name('destroy');
+
+    /*
+     * Editing the row is not reviewing it. FursuitPolicy has answered `update` and `delete`
+     * with is_admin since the rebuild - the reviewer's verdicts below go through the
+     * moderation controller, which authorizes `view` - so these three were already refused
+     * in the controller. `can:manage-admin` puts that on the route table too, where a route
+     * audit can see it without reading three method bodies; see docs/admin/roles.md.
+     */
+    Route::middleware('can:manage-admin')->group(function () {
+        Route::get('{fursuit}/edit', [FursuitController::class, 'edit'])->whereNumber('fursuit')->name('edit');
+        Route::put('{fursuit}', [FursuitController::class, 'update'])->whereNumber('fursuit')->name('update');
+        Route::delete('{fursuit}', [FursuitController::class, 'destroy'])->whereNumber('fursuit')->name('destroy');
+    });
 
     // The three verdicts. Approve and reject existed; the publication block is the outcome
     // that did not, and is the reason a gallery rule no longer costs an attendee a badge.

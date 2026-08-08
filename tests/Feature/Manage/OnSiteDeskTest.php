@@ -288,13 +288,15 @@ test('the editor is told the range it may pick from', function () {
         );
 });
 
-test('a reviewer can read the page but neither write', function () {
+test('a reviewer can reach neither the page nor either write', function () {
     actingAs($this->reviewer);
 
+    // Read was open at cutover, on the reasoning that a reviewer may look at how the
+    // convention is configured. Reviewers are Dashboard, Badges and Fursuits now, and
+    // opening hours and booth ranges are none of the three; see docs/admin/roles.md.
     withSession($this->session)
         ->get(route('admin.settings.on-site-desk'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('canEdit', false));
+        ->assertForbidden();
 
     withSession($this->session)
         ->put(route('admin.settings.on-site-desk.booths'), ['booths' => [['from' => 0, 'to' => null]]])

@@ -13,10 +13,13 @@ use Illuminate\Support\Facades\Gate;
  * including an `is_reviewer`-only user - while merely looking at a printer needs
  * `is_admin` through `PrinterPolicy` (audit 51). Plan 2.10 #18 closes that.
  *
- * Reading stays open to every `access-manage` holder, because batch oversight is what the
- * resource exists for: staff who are not standing at the printer watch the run from here.
- * The four things that change a run - pause, resume, cancel and the manual verification -
- * require `is_admin`.
+ * Reading is `is_admin`, and so is everything else. Batch oversight is what the resource
+ * exists for - staff who are not standing at the printer watch the run from here - but
+ * "staff" there means the desk, not the fursuit reviewers, who were narrowed to Dashboard,
+ * Badges and Fursuits (docs/admin/roles.md). Reads were `access-manage` at cutover, which
+ * put the live print run on a reviewer's screen for no reason it could act on. The four
+ * things that change a run - pause, resume, cancel and the manual verification - were
+ * already `is_admin` and are unchanged.
  *
  * `verify` acts on a PrintJob but is asked of the batch, which is what Filament's relation
  * manager did: a relation manager authorizes against the owner record, not against the
@@ -91,11 +94,11 @@ class PrintBatchPolicy
     }
 
     /**
-     * The panel gate itself, asked through Gate rather than retyped, so "who may read the
-     * panel" keeps one definition in AuthServiceProvider.
+     * Asked through Gate rather than retyped, so "who administers the panel" keeps one
+     * definition in AuthServiceProvider.
      */
     private function reads(User $user): bool
     {
-        return Gate::forUser($user)->allows('access-manage');
+        return Gate::forUser($user)->allows('manage-admin');
     }
 }

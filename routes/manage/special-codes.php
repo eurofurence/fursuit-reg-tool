@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
  * `bulk` is declared before `{code}` for the same reason as in users.php, and the parameter
  * is constrained to digits so a stray word cannot reach the binder at all.
  */
-Route::prefix('special-codes')->name('special-codes.')->group(function () {
+Route::prefix('special-codes')->name('special-codes.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [SpecialCodeController::class, 'index'])->name('index');
     Route::get('create', [SpecialCodeController::class, 'create'])->name('create');
     Route::post('/', [SpecialCodeController::class, 'store'])->name('store');

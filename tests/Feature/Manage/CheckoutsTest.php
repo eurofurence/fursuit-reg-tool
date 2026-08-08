@@ -148,8 +148,10 @@ beforeEach(function () {
 });
 
 /*
- * Access. CheckoutPolicy answers access-manage for reading, which is admin OR reviewer and
- * matches the unguarded Filament resource, and is_admin for the one write.
+ * Access. CheckoutPolicy answers is_admin for everything. Reading was access-manage at
+ * cutover, matching the unguarded Filament resource; reviewers were then narrowed to
+ * Dashboard, Badges and Fursuits, and a checkout is an attendee payment record a fursuit
+ * reviewer has no business in. See docs/admin/roles.md.
  */
 
 test('a guest is redirected to login', function () {
@@ -160,22 +162,16 @@ test('an attendee cannot reach the checkout list at all', function () {
     actingAs($this->attendee)->get(route('admin.checkouts.index'))->assertForbidden();
 });
 
-test('a reviewer can read the list and the detail page, as in Filament', function () {
+test('a reviewer cannot reach the list or a checkout', function () {
     $checkout = ($this->checkout)();
 
-    actingAs($this->reviewer)->get(route('admin.checkouts.index'))->assertSuccessful();
-    actingAs($this->reviewer)->get(route('admin.checkouts.show', $checkout))->assertSuccessful();
+    actingAs($this->reviewer)->get(route('admin.checkouts.index'))->assertForbidden();
+    actingAs($this->reviewer)->get(route('admin.checkouts.show', $checkout))->assertForbidden();
 });
 
-test('a reviewer is not offered the print action and cannot post it', function () {
+test('a reviewer cannot print a receipt either', function () {
     $checkout = ($this->checkout)();
     ($this->receiptPrinter)();
-
-    $props = actingAs($this->reviewer)
-        ->get(route('admin.checkouts.index'))
-        ->viewData('page')['props'];
-
-    expect(array_column($props['rows'][0]['actions'], 'name'))->toBe(['view', 'receipt']);
 
     actingAs($this->reviewer)
         ->post(route('admin.checkouts.print', $checkout))

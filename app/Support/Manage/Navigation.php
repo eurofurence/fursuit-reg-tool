@@ -117,15 +117,16 @@ final class Navigation
              * `admin.settings.general` is the pane /admin/settings renders, so the rail
              * item and the first pane are one URL.
              *
-             * Neither carries a `permits()` argument: reading how the convention is
-             * configured, and reaching the tool index, are open to the whole panel, and the
-             * entries inside gate themselves. Events and Users are gated inside settings(),
-             * DB Service inside tools(), rather than here, because hiding a rail entry over
-             * one child would take all its siblings with it.
+             * Both carry `manage-admin`, so the whole group is absent for a reviewer. That
+             * is not "hiding a rail entry over one child": every pane behind Settings and
+             * every card behind Tools is admin-only now (docs/admin/roles.md), so the two
+             * entries would open pages with nothing on them. The per-child gates inside
+             * settings() and tools() stay, because an admin still sees a filtered list
+             * there and those functions are what a later reviewer-visible pane would use.
              */
             ['label' => 'Configuration', 'items' => [
-                $this->item('Tools', 'wrench', 'admin.tools.index'),
-                $this->item('Settings', 'cog', 'admin.settings.general'),
+                $this->item('Tools', 'wrench', 'admin.tools.index', null, $this->permits('manage-admin')),
+                $this->item('Settings', 'cog', 'admin.settings.general', null, $this->permits('manage-admin')),
             ]],
         ];
 
@@ -158,16 +159,17 @@ final class Navigation
     {
         $panes = [
             $this->pane('general', 'General', 'sliders-horizontal', 'admin.settings.general',
-                'The event this panel is configuring, and what Settings holds.'),
+                'The landing pane: pick what to configure from this menu.'),
             $this->pane('events', 'Events', 'calendar-days', 'admin.settings.events.index',
                 'The conventions themselves: dates, order window and badge class.',
                 $this->permits('viewAny', Event::class)),
             $this->pane('on-site-desk', 'On-Site Desk', 'map-pin', 'admin.settings.on-site-desk',
                 'Opening hours and the booth ranges attendees queue by.'),
-            $this->pane('printing', 'Printing', 'printer', 'admin.settings.printing',
-                'Printers, jobs and batches for the badge print run.'),
-            $this->pane('badges', 'Badges', 'id-card', 'admin.settings.badges',
-                'Badge design, pricing and what attendees may order.'),
+            /*
+             * No Printing or Badges pane. Both were placeholders that configured nothing and
+             * only linked at the Printers, Print Batches and Badges modules, so they are gone
+             * rather than kept as a submenu entry that leads to a paragraph.
+             */
             $this->pane('review-reasons', 'Review Reasons', 'shield-check', 'admin.settings.review-reasons',
                 'The keywords the review queue offers, and the text attendees receive.'),
             /*

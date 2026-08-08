@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\POS;
 
+use App\Domain\Printing\Models\PrintBatch;
 use App\Domain\Printing\Models\PrintJob;
+use App\Domain\Printing\Services\DeskPrintNotifications;
+use App\Enum\PrintBatchStatusEnum;
 use App\Enum\PrintJobStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Badge\Badge;
@@ -41,10 +44,15 @@ class DashboardController extends Controller
                 PrintJobStatusEnum::Retrying,
             ]),
             'failed_print' => $this->getPrintJobCount([PrintJobStatusEnum::Failed]),
+            'my_print_batches_running' => $this->getMyRunningBatchCount($staffId),
         ];
 
         return Inertia::render('POS/Dashboard', [
             'stats' => $stats,
+            // Batches this clerk started that have finished, stalled or been
+            // cancelled. Polled with the stats, so a card that comes out while the
+            // attendee is still at the counter shows up without a reload.
+            'printNotifications' => DeskPrintNotifications::pendingFor($staffId),
             'event' => $currentEvent ? [
                 'name' => $currentEvent->name,
                 'state' => $currentEvent->state->value,
@@ -122,6 +130,26 @@ class DashboardController extends Controller
             ->where('status_fulfillment', 'picked_up')
             ->whereDate('picked_up_at', today())
             ->when($staffId, fn ($q) => $q->where('picked_up_by_staff_id', $staffId))
+            ->count();
+    }
+
+    /**
+     * Runs this clerk started that are still on their way through a printer.
+     */
+    private function getMyRunningBatchCount(?int $staffId): int
+    {
+        if ($staffId === null) {
+            return 0;
+        }
+
+        return PrintBatch::query()
+            ->startedByStaff($staffId)
+            ->whereIn('status', [
+                PrintBatchStatusEnum::Draft,
+                PrintBatchStatusEnum::Ready,
+                PrintBatchStatusEnum::Printing,
+                PrintBatchStatusEnum::Paused,
+            ])
             ->count();
     }
 

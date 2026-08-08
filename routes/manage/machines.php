@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
  * The login link is a credential and gets its own endpoint, minted only when it is
  * called. Nothing renders it into a page payload.
  */
-Route::prefix('machines')->name('machines.')->group(function () {
+Route::prefix('machines')->name('machines.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [MachineController::class, 'index'])->name('index');
     Route::get('create', [MachineController::class, 'create'])->name('create');
     Route::post('/', [MachineController::class, 'store'])->name('store');

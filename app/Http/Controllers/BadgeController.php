@@ -157,10 +157,11 @@ class BadgeController extends Controller
 
             $isPrepaidBadge = $prepaidBadgesLeft > 0;
 
-            // Returns in cents - all badges cost 2€ unless prepaid
+            // Returns in cents - the event's badge price unless prepaid
             $total = BadgeCalculationService::calculate(
                 isFreeBadge: $isPrepaidBadge, // Use prepaid logic for "free" calculation
                 isLate: false, // No late fees in new system
+                event: $event,
             );
 
             // Tax is 19% in Germany
@@ -182,7 +183,7 @@ class BadgeController extends Controller
 
             // Handle spare copy if requested
             if ($validated['upgrades']['spareCopy']) {
-                $total = BadgeCalculationService::calculate(isSpareCopy: true);
+                $total = BadgeCalculationService::calculate(isSpareCopy: true, event: $event);
                 $clone = $badge->replicate();
                 $clone->is_free_badge = false;
                 $clone->extra_copy = true;
@@ -277,9 +278,12 @@ class BadgeController extends Controller
             /**
              * Badge
              */
+            // The badge's own event, not the active one: editing an order must reprice it
+            // at the price it was placed under, even if a later event has moved on.
             $total = BadgeCalculationService::calculate(
                 isFreeBadge: $badge->is_free_badge,
                 isLate: $badge->apply_late_fee,
+                event: $fursuit->event,
             );
             $badge->total = round($total);
             $badge->subtotal = round($total / 1.19);

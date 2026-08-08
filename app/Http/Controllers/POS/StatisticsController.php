@@ -75,19 +75,29 @@ class StatisticsController extends Controller
      * Finished checkouts only: ACTIVE ones are baskets nobody has paid yet and
      * CANCELLED ones never took money.
      *
-     * Deliberately not filtered by event. A checkout's items are polymorphic
-     * and a single one can mix badges from several years, so there is no honest
-     * way to split its total per event — and the till belongs to one convention
-     * anyway, so every finished checkout on it is this convention's money.
+     * Scoped by date, not by event id: `checkouts` has no event_id, and its
+     * items are polymorphic, so a single checkout can mix badges from several
+     * years and cannot be split per event. The date window is the honest
+     * approximation - the till only runs from the moment ordering opens for the
+     * current event onwards, so everything from that point is this event's
+     * money and everything before it belongs to a previous convention.
+     *
+     * Without this the page summed every checkout ever taken (EF28 + EF29 +
+     * EF30) under a heading that says "whole event", next to badge counts that
+     * *were* event-scoped - two different universes in one panel.
      */
-    private function checkouts(): Builder
+    private function checkouts(?Event $currentEvent): Builder
     {
-        return Checkout::query()->where('status', 'FINISHED');
+        $since = $currentEvent?->order_starts_at ?? $currentEvent?->starts_at;
+
+        return Checkout::query()
+            ->where('status', 'FINISHED')
+            ->when($since, fn ($q) => $q->where('created_at', '>=', $since->copy()->startOfDay()));
     }
 
     private function getToday(?Event $currentEvent): array
     {
-        $paidToday = $this->checkouts()->whereDate('updated_at', today());
+        $paidToday = $this->checkouts($currentEvent)->whereDate('updated_at', today());
 
         return [
             'badges_ordered' => $this->badges($currentEvent)->whereDate('created_at', today())->count(),
@@ -105,7 +115,7 @@ class StatisticsController extends Controller
 
     private function getTotals(?Event $currentEvent): array
     {
-        $paid = $this->checkouts();
+        $paid = $this->checkouts($currentEvent);
 
         return [
             'participants' => $currentEvent
@@ -224,7 +234,7 @@ class StatisticsController extends Controller
                     ->where('status_fulfillment', 'picked_up')
                     ->whereDate('picked_up_at', $day)
                     ->count(),
-                'money' => (int) $this->checkouts()->whereDate('updated_at', $day)->sum('total'),
+                'money' => (int) $this->checkouts($currentEvent)->whereDate('updated_at', $day)->sum('total'),
             ];
 
             $day->addDay();

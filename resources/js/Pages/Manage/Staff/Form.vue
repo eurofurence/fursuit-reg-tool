@@ -42,6 +42,7 @@ import ManageDialog from '@/Components/Manage/ManageDialog.vue';
 import ManageIcon from '@/Components/Manage/ManageIcon.vue';
 import PageHeader from '@/Components/Manage/PageHeader.vue';
 import Pagination from '@/Components/Manage/Pagination.vue';
+import StatCard from '@/Components/Manage/StatCard.vue';
 import { useTableQuery } from '@/Components/Manage/useTableQuery.js';
 
 const props = defineProps({
@@ -50,6 +51,14 @@ const props = defineProps({
   /** Flashed by the Generate button. Nothing is written until this form is saved. */
   generatedSetupCode: { type: String, default: null },
   headerActions: { type: Array, default: () => [] },
+
+  /**
+   * The member's own numbers, for one event or all time. Absent on create.
+   * Reloaded on its own by the event picker; see `pickEvent` below.
+   */
+  statistics: { type: Object, default: null },
+  statisticsEvents: { type: Array, default: () => [] },
+  selectedEventId: { type: Number, default: null },
 
   /** The nested tag table. Absent on create, where there is no member to hang tags off. */
   name: { type: String, default: null },
@@ -66,6 +75,18 @@ const props = defineProps({
 });
 
 const editing = computed(() => Boolean(props.staff?.id));
+
+/*
+ * Which panel is showing. Local state, so switching to the numbers and back does not
+ * discard a half-filled form or cost a round trip. Create has no numbers to show and
+ * renders no strip at all.
+ */
+const panels = [
+  { key: 'details', label: 'Details' },
+  { key: 'statistics', label: 'Statistics' },
+];
+
+const tab = ref('details');
 
 const form = useForm({
   name: props.staff?.name ?? '',
@@ -125,6 +146,129 @@ watch(
     }
   },
 );
+
+/*
+ * The statistics panel.
+ *
+ * Everything below is presentation of numbers the server already decided. The one thing
+ * decided here is the event, and switching it reloads `statistics` and `selectedEventId`
+ * and nothing else: the form above keeps whatever has been typed into it, and the RFID
+ * table below does not re-run its query.
+ */
+const eventChoice = computed(() =>
+  props.selectedEventId === null ? 'all' : String(props.selectedEventId),
+);
+
+const loadingStats = ref(false);
+
+const pickEvent = (event) => {
+  loadingStats.value = true;
+
+  router.get(
+    route('admin.staff.edit', props.staff.id),
+    { event: event.target.value },
+    {
+      only: ['statistics', 'selectedEventId'],
+      preserveState: true,
+      preserveScroll: true,
+      replace: true,
+      onFinish: () => {
+        loadingStats.value = false;
+      },
+    },
+  );
+};
+
+const EMPTY = '—';
+
+/** Seconds as the coarsest unit that still says something: `4m 12s`, `6h 30m`. */
+const duration = (seconds) => {
+  if (seconds === null || seconds === undefined) return EMPTY;
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+
+  const minutes = Math.floor(seconds / 60);
+
+  if (minutes < 60) return `${minutes}m ${Math.round(seconds % 60)}s`;
+
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+};
+
+// Cents in, euros out. The payload is cents the whole way here for the same reason the
+// POS statistics page keeps them: mixing the two units is what made the old page
+// multiply by 100 in one place and not another.
+const euros = (cents) =>
+  new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format((cents ?? 0) / 100);
+
+const perHour = (rate) => (rate === null || rate === undefined ? 'Too short to rate' : `${rate} an hour`);
+
+const clockHour = (hour) => `${String(hour).padStart(2, '0')}:00`;
+
+const stats = computed(() => props.statistics);
+
+const cards = computed(() => {
+  const s = props.statistics;
+
+  if (!s) return [];
+
+  return [
+    {
+      key: 'badges',
+      label: 'Badges handed out',
+      value: s.handovers.badges,
+      description: perHour(s.handovers.perHour),
+      icon: 'package-check',
+    },
+    {
+      key: 'hours',
+      label: 'Hours worked',
+      value: s.time.activeHours,
+      description: `${s.time.shifts} ${s.time.shifts === 1 ? 'shift' : 'shifts'}, split on ${s.time.idleGapMinutes} min idle`,
+      icon: 'clock',
+    },
+    {
+      key: 'avg',
+      label: 'Avg per transaction',
+      value: duration(s.time.avgTransactionSeconds),
+      description: `Median ${duration(s.time.medianTransactionSeconds)}`,
+      icon: 'hourglass',
+    },
+    {
+      key: 'longest',
+      label: 'Longest transaction',
+      value: duration(s.time.longestTransactionSeconds),
+      description: `Of ${s.time.actions} actions`,
+      icon: 'hourglass',
+    },
+    {
+      key: 'transacting',
+      label: 'Time in transactions',
+      value: duration(s.time.transactionSeconds),
+      description: perHour(s.time.actionsPerHour),
+      icon: 'hand',
+    },
+    {
+      key: 'busiest',
+      label: 'Busiest hour',
+      value: s.busiestHour ? clockHour(s.busiestHour.hour) : EMPTY,
+      description: s.busiestHour ? `${s.busiestHour.actions} actions` : 'No activity recorded',
+      icon: 'trending-up',
+    },
+    {
+      key: 'checkouts',
+      label: 'Checkouts',
+      value: s.checkouts.count,
+      description: `${euros(s.checkouts.revenueCents)} taken`,
+      icon: 'receipt',
+    },
+    {
+      key: 'runs',
+      label: 'Print runs sent',
+      value: s.printing.runs,
+      description: `${s.printing.printedCards} of ${s.printing.cards} cards printed`,
+      icon: 'printer',
+    },
+  ];
+});
 
 /*
  * The tag table.
@@ -214,7 +358,37 @@ const submitTag = () => {
       :actions="headerActions"
     />
 
-    <form class="flex flex-col" @submit.prevent="submit">
+    <!--
+      Local tabs, not the shared TabBar: that one is a table's preset views and keeps its
+      state in the query string through useTableQuery. There is no table here, and putting
+      the panel in the URL would make switching to it a visit that discards a half-filled
+      form.
+    -->
+    <div
+      v-if="editing"
+      role="tablist"
+      aria-label="Staff record"
+      class="flex h-8 shrink-0 items-center gap-4 border-b border-hairline px-4"
+    >
+      <button
+        v-for="panel in panels"
+        :key="panel.key"
+        type="button"
+        role="tab"
+        :aria-selected="tab === panel.key"
+        class="-mb-px inline-flex h-8 shrink-0 items-center whitespace-nowrap border-b-2 text-[13px] leading-none outline-none transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
+        :class="
+          tab === panel.key
+            ? 'border-state-live text-fg-1'
+            : 'border-transparent text-fg-2 hover:text-fg-1'
+        "
+        @click="tab = panel.key"
+      >
+        {{ panel.label }}
+      </button>
+    </div>
+
+    <form v-show="tab === 'details'" class="flex flex-col" @submit.prevent="submit">
       <div class="space-y-3 p-4">
         <FormSection title="Staff">
           <FormField
@@ -263,11 +437,20 @@ const submitTag = () => {
             </div>
           </FormField>
 
+          <!--
+            The archive switch. Clearing it stamps `archived_at` and locks the member out
+            of the POS; it never deletes them, because their handovers, tills and print
+            runs all hang off this row.
+          -->
           <FormField
             v-model="form.is_active"
             label="Active"
             type="toggle"
-            helper="Inactive staff cannot login to POS"
+            :helper="
+              staff?.archived_at
+                ? `Archived. Inactive staff cannot login to POS.`
+                : 'Inactive staff cannot login to POS. Nothing is deleted; their statistics are kept.'
+            "
             :error="form.errors.is_active"
           />
 
@@ -288,8 +471,73 @@ const submitTag = () => {
       />
     </form>
 
+    <!-- Edit only: a member with no record yet has nothing to count. -->
+    <section v-if="stats" v-show="tab === 'statistics'" class="px-4 pt-4 pb-4">
+      <div class="rounded border border-hairline bg-mg-surface-1">
+        <header class="flex h-10 flex-wrap items-center gap-2 border-b border-hairline px-3">
+          <h2 class="text-[12px] font-semibold uppercase tracking-wide text-fg-1">Performance</h2>
+
+          <select
+            :value="eventChoice"
+            class="ml-auto h-7 rounded border border-hairline bg-mg-surface-2 px-2 text-[12px] text-fg-1 outline-none transition-colors focus:border-state-live/50"
+            aria-label="Event"
+            @change="pickEvent"
+          >
+            <option v-for="option in statisticsEvents" :key="option.id" :value="String(option.id)">
+              {{ option.name }}
+            </option>
+            <option value="all">All time</option>
+          </select>
+        </header>
+
+        <div class="p-3" :class="loadingStats ? 'opacity-50 transition-opacity' : ''">
+          <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <StatCard v-for="card in cards" :key="card.key" :stat="card" />
+          </div>
+
+          <p class="mt-2 text-[11px] leading-relaxed text-fg-3">
+            Hours are reconstructed from the timestamps on handovers, checkouts and print runs:
+            a gap over {{ stats.time.idleGapMinutes }} minutes ends a shift and is not counted as
+            worked. A transaction is the interval between two consecutive actions in one shift.
+          </p>
+
+          <div v-if="stats.perDay.length" class="mt-3 overflow-x-auto rounded border border-hairline">
+            <table class="w-full border-collapse text-[13px]">
+              <thead>
+                <tr class="border-b border-hairline bg-mg-surface-2 text-[11px] uppercase tracking-wide text-fg-2">
+                  <th class="h-7 px-3 text-left font-medium">Day</th>
+                  <th class="h-7 px-3 text-right font-medium">Hours</th>
+                  <th class="h-7 px-3 text-right font-medium">Shifts</th>
+                  <th class="h-7 px-3 text-right font-medium">Badges</th>
+                  <th class="h-7 px-3 text-right font-medium">Per hour</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr
+                  v-for="day in stats.perDay"
+                  :key="day.date"
+                  class="border-b border-hairline/60 last:border-0"
+                >
+                  <td class="h-8 px-3 whitespace-nowrap text-fg-1">{{ day.date }}</td>
+                  <td class="h-8 px-3 text-right tabular-nums text-fg-1">{{ day.hours }}</td>
+                  <td class="h-8 px-3 text-right tabular-nums text-fg-2">{{ day.shifts }}</td>
+                  <td class="h-8 px-3 text-right tabular-nums text-fg-1">{{ day.badges }}</td>
+                  <td class="h-8 px-3 text-right tabular-nums text-fg-2">{{ day.perHour ?? '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p v-else class="mt-3 text-[13px] text-fg-3">
+            Nothing recorded for this member here yet.
+          </p>
+        </div>
+      </div>
+    </section>
+
     <!-- The relation manager, as a card under the form. Edit only: a tag needs a member. -->
-    <section v-if="rows" class="px-4 pb-4">
+    <section v-if="rows" v-show="tab === 'details'" class="px-4 pb-4">
       <div class="rounded border border-hairline bg-mg-surface-1">
         <header class="flex h-10 items-center gap-2 border-b border-hairline px-3">
           <h2 class="text-[12px] font-semibold uppercase tracking-wide text-fg-1">Rfid tags</h2>

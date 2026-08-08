@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Route;
  * Both sub-routes are declared after the numeric {checkout}, and {checkout} is constrained
  * to digits, so no literal segment can ever bind as a model.
  */
-Route::prefix('checkouts')->name('checkouts.')->group(function () {
+Route::prefix('checkouts')->name('checkouts.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [CheckoutController::class, 'index'])->name('index');
 
     Route::get('{checkout}', [CheckoutController::class, 'show'])->whereNumber('checkout')->name('show');

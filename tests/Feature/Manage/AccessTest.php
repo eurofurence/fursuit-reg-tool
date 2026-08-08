@@ -85,25 +85,26 @@ test('the admin.badge-pdf routes refuse a signed-in attendee', function () {
     // They sat behind `auth` alone (audit landmine 60), and `custom_id` is
     // `{attendee_id}-{n}`, so the whole namespace was enumerable from any attendee
     // number: every logged-in user could pull any other attendee's badge PDF, image,
-    // name, species and Catch-Em-All QR code included. Now `can:access-manage`, per
-    // rebuild-plan 2.10 change 20. Asserted before the record exists, because the guard
-    // has to run ahead of the lookup that would otherwise 404 and hide the hole.
+    // name, species and Catch-Em-All QR code included. `can:access-manage` closed that per
+    // rebuild-plan 2.10 change 20, and it is `can:manage-admin` now. Asserted before the
+    // record exists, because the guard has to run ahead of the lookup that would otherwise
+    // 404 and hide the hole.
     actingAs($this->attendee);
 
     get(route('admin.badge-pdf.view', ['customId' => 'EF29-1']))->assertForbidden();
     get(route('admin.badge-pdf.download', ['customId' => 'EF29-1']))->assertForbidden();
 });
 
-test('the admin.badge-pdf routes stay open to the panel users that link to them', function () {
-    // `can:access-manage` is `is_admin || is_reviewer`, the same set the retired Filament
-    // panel's `User::canAccessPanel()` admitted, so nobody who could reach these links
-    // loses them. A missing badge is a 404 from the
-    // controller's own `firstOrFail`, which is the guard letting the request through.
-    foreach ([$this->admin, $this->reviewer] as $operator) {
-        actingAs($operator);
+test('the admin.badge-pdf routes are admin-only, not panel-wide', function () {
+    // Tightened from `access-manage` when reviewers were narrowed to Dashboard, Badges and
+    // Fursuits: a badge PDF by custom id is a lookup over the whole badge table, which is
+    // desk work (docs/admin/roles.md). A missing badge is a 404 from the controller's own
+    // `firstOrFail`, which is the guard letting the request through.
+    actingAs($this->admin);
+    get(route('admin.badge-pdf.view', ['customId' => 'NOPE']))->assertNotFound();
 
-        get(route('admin.badge-pdf.view', ['customId' => 'NOPE']))->assertNotFound();
-    }
+    actingAs($this->reviewer);
+    get(route('admin.badge-pdf.view', ['customId' => 'NOPE']))->assertForbidden();
 });
 
 test('a signed-in user who is neither admin nor reviewer gets 403', function () {

@@ -202,6 +202,7 @@ Read the file for the area you are changing; each records decisions that were re
 | [`docs/printing.md`](docs/printing.md) | print batches, jobs, leases, verification, the print agent (build/debug companion: [`docs/printing-implementation.md`](docs/printing-implementation.md)) |
 | [`docs/fiscal-compliance.md`](docs/fiscal-compliance.md) | SumUp, Fiskaly TSE signing, DSFinV-K exports |
 | [`docs/migrations.md`](docs/migrations.md) | writing any migration |
+| [`docs/admin/roles.md`](docs/admin/roles.md) | any route under `routes/manage/`, a policy's `viewAny`/`view`, or a new Settings pane or Tools card - it is the reviewer/admin boundary |
 | [`docs/admin/rebuild-plan.md`](docs/admin/rebuild-plan.md) | the `/admin` panel design, plus `current-filament-features.md` and `parity-checklist.md` as the parity contract |
 | [`docs/wallet-removal-plan.md`](docs/wallet-removal-plan.md) | wallet / payment plumbing |
 

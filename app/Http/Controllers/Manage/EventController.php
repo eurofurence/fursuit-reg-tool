@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Manage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\EventRequest;
 use App\Models\Event;
+use App\Services\BadgeCalculationService;
 use App\Support\Manage\Action;
 use App\Support\Manage\Column;
 use App\Support\Manage\Table;
@@ -412,6 +413,9 @@ class EventController extends Controller
                 ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
                 ->values()
                 ->all(),
+            // What a new event starts its badge price at, so the euro figure lives in one
+            // place (BadgeCalculationService) rather than being retyped into the Vue form.
+            'defaultBadgePrice' => number_format(BadgeCalculationService::DEFAULT_FEE / 100, 2, '.', ''),
         ];
     }
 
@@ -436,6 +440,14 @@ class EventController extends Controller
             'order_starts_at' => $event->order_starts_at?->format('Y-m-d\TH:i') ?? '',
             'order_ends_at' => $event->order_ends_at?->format('Y-m-d\TH:i') ?? '',
             'free_badge_deadline' => $event->free_badge_deadline?->format('Y-m-d\TH:i') ?? '',
+            // Cents on the table, euros in the form: the number an operator types is the
+            // number the desk and the public pages quote. EventRequest converts it back.
+            'badge_price' => number_format(
+                ($event->badge_price_cents ?? BadgeCalculationService::DEFAULT_FEE) / 100,
+                2,
+                '.',
+                ''
+            ),
             'mass_printed_at' => $event->mass_printed_at?->format('Y-m-d\TH:i') ?? '',
             'catch_em_all_enabled' => (bool) $event->catch_em_all_enabled,
             'catch_em_all_start' => $event->catch_em_all_start?->format('Y-m-d\TH:i') ?? '',

@@ -11,6 +11,7 @@ use App\Support\Manage\Toast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Response;
 
 /**
@@ -61,6 +62,8 @@ class BadgePreviewController extends Controller
      */
     public function index(Request $request): Response
     {
+        Gate::authorize('manage-admin');
+
         $customId = $this->requestedCustomId($request);
         $badge = $customId === null ? null : $this->find($customId);
 
@@ -77,6 +80,8 @@ class BadgePreviewController extends Controller
      */
     public function lookup(Request $request): RedirectResponse
     {
+        Gate::authorize('manage-admin');
+
         $validated = $request->validate([
             'custom_id' => ['required', 'string', 'max:'.self::MAX_CUSTOM_ID],
         ]);
@@ -107,6 +112,8 @@ class BadgePreviewController extends Controller
      */
     public function viewPdf(string $customId, BadgePdfController $pdf): HttpResponse|RedirectResponse
     {
+        Gate::authorize('manage-admin');
+
         if (! $this->exists($customId)) {
             return $this->noBadgeLoaded($customId);
         }
@@ -120,6 +127,8 @@ class BadgePreviewController extends Controller
      */
     public function downloadPdf(string $customId, BadgePdfController $pdf): HttpResponse|RedirectResponse
     {
+        Gate::authorize('manage-admin');
+
         if (! $this->exists($customId)) {
             return $this->noBadgeLoaded($customId);
         }

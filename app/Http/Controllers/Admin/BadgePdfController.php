@@ -8,11 +8,14 @@ use App\Badges\EF30_Badge;
 use App\Http\Controllers\Controller;
 use App\Models\Badge\Badge;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
 
 class BadgePdfController extends Controller
 {
     public function view(string $customId): Response
     {
+        Gate::authorize('manage-admin');
+
         $badge = Badge::with(['fursuit.user', 'fursuit.species', 'fursuit.event'])
             ->where('custom_id', $customId)
             ->firstOrFail();
@@ -37,6 +40,8 @@ class BadgePdfController extends Controller
 
     public function download(string $customId): Response
     {
+        Gate::authorize('manage-admin');
+
         $badge = Badge::with(['fursuit.user', 'fursuit.species', 'fursuit.event'])
             ->where('custom_id', $customId)
             ->firstOrFail();

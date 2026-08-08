@@ -65,7 +65,19 @@ const table = computed(() => ({
       subtitle="The signing identities behind every fiscal transaction. Read-only."
     />
 
-    <div class="mx-4 mt-4 rounded-md border border-hairline bg-mg-surface-1 p-3">
+    <div class="mx-4 mt-4 rounded-md border border-state-warn/40 bg-state-warn/10 p-3">
+      <div class="flex items-center gap-2 text-[13px] font-medium text-fg-1">
+        <ManageIcon name="triangle-alert" :size="14" class="text-state-warn" />
+        Watch out: anything you do here can cost real money
+      </div>
+
+      <p class="mt-2 text-[11px] text-fg-3">
+        TSE clients are billed by Fiskaly. Creating, registering or deregistering one is a paid
+        operation against the live security module, not a local record change.
+      </p>
+    </div>
+
+    <div class="mx-4 mt-3 rounded-md border border-hairline bg-mg-surface-1 p-3">
       <div class="flex items-center gap-2 text-[13px] font-medium text-fg-1">
         <ManageIcon name="shield-check" :size="14" class="text-state-ok" />
         Clients are issued by the TSE, not by this panel

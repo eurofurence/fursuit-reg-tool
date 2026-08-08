@@ -46,6 +46,8 @@ export function usePosKeyboard(options = {}) {
         F3: '/pos/badges',
         F4: '/pos/print-queue',
         F6: '/pos/statistics',
+        // F5 is the browser reload and stays out of this map; F7 is free.
+        F7: '/pos/my-prints',
     };
 
     function handleKeydown(event) {

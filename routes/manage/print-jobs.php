@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Route;
  * bind "bulk" as a route model and 404 before the controller ever sees it. `create` is
  * declared first for the same reason.
  */
-Route::prefix('print-jobs')->name('print-jobs.')->group(function () {
+Route::prefix('print-jobs')->name('print-jobs.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [PrintJobController::class, 'index'])->name('index');
     Route::get('create', [PrintJobController::class, 'create'])->name('create');
     Route::post('/', [PrintJobController::class, 'store'])->name('store');

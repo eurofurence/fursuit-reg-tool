@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Route;
  * Literal segments would have to come before {print_batch}; there are none here, and the
  * numeric constraint keeps it that way if one is ever added.
  */
-Route::prefix('print-batches')->name('print-batches.')->group(function () {
+Route::prefix('print-batches')->name('print-batches.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [PrintBatchController::class, 'index'])->name('index');
     Route::get('{print_batch}', [PrintBatchController::class, 'show'])->whereNumber('print_batch')->name('show');
 

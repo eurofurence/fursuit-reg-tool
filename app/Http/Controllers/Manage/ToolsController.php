@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manage;
 
 use App\Http\Controllers\Controller;
 use App\Support\Manage\Navigation;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Response;
 
 /**
@@ -28,6 +29,8 @@ class ToolsController extends Controller
 {
     public function index(Navigation $navigation): Response
     {
+        Gate::authorize('manage-admin');
+
         return inertia('Manage/Tools/Index', [
             'tools' => $navigation->tools(),
         ]);

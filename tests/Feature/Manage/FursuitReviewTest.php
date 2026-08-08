@@ -79,7 +79,19 @@ beforeEach(function () {
 
         Badge::factory()->create(['fursuit_id' => $fursuit->id, 'extra_copy_of' => null]);
 
-        return $fursuit;
+        /*
+         * Stamp the gallery renders on, because the queue holds back a record whose render is still
+         * in flight (Fursuit::imageRenderSettled) and a fixture is meant to describe the settled
+         * case. It has to happen after create and quietly: FursuitObserver clears the variants when
+         * the photo changes, and GenerateFursuitWebpJob - running sync against a faked disk - writes
+         * nothing back. A test that wants the few seconds after an upload nulls them again itself.
+         */
+        $fursuit->forceFill([
+            'image_webp' => GenerateFursuitWebpJob::pathFor($fursuit->image),
+            'image_thumb' => GenerateFursuitWebpJob::thumbPathFor($fursuit->image),
+        ])->saveQuietly();
+
+        return $fursuit->refresh();
     };
 
     $this->scoped = fn (User $user) => actingAs($user)->withSession([
@@ -354,12 +366,17 @@ test('a second block is not offered while one stands, and a lift is', function (
         // Approving is still available, because that is how the block is cleared.
         ->and($outcomes['approved']['available'])->toBeTrue();
 
+    /*
+     * And no second surface offers a way out of it either: the record page carries no review actions,
+     * so clearing a block means approving the record in the queue - which is offered above, and which
+     * does mail the attendee.
+     */
     $actions = collect(
         actingAs($this->reviewer)->get(route('admin.fursuits.show', $fursuit))
             ->viewData('page')['props']['actions']
     )->pluck('name');
 
-    expect($actions)->toContain('unblock-publication');
+    expect($actions)->not->toContain('unblock-publication', 'approve', 'reject', 'block-publication');
 });
 
 test('a block on somebody who never asked to be published is recorded as a plain approval', function () {
@@ -615,14 +632,73 @@ test('the panel shows the gallery variant, not the print master', function () {
             ->where('rows.0.cells.image', fn ($url) => str_contains((string) $url, 'fluffy-thumb.webp'))
         );
 
-    // A render that has not landed yet falls back to the master rather than to an empty frame:
-    // the variant is derived data and a reviewer still has to see something to judge.
+    /*
+     * A render that has not landed yet falls back to the master rather than to an empty frame: the
+     * variant is derived data and a reviewer still has to see something to judge. The fixture stamps
+     * renders on, so this case nulls them again - which is exactly the state of the seconds after an
+     * upload.
+     */
     $fresh = ($this->fursuit)(['name' => 'Not rendered yet', 'image' => 'fursuits/raw.jpg']);
+    $fresh->forceFill(['image_webp' => null, 'image_thumb' => null])->saveQuietly();
 
     ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $fresh))
         ->assertInertia(fn (Assert $page) => $page
             ->where('fursuit.image', fn ($url) => str_contains((string) $url, 'fursuits/raw.jpg'))
         );
+});
+
+test('a record whose render is still queued says so and is held out of the queue', function () {
+    /*
+     * The seconds between an upload and GenerateFursuitWebpJob: the row exists, the photo does
+     * not exist in any form a page should show. Handing that to a reviewer means a verdict on
+     * a picture nobody saw, so the queue walks past it and the page says why.
+     */
+    $rendered = ($this->fursuit)(['name' => 'Rendered']);
+    $processing = ($this->fursuit)(['name' => 'Still processing']);
+    $processing->forceFill(['image_webp' => null, 'image_thumb' => null])->saveQuietly();
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review'))
+        ->assertRedirect(route('admin.fursuits.review.show', $rendered));
+
+    // Arriving by link still works - it just says what is missing rather than showing the master.
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $processing))
+        ->assertInertia(fn (Assert $page) => $page->where('fursuit.imageProcessing', true));
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.show', $processing))
+        ->assertInertia(fn (Assert $page) => $page->where('fursuit.imageProcessing', true));
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $rendered))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('fursuit.imageProcessing', false)
+            // And the count matches what the queue would actually hand out.
+            ->where('queue.remaining', 1)
+        );
+});
+
+test('a render that never lands stops hiding the record once the grace window passes', function () {
+    /*
+     * A file GD refuses to decode is logged and never retried, and an imported row never had a
+     * job at all. Holding those back forever would swallow the submission, so after the grace
+     * window the record comes back with its master photo, exactly as before.
+     */
+    $stuck = ($this->fursuit)(['name' => 'Never rendered', 'image' => 'fursuits/raw.jpg']);
+    $stuck->forceFill(['image_webp' => null, 'image_thumb' => null])->saveQuietly();
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review'))
+        ->assertRedirect(route('admin.fursuits.index'));
+
+    $this->travel(Fursuit::IMAGE_RENDER_GRACE_MINUTES + 1)->minutes();
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review'))
+        ->assertRedirect(route('admin.fursuits.review.show', $stuck));
+
+    ($this->scoped)($this->reviewer)->get(route('admin.fursuits.review.show', $stuck))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('fursuit.imageProcessing', false)
+            ->where('fursuit.image', fn ($url) => str_contains((string) $url, 'fursuits/raw.jpg'))
+        );
+
+    $this->travelBack();
 });
 
 test('a submitted photo is queued for its gallery variants straight away', function () {

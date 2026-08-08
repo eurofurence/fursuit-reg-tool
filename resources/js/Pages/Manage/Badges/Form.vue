@@ -1,7 +1,10 @@
 <script setup>
 /**
- * Edit a badge. There is no create counterpart: that page has never been able to save
- * (rebuild-plan 2.10 #6).
+ * A badge. There is no create counterpart: that page has never been able to save
+ * (rebuild-plan 2.10 #6), and no separate show page either, so this is also what a
+ * reviewer opens from the list. `canEdit` is false for them: the two status selects render
+ * as text like the other twelve fields and the save bar is gone, because the page is the
+ * record rather than a form they can submit. The PUT refuses them independently.
  *
  * Almost every field is read-only, which is what BadgeResource's form already was: twelve
  * of its fourteen fields were `->disabled()`. The two differences are both money-safety.
@@ -34,7 +37,12 @@ const props = defineProps({
   paymentOptions: { type: Array, required: true },
   /** Null when this operator may not delete. */
   deleteAction: { type: Object, default: null },
+  /** False for a reviewer: the page renders as a record, not a form. */
+  canEdit: { type: Boolean, default: false },
 });
+
+const statusLabel = (options, value) =>
+  options.find((option) => option.value === value)?.label ?? value;
 
 const form = useForm({
   status_fulfillment: props.badge.status_fulfillment,
@@ -47,10 +55,10 @@ const submit = () => form.put(route('admin.badges.update', props.badge.id));
 </script>
 
 <template>
-  <Head :title="`Edit badge ${title}`" />
+  <Head :title="`${canEdit ? 'Edit badge' : 'Badge'} ${title}`" />
 
   <ManageLayout>
-    <PageHeader title="Edit badge" :subtitle="title">
+    <PageHeader :title="canEdit ? 'Edit badge' : 'Badge'" :subtitle="title">
       <template #actions>
         <ActionButton v-if="deleteAction" :action="deleteAction" />
       </template>
@@ -76,26 +84,42 @@ const submit = () => form.put(route('admin.badges.update', props.badge.id));
       </FormSection>
 
       <FormSection title="Status Management" description="Current fulfillment and payment status of the badge">
-        <FormField
-          v-model="form.status_fulfillment"
-          label="Fulfillment Status"
-          type="select"
-          :options="fulfillmentOptions"
-          helper="Current fulfillment stage of the badge"
-          :error="form.errors.status_fulfillment"
-          required
-          narrow
-        />
-        <FormField
-          v-model="form.status_payment"
-          label="Payment Status"
-          type="select"
-          :options="paymentOptions"
-          helper="Current payment status"
-          :error="form.errors.status_payment"
-          required
-          narrow
-        />
+        <template v-if="canEdit">
+          <FormField
+            v-model="form.status_fulfillment"
+            label="Fulfillment Status"
+            type="select"
+            :options="fulfillmentOptions"
+            helper="Current fulfillment stage of the badge"
+            :error="form.errors.status_fulfillment"
+            required
+            narrow
+          />
+          <FormField
+            v-model="form.status_payment"
+            label="Payment Status"
+            type="select"
+            :options="paymentOptions"
+            helper="Current payment status"
+            :error="form.errors.status_payment"
+            required
+            narrow
+          />
+        </template>
+        <template v-else>
+          <FormField
+            label="Fulfillment Status"
+            :model-value="statusLabel(fulfillmentOptions, badge.status_fulfillment)"
+            helper="Current fulfillment stage of the badge"
+            readonly
+          />
+          <FormField
+            label="Payment Status"
+            :model-value="statusLabel(paymentOptions, badge.status_payment)"
+            helper="Current payment status"
+            readonly
+          />
+        </template>
       </FormSection>
 
       <FormSection title="Pricing Details" description="Badge pricing breakdown and financial information">
@@ -166,7 +190,7 @@ const submit = () => form.put(route('admin.badges.update', props.badge.id));
         />
       </FormSection>
 
-      <FormActions :processing="form.processing" :dirty="form.isDirty" submit-label="Save changes" />
+      <FormActions v-if="canEdit" :processing="form.processing" :dirty="form.isDirty" submit-label="Save changes" />
     </form>
   </ManageLayout>
 </template>

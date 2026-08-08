@@ -95,12 +95,15 @@ test('an attendee cannot reach the tool at all', function () {
     actingAs($this->nobody)->get(route('admin.tools.pdf.box-labels', ['title' => 'x']))->assertForbidden();
 });
 
-// Checklist line 83: no extra gate beyond access-manage, so reviewers keep the page.
-test('a reviewer reaches the page, because access-manage is the whole guard', function () {
-    actingAs($this->reviewer)
-        ->get(route('admin.tools.pdf'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('Manage/Tools/PdfGenerator'));
+/*
+ * Reverses checklist line 83, which kept the page open to reviewers. Both downloads
+ * enumerate the badge table for the print run, which is desk work, and reviewers were
+ * narrowed to Dashboard, Badges and Fursuits. See docs/admin/roles.md.
+ */
+test('a reviewer is refused the form and both downloads', function () {
+    actingAs($this->reviewer)->get(route('admin.tools.pdf'))->assertForbidden();
+    actingAs($this->reviewer)->get(route('admin.tools.pdf.badge-list'))->assertForbidden();
+    actingAs($this->reviewer)->get(route('admin.tools.pdf.box-labels', ['title' => 'x']))->assertForbidden();
 });
 
 test('the form opens on the Filament defaults', function () {

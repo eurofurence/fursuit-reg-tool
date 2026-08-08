@@ -19,22 +19,31 @@ use Illuminate\Support\Facades\Route;
  * and the button is offered on the create screen too, where there is no record to scope
  * to. Both hit the same controller.
  *
- * Literal segments are declared before the parameter ones, or DELETE /admin/staff/bulk
- * and POST /admin/staff/setup-code would bind "bulk" and "setup-code" as staff records
- * and 404 before a controller ever ran. `->scopeBindings()` on the nested group resolves
+ * There is no delete of any kind, single or bulk. A staff row is the only link between a
+ * badge handout, a checkout or a print run and the person who did it, and all three
+ * foreign keys are `nullOnDelete`, so removing a member erased their statistics without
+ * saying so. Archive and restore take its place: the same URI under two verbs, POST to
+ * retire and DELETE to bring back, single and bulk, matching machines.
+ *
+ * Literal segments are declared before the parameter ones, or POST /admin/staff/bulk and
+ * POST /admin/staff/setup-code would bind "bulk" and "setup-code" as staff records and
+ * 404 before a controller ever ran. `->scopeBindings()` on the nested group resolves
  * {rfidTag} through $staff->rfidTags(), so a tag belonging to another member is a 404
  * rather than something the controller has to remember to check.
  */
-Route::prefix('staff')->name('staff.')->group(function () {
+Route::prefix('staff')->name('staff.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [StaffController::class, 'index'])->name('index');
     Route::get('create', [StaffController::class, 'create'])->name('create');
     Route::post('/', [StaffController::class, 'store'])->name('store');
-    Route::delete('bulk', [StaffController::class, 'bulkDestroy'])->name('bulk.destroy');
     Route::post('setup-code', [StaffSetupCodeController::class, 'store'])->name('setup-code.create');
+
+    Route::post('bulk/archive', [StaffController::class, 'bulkArchive'])->name('bulk.archive');
+    Route::delete('bulk/archive', [StaffController::class, 'bulkUnarchive'])->name('bulk.unarchive');
 
     Route::get('{staff}/edit', [StaffController::class, 'edit'])->whereNumber('staff')->name('edit');
     Route::put('{staff}', [StaffController::class, 'update'])->whereNumber('staff')->name('update');
-    Route::delete('{staff}', [StaffController::class, 'destroy'])->whereNumber('staff')->name('destroy');
+    Route::post('{staff}/archive', [StaffController::class, 'archive'])->whereNumber('staff')->name('archive');
+    Route::delete('{staff}/archive', [StaffController::class, 'unarchive'])->whereNumber('staff')->name('unarchive');
     Route::post('{staff}/setup-code', [StaffSetupCodeController::class, 'store'])->whereNumber('staff')->name('setup-code');
 
     Route::prefix('{staff}/rfid-tags')->name('rfid-tags.')->whereNumber('staff')->scopeBindings()->group(function () {

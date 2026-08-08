@@ -17,15 +17,15 @@ use Illuminate\Auth\Access\HandlesAuthorization;
  * Those three answers move here, where nothing that touches the model can route around
  * them (plan 2.2, plan 2.10 #19).
  *
- * Reading stays where it is: `canView`/`canViewAny` were never overridden, so every admin
- * and every reviewer could open a checkout, and the panel gate `access-manage` is exactly
- * that pair. Nobody loses a screen at cutover.
+ * Reading is `is_admin`. It was admin-or-reviewer at cutover, matching the unguarded
+ * Filament resource, and that was wrong on its own terms: a checkout carries an
+ * attendee's payment history, and a reviewer approves fursuit images. Reviewers were
+ * narrowed to Dashboard, Badges and Fursuits, and this is one of the screens that went;
+ * see docs/admin/roles.md.
  *
  * `printReceipt` is its own ability rather than a reuse of `update` or `view`. It is the
  * one write the audit documents - it queues a job against a printer and creates a print
- * job row - so it answers a different question from "may this operator read the record",
- * and it is answered is_admin: a reviewer reads fiscal records, an admin sends paper out
- * of them.
+ * job row - so it answers a different question from "may this operator read the record".
  *
  * Registered explicitly in AuthServiceProvider: the model lives under
  * App\Domain\Checkout\Models\Checkout, where Laravel's auto-discovery looks for
@@ -37,17 +37,14 @@ class CheckoutPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * The panel gate itself: admin or reviewer, matching today's unguarded resource.
-     */
     public function viewAny(User $user): bool
     {
-        return $user->is_admin || $user->is_reviewer;
+        return (bool) $user->is_admin;
     }
 
     public function view(User $user, Checkout $checkout): bool
     {
-        return $user->is_admin || $user->is_reviewer;
+        return (bool) $user->is_admin;
     }
 
     /**

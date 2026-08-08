@@ -17,19 +17,21 @@ use Illuminate\Support\Facades\Route;
  *
  * The two PDF routes are the successors of `admin.badge-pdf.view` and
  * `admin.badge-pdf.download`, which sat behind `auth` alone, so any signed-in attendee
- * could pull any badge PDF by custom id (audit landmine 60). Here they inherit
- * `can:access-manage` from the group; the originals are gated the same way and now live
- * below in this file. Both survive as separate routes because view and download are two
- * distinct actions and collapsing them into one endpoint loses the download (plan 2.1).
+ * could pull any badge PDF by custom id (audit landmine 60). Both survive as separate
+ * routes because view and download are two distinct actions and collapsing them into one
+ * endpoint loses the download (plan 2.1).
  *
  * `{customId}` is the last segment of each path and every other segment is a literal, so
  * nothing here shadows anything. The id is a free-form string, not an integer, so it
  * carries no numeric constraint; the controller applies the form's own 255-char limit.
  *
- * No extra gate: `can:access-manage` on the group is the whole guard, so reviewers keep
- * the page they have today (parity checklist line 83).
+ * `can:manage-admin`, not the group's `can:access-manage`, and this reverses parity
+ * checklist line 83. Badge Preview renders any attendee's card from a custom id typed into
+ * a box: it is a lookup over the whole badge table, not a review surface, and a reviewer
+ * has no reason to pull one. Same for the PDF Generator's badge lists and box labels
+ * below. See docs/admin/roles.md.
  */
-Route::prefix('tools')->name('tools.')->group(function () {
+Route::prefix('tools')->name('tools.')->middleware('can:manage-admin')->group(function () {
     /*
      * The index the rail links to: one card per tool, from Navigation::tools(). It replaces
      * the Tools and Maintenance rail groups, which is why DB Service - a different prefix,
@@ -57,12 +59,15 @@ Route::prefix('tools')->name('tools.')->group(function () {
  * No shadowing to arrange: `badge-pdf` is a literal first segment no other module claims,
  * so registration order against the rest of the panel does not matter.
  *
- * The guard is unchanged in substance. `auth` and `can:access-manage` came with the old
- * group and come with this one; the panel adds ManageEventScope, which only seeds the
- * event selection in the session and has nothing to say about a PDF by custom id.
+ * The guard is `can:manage-admin`, tightened from the `can:access-manage` the old group
+ * carried, so these two answer exactly what Badge Preview above answers: a badge PDF by
+ * custom id is an admin lookup. `auth` and ManageEventScope come from the panel group;
+ * the latter only seeds the event selection and has nothing to say about a PDF.
  */
-Route::get('badge-pdf/{customId}/view', [BadgePdfController::class, 'view'])->name('badge-pdf.view');
-Route::get('badge-pdf/{customId}/download', [BadgePdfController::class, 'download'])->name('badge-pdf.download');
+Route::middleware('can:manage-admin')->group(function () {
+    Route::get('badge-pdf/{customId}/view', [BadgePdfController::class, 'view'])->name('badge-pdf.view');
+    Route::get('badge-pdf/{customId}/download', [BadgePdfController::class, 'download'])->name('badge-pdf.download');
+});
 
 /*
  * Maintenance (audit 5.3). One page, one repair, and the only endpoints in the panel that
@@ -104,10 +109,10 @@ Route::prefix('maintenance')->name('maintenance.')->middleware('can:manage-admin
  * `pdf` rather than `pdf-generator` as the name, because App\Support\Manage\Navigation
  * already links `admin.tools.pdf` and the rail is the caller.
  *
- * No extra gate, same as Badge Preview: `can:access-manage` on the group is the whole
- * guard, so reviewers keep the page they have today (parity checklist line 83).
+ * `can:manage-admin`, same as Badge Preview above and for the same reason: both downloads
+ * enumerate the badge table for the print run, which is admin work.
  */
-Route::prefix('tools')->name('tools.')->group(function () {
+Route::prefix('tools')->name('tools.')->middleware('can:manage-admin')->group(function () {
     Route::get('pdf-generator', [PdfGeneratorController::class, 'index'])->name('pdf');
     Route::get('pdf-generator/badge-list', [PdfGeneratorController::class, 'badgeList'])->name('pdf.badge-list');
     Route::get('pdf-generator/box-labels', [PdfGeneratorController::class, 'boxLabels'])->name('pdf.box-labels');
@@ -133,4 +138,5 @@ Route::prefix('tools')->name('tools.')->group(function () {
  * The target is resolved per request rather than written out, so the two cannot drift.
  */
 Route::get('tools/pickup-booths', fn () => redirect()->route('admin.settings.on-site-desk'))
+    ->middleware('can:manage-admin')
     ->name('tools.pickup-booths-moved');

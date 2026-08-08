@@ -50,8 +50,10 @@ class CheckoutController extends Controller
 
         return Inertia::render('POS/Checkout/Show', [
             // The payable comes along so the price override dialog can name the
-            // fursuit rather than repeat "Fursuit Badge" once per line.
-            'checkout' => $checkout->load('items.payable.fursuit'),
+            // fursuit rather than repeat "Fursuit Badge" once per line, and so
+            // the transaction panel can show the artwork the clerk matches
+            // against the card they are about to hand over.
+            'checkout' => $checkout->load('items.payable.fursuit.species'),
             'transaction' => $transactionData ?? null,
         ]);
     }

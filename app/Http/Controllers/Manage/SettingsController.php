@@ -2,29 +2,25 @@
 
 namespace App\Http\Controllers\Manage;
 
-use App\Domain\Printing\Models\PrintBatch;
-use App\Domain\Printing\Models\Printer;
 use App\Http\Controllers\Controller;
-use App\Models\Badge\Badge;
-use App\Models\Event;
 use App\Support\Manage\EventScope;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Route;
 use Inertia\Response;
 
 /**
  * Settings: configuration only, every pane behind one rail entry.
  *
- * The panes are General, Events, On-Site Desk, Printing, Badges, Review Reasons and Users,
- * each a real URL under /admin/settings so the second vertical menu in the page body
- * highlights from the path rather than from client state. The Tools index keeps Badge
- * Preview, the PDF Generator and DB Service: those run something, they do not configure
- * anything.
+ * The panes are General, Events, On-Site Desk, Review Reasons and Users, each a real URL
+ * under /admin/settings so the second vertical menu in the page body highlights from the
+ * path rather than from client state. The Tools index keeps Badge Preview, the PDF
+ * Generator and DB Service: those run something, they do not configure anything.
  *
- * Three panes live in this controller. On-Site Desk, Review Reasons, Events and Users have
- * their own: the first two because they are the panes with real fields to save, and the last
- * two because each is a full list-plus-form module (EventController, UserController) that
- * moved in here rather than a settings form that grew.
+ * Only General lives in this controller, and it configures nothing: it is the landing pane
+ * /admin/settings renders, and it asks the operator to pick a pane from the submenu. On-Site
+ * Desk, Review Reasons, Events and Users have their own controllers: the first two because
+ * they are the panes with real fields to save, and the last two because each is a full
+ * list-plus-form module (EventController, UserController) that moved in here rather than a
+ * settings form that grew.
  *
  * STORAGE: per-event columns on `events`, and nothing else.
  *
@@ -52,10 +48,10 @@ use Inertia\Response;
  * both are edited on the On-Site Desk pane. Nothing moved in either direction, and nothing
  * is duplicated, so the two screens cannot disagree and neither can silently win.
  *
- * That is why the three panes in this controller ship empty. General, Printing and Badges
- * have no field of their own yet, and the honest empty state names the screen that does
- * own the adjacent fields instead of growing a second editor for them. A setting no code
- * reads is worse than no setting; a setting two screens write is worse again.
+ * That is why General ships without a field of its own. Printing and Badges panes existed
+ * here too and were the same emptiness twice over, so they are gone rather than dressed up:
+ * printers, jobs, batches and badges are records with their own modules, and a pane that
+ * only points at another screen is a rail entry pretending to be a setting.
  *
  * Reading is open to the whole panel (`can:access-manage` on the group). Writing is
  * administrative and belongs behind `manage-admin`, so every pane is handed `canEdit` and
@@ -65,117 +61,11 @@ class SettingsController extends Controller
 {
     public function general(EventScope $scope): Response
     {
-        return inertia('Manage/Settings/General', $this->props($scope, [
-            'links' => $this->compact([
-                $this->eventLink($scope),
-                $this->link('All events', 'admin.settings.events.index', [], $this->permits('viewAny', Event::class)),
-            ]),
-        ]));
-    }
-
-    public function printing(EventScope $scope): Response
-    {
-        return inertia('Manage/Settings/Printing', $this->props($scope, [
-            'links' => $this->compact([
-                $this->link('Printers', 'admin.printers.index', [], $this->permits('viewAny', Printer::class)),
-                // No Print Jobs link: a card is worked on inside the batch that owns it, so
-                // the batch list is the one destination for the queue now.
-                $this->link('Print Batches', 'admin.print-batches.index', [], $this->permits('viewAny', PrintBatch::class)),
-            ]),
-        ]));
-    }
-
-    public function badges(EventScope $scope): Response
-    {
-        return inertia('Manage/Settings/Badges', $this->props($scope, [
-            'links' => $this->compact([
-                $this->eventLink($scope),
-                $this->link('Badges', 'admin.badges.index', [], $this->permits('viewAny', Badge::class)),
-            ]),
-        ]));
-    }
-
-    /**
-     * What every pane gets: the event it configures, and whether this operator may write.
-     *
-     * Reads only. Nothing in here touches the database beyond the event row EventScope has
-     * already resolved for the status strip on the same request.
-     *
-     * @param  array<string, mixed>  $extra
-     * @return array<string, mixed>
-     */
-    private function props(EventScope $scope, array $extra = []): array
-    {
         $event = $scope->event();
 
-        return array_merge([
+        return inertia('Manage/Settings/General', [
             'event' => $event?->only(['id', 'name']),
             'canEdit' => Gate::allows('manage-admin'),
-        ], $extra);
-    }
-
-    /**
-     * "Edit this event", the one link every pointer pane wants, pointing at the form that
-     * actually owns the fields the pane refuses to duplicate.
-     *
-     * @return array{label: string, url: string}|null
-     */
-    private function eventLink(EventScope $scope): ?array
-    {
-        $event = $scope->event();
-
-        if (! $event instanceof Event) {
-            return null;
-        }
-
-        return $this->link(
-            $event->name.' in Events',
-            'admin.settings.events.edit',
-            [$event->id],
-            Gate::allows('update', $event),
-        );
-    }
-
-    /**
-     * A link is dropped when its route does not exist yet or the operator cannot open it,
-     * the same two questions App\Support\Manage\Navigation asks of a rail item, so a pane
-     * never points a reviewer at a 403.
-     *
-     * @param  array<int, mixed>  $parameters
-     * @return array{label: string, url: string}|null
-     */
-    private function link(string $label, string $route, array $parameters = [], bool $visible = true): ?array
-    {
-        if (! $visible || ! Route::has($route)) {
-            return null;
-        }
-
-        return ['label' => $label, 'url' => route($route, $parameters)];
-    }
-
-    /**
-     * @param  array<int, array{label: string, url: string}|null>  $links
-     * @return array<int, array{label: string, url: string}>
-     */
-    private function compact(array $links): array
-    {
-        return array_values(array_filter($links));
-    }
-
-    /**
-     * Same rule as Navigation::permits(): a model with no policy registered is treated as
-     * visible, so a pointer does not vanish between the phase that adds a module and the
-     * phase that adds its policy.
-     */
-    private function permits(string $ability, string $model): bool
-    {
-        $user = auth()->user();
-
-        if ($user === null) {
-            return false;
-        }
-
-        return Gate::getPolicyFor($model) === null
-            || Gate::forUser($user)->allows($ability, $model);
+        ]);
     }
 }

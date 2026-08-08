@@ -157,10 +157,14 @@ test('an admin reaches the page', function () {
 /*
  * The successor to the rail assertion: DB Service has no rail row of its own since the
  * Maintenance group was folded into the Tools index, so what has to stay true is that its
- * card is on that index for an admin and absent for a reviewer. The index itself is open to
- * both - it is a menu - and the card is the thing `manage-admin` decides.
+ * card is on that index.
+ *
+ * The reviewer half of this test is gone with the whole Tools index, which is admin-only
+ * now that every card on it is (docs/admin/roles.md). Navigation::tools() still filters on
+ * `manage-admin` and that gate is still what puts this card on the page; it simply has
+ * nobody left to filter it out for. ReviewerScopeTest asserts the index refuses a reviewer.
  */
-test('the Tools card is offered to an admin and hidden from a reviewer', function () {
+test('the Tools card is offered to an admin', function () {
     $labels = fn ($tools) => collect($tools)->pluck('label')->all();
 
     actingAs($this->admin)
@@ -168,14 +172,6 @@ test('the Tools card is offered to an admin and hidden from a reviewer', functio
         ->assertInertia(fn (Assert $page) => $page->where(
             'tools',
             fn ($tools) => in_array('DB Service', $labels($tools), true)
-        ));
-
-    actingAs($this->reviewer)
-        ->get(route('admin.tools.index'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where(
-            'tools',
-            fn ($tools) => ! in_array('DB Service', $labels($tools), true)
         ));
 });
 

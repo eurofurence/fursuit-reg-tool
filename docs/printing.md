@@ -58,6 +58,32 @@ produced a card are unlocked and handed back to their owner; badges that did pri
 Ordering is descending by attendee, then descending by badge number, so cards land on top of each
 other and the finished stack reads ascending from the top.
 
+## Who started the run, and what they are told
+
+A batch records two owners, because two different tables sign work in:
+
+- `created_by_id` -> `users`, the admin accounts behind the `/admin` panel.
+- `created_by_staff_id` -> `staff`, the desk clerk the POS authenticates on the `machine-user`
+  guard. `auth()->id()` is null inside the POS, so every POS-queued batch used to have no owner at
+  all.
+
+The POS turns that attribution into feedback for the clerk who is standing at the counter with the
+attendee:
+
+- **My Print Jobs** (`/pos/my-prints`, `F7`) lists only that clerk's runs, with each card linking
+  through to the attendee page. The full print queue (`F4`) is still every job on every printer,
+  which is the print operator's view.
+- The dashboard shows a notification per run of theirs that has stopped moving: completed, paused
+  behind a failed card, or cancelled. Clicking it dismisses it and opens the attendee waiting for
+  that card. Running and ready batches say nothing, because "still going" is not news.
+- Dismissal stores `desk_dismissed_status`, the status that was acknowledged, rather than a
+  timestamp. A run dismissed while paused therefore speaks again once it completes, which a
+  boolean could not express.
+
+`DeskPrintNotifications` builds both payloads; `MyPrintsController` serves the page and the
+dismissals. A clerk can only dismiss their own runs: the notification is the news somebody else may
+still be waiting on.
+
 ## Job lifecycle
 
 ```
@@ -195,7 +221,9 @@ Print jobs and printer state are modelled in `app/Domain/Printing/` (`Models/`, 
 `PrintCompletionSourceEnum`, `PrintVerificationSourceEnum`). Queued jobs are in `app/Jobs/Printing/`:
 `GenerateBadgePrintFileJob`, `PrintBadgeJob`, `BatchPrintJob`.
 
-POS-side controllers are under `app/Http/Controllers/POS/Printing/`.
+POS-side controllers are under `app/Http/Controllers/POS/Printing/`, with the clerk's own print list
+in `app/Http/Controllers/POS/MyPrintsController.php` and its payloads in
+`app/Domain/Printing/Services/DeskPrintNotifications.php`.
 `php artisan printing:check-stuck-jobs` (scheduled every 3 min) detects stuck jobs;
 `printing:reap-leases` returns jobs stranded by a dead agent.
 

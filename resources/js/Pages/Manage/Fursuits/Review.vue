@@ -413,8 +413,22 @@ const textarea =
         <!-- The photo and its history: the work, and what it looked like last time. -->
         <div class="flex flex-col gap-3 lg:col-span-8">
           <div class="flex items-center justify-center rounded border border-hairline bg-mg-surface-1 p-2">
+            <!--
+              The render is still queued. The queue itself holds these records back, so
+              this is what a reviewer who arrived by link sees - or one sitting on a record
+              whose photo the attendee has just replaced. Saying so beats handing them the
+              print master to judge, and beats an empty box.
+            -->
+            <div
+              v-if="fursuit.imageProcessing"
+              class="flex h-60 flex-col items-center justify-center gap-1 text-center text-[12px] text-fg-3"
+            >
+              <ManageIcon name="loader" :size="20" class="animate-spin" />
+              <span>Photo still processing</span>
+              <span class="text-[11px]">It will be here in a moment - reload the page.</span>
+            </div>
             <img
-              v-if="fursuit.image"
+              v-else-if="fursuit.image"
               :src="fursuit.image"
               :alt="fursuit.name ?? ''"
               class="max-h-[70vh] w-full rounded object-contain"

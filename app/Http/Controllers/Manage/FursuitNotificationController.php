@@ -4,54 +4,83 @@ namespace App\Http\Controllers\Manage;
 
 use App\Http\Controllers\Controller;
 use App\Models\Fursuit\Fursuit;
+use App\Notifications\BadgePickupReminderNotification;
+use App\Notifications\BadgePrintedNotification;
 use App\Notifications\FursuitApprovedNotification;
+use App\Notifications\FursuitPublicationBlockedNotification;
 use App\Notifications\FursuitRejectedNotification;
+use App\Notifications\FursuitRejectionReversedNotification;
 use App\Support\Manage\Toast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * The `Send Notification` header action of ViewFursuit (audit 4.3.1, action 6).
+ * Send one of the badge mails again, by hand.
  *
- * It re-sends an approval or rejection mail without changing state and without checking
- * the current state, which is exactly what it is for: an attendee who never received the
- * first one. That deliberate looseness is parity, so nothing here consults the state
- * machine.
+ * The one review-adjacent thing left on the record page, and it is not a verdict: it changes no
+ * state, writes no decision row and consults no state machine. It exists for the attendee who says
+ * they never got the mail, and for the desk that wants to re-send a pickup notice.
  *
- * One behaviour changes and it is a client change: the Filament Select was not ->live(),
- * so the reason field only appeared after the next form round-trip (audit 73). The page
- * renders this form itself and the field reacts immediately.
+ * That deliberate looseness is why it is a separate screen from the queue: a verdict has an undo
+ * window, a decision row and a presence banner around it, and this has none of those because it
+ * decides nothing.
+ *
+ * The list below tracks the mails we actually send. It used to offer two - approval and rejection -
+ * from a set that is now six, so the desk had no way to re-send a publication block or a pickup
+ * notice at all.
  */
 class FursuitNotificationController extends Controller
 {
     /**
-     * The two options the Select offers, verbatim.
+     * What can be re-sent, and what it is called on the picker.
      *
      * @var array<string, string>
      */
     public const TYPES = [
-        'approved' => 'Approval Notification',
-        'rejected' => 'Rejection Notification',
+        'approved' => 'Approved',
+        'rejected' => 'Needs a change (rejected)',
+        'publication_blocked' => 'Approved, not published',
+        'rejection_reversed' => 'Our mistake, approved after all',
+        'pickup_ready' => 'Ready for pickup',
+        'pickup_reminder' => 'Still waiting for you (reminder)',
     ];
 
     /**
-     * The fallback the action falls back to when a rejection carries no reason.
+     * The two mails that cannot be sent without something to say to the attendee.
      *
-     * Unreachable while `rejection_reason` is required for a rejection, which it is in
-     * the Filament form too. Kept because it is the string the attendee would read if it
-     * ever were reachable, and because dropping a defensive default during a rewrite is
-     * how it becomes reachable.
+     * @var array<int, string>
+     */
+    public const NEEDS_REASON = ['rejected', 'publication_blocked'];
+
+    /**
+     * The three that are about the card rather than the review, so they need one to exist.
+     *
+     * @var array<int, string>
+     */
+    public const NEEDS_BADGE = ['pickup_ready', 'pickup_reminder'];
+
+    /**
+     * The fallback for a mail that should carry a reason and somehow does not.
+     *
+     * Unreachable while the reason is required for those two types, which it is. Kept because it is
+     * the string the attendee would read if it ever were reachable, and because dropping a defensive
+     * default during a rewrite is how it becomes reachable.
      */
     public const NO_REASON = 'No reason provided';
 
     /**
-     * @return array<int, array{value: string, label: string}>
+     * @return array<int, array{value: string, label: string, needsReason: bool}>
      */
     public static function typeOptions(): array
     {
         return collect(self::TYPES)
-            ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+            ->map(fn (string $label, string $value) => [
+                'value' => $value,
+                'label' => $label,
+                // Read by the client so the reason field appears the moment the type is picked.
+                'needsReason' => in_array($value, self::NEEDS_REASON, true),
+            ])
             ->values()
             ->all();
     }
@@ -65,22 +94,36 @@ class FursuitNotificationController extends Controller
 
         $validated = $request->validate([
             'notification_type' => ['required', 'string', 'in:'.implode(',', array_keys(self::TYPES))],
-            'rejection_reason' => ['required_if:notification_type,rejected', 'nullable', 'string'],
+            'rejection_reason' => [
+                'required_if:notification_type,'.implode(',', self::NEEDS_REASON),
+                'nullable',
+                'string',
+            ],
         ]);
 
-        if ($validated['notification_type'] === 'approved') {
-            $fursuit->user->notify(new FursuitApprovedNotification($fursuit));
+        $type = $validated['notification_type'];
+        $reason = $validated['rejection_reason'] ?? self::NO_REASON;
+        $badge = $fursuit->badges()->whereNull('extra_copy_of')->first();
 
-            Toast::flashSuccess('Approval notification sent successfully');
+        if (in_array($type, self::NEEDS_BADGE, true) && $badge === null) {
+            Toast::flashDanger(
+                'Nothing was sent',
+                'That mail is about the printed card, and this fursuit has no badge.',
+            );
 
             return back();
         }
 
-        $reason = $validated['rejection_reason'] ?? self::NO_REASON;
+        $fursuit->user->notify(match ($type) {
+            'approved' => new FursuitApprovedNotification($fursuit),
+            'rejected' => new FursuitRejectedNotification($fursuit, $reason),
+            'publication_blocked' => new FursuitPublicationBlockedNotification($fursuit, $reason),
+            'rejection_reversed' => new FursuitRejectionReversedNotification($fursuit),
+            'pickup_ready' => new BadgePrintedNotification($badge),
+            'pickup_reminder' => new BadgePickupReminderNotification($badge),
+        });
 
-        $fursuit->user->notify(new FursuitRejectedNotification($fursuit, $reason));
-
-        Toast::flashSuccess('Rejection notification sent successfully');
+        Toast::flashSuccess(self::TYPES[$type].' notification sent');
 
         return back();
     }

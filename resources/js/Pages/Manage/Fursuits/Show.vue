@@ -1,22 +1,25 @@
 <script setup>
 /**
- * The fursuit view page: the infolist, the approval workflow, and the activity log.
+ * The fursuit record page: the infolist, the activity log, and no verdicts.
  *
- * Successor to ViewFursuit plus ActivitiesRelationManager. Three things read
- * differently from the Filament page and all three are decisions the plan made:
+ * Successor to ViewFursuit plus ActivitiesRelationManager, and deliberately not a review surface.
+ * Every verdict lives in the queue at /admin/fursuits/review: this page used to offer Approve,
+ * Reject, Block from gallery, Lift gallery block, Approve (Rejected) and Next Fursuit as well, which
+ * meant two screens could hand down the same decision with different copy, different confirm
+ * dialogs and - because the queue carries the undo window and the presence banner - different
+ * safety. A record page is for reading a record; "Review in queue" is the way to act on it.
  *
- *  - Claiming is a button. `public $defaultAction = 'Claim'` mounted the Claim action on
- *    every page load, so opening a pending fursuit claimed it without any gesture
- *    (plan 2.10 #41). The page also says who holds the claim, which it never did.
- *  - Reject and Send Notification are rendered here rather than by ActionButton, because
- *    both have live forms: the reason picker fills the textarea as you choose, and the
- *    notification type shows its reason field immediately. The Filament Select behind
- *    the second was never ->live(), so the field only appeared on the next round-trip
- *    (audit 73). Everything about the two actions except the rendering still comes from
- *    the server declaration, so what the operator sees is what the tests assert.
- *  - The activity log is read-only (plan 2.10 #12). It arrives as an ordinary table
- *    envelope at the top level, which is unambiguous because it is the only table on the
- *    page, so sorting, searching and paging the log work the way they do everywhere else.
+ * What is left, and why:
+ *
+ *  - Send Notification is rendered here rather than by ActionButton because its reason field has to
+ *    react the moment a type is picked. The Filament Select behind it was never ->live(), so the
+ *    field only appeared on the next round-trip (audit 73). Which types need a reason comes from the
+ *    server, so the mail list and this form cannot disagree.
+ *  - Presence is shown, never enforced (plan 2.10 #41): the Filament page took a five-minute cache
+ *    lock on load and then refused every verdict unless the caller held it.
+ *  - The activity log is read-only (plan 2.10 #12). It arrives as an ordinary table envelope at the
+ *    top level, which is unambiguous because it is the only table on the page, so sorting, searching
+ *    and paging work the way they do everywhere else.
  */
 import { computed, ref, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
@@ -33,10 +36,6 @@ const props = defineProps({
   fursuit: { type: Object, required: true },
   /** Server-declared header actions, already visibility-filtered. */
   actions: { type: Array, default: () => [] },
-  /** The eight keyed rejection reasons, in order. */
-  rejectReasons: { type: Array, default: () => [] },
-  /** The publication-block reasons, worded for a badge that is approved and printed. */
-  publicationReasons: { type: Array, default: () => [] },
   /** How many times the submission has been changed since it was made. */
   revisions: { type: Number, default: 0 },
   notificationTypes: { type: Array, default: () => [] },
@@ -54,15 +53,19 @@ const props = defineProps({
   pageActions: { type: Array, default: () => [] },
 });
 
-/** The actions this page renders itself, because each carries a live form. */
-const CUSTOM = ['reject', 'block-publication', 'send-notification'];
+/**
+ * The one action this page renders itself, because it carries a live form.
+ *
+ * Everything that hands down a verdict was removed from this page: two screens offering the same
+ * decision meant two sets of copy, two confirm dialogs and - since the queue owns the undo window
+ * and the presence banner - two different levels of safety. The queue is the review surface.
+ */
+const CUSTOM = ['send-notification'];
 
 const named = (name) => props.actions.find((action) => action.name === name) ?? null;
 
 const headerActions = computed(() => props.actions.filter((action) => !CUSTOM.includes(action.name)));
 
-const rejectAction = computed(() => named('reject'));
-const blockAction = computed(() => named('block-publication'));
 /** Server-declared, so the link cannot drift from the route the action list carries. */
 const reviewUrl = computed(() => named('review')?.url ?? null);
 const notifyAction = computed(() => named('send-notification'));
@@ -103,66 +106,17 @@ const presenceLabel = computed(() => {
   return `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are also viewing this fursuit`;
 });
 
-/* Reject. The picker only fills the textarea; only the textarea is stored and sent. */
-const rejectOpen = ref(false);
-const rejectForm = useForm({ reason: '', custom_reason: '' });
-
-watch(
-  () => rejectForm.reason,
-  (key) => {
-    const option = props.rejectReasons.find((reason) => reason.value === key);
-
-    if (option) {
-      rejectForm.custom_reason = option.label;
-    }
-  },
-);
-
-const submitReject = () => {
-  rejectForm.post(rejectAction.value.url, {
-    preserveScroll: true,
-    onSuccess: () => {
-      rejectOpen.value = false;
-      rejectForm.reset();
-    },
-  });
-};
-
-/*
- * Block from the gallery. Same shape as reject - picker fills the textarea - but a wholly
- * different verdict: the badge is approved, printed and handed out, and only the gallery
- * and the game are closed. Before this outcome existed a reviewer had to reject such a
- * submission outright, which stopped a card that was never against any rule.
- */
-const blockOpen = ref(false);
-const blockForm = useForm({ reason: '', custom_reason: '' });
-
-watch(
-  () => blockForm.reason,
-  (key) => {
-    const option = props.publicationReasons.find((reason) => reason.value === key);
-
-    if (option) {
-      blockForm.custom_reason = option.label;
-    }
-  },
-);
-
-const submitBlock = () => {
-  blockForm.post(blockAction.value.url, {
-    preserveScroll: true,
-    onSuccess: () => {
-      blockOpen.value = false;
-      blockForm.reset();
-    },
-  });
-};
-
 /* Send notification. The reason field appears the moment the type is picked. */
 const notifyOpen = ref(false);
 const notifyForm = useForm({ notification_type: '', rejection_reason: '' });
 
-const notifyIsRejection = computed(() => notifyForm.notification_type === 'rejected');
+/*
+ * Which types need something to say to the attendee comes from the server (`needsReason`), so the
+ * list of mails and the shape of this form cannot disagree. It used to be hardcoded to "rejected",
+ * which silently dropped the reason when the publication-block mail was added.
+ */
+const notifyNeedsReason = computed(() => props.notificationTypes
+    .find((type) => type.value === notifyForm.notification_type)?.needsReason === true);
 
 const submitNotify = () => {
   notifyForm.post(notifyAction.value.url, {
@@ -188,26 +142,6 @@ const textarea =
     <PageHeader :title="fursuit.name ?? 'Fursuit'" :subtitle="fursuit.species">
       <template #actions>
         <ActionButton v-for="action in headerActions" :key="action.name" :action="action" />
-
-        <button
-          v-if="rejectAction"
-          type="button"
-          class="inline-flex h-7 items-center gap-1.5 rounded border border-state-danger/35 px-2 text-[12px] font-medium text-state-danger transition-colors hover:bg-state-danger/12"
-          @click="rejectOpen = true"
-        >
-          <ManageIcon :name="rejectAction.icon" />
-          {{ rejectAction.label }}
-        </button>
-
-        <button
-          v-if="blockAction"
-          type="button"
-          class="inline-flex h-7 items-center gap-1.5 rounded border border-state-warn/35 px-2 text-[12px] font-medium text-state-warn transition-colors hover:bg-state-warn/12"
-          @click="blockOpen = true"
-        >
-          <ManageIcon :name="blockAction.icon" />
-          {{ blockAction.label }}
-        </button>
 
         <button
           v-if="notifyAction"
@@ -258,8 +192,21 @@ const textarea =
       <section class="grid grid-cols-1 gap-3 md:grid-cols-12">
         <div class="md:col-span-3">
           <div class="flex items-center justify-center rounded border border-hairline bg-mg-surface-1 p-2">
+            <!--
+              A photo whose gallery render is still queued shows this rather than the
+              archival master: the master is a print file, and a preview box is not worth
+              a megabyte plus the wait that comes with it.
+            -->
+            <div
+              v-if="fursuit.imageProcessing"
+              class="flex h-40 flex-col items-center justify-center gap-1 text-center text-[12px] text-fg-3"
+            >
+              <ManageIcon name="loader" :size="18" class="animate-spin" />
+              <span>Photo still processing</span>
+              <span class="text-[11px]">Reload in a moment.</span>
+            </div>
             <img
-              v-if="fursuit.image"
+              v-else-if="fursuit.image"
               :src="fursuit.image"
               :alt="fursuit.name ?? ''"
               class="w-full rounded object-contain"
@@ -356,109 +303,6 @@ const textarea =
       </FormSection>
     </div>
 
-    <!-- Reject: bare requiresConfirmation copy plus the action's own form. -->
-    <ManageDialog
-      v-if="rejectAction"
-      v-model:visible="rejectOpen"
-      :header="rejectAction.confirm?.heading ?? rejectAction.label"
-      width="32rem"
-    >
-      <p v-if="rejectAction.confirm?.description" class="text-[13px] text-fg-2">
-        {{ rejectAction.confirm.description }}
-      </p>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">Reason</span>
-        <select v-model="rejectForm.reason" :class="control">
-          <option value="">Select an option</option>
-          <option v-for="reason in rejectReasons" :key="reason.value" :value="reason.value">
-            {{ reason.label }}
-          </option>
-        </select>
-      </label>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">
-          Reason Sent to the User!
-        </span>
-        <textarea v-model="rejectForm.custom_reason" rows="4" :class="textarea" required />
-        <span v-if="rejectForm.errors.custom_reason" class="text-[11px] text-state-danger">
-          {{ rejectForm.errors.custom_reason }}
-        </span>
-      </label>
-
-      <template #footer>
-        <button
-          type="button"
-          class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
-          @click="rejectOpen = false"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          class="h-8 rounded bg-state-danger px-3 text-[13px] font-medium text-mg-surface-0"
-          :disabled="rejectForm.processing"
-          @click="submitReject"
-        >
-          {{ rejectAction.confirm?.submit ?? 'Confirm' }}
-        </button>
-      </template>
-    </ManageDialog>
-
-    <!--
-      Block from the gallery: the reviewer's own confirm copy, because this verdict is easy
-      to mistake for a rejection and is the opposite of one for the attendee.
-    -->
-    <ManageDialog
-      v-if="blockAction"
-      v-model:visible="blockOpen"
-      :header="blockAction.confirm?.heading ?? blockAction.label"
-      width="32rem"
-    >
-      <p v-if="blockAction.confirm?.description" class="text-[13px] text-fg-2">
-        {{ blockAction.confirm.description }}
-      </p>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">Reason</span>
-        <select v-model="blockForm.reason" :class="control">
-          <option value="">Write my own</option>
-          <option v-for="reason in publicationReasons" :key="reason.value" :value="reason.value">
-            {{ reason.label }}
-          </option>
-        </select>
-      </label>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">
-          Reason Sent to the User!
-        </span>
-        <textarea v-model="blockForm.custom_reason" rows="4" :class="textarea" required />
-        <span v-if="blockForm.errors.custom_reason" class="text-[11px] text-state-danger">
-          {{ blockForm.errors.custom_reason }}
-        </span>
-      </label>
-
-      <template #footer>
-        <button
-          type="button"
-          class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
-          @click="blockOpen = false"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          class="h-8 rounded bg-state-warn px-3 text-[13px] font-medium text-mg-surface-0"
-          :disabled="blockForm.processing"
-          @click="submitBlock"
-        >
-          {{ blockAction.confirm?.submit ?? 'Confirm' }}
-        </button>
-      </template>
-    </ManageDialog>
-
     <!-- Send Notification: no confirmation, and a reason field that reacts immediately. -->
     <ManageDialog
       v-if="notifyAction"
@@ -479,7 +323,7 @@ const textarea =
         </span>
       </label>
 
-      <label v-if="notifyIsRejection" class="flex flex-col gap-1">
+      <label v-if="notifyNeedsReason" class="flex flex-col gap-1">
         <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">
           Rejection Reason (Required for Rejection)
         </span>

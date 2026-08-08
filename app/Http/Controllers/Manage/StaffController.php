@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Manage;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\StaffRequest;
+use App\Models\Event;
 use App\Models\RfidTag;
 use App\Models\Staff;
+use App\Services\StaffStatisticsService;
 use App\Support\Manage\Action;
 use App\Support\Manage\Column;
 use App\Support\Manage\Filter;
+use App\Support\Manage\Status;
 use App\Support\Manage\Table;
 use App\Support\Manage\Toast;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -38,6 +42,16 @@ use Inertia\Response;
  *
  * The list is deliberately not event-scoped: plan 2.9 lists Staff among the surfaces that
  * stay unscoped, matching today.
+ *
+ * Staff are archived, never deleted. `badges.picked_up_by_staff_id`,
+ * `checkouts.cashier_id` and `print_batches.created_by_staff_id` all point here and are
+ * all `nullOnDelete`, so the delete this module used to offer did not merely remove a POS
+ * login, it detached every handover, till and print run that member had ever been
+ * credited with - and the edit page now *shows* those numbers, which is exactly the
+ * history there is no reason to ever throw away. Archive and restore replace it, taking
+ * the shape machines already use: `archived_at` is the single answer to "may this person
+ * log in", the `is_active` boolean it replaced is gone, and the list hides retired members
+ * unless the filter asks for them.
  */
 class StaffController extends Controller
 {
@@ -92,7 +106,7 @@ class StaffController extends Controller
 
     public function store(StaffRequest $request): RedirectResponse
     {
-        Staff::create($request->validated());
+        Staff::create($this->writable($request));
 
         // Filament's built-in Created toast; StaffResource defines none of its own
         // (audit 4.10 notifications).
@@ -108,15 +122,28 @@ class StaffController extends Controller
      * Its envelope is spread flat for the same reason the list's is: the nested table
      * drives sorting, filtering, search and paging through useTableQuery, which reloads
      * those five keys as a partial visit against this component.
+     *
+     * It also carries the member's own numbers - handovers, till time, print runs, hours
+     * worked - for one event at a time, chosen by `?event=`. The picker reloads `statistics`
+     * and `selectedEventId` as a partial visit, so switching events does not re-run the
+     * RFID table query or throw away anything typed into the form above.
      */
     public function edit(Request $request, Staff $staff): Response
     {
         Gate::authorize('update', $staff);
 
+        [$event, $events] = $this->statisticsEvent($request);
+
         return inertia('Manage/Staff/Form', [
             'staff' => $this->formData($staff),
             'generatedSetupCode' => session('admin.staff.generated_setup_code'),
             'headerActions' => $this->headerActions($staff),
+
+            // Lazily evaluated: the timeline reads three tables, and a partial visit for
+            // the RFID table below has no business paying for it.
+            'statistics' => fn () => app(StaffStatisticsService::class)->for($staff, $event),
+            'statisticsEvents' => $events,
+            'selectedEventId' => $event?->id,
             // Read is gated as tightly as write: a tag value is a POS credential, so an
             // operator who may not write one may not read one either.
             ...(Gate::allows('viewAny', RfidTag::class)
@@ -128,7 +155,7 @@ class StaffController extends Controller
 
     public function update(StaffRequest $request, Staff $staff): RedirectResponse
     {
-        $staff->update($request->validated());
+        $staff->update($this->writable($request, $staff));
 
         Toast::flashSuccess('Saved');
 
@@ -136,32 +163,80 @@ class StaffController extends Controller
     }
 
     /**
-     * Hard delete. `Staff` carries no SoftDeletes and `rfid_tags.staff_id` is
-     * `onDelete('cascade')`, so the member's tags go with them (audit 7.7). Same as
-     * today, including the part where `checkouts.cashier_id` is left pointing at nothing
-     * (audit 132); repointing fiscal records is not an admin-panel decision.
+     * The validated form, with the `Active` toggle turned back into `archived_at`.
      *
-     * Always lands on the index rather than back, because the header action on the edit
-     * page would otherwise return to a record that no longer exists.
+     * The form asks the question the way it always did, one checkbox, because that is
+     * what the operator is deciding: may this person sign in. The column stores when they
+     * stopped, which the checkbox cannot say on its own.
+     *
+     * Re-stamping is avoided deliberately: saving an already-archived member with the box
+     * still clear must not move the date they stopped staffing to today.
+     *
+     * @return array<string, mixed>
      */
-    public function destroy(Staff $staff): RedirectResponse
+    private function writable(StaffRequest $request, ?Staff $staff = null): array
     {
-        Gate::authorize('delete', $staff);
+        $data = $request->validated();
 
-        $staff->delete();
+        $active = (bool) ($data['is_active'] ?? true);
+        unset($data['is_active']);
 
-        Toast::flashSuccess('Deleted');
+        if ($active) {
+            $data['archived_at'] = null;
+        } elseif (! $staff?->isArchived()) {
+            $data['archived_at'] = now();
+        }
 
-        return redirect()->route('admin.staff.index');
+        return $data;
     }
 
     /**
-     * All-or-nothing (plan 2.5): if any selected record fails the policy nothing is
-     * deleted and a danger toast says why, rather than half a selection disappearing.
+     * Retire the member. Their POS login stops working; every handover, till and print
+     * run they are credited with stays exactly where it is.
+     *
+     * This is what used to be the delete, and the reason it is not one is in the class
+     * docblock. Lands back rather than on the index, because unlike a delete the record
+     * is still there to return to.
      */
-    public function bulkDestroy(Request $request): RedirectResponse
+    public function archive(Staff $staff): RedirectResponse
     {
-        Gate::authorize('delete', new Staff);
+        Gate::authorize('update', $staff);
+
+        $staff->archive();
+
+        Toast::flashSuccess('Archived', $staff->name.' can no longer sign in to the POS.');
+
+        return back();
+    }
+
+    public function unarchive(Staff $staff): RedirectResponse
+    {
+        Gate::authorize('update', $staff);
+
+        $staff->unarchive();
+
+        Toast::flashSuccess('Restored', $staff->name.' can sign in to the POS again.');
+
+        return back();
+    }
+
+    public function bulkArchive(Request $request): RedirectResponse
+    {
+        return $this->bulk($request, archive: true);
+    }
+
+    public function bulkUnarchive(Request $request): RedirectResponse
+    {
+        return $this->bulk($request, archive: false);
+    }
+
+    /**
+     * All-or-nothing (plan 2.5): if any selected record fails the policy nothing moves
+     * and a danger toast says why, rather than half a selection changing state.
+     */
+    private function bulk(Request $request, bool $archive): RedirectResponse
+    {
+        Gate::authorize('update', new Staff);
 
         $validated = $request->validate([
             'ids' => ['required', 'array'],
@@ -171,23 +246,59 @@ class StaffController extends Controller
         $members = Staff::whereIn('id', $validated['ids'])->get();
 
         foreach ($members as $member) {
-            if (Gate::denies('delete', $member)) {
+            if (Gate::denies('update', $member)) {
                 Toast::flashDanger(
-                    'Nothing was deleted',
-                    'You are not allowed to delete one or more of the selected staff.'
+                    $archive ? 'Nothing was archived' : 'Nothing was restored',
+                    'You are not allowed to change one or more of the selected staff.'
                 );
 
                 return back();
             }
         }
 
-        // Per record rather than a mass delete, so model events still fire, which is
-        // what Filament's DeleteBulkAction did.
-        $members->each->delete();
+        // Per record rather than a mass update, so each row goes through the model's own
+        // method and its events still fire.
+        $archive ? $members->each->archive() : $members->each->unarchive();
 
-        Toast::flashSuccess('Deleted');
+        $archive
+            ? Toast::flashSuccess('Archived', $this->countBody($members->count()).' locked out of the POS.')
+            : Toast::flashSuccess('Restored', $this->countBody($members->count()).' able to sign in again.');
 
         return back();
+    }
+
+    private function countBody(int $count): string
+    {
+        return $count === 1 ? '1 staff member is' : $count.' staff members are';
+    }
+
+    /**
+     * The event the statistics panel is showing, and the list the picker offers.
+     *
+     * `?event=all` is the lifetime view and returns no event at all. Anything else falls
+     * back to the active event, so the panel opens on the convention that is running.
+     *
+     * @return array{0: Event|null, 1: array<int, array<string, mixed>>}
+     */
+    private function statisticsEvent(Request $request): array
+    {
+        $events = Event::query()
+            ->orderByDesc('starts_at')
+            ->get(['id', 'name'])
+            ->map(fn (Event $event) => ['id' => $event->id, 'name' => $event->name])
+            ->all();
+
+        $requested = $request->input('event');
+
+        if ($requested === 'all') {
+            return [null, $events];
+        }
+
+        $event = is_numeric($requested)
+            ? Event::find((int) $requested)
+            : null;
+
+        return [$event ?? Event::getActiveEvent(), $events];
     }
 
     /**
@@ -195,7 +306,7 @@ class StaffController extends Controller
      */
     private function table(Request $request): array
     {
-        return Table::make(Staff::query()->withCount('rfidTags'))
+        return Table::make($this->baseQuery($request))
             ->name('staff')
             ->columns($this->columns())
             // StaffResource declares no defaultSort and falls back to primary-key order.
@@ -208,31 +319,41 @@ class StaffController extends Controller
                 'name' => $staff->name,
                 // Two literal words, decided here. The PIN itself is never serialised.
                 'pin_code' => $staff->pin_code ? 'Set' : 'Not Set',
-                'is_active' => (bool) $staff->is_active,
                 'is_manager' => (bool) $staff->is_manager,
                 'rfid_tags_count' => (int) $staff->rfid_tags_count,
                 'last_login_at' => $this->since($staff->last_login_at),
+                'archived_at' => $this->datetime($staff->archived_at),
                 'created_at' => $this->datetime($staff->created_at),
             ])
             ->recordUrl(fn (Staff $staff) => Gate::allows('update', $staff)
                 ? route('admin.staff.edit', $staff)
                 : null)
-            ->rowActions(fn (Staff $staff) => array_values(array_filter([
-                Gate::allows('update', $staff)
-                    ? Action::link('edit', 'Edit', route('admin.staff.edit', $staff))->icon('pencil')
-                    : null,
-                Gate::allows('delete', $staff)
-                    ? Action::delete('delete', 'Delete', route('admin.staff.destroy', $staff))
-                        ->icon('trash-2')
-                        ->tone('danger')
-                        // Filament's DeleteAction copy, never overridden in this
-                        // resource: heading `Delete :label` with the model label.
-                        ->confirmDelete('staff')
-                    : null,
-            ])))
+            ->rowActions(fn (Staff $staff) => $this->rowActions($staff))
             ->bulkActions($this->bulkActions())
             ->pageActions($this->pageActions())
             ->toArray($request);
+    }
+
+    /**
+     * The list query, already carrying the blank branch of the archived filter.
+     *
+     * There is no global scope on `Staff`, so this is the only thing keeping retired
+     * members out of the default list. It cannot live in the filter's apply(): a blank
+     * filter value is inactive by design in App\Support\Manage\Filter, because an unset
+     * filter must not narrow anything. Here, cleared and unset both land on
+     * `notArchived()` and both read as "Active staff".
+     */
+    private function baseQuery(Request $request): Builder
+    {
+        $query = Staff::query()->withCount('rfidTags');
+
+        $archived = $request->input('filter.archived');
+
+        if ($archived === null || $archived === Filter::CLEARED || $archived === '') {
+            $query->notArchived();
+        }
+
+        return $query;
     }
 
     /**
@@ -245,10 +366,15 @@ class StaffController extends Controller
         return [
             Column::text('name', 'Name')->searchable()->sortable(),
             Column::text('pin_code', 'PIN Code')->toggleable(hiddenByDefault: true),
-            Column::bool('is_active', 'Active'),
             // Who may approve a price override at the till.
             Column::bool('is_manager', 'Manager'),
             Column::number('rfid_tags_count', 'RFID Tags'),
+            // Blank for everyone the default list shows, so it only earns its width once
+            // the filter is switched to archived members.
+            Column::datetime('archived_at', 'Archived')
+                ->sortable()
+                ->fallback('')
+                ->toggleable(hiddenByDefault: true),
             // `->dateTime()->since()` renders as a human diff, and a member who never
             // logged in gets a blank cell rather than a placeholder: StaffResource sets
             // none, and the RFID table's `Never used` is the inconsistency, not this
@@ -265,32 +391,89 @@ class StaffController extends Controller
     private function filters(): array
     {
         return [
-            // Filament's TernaryFilter with no query override: blank leaves the query
-            // alone, true and false compare the boolean column.
-            Filter::ternary('is_active', 'Active Status')
-                ->placeholder('All staff')
-                ->trueLabel('Active')
-                ->falseLabel('Inactive'),
+            Filter::ternary('archived', 'Archived')
+                ->placeholder('Active staff')
+                ->trueLabel('Archived staff')
+                ->falseLabel('All staff')
+                // Blank is the default and is applied by baseQuery(); see the note there.
+                // `false` widens to everyone, so it narrows nothing.
+                ->apply(function (Builder $query, string $value) {
+                    if ($value === '1') {
+                        $query->onlyArchived();
+                    }
+                }),
         ];
     }
 
     /**
      * @return array<int, Action>
      */
+    private function rowActions(Staff $staff): array
+    {
+        if (Gate::denies('update', $staff)) {
+            return [];
+        }
+
+        return array_values(array_filter([
+            Action::link('edit', 'Edit', route('admin.staff.edit', $staff))->icon('pencil'),
+
+            $staff->isArchived()
+                ? null
+                : Action::post('archive', 'Archive', route('admin.staff.archive', $staff))
+                    ->icon('archive')
+                    ->tone(Status::WARN)
+                    ->confirm(
+                        'Archive staff member',
+                        'They will no longer be able to sign in to the POS.',
+                        'Yes, archive them',
+                    ),
+
+            $staff->isArchived()
+                ? Action::delete('unarchive', 'Restore', route('admin.staff.unarchive', $staff))
+                    ->icon('rotate-ccw')
+                    ->tone(Status::OK)
+                    ->confirm(
+                        'Restore staff member',
+                        'They will be able to sign in to the POS again.',
+                        'Yes, restore them',
+                    )
+                : null,
+        ]));
+    }
+
+    /**
+     * Both bulk actions, unconditionally: a selection can hold archived and active
+     * members at once.
+     *
+     * @return array<int, Action>
+     */
     private function bulkActions(): array
     {
-        // A bare class name would reach StaffPolicy::delete() as its $staff argument and
-        // fail the type hint, so the question "may this operator delete staff at all" is
+        // A bare class name would reach StaffPolicy::update() as its $staff argument and
+        // fail the type hint, so the question "may this operator change staff at all" is
         // asked with a throwaway instance. The policy answers on the actor, not the row.
-        if (! Gate::allows('delete', new Staff)) {
+        if (Gate::denies('update', new Staff)) {
             return [];
         }
 
         return [
-            Action::delete('delete', 'Delete selected', route('admin.staff.bulk.destroy'))
-                ->icon('trash-2')
-                ->tone('danger')
-                ->confirm('Delete selected staff', Action::DEFAULT_CONFIRM_DESCRIPTION, 'Delete'),
+            Action::post('archive', 'Archive selected', route('admin.staff.bulk.archive'))
+                ->icon('archive')
+                ->tone(Status::WARN)
+                ->confirm(
+                    'Archive selected staff',
+                    'They will no longer be able to sign in to the POS.',
+                    'Yes, archive them',
+                ),
+
+            Action::delete('unarchive', 'Restore selected', route('admin.staff.bulk.unarchive'))
+                ->icon('rotate-ccw')
+                ->tone(Status::OK)
+                ->confirm(
+                    'Restore selected staff',
+                    'They will be able to sign in to the POS again.',
+                    'Yes, restore them',
+                ),
         ];
     }
 
@@ -309,23 +492,14 @@ class StaffController extends Controller
     }
 
     /**
-     * EditStaff's header DeleteAction, with Filament's default copy.
+     * None. The Delete that used to sit here is gone, and its replacement is the `Active`
+     * toggle in the form rather than a second control saying the same thing.
      *
      * @return array<int, array<string, mixed>>
      */
     private function headerActions(Staff $staff): array
     {
-        if (! Gate::allows('delete', $staff)) {
-            return [];
-        }
-
-        return [
-            Action::delete('delete', 'Delete', route('admin.staff.destroy', $staff))
-                ->icon('trash-2')
-                ->tone('danger')
-                ->confirmDelete('staff')
-                ->toArray(),
-        ];
+        return [];
     }
 
     /**
@@ -384,8 +558,9 @@ class StaffController extends Controller
             'name' => $staff->name,
             'pin_code' => $staff->pin_code === null || $staff->pin_code === '' ? '' : self::PIN_UNCHANGED,
             'setup_code' => $staff->setup_code,
-            'is_active' => (bool) $staff->is_active,
+            'is_active' => ! $staff->isArchived(),
             'is_manager' => (bool) $staff->is_manager,
+            'archived_at' => $staff->archived_at?->toIso8601String(),
         ];
     }
 }

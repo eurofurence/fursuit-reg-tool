@@ -193,6 +193,12 @@ class FursuitReviewController extends Controller
              * master if a render is still queued.
              */
             'image' => FursuitController::previewUrl($fursuit),
+            /*
+             * The queue holds these back (FursuitReviewService::nextPending), but a
+             * reviewer can still arrive by link or sit on the record while the attendee
+             * replaces the photo, so the page has to be able to say so.
+             */
+            'imageProcessing' => $fursuit->imageRenderPending(),
             'status' => Status::fursuit($fursuit->status),
             'owner' => $fursuit->user?->name,
             'event' => $fursuit->event?->name,

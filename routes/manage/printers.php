@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Route;
  * The bulk route is declared before {printer}, or DELETE /admin/printers/bulk would bind
  * "bulk" as a route model and 404 before the controller ever sees it.
  */
-Route::prefix('printers')->name('printers.')->group(function () {
+Route::prefix('printers')->name('printers.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [PrinterController::class, 'index'])->name('index');
     Route::get('create', [PrinterController::class, 'create'])->name('create');
     Route::post('/', [PrinterController::class, 'store'])->name('store');

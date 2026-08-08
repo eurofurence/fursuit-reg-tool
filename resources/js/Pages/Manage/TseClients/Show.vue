@@ -20,6 +20,7 @@ import { Head } from '@inertiajs/vue3';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import FormField from '@/Components/Manage/FormField.vue';
 import FormSection from '@/Components/Manage/FormSection.vue';
+import ManageIcon from '@/Components/Manage/ManageIcon.vue';
 import PageHeader from '@/Components/Manage/PageHeader.vue';
 import StatusBadge from '@/Components/Manage/StatusBadge.vue';
 
@@ -35,6 +36,18 @@ defineProps({
     <PageHeader :title="`TSE client ${client.remote_id}`" :subtitle="client.serial_number" />
 
     <div class="flex flex-col gap-3 p-4">
+      <div class="rounded-md border border-state-warn/40 bg-state-warn/10 p-3">
+        <div class="flex items-center gap-2 text-[13px] font-medium text-fg-1">
+          <ManageIcon name="triangle-alert" :size="14" class="text-state-warn" />
+          Watch out: anything you do here can cost real money
+        </div>
+
+        <p class="mt-2 text-[11px] text-fg-3">
+          TSE clients are billed by Fiskaly. Creating, registering or deregistering one is a paid
+          operation against the live security module, not a local record change.
+        </p>
+      </div>
+
       <FormSection
         title="Identity"
         description="Issued by the TSE. These values are what past checkouts were signed under, so nothing in this panel writes them."

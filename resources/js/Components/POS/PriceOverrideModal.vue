@@ -100,6 +100,11 @@ function submit() {
         }))
         .post(route('pos.badges.prices'), {
             preserveScroll: true,
+            // Repricing voids the transaction and lands on a *different* one.
+            // Inertia's form helper preserves component state by default, which
+            // would keep the old checkout's id baked into the payment forms and
+            // the old lines on screen. This page must be rebuilt from scratch.
+            preserveState: false,
             onSuccess: () => emit('close'),
         });
 }

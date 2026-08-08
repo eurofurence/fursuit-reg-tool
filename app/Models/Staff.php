@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Domain\Checkout\Models\Checkout\Checkout;
+use App\Domain\Printing\Models\PrintBatch;
+use App\Models\Badge\Badge;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -17,8 +20,8 @@ class Staff extends Authenticatable
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
         'is_manager' => 'boolean',
+        'archived_at' => 'datetime',
         'last_login_at' => 'datetime',
     ];
 
@@ -32,9 +35,43 @@ class Staff extends Authenticatable
         return $this->hasMany(RfidTag::class)->where('is_active', true);
     }
 
+    /**
+     * Badges this member handed over the counter.
+     */
+    public function pickedUpBadges()
+    {
+        return $this->hasMany(Badge::class, 'picked_up_by_staff_id');
+    }
+
+    /**
+     * Tills this member rang up. `cashier_id` points at `staff`, not `users`.
+     */
+    public function checkouts()
+    {
+        return $this->hasMany(Checkout::class, 'cashier_id');
+    }
+
+    /**
+     * Print runs this member sent to a printer from the POS.
+     */
+    public function printBatches()
+    {
+        return $this->hasMany(PrintBatch::class, 'created_by_staff_id');
+    }
+
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->whereNull('archived_at');
+    }
+
+    public function scopeNotArchived($query)
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    public function scopeOnlyArchived($query)
+    {
+        return $query->whereNotNull('archived_at');
     }
 
     public function scopeManagers($query)
@@ -44,11 +81,41 @@ class Staff extends Authenticatable
 
     /**
      * Whether this member may approve the actions the desk cannot take on its own
-     * (price changes). Inactive accounts approve nothing, even if still flagged.
+     * (price changes). Archived accounts approve nothing, even if still flagged.
      */
     public function isManager(): bool
     {
-        return (bool) $this->is_manager && (bool) $this->is_active;
+        return (bool) $this->is_manager && ! $this->isArchived();
+    }
+
+    /**
+     * Retire the member: they keep every statistic they generated, and stop being
+     * able to log in to the POS.
+     *
+     * Staff are never deleted - `badges.picked_up_by_staff_id`,
+     * `checkouts.cashier_id` and `print_batches.created_by_staff_id` are all
+     * `nullOnDelete`, so a delete would quietly orphan their whole history.
+     */
+    public function archive(): void
+    {
+        $this->archived_at = now();
+        $this->save();
+    }
+
+    public function unarchive(): void
+    {
+        $this->archived_at = null;
+        $this->save();
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->archived_at === null;
     }
 
     public function updateLastLogin()

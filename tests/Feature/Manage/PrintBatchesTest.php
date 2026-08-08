@@ -133,8 +133,10 @@ beforeEach(function () {
 });
 
 /*
- * Access. PrintBatchPolicy is the biggest authorization change in the rebuild: reading
- * stays open to every access-manage holder, and the four verbs require is_admin.
+ * Access. PrintBatchPolicy is is_admin throughout. The four verbs were is_admin from the
+ * rebuild; reading was access-manage until reviewers were narrowed to Dashboard, Badges
+ * and Fursuits, which took the live print run off a screen that could not act on it. See
+ * docs/admin/roles.md.
  */
 
 test('a guest is redirected to login', function () {
@@ -145,22 +147,11 @@ test('an attendee cannot reach the batch list at all', function () {
     actingAs($this->attendee)->get(route('admin.print-batches.index'))->assertForbidden();
 });
 
-test('a reviewer can read the batch list and a batch', function () {
+test('a reviewer cannot read the batch list or a batch', function () {
     $batch = ($this->batch)();
 
-    actingAs($this->reviewer)->get(route('admin.print-batches.index'))->assertSuccessful();
-    actingAs($this->reviewer)->get(route('admin.print-batches.show', $batch))->assertSuccessful();
-});
-
-test('a reviewer is offered none of the run controls', function () {
-    $batch = ($this->batch)()->fresh();
-    $batch->update(['status' => PrintBatchStatusEnum::Printing]);
-
-    $props = actingAs($this->reviewer)
-        ->get(route('admin.print-batches.index'))
-        ->viewData('page')['props'];
-
-    expect(array_column($props['rows'][0]['actions'], 'name'))->toBe(['view']);
+    actingAs($this->reviewer)->get(route('admin.print-batches.index'))->assertForbidden();
+    actingAs($this->reviewer)->get(route('admin.print-batches.show', $batch))->assertForbidden();
 });
 
 test('a reviewer is refused pause, resume, cancel and verify', function () {

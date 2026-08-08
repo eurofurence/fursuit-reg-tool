@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Route;
  * The real lifecycle is `php artisan tse:update-state` and `php artisan tse:change-admin-pin`,
  * which talk to the TSE. This panel shows what those produced.
  */
-Route::prefix('tse-clients')->name('tse-clients.')->group(function () {
+Route::prefix('tse-clients')->name('tse-clients.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [TseClientController::class, 'index'])->name('index');
     Route::get('{client}', [TseClientController::class, 'show'])->whereNumber('client')->name('show');
 });

@@ -14,10 +14,18 @@ class StaffFactory extends Factory
         return [
             'name' => fake()->name(),
             'pin_code' => fake()->numerify('####'),
-            'is_active' => true,
             'is_manager' => false,
+            'archived_at' => null,
             'last_login_at' => null,
         ];
+    }
+
+    /**
+     * A member who no longer staffs. Their history stays; their POS login stops.
+     */
+    public function archived(): self
+    {
+        return $this->state(fn () => ['archived_at' => now()]);
     }
 
     /**

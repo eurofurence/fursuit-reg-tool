@@ -31,7 +31,9 @@ class BadgePrintRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('viewAny', Badge::class);
+        // Same question BadgePrintController::bulkAction() asks before offering the
+        // button: queueing cards is admin work, not review work (docs/admin/roles.md).
+        return Gate::allows('manage-admin');
     }
 
     /**

@@ -65,12 +65,21 @@ test('an attendee cannot reach the tool at all', function () {
     actingAs($this->nobody)->get(route('admin.tools.badge-preview'))->assertForbidden();
 });
 
-// Checklist line 83: no extra gate beyond access-manage, so reviewers keep the page.
-test('a reviewer reaches the page, because access-manage is the whole guard', function () {
-    actingAs($this->reviewer)
-        ->get(route('admin.tools.badge-preview'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('Manage/Tools/BadgePreview'));
+/*
+ * Reverses checklist line 83, which kept the page open to reviewers. The tool renders any
+ * attendee's card from a custom id typed into a box: it is a lookup over the whole badge
+ * table rather than a review surface, and reviewers were narrowed to Dashboard, Badges and
+ * Fursuits. Guarded twice, on the route group and in each of the four methods, so both
+ * halves are asserted here. See docs/admin/roles.md.
+ */
+test('a reviewer is refused the page and both PDF routes', function () {
+    // The badge exists, so a 403 here is the guard rather than the controller's own 404.
+    ($this->badge)();
+
+    actingAs($this->reviewer)->get(route('admin.tools.badge-preview'))->assertForbidden();
+    actingAs($this->reviewer)->post(route('admin.tools.badge-preview.lookup'), ['custom_id' => 'ABC123'])->assertForbidden();
+    actingAs($this->reviewer)->get(route('admin.tools.badge-preview.pdf.view', ['customId' => 'ABC123']))->assertForbidden();
+    actingAs($this->reviewer)->get(route('admin.tools.badge-preview.pdf.download', ['customId' => 'ABC123']))->assertForbidden();
 });
 
 test('the page opens empty, with no badge and no actions', function () {
@@ -199,7 +208,7 @@ test('an unknown id on either PDF route warns rather than rendering', function (
 });
 
 // Audit landmine 60: admin.badge-pdf.* is behind `auth` alone.
-test('the PDF routes are behind access-manage, unlike the routes they replace', function () {
+test('the PDF routes are gated, unlike the routes they replace', function () {
     ($this->badge)();
 
     actingAs($this->nobody)

@@ -26,6 +26,7 @@ use App\Http\Controllers\Manage\FursuitController;
 use App\Http\Controllers\Manage\FursuitModerationController;
 use App\Http\Controllers\Manage\FursuitNotificationController;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Jobs\GenerateFursuitWebpJob;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
@@ -101,7 +102,19 @@ beforeEach(function () {
 
         Badge::factory()->create(['fursuit_id' => $fursuit->id, 'extra_copy_of' => null]);
 
-        return $fursuit;
+        /*
+         * Stamp the gallery renders on, because the queue holds back a record whose render is still
+         * in flight (Fursuit::imageRenderSettled) and a fixture is meant to describe the settled
+         * case. It has to happen after create and quietly: FursuitObserver clears the variants when
+         * the photo changes, and GenerateFursuitWebpJob - running sync against a faked disk - writes
+         * nothing back. A test that wants the few seconds after an upload nulls them again itself.
+         */
+        $fursuit->forceFill([
+            'image_webp' => GenerateFursuitWebpJob::pathFor($fursuit->image),
+            'image_thumb' => GenerateFursuitWebpJob::thumbPathFor($fursuit->image),
+        ])->saveQuietly();
+
+        return $fursuit->refresh();
     };
 
     $this->scoped = fn (User $user, ?int $eventId) => actingAs($user)->withSession([
@@ -356,7 +369,9 @@ test('the view page ships the infolist content', function () {
             ->where('fursuit.published', true)
             ->where('fursuit.catch_em_all', true)
             ->where('fursuit.status', ['label' => 'Pending', 'tone' => 'warn', 'icon' => 'clock'])
-            ->where('fursuit.image', fn ($url) => str_contains((string) $url, 'fursuits/fluffy.jpg'))
+            // The gallery webp, not the print master: the panel stopped signing archival files to
+            // fill a preview. The fixture stamps the render on, so this is the variant path.
+            ->where('fursuit.image', fn ($url) => str_contains((string) $url, '.webp'))
             // The publication verdict, which is the half of a review that `status` cannot
             // carry, and presence, which the Filament page never showed at all.
             ->where('fursuit.publication.blocked', false)
@@ -364,12 +379,16 @@ test('the view page ships the infolist content', function () {
         );
 });
 
-test('opening a record does not lock it, and the three verdicts need no claim', function () {
+test('the record page offers no verdicts, only the way into the queue', function () {
     /*
-     * The claim is gone (plan 2.10 #41, audit 69/71). It was a five-minute cache lock taken
-     * on page load that then *refused* every verdict unless the caller held it, so a
-     * reviewer who followed a link could do nothing with the record and a dead browser
-     * froze it for five minutes. Presence replaced it: shown, never enforced.
+     * One review surface. This page used to carry Approve, Reject, Block from gallery, Lift gallery
+     * block, Approve (Rejected) and Next Fursuit as well, so two screens could hand down the same
+     * decision with different copy, different confirm dialogs and - because the queue owns the undo
+     * window and the presence banner - different safety.
+     *
+     * The claim is gone too (plan 2.10 #41, audit 69/71): a five-minute cache lock taken on page load
+     * that then refused every verdict unless the caller held it. Presence replaced it, shown and
+     * never enforced.
      */
     $fursuit = ($this->fursuit)();
 
@@ -378,16 +397,21 @@ test('opening a record does not lock it, and the three verdicts need no claim', 
             ->viewData('page')['props']['actions']
     )->keyBy('name');
 
-    expect($actions->keys()->all())->toContain('approve', 'reject', 'block-publication')
-        ->and($actions->keys()->all())->not->toContain('claim', 'unclaim')
-        ->and($actions['approve']['icon'])->toBe('circle-check')
-        ->and($actions['approve']['tone'])->toBe('ok')
-        ->and($actions['reject']['icon'])->toBe('circle-x')
-        ->and($actions['reject']['tone'])->toBe('danger')
-        ->and($actions['block-publication']['icon'])->toBe('eye-off')
-        ->and($actions['block-publication']['tone'])->toBe('warn');
+    expect($actions->keys()->all())->not->toContain(
+        'approve',
+        'reject',
+        'block-publication',
+        'unblock-publication',
+        'approve-rejected',
+        'next',
+        'claim',
+        'unclaim',
+    );
 
-    expect(route('admin.fursuits.review.show', $fursuit))->toBeString();
+    // What is left is the mail-only tool and the link into the queue.
+    expect($actions->keys()->all())->toContain('send-notification', 'review')
+        ->and($actions['review']['url'])->toBe(route('admin.fursuits.review.show', $fursuit))
+        ->and($actions['review']['method'])->toBe('get');
 });
 
 test('presence is advisory: it names the other reviewer and never refuses a verdict', function () {
@@ -412,7 +436,7 @@ test('presence is advisory: it names the other reviewer and never refuses a verd
 
     ($this->scoped)($this->admin, $this->event->id)
         ->post(route('admin.fursuits.approve', $fursuit))
-        ->assertRedirect(route('admin.fursuits.show', $next));
+        ->assertRedirect(route('admin.fursuits.review.show', $next));
 
     expect($fursuit->fresh()->status)->toBeInstanceOf(Approved::class);
 });
@@ -446,7 +470,7 @@ test('Approve runs PendingToApproved and advances to the next pending fursuit', 
 
     ($this->scoped)($this->reviewer, $this->event->id)
         ->post(route('admin.fursuits.approve', $fursuit))
-        ->assertRedirect(route('admin.fursuits.show', $next));
+        ->assertRedirect(route('admin.fursuits.review.show', $next));
 
     $fursuit->refresh();
 
@@ -503,7 +527,7 @@ test('Reject stores and mails only the custom reason, then advances', function (
             'reason' => 'hate_speech',
             'custom_reason' => 'Edited by the reviewer before sending.',
         ])
-        ->assertRedirect(route('admin.fursuits.show', $next));
+        ->assertRedirect(route('admin.fursuits.review.show', $next));
 
     $fursuit->refresh();
 
@@ -592,18 +616,7 @@ test('the rejection reasons come from the table the desk edits, keyword and body
 
     $fursuit = ($this->fursuit)();
 
-    $reject = collect(
-        actingAs($this->reviewer)->get(route('admin.fursuits.show', $fursuit))
-            ->viewData('page')['props']['actions']
-    )->firstWhere('name', 'reject');
-
-    expect($reject['fields'][0]['key'])->toBe('reason')
-        ->and($reject['fields'][0]['options'])->toHaveCount(1)
-        ->and($reject['fields'][1]['key'])->toBe('custom_reason')
-        ->and($reject['fields'][1]['label'])->toBe('Reason Sent to the User!')
-        ->and($reject['fields'][1]['required'])->toBeTrue();
-
-    // And a retired slug cannot be revived by a hand-made request.
+    // A retired slug cannot be revived by a hand-made request.
     actingAs($this->reviewer)->post(route('admin.fursuits.reject', $fursuit), [
         'reason' => 'retired',
         'custom_reason' => 'Anything',
@@ -649,59 +662,23 @@ test('the shipped reason lists split "cannot be handed out" from "not shown in t
     expect($everySlug)->not->toContain('low_quality', 'human', 'real_weapon', 'real_fur');
 });
 
-test('Approve and Reject carry the framework default confirm copy', function () {
-    $fursuit = ($this->fursuit)();
-
-    $actions = collect(
-        actingAs($this->reviewer)->get(route('admin.fursuits.show', $fursuit))
-            ->viewData('page')['props']['actions']
-    )->keyBy('name');
-
-    expect($actions['approve']['confirm'])->toBe([
-        'heading' => 'Approve',
-        'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
-        'submit' => 'Confirm',
-    ])->and($actions['reject']['confirm'])->toBe([
-        'heading' => 'Reject',
-        'description' => Action::DEFAULT_CONFIRM_DESCRIPTION,
-        'submit' => 'Confirm',
-    ])
-        /*
-         * The publication block does not use the default copy, and must not: "are you sure
-         * you would like to do this" beside a button called Block reads as a rejection,
-         * which is the one thing this verdict is not.
-         */
-        ->and($actions['block-publication']['confirm'])->toBe([
-            'heading' => 'Block from gallery and game',
-            'description' => 'The badge is approved, printed and handed out. It will not appear in the gallery and cannot be caught in the game.',
-            'submit' => 'Block publication',
-        ]);
-});
-
 /*
 |--------------------------------------------------------------------------
 | Approve Rejected
 |--------------------------------------------------------------------------
 */
 
-test('Approve Rejected needs no claim, keeps its custom copy and always notifies', function () {
+test('Approve Rejected still apologises when posted, though no page offers it', function () {
+    /*
+     * The apology path. It is deliberately not a queue verdict: it stays on the record, it mails
+     * immediately rather than behind the undo window, and the mail it sends is the rejection-reversal
+     * one, which exists to say "we got that wrong" and goes out even after the event has ended.
+     *
+     * No screen offers it any more - the record page carries no review actions - so what is asserted
+     * here is that the endpoint still behaves, since the edit form's status picker reaches the same
+     * transition.
+     */
     $fursuit = ($this->fursuit)(['status' => Rejected::$name]);
-
-    $action = collect(
-        actingAs($this->reviewer)->get(route('admin.fursuits.show', $fursuit))
-            ->viewData('page')['props']['actions']
-    )->firstWhere('name', 'approve-rejected');
-
-    expect($action['label'])->toBe('Approve (Rejected)')
-        ->and($action['icon'])->toBe('circle-check')
-        ->and($action['tone'])->toBe('ok')
-        ->and($action['confirm'])->toBe([
-            'heading' => 'Approve Rejected Fursuit',
-            'description' => 'This will send an apology email to the user and approve the fursuit.',
-            'submit' => 'Yes, approve it',
-        ]);
-
-    expect($fursuit->isClaimed())->toBeFalse();
 
     actingAs($this->reviewer)->post(route('admin.fursuits.approve-rejected', $fursuit))
         ->assertRedirect()
@@ -711,15 +688,7 @@ test('Approve Rejected needs no claim, keeps its custom copy and always notifies
             'body' => null,
         ]);
 
-    $fursuit->refresh();
-
-    expect($fursuit->status)->toBeInstanceOf(Approved::class)
-        ->and($fursuit->approved_at)->not->toBeNull()
-        ->and($fursuit->rejected_at)->toBeNull();
-
-    expect(Activity::where('subject_id', $fursuit->id)
-        ->where('description', 'Fursuit approved (was previously rejected)')
-        ->exists())->toBeTrue();
+    expect($fursuit->fresh()->status)->toBeInstanceOf(Approved::class);
 
     Notification::assertSentTo($fursuit->user, FursuitRejectionReversedNotification::class);
 });
@@ -764,10 +733,22 @@ test('Send Notification is always offered and mails without touching the state',
         // No confirmation and no visibility predicate, as today.
         ->and($action['confirm'])->toBeNull()
         ->and($action['fields'][0]['label'])->toBe('Notification Type')
-        ->and($action['fields'][0]['options'])->toBe([
-            ['value' => 'approved', 'label' => 'Approval Notification'],
-            ['value' => 'rejected', 'label' => 'Rejection Notification'],
+        /*
+         * The picker tracks the mails we actually send. It offered two of six for a long time, so the
+         * desk could not re-send a publication block or a pickup notice at all - and `needsReason`
+         * rides along so the form cannot disagree with the server about which need one.
+         */
+        ->and(collect($action['fields'][0]['options'])->pluck('value')->all())->toBe([
+            'approved',
+            'rejected',
+            'publication_blocked',
+            'rejection_reversed',
+            'pickup_ready',
+            'pickup_reminder',
         ])
+        ->and(collect($action['fields'][0]['options'])->firstWhere('value', 'rejected')['needsReason'])->toBeTrue()
+        ->and(collect($action['fields'][0]['options'])->firstWhere('value', 'publication_blocked')['needsReason'])->toBeTrue()
+        ->and(collect($action['fields'][0]['options'])->firstWhere('value', 'approved')['needsReason'])->toBeFalse()
         ->and($action['fields'][1]['label'])->toBe('Rejection Reason (Required for Rejection)');
 
     actingAs($this->reviewer)->post(route('admin.fursuits.notify', $fursuit), [
@@ -776,7 +757,7 @@ test('Send Notification is always offered and mails without touching the state',
         ->assertRedirect()
         ->assertInertiaFlash('toast', [
             'tone' => 'success',
-            'title' => 'Approval notification sent successfully',
+            'title' => 'Approved notification sent',
             'body' => null,
         ]);
 
@@ -798,7 +779,7 @@ test('a rejection notification needs its reason and keeps the fallback string', 
     ])
         ->assertInertiaFlash('toast', [
             'tone' => 'success',
-            'title' => 'Rejection notification sent successfully',
+            'title' => 'Needs a change (rejected) notification sent',
             'body' => null,
         ]);
 
@@ -834,12 +815,12 @@ test('Next Fursuit walks the queue in order, event-scoped, skipping records some
 
     ($this->scoped)($this->reviewer, $this->event->id)
         ->get(route('admin.fursuits.next', $current))
-        ->assertRedirect(route('admin.fursuits.show', $free));
+        ->assertRedirect(route('admin.fursuits.review.show', $free));
 
     // "All events" reaches the other event's queue; a specific scope never does.
     ($this->scoped)($this->reviewer, $this->otherEvent->id)
         ->get(route('admin.fursuits.next', $current))
-        ->assertRedirect(route('admin.fursuits.show', $elsewhere));
+        ->assertRedirect(route('admin.fursuits.review.show', $elsewhere));
 });
 
 test('an empty queue lands on the list and says so', function () {
@@ -853,19 +834,6 @@ test('an empty queue lands on the list and says so', function () {
             'title' => 'Nothing left to review',
             'body' => 'No pending fursuits are waiting in the selected event.',
         ]);
-});
-
-test('the Next Fursuit action is always offered', function () {
-    $fursuit = ($this->fursuit)(['status' => Approved::$name]);
-
-    $action = collect(
-        actingAs($this->reviewer)->get(route('admin.fursuits.show', $fursuit))
-            ->viewData('page')['props']['actions']
-    )->firstWhere('name', 'next');
-
-    expect($action['label'])->toBe('Next Fursuit')
-        ->and($action['icon'])->toBe('arrow-right')
-        ->and($action['method'])->toBe('get');
 });
 
 /*

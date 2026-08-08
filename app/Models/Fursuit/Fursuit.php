@@ -103,6 +103,48 @@ class Fursuit extends Model
     }
 
     /**
+     * How long a missing render still counts as "on its way".
+     *
+     * GenerateFursuitWebpJob normally lands a second or two after the upload, but it can
+     * also give up for good: a file GD refuses to decode is logged and never retried, and
+     * a fursuit imported before the renders existed never had a job at all. Past this
+     * window such a row stops counting as processing and goes back to showing its master
+     * photo, so a render that will never arrive hides a submission for minutes rather
+     * than forever.
+     */
+    public const IMAGE_RENDER_GRACE_MINUTES = 15;
+
+    /**
+     * A photo whose gallery render has not landed yet.
+     *
+     * The panel shows a "still processing" placeholder for these instead of pulling the
+     * archival master (well over a megabyte at 1500x2000) into a preview box, and the
+     * review queue skips them: a verdict is passed on the picture, and a reviewer should
+     * not be handed a record whose picture is not there yet.
+     */
+    public function imageRenderPending(): bool
+    {
+        if (! $this->image || $this->image_webp) {
+            return false;
+        }
+
+        return $this->updated_at === null
+            || $this->updated_at->gt(now()->subMinutes(self::IMAGE_RENDER_GRACE_MINUTES));
+    }
+
+    /**
+     * The same question as a where clause: rows whose render is not still in flight.
+     */
+    public function scopeImageRenderSettled(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $inner) => $inner
+            ->whereNotNull('image_webp')
+            ->orWhereNull('image')
+            ->orWhere('image', '')
+            ->orWhere('updated_at', '<=', now()->subMinutes(self::IMAGE_RENDER_GRACE_MINUTES)));
+    }
+
+    /**
      * A link to a rendered gallery variant.
      *
      * With `gallery.public_variants` on, this is a plain unsigned URL: stable forever,

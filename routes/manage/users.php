@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
  * The bulk route is declared before {user}, or DELETE /admin/settings/users/bulk would bind
  * "bulk" as a route model and 404 before the controller ever sees it.
  */
-Route::prefix('settings/users')->name('settings.users.')->group(function () {
+Route::prefix('settings/users')->name('settings.users.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [UserController::class, 'index'])->name('index');
     Route::get('create', [UserController::class, 'create'])->name('create');
     Route::post('/', [UserController::class, 'store'])->name('store');

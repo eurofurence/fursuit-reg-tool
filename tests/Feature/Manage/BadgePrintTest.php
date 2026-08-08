@@ -375,14 +375,30 @@ test('a user who cannot see badges cannot print, and nothing is queued', functio
         ->and($badge->fresh()->printing_locked_at)->toBeNull();
 });
 
-test('a reviewer can print, which is the audience the Filament actions had', function () {
+/*
+ * The Filament actions were offered to reviewers as well as admins. They are admin-only
+ * now: a reviewer reads badges to work the fursuit queue, and sending cards to a printer
+ * is desk work. Both endpoints and both action declarations are asserted, because the
+ * button and the write have to answer the same question. See docs/admin/roles.md.
+ */
+test('a reviewer cannot print, single or bulk, and is offered neither action', function () {
     $badge = ($this->badge)();
 
-    actingAs($this->reviewer)->post(route('admin.badges.print', $badge))
-        ->assertRedirect()
-        ->assertSessionHasNoErrors();
+    actingAs($this->reviewer)->post(route('admin.badges.print', $badge))->assertForbidden();
 
-    expect(PrintBatch::sole()->created_by_id)->toBe($this->reviewer->id);
+    actingAs($this->reviewer)->post(route('admin.badges.bulk.print'), [
+        'ids' => [$badge->id],
+        'printer_id' => $this->printer->id,
+    ])->assertForbidden();
+
+    $props = actingAs($this->reviewer)
+        ->get(route('admin.badges.index'))
+        ->viewData('page')['props'];
+
+    expect(collect($props['rows'][0]['actions'])->firstWhere('name', 'printBadge'))->toBeNull()
+        ->and(collect($props['bulkActions'])->firstWhere('name', 'printBadgeBulk'))->toBeNull()
+        ->and(PrintBatch::count())->toBe(0)
+        ->and(PrintJob::count())->toBe(0);
 });
 
 /*

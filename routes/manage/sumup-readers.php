@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
  * The bulk route is declared before {reader}, or DELETE /admin/sumup-readers/bulk would
  * bind "bulk" as a route model and 404 before the controller ever sees it.
  */
-Route::prefix('sumup-readers')->name('sumup-readers.')->group(function () {
+Route::prefix('sumup-readers')->name('sumup-readers.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [SumUpReaderController::class, 'index'])->name('index');
     Route::get('create', [SumUpReaderController::class, 'create'])->name('create');
     Route::post('/', [SumUpReaderController::class, 'store'])->name('store');

@@ -6,28 +6,30 @@ use App\Http\Controllers\Manage\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 /*
- * Settings. Configuration only: four panes, one real URL each.
+ * Settings. Configuration only: one real URL per pane.
  *
  * The panes are routes rather than client-side tab state, so every one of them is
  * linkable, back-button-able and testable, and so the second vertical menu inside the page
  * body highlights from the URL the same way the primary rail does. `/` renders General
  * rather than redirecting to it: a redirect would put a hop between the rail item and the
- * first pane for no gain, and General is a real pane, not an alias.
+ * first pane for no gain, and General is the landing pane, not an alias. General configures
+ * nothing itself - it is the placeholder that asks for a pane from the submenu - because
+ * every general field an event has is a column the Events form already owns.
  *
- * Only `admin.settings.general` is linked from App\Support\Manage\Navigation. The other
- * three are reached from the in-page submenu, which is why they carry no rail entry.
+ * Only `admin.settings.general` is linked from App\Support\Manage\Navigation. The rest are
+ * reached from the in-page submenu, which is why they carry no rail entry.
  *
- * Reads are `can:access-manage`, inherited from the group in bootstrap/app.php, matching
- * every other configuration surface in the panel: a reviewer may look at how the
- * convention is configured. Every pane is also handed `canEdit` from `manage-admin`, so a
- * pane that grows a form renders it read-only for a reviewer.
+ * Reads are `can:manage-admin`, not the group's `can:access-manage`. A reviewer's whole
+ * job is the fursuit queue, and how the convention is configured - opening hours, booth
+ * ranges, the review wording itself - is not theirs to read; see docs/admin/roles.md. The
+ * `canEdit` prop each pane is handed stays, because it is what an admin-only pane still
+ * uses to render its own read-only states.
  *
- * WRITES GO IN THE GROUP BELOW, NOT HERE. Anything that changes configuration is
- * administrative, so it belongs inside the `can:manage-admin` group at the bottom of this
- * file *and* calls `Gate::authorize('manage-admin')` in its own method, which is the
- * belt-and-braces pattern DB Service applies for the same reason: the middleware is what a
- * route audit can see, the in-method gate is what stays attached if these routes are ever
- * regrouped.
+ * WRITES GO IN THE GROUP BELOW, NOT HERE. Both groups are `can:manage-admin` now, so the
+ * split is no longer a privilege boundary; it stays because a write also calls
+ * `Gate::authorize('manage-admin')` in its own method, which is the belt-and-braces
+ * pattern DB Service applies for the same reason: the middleware is what a route audit can
+ * see, the in-method gate is what stays attached if these routes are ever regrouped.
  *
  * On-Site Desk is the one pane served by its own controller rather than by
  * SettingsController, because it is the one pane with real fields to save and its two
@@ -35,11 +37,9 @@ use Illuminate\Support\Facades\Route;
  * Pickup Booths page, which is gone: the screen configures the convention rather than
  * running anything, which is the line Tools and Settings are split on.
  */
-Route::prefix('settings')->name('settings.')->group(function () {
+Route::prefix('settings')->name('settings.')->middleware('can:manage-admin')->group(function () {
     Route::get('/', [SettingsController::class, 'general'])->name('general');
     Route::get('on-site-desk', [OnSiteDeskController::class, 'index'])->name('on-site-desk');
-    Route::get('printing', [SettingsController::class, 'printing'])->name('printing');
-    Route::get('badges', [SettingsController::class, 'badges'])->name('badges');
     /*
      * The wording the review queue offers and the attendee receives. Its own controller for the
      * same reason On-Site Desk has one: it is a pane with real records to save, and its writes
