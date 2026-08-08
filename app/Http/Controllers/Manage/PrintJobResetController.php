@@ -40,6 +40,9 @@ class PrintJobResetController extends Controller
 {
     private const NOTHING_RESET = 'Nothing was reset';
 
+    /** What `releaseLease()` logs when a reset hands a claimed job back to the queue. */
+    private const RELEASE_REASON = 'Reset to pending by an operator';
+
     public function bulk(Request $request): RedirectResponse
     {
         Gate::authorize('retry', new PrintJob);
@@ -119,26 +122,36 @@ class PrintJobResetController extends Controller
      */
     private function toPending(PrintJob $job): bool
     {
-        return match ($job->status) {
+        $moved = match ($job->status) {
             PrintJobStatusEnum::Pending => false,
 
             // Claimed or mid-card: the lease is the thing to drop, and releaseLease()
             // clears the machine and the timestamps with it.
             PrintJobStatusEnum::Queued,
-            PrintJobStatusEnum::Printing => $job->releaseLease('Reset to pending by an operator'),
+            PrintJobStatusEnum::Printing => $job->releaseLease(self::RELEASE_REASON),
 
             // requeue() is the one path that also clears the failure itself: the error
-            // text, failed_at and the attempt count that would otherwise fail it again
-            // straight away.
+            // text, failed_at and the attempt count.
             PrintJobStatusEnum::Failed => $job->requeue(),
 
             // Retrying is a staging state on the way back to the queue; it has no lease
             // to drop, so it is walked through the edges the enum allows.
             PrintJobStatusEnum::Retrying => $job->transitionTo(PrintJobStatusEnum::Queued)
-                && $job->releaseLease('Reset to pending by an operator'),
+                && $job->releaseLease(self::RELEASE_REASON),
 
             default => false,
         };
+
+        if ($moved) {
+            // The attempt count goes with it, which `releaseLease()` deliberately keeps:
+            // it is the reaper's counter, and the reaper is counting how many times an
+            // agent has silently dropped this card. A reset is a person saying they have
+            // dealt with whatever that was, so the card starts again from zero rather
+            // than being failed by `--max-attempts` on its first claim.
+            $job->update(['attempt_count' => 0, 'error_message' => null, 'failed_at' => null]);
+        }
+
+        return $moved;
     }
 
     /**

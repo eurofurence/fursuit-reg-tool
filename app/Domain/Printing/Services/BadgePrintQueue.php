@@ -269,9 +269,16 @@ class BadgePrintQueue
      * `custom_id` stays. It is allocated once and re-used by the next attempt, and
      * clearing it would hand the same number to somebody else.
      *
-     * Three guards, each of which means a card may exist for this badge: it has to still
-     * be in Processing, it must hold no print job at all, and it must not be locked into
-     * some other run.
+     * Three guards, each of which means this badge is not ours to move: it has to still be
+     * in Processing, it must not be locked into a run, and no card may be on its way to a
+     * printer for it - which is another run having claimed it in the seconds since this
+     * one started.
+     *
+     * "On its way", not "has ever had a job". An earlier printed or cancelled job says
+     * nothing about where this badge should sit now: it was Pending a moment ago and this
+     * preparation is what moved it, so it goes back. Testing for any job at all left every
+     * reprint - every badge with history - stranded in Processing with no run, which is
+     * the exact failure this compensation exists to undo.
      *
      * @param  Collection<int, Badge>  $badges
      */
@@ -282,7 +289,11 @@ class BadgePrintQueue
                 continue;
             }
 
-            if ($badge->printing_locked_at !== null || $badge->printJobs()->exists()) {
+            $cardOnItsWay = $badge->printJobs()
+                ->whereIn('status', PrintJobStatusEnum::outstanding())
+                ->exists();
+
+            if ($badge->printing_locked_at !== null || $cardOnItsWay) {
                 continue;
             }
 

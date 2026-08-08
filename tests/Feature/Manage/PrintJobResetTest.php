@@ -78,6 +78,7 @@ test('a claimed job comes back to pending without its lease or its machine', fun
         'status' => PrintJobStatusEnum::Queued,
         'processing_machine_id' => $this->machine->id,
         'lease_expires_at' => now()->addMinutes(3),
+        'attempt_count' => 2,
         'sequence' => 4,
     ]);
 
@@ -90,6 +91,10 @@ test('a claimed job comes back to pending without its lease or its machine', fun
     expect($job->status)->toBe(PrintJobStatusEnum::Pending)
         ->and($job->processing_machine_id)->toBeNull()
         ->and($job->lease_expires_at)->toBeNull()
+        // The reaper's counter starts again: a reset is a person saying they have dealt
+        // with whatever made the agent drop this card, so --max-attempts must not fail it
+        // on its very next claim.
+        ->and($job->attempt_count)->toBe(0)
         // In place: the card keeps its position in the run rather than being re-made at
         // the end of it, which is what Retry would do.
         ->and($job->sequence)->toBe(4)

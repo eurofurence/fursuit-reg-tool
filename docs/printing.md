@@ -40,10 +40,45 @@ embedding a 5 MB original produced PDFs that choked the printer. The card is CR8
 the ZXP9 prints at 300 dpi, so anything beyond roughly 1013 × 640 px is invisible on the card and
 costs nothing but trouble. See `App\Badges\ImagePreparer`.
 
+## Starting a run
+
+Pressing Print does not print, and does not render. The request opens an empty `Draft` batch and
+dispatches `PrepareBadgePrintBatchJob` on the `badge-render` queue; everything expensive happens
+there. The operator gets the batch back immediately and watches it turn from preparing to ready.
+
+The job does three things in order, and the order is the point:
+
+1. Moves the badges to `Processing`, in one transaction. That allocates `custom_id`, which is
+   printed on the card, so it has to happen before any rendering.
+2. Renders anything whose artwork is missing or stale, outside any transaction. Row locks are not
+   held across minutes of image work.
+3. Commits the jobs, locks the badges, names the run after its attendee range and marks it `Ready`,
+   in one transaction.
+
+**A preparation that fails undoes itself.** The badges it moved go back to `Pending` (keeping their
+`custom_id`), and the batch is cancelled carrying the reason, so a failed run is visible instead of
+silent. This holds when the worker is killed outright: the job's `failed()` hook does the same
+cleanup, working from the list of badges the job recorded before it started rendering, so it can
+never return a badge that some other run had already put into `Processing`. A badge is left alone
+only if a card is genuinely on its way for it - an outstanding job - not merely because it printed
+at some point in the past.
+
+This is the fix for a real outage. Rendering used to happen inline, in the request: a bulk print of
+unrendered badges spent seconds per card on an S3 read, a GD decode and an mpdf render, and blew
+PHP's 30 second limit partway through. What it left behind was worse than the error - every badge in
+the selection sat in `Processing` with a `custom_id`, no batch and no jobs, reading as "sent to the
+printer" with no card ever coming.
+
+A `Draft` batch is inert: `scopeSelectable()` and `isClaimable()` both ignore it, so no agent can
+claim a card out of a run that is still being prepared.
+
+**Nothing prints without the `badge-render` supervisor** in `config/horizon.php`. It is what turns a
+Draft batch into a run an agent can claim.
+
 ## Batches
 
 A batch is a set of cards printed as one run. **Batches are immutable**: contents are fixed by
-`PrintBatch::build()` and nothing can be added afterwards.
+`PrintBatch::commitBadges()`, once, and nothing can be added afterwards.
 
 Committing a badge to a batch sets `badges.printing_locked_at`. From that moment the attendee cannot
 edit or delete it, because the artwork is already rendered and an edit would put a card in the stack

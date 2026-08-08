@@ -19,6 +19,8 @@ use App\Domain\Printing\Models\Printer;
 use App\Domain\Printing\Models\PrintJob;
 use App\Domain\Printing\Services\BadgePrintQueue;
 use App\Enum\PrintBatchStatusEnum;
+use App\Enum\PrintJobStatusEnum;
+use App\Enum\PrintJobTypeEnum;
 use App\Jobs\Printing\PrepareBadgePrintBatchJob;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\Pending;
@@ -170,6 +172,54 @@ it('keeps the custom_id it allocated when it puts a badge back', function () {
     // Allocated once and re-used by the next attempt. Clearing it would hand the same
     // number to somebody else.
     expect($badge->fresh()->custom_id)->not->toBeNull();
+});
+
+it('returns a badge that has printed before rather than stranding it', function () {
+    // Found end to end against a copy of production: a badge whose card came out at some
+    // earlier point still carries that printed job. Guarding the compensation on "has any
+    // print job" therefore skipped it, and a failed preparation left every badge with
+    // history sitting in Processing with no run - the exact orphan this undo exists for.
+    $badge = unrenderableBadge();
+
+    PrintJob::factory()->create([
+        'printable_type' => $badge->getMorphClass(),
+        'printable_id' => $badge->id,
+        'type' => PrintJobTypeEnum::Badge,
+        'status' => PrintJobStatusEnum::Printed,
+        'printed_at' => now()->subDay(),
+    ]);
+
+    Storage::fake();
+
+    $batch = PrintBatch::open(name: 'doomed', expectedJobs: 1);
+
+    expect(fn () => BadgePrintQueue::prepare($batch, [$badge->id]))->toThrow(RuntimeException::class);
+
+    expect($badge->fresh()->status_fulfillment)->toBeInstanceOf(Pending::class);
+});
+
+it('leaves a badge alone when another run has a card on its way for it', function () {
+    // The one job history that does mean hands off: something claimable exists, so the
+    // badge belongs to that run and not to this failed one.
+    $badge = unrenderableBadge();
+
+    PrintJob::factory()->create([
+        'printable_type' => $badge->getMorphClass(),
+        'printable_id' => $badge->id,
+        'type' => PrintJobTypeEnum::Badge,
+        'status' => PrintJobStatusEnum::Pending,
+    ]);
+
+    Storage::fake();
+
+    $batch = PrintBatch::open(name: 'doomed', expectedJobs: 1);
+
+    // The badge is dropped before anything is moved, so nothing throws and nothing is
+    // left half done either.
+    BadgePrintQueue::prepare($batch, [$badge->id]);
+
+    expect($batch->fresh()->status)->toBe(PrintBatchStatusEnum::Cancelled)
+        ->and($badge->fresh()->status_fulfillment)->toBeInstanceOf(Pending::class);
 });
 
 it('does not return a badge that was already in processing before the run', function () {
