@@ -4,6 +4,7 @@ use App\Http\Controllers\POS\AttendeeController;
 use App\Http\Controllers\POS\BadgeController;
 use App\Http\Controllers\POS\BadgeEditController;
 use App\Http\Controllers\POS\BadgeManagementController;
+use App\Http\Controllers\POS\BadgeVerificationController;
 use App\Http\Controllers\POS\CheckoutController;
 use App\Http\Controllers\POS\DashboardController;
 use App\Http\Controllers\POS\MachineController;
@@ -56,6 +57,12 @@ Route::prefix('/my-prints')->name('my-prints.')->group(function () {
     Route::get('/', [MyPrintsController::class, 'index'])->name('index');
     Route::post('/dismiss-all', [MyPrintsController::class, 'dismissAll'])->name('dismiss-all');
     Route::post('/{printBatch}/dismiss', [MyPrintsController::class, 'dismiss'])->name('dismiss');
+});
+// Checking the printed crate off card by card. See BadgeVerificationController.
+Route::prefix('/verification')->name('verification.')->group(function () {
+    Route::get('/', [BadgeVerificationController::class, 'index'])->name('index');
+    Route::post('/', [BadgeVerificationController::class, 'store'])->name('store');
+    Route::post('/{badge}/revert', [BadgeVerificationController::class, 'revert'])->name('revert');
 });
 // Statistics
 Route::get('/statistics', [StatisticsController::class, 'index'])->name('statistics');
