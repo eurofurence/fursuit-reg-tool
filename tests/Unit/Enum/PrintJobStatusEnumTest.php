@@ -13,8 +13,13 @@ class PrintJobStatusEnumTest extends TestCase
 
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Queued));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
-        $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Printed));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Printing));
+
+        // A reaped job is Pending again while the agent that claimed it may still
+        // have the card in the printer. It has to be able to report the outcome
+        // late, or the card is handed out and printed a second time.
+        $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Printed));
+        $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Failed));
     }
 
     public function test_can_transition_from_queued()

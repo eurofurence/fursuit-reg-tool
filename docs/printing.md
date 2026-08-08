@@ -147,6 +147,24 @@ pending -> queued -> printing -> printed
 agent or the Windows host dies, `printing:reap-leases` returns the job to the queue rather than
 leaving it stranded. Past three attempts it fails and pauses the batch.
 
+The lease is fifteen minutes (`AgentJobController::LEASE_SECONDS`), and it is deliberately not a
+print timeout. It was three minutes, which is less than a card takes: a ZXP9 warming up leaves the
+Windows spooler holding the bytes for minutes with no heartbeat getting out, so the reaper handed
+the card back to the queue while it was physically printing. One station prints one card at a time,
+so waiting longer to recover a genuinely dead agent costs nothing next to a duplicate card.
+
+**A late result is still the truth.** An agent that lost the network keeps the card, and reports it
+when it comes back - `Pending -> Printed` and `Pending -> Failed` are legal edges for exactly that
+reason. The endpoint accepts the result only from the machine that owns the printer and only while
+nobody else holds the job; a job claimed by somebody else in the meantime gets a 409. A repeated
+`printed` for a job already recorded is answered as recorded rather than refused, because the
+agent's outbox resends anything it never got a reply to.
+
+The agent will not print a card it has already put through the printer. Its local store keeps a row
+per job from before the file is sent until the server confirms the result, so a job handed out twice
+during an outage is recognised: already reported means send the result again, mid-print means ask
+the operator, and only a job that never reached the spooler is printed.
+
 **Claims are atomic.** `PrintBatch::claimNextJob()` locks the row, so two agents can never be handed
 the same card.
 
@@ -215,7 +233,16 @@ staff. Stops: `ribbon_out`, `film_out`, `cards_out`, `card_jam`, `cover_open`, `
 
 **`unknown` is a stop.** Zebra never published a MIB for the card printer line, so the fault
 vocabulary is learned from observation and will be incomplete. Anything unrecognised pauses the
-queue and is written to a journal for later mapping. See `print-agent/docs/snmp/README.md`.
+queue and is written to a journal for later mapping, and the log line names the strings it could not
+explain so nobody has to open a file on the print station to find out. See
+`print-agent/docs/snmp/README.md`.
+
+Two mapping rules learned the hard way. Every spelling of an exhausted consumable has to sit above
+the bare `ribbon` / `film` catch-all in `ALARM_CONDITIONS`, because the ZXP9 says `RIBBON EMPTY` and
+that matched only the catch-all - reported as a low ribbon, which is a warning the queue prints
+straight through. And a fault word in the state field is not an unknown state: the printer puts
+`COVER OPEN` and `SERVICE REQUIRED` there as well as in an alarm slot, and the journal was
+announcing both as something nobody understood.
 
 ## The agent
 
@@ -238,6 +265,26 @@ deliberately not a third.
 camera could not speak for the card, which is how the system ran before it existed; blank means a
 consumable is exhausted and every card after it would be blank too. The job is failed rather than
 reported printed, so it reprints once somebody has changed the consumable.
+
+**Except on a full tray, where the blank verdict means nothing.** The ink points are calibrated for
+a card lying where cards normally land; once the stack has risen they read the bin, the rim or a
+card standing half out of the chute, which is bright and colourless - indistinguishable from bare
+stock. So a blank verdict taken while the tray reads full reports the card, honestly unverified,
+and stops the run for the tray. Failing it instead put a badge that is sitting in the tray back in
+the queue for a second card.
+
+**A card takes as long as it takes.** The agent waits on the printer's own job table, and the
+firmware timeout bounds *silence* rather than print time: while a job row is in flight or the
+printer says it is printing or warming up, the deadline is pushed forward, up to a ceiling of twenty
+minutes. A cold start with a heating cycle runs well past the three minute timeout that used to
+apply, and giving up on it reported the card on the spooler's word alone while it was still in the
+machine, then asked the camera about a bin that was still empty.
+
+**Faults that can be seen to be fixed clear themselves.** Emptying the tray, clearing a jam or
+closing the cover resumes the run without anybody pressing Resume; the pause carries the check that
+would have to pass, and a jam cleared onto a still-full tray stays paused. Faults nothing can
+observe - a blank card, an unanswered reprint question - deliberately carry no check and still wait
+for a person.
 
 **What the camera deliberately does not do is identify which card it is.** Artwork hashing and OCR
 of the badge number were both built, tested on the real rig and removed. Every badge in a batch

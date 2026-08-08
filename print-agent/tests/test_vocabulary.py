@@ -40,6 +40,14 @@ class UnknownStringsTest(unittest.TestCase):
         result = vocabulary.unknown_strings(reading(printer_state="calibrating"))
         self.assertEqual(result[0]["field"], "printer_state")
 
+    def test_does_not_flag_a_fault_word_in_the_state_field(self):
+        # The ZXP9 puts COVER OPEN and SERVICE REQUIRED in the state field as
+        # well as in an alarm slot. Both are mapped, both stop the printer, and
+        # both were being announced to the operator as states nobody understood.
+        for state in ("COVER OPEN", "SERVICE REQUIRED", "RIBBON EMPTY"):
+            self.assertEqual(vocabulary.unknown_strings(reading(printer_state=state)), [],
+                             state)
+
     def test_flags_an_unknown_job_state(self):
         rows = [zebra.JobRow(index=1, state="rejected_bad_card")]
         result = vocabulary.unknown_strings(reading(jobs=rows))
