@@ -61,6 +61,7 @@ from typing import Any, Callable, Dict, List, NamedTuple, Optional
 from .api import (
     COMPLETION_FIRMWARE,
     COMPLETION_OPERATOR,
+    COMPLETION_RECOVERED,
     COMPLETION_SPOOLER_ONLY,
     VERIFY_CAMERA,
     VERIFY_OPERATOR,
@@ -686,6 +687,54 @@ class _BaseWorker:
     # Odds and ends
     # ------------------------------------------------------------------
 
+    def _already_printed(self, job_id: int) -> Optional[Outcome]:
+        """Refuse to print a card this station has already produced.
+
+        A job only comes back after its lease lapsed, which happens when the
+        agent was closed or the host rebooted mid-run. The server cannot know
+        whether a card came out -- but this station can, because it wrote down
+        how far the job got before it died.
+
+        Only `reported` and `done` count as evidence. Both are written after the
+        printer confirmed the card. `printing` is set before the artwork is
+        spooled, so it proves an attempt, not a card, and that ambiguous case is
+        left to the operator through the usual reprint question.
+
+        Returns an Outcome to hand straight back, or None to print normally.
+        """
+        try:
+            record = self.store.job(job_id)
+        except Exception:  # noqa: BLE001 - an unreadable store cannot veto a print
+            return None
+
+        if not record:
+            return None
+
+        status = (record.get("status") or "").lower()
+
+        if status not in (JOB_REPORTED, JOB_DONE):
+            return None
+
+        card = record.get("card_number") or str(job_id)
+        detail = ("Card %s already printed here; telling the server rather than "
+                  "printing it twice" % card)
+
+        self._log(detail)
+        self._progress(STEP_REPORT, DONE, "already printed")
+
+        # The server thinks this is still outstanding, so the confirmation it
+        # never received goes out again. Through the outbox, so a server that is
+        # still unreachable does not lose it a second time.
+        self._deliver(
+            OUTBOX_PRINTED,
+            {"job_id": job_id, "completion_source": COMPLETION_RECOVERED},
+            lambda: self.api.mark_printed(job_id, completion_source=COMPLETION_RECOVERED),
+        )
+
+        self.store_status(job_id, JOB_DONE)
+
+        return Outcome(PRINTED, detail, job_id)
+
     def _remember(self, job: Dict[str, Any], status: str) -> None:
         self._call(self.store.save_job, job, self.printer_name, self.batch_id, status)
 
@@ -1147,6 +1196,12 @@ class PrintWorker(_BaseWorker):
             self._reset_pipeline()
 
         self._progress(STEP_CLAIM, DONE, "card %s" % self._card_number(job))
+
+        # The server handed this back, but we may already have printed it.
+        already = self._already_printed(job_id)
+
+        if already is not None:
+            return already
 
         # Cached before anything is printed. From here on the card is committed
         # to: if the network dies we still know what we hold and what to send.
