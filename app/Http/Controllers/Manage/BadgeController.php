@@ -393,11 +393,13 @@ class BadgeController extends Controller
     }
 
     /**
-     * The audit's fourteen columns, in order, with the old panel's own labels verbatim.
+     * The audit's fourteen columns, in order, with the old panel's own labels verbatim,
+     * followed by Verified, which is not the audit's.
      *
      * Five are hidden by default, which is every `isToggledHiddenByDefault: true` flag
      * the old badge list carries: extra_copy, total, created_at, printed_at, picked_up_at
-     *.
+     *. Verified is hidden too: it is read with the print_verified filter when a crate is
+     * being reconciled, and is noise the rest of the time.
      *
      * @return array<int, Column>
      */
@@ -441,6 +443,12 @@ class BadgeController extends Controller
             Column::datetime('picked_up_at', 'Picked Up')
                 ->toggleable(hiddenByDefault: true)
                 ->fallback('Not picked up'),
+            // The card was seen: either the print agent's camera saw it come out,
+            // or somebody typed its number off the physical card at the desk. What
+            // is printed and never verified is what has to be reprinted.
+            Column::datetime('verified_print_at', 'Verified')
+                ->toggleable(hiddenByDefault: true)
+                ->fallback('Not verified'),
         ];
     }
 
@@ -481,6 +489,7 @@ class BadgeController extends Controller
             'created_at' => $this->datetime($badge->created_at, self::DATE_FORMAT),
             'printed_at' => $this->datetime($badge->printed_at),
             'picked_up_at' => $this->datetime($badge->picked_up_at),
+            'verified_print_at' => $this->datetime($badge->verified_print_at),
         ];
     }
 
@@ -527,7 +536,8 @@ class BadgeController extends Controller
     }
 
     /**
-     * The audit's four filters.
+     * The audit's four filters, the two approval bounds added with the print cutoff, and
+     * the verification filter added with the POS check-off screen.
      *
      * @return array<int, Filter>
      */
@@ -576,6 +586,19 @@ class BadgeController extends Controller
             Filter::datetime('approved_until', 'Approved until')
                 ->chipLabel('Approved before')
                 ->apply(fn (Builder $query, string $value) => $this->applyApprovedBound($query, '<=', $value)),
+
+            // The reprint list. Set this to "Not verified", the fulfillment status to
+            // the printed states and the attendee range to the crate that was just
+            // checked off at the desk, and what is left is the cards that were
+            // printed and never turned up. See BadgeVerificationController.
+            Filter::ternary('print_verified', 'Print Verified')
+                ->placeholder('Verified or not')
+                ->trueLabel('Verified')
+                ->falseLabel('Not verified')
+                ->chipLabel('Verification')
+                ->apply(fn (Builder $query, string $value) => $value === '1'
+                    ? $query->whereNotNull('badges.verified_print_at')
+                    : $query->whereNull('badges.verified_print_at')),
         ];
     }
 

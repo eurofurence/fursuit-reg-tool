@@ -219,6 +219,13 @@ const actions = computed(() => [
         count: props.printNotifications.length || null,
     },
     {
+        label: 'Badge Verification',
+        subtitle: 'Check a printed box off',
+        route: route('pos.verification.index'),
+        icon: 'pi pi-check-square',
+        key: 'F8',
+    },
+    {
         label: 'Statistics',
         subtitle: 'Reports & totals',
         route: route('pos.statistics'),
