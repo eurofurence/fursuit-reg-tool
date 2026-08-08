@@ -63,6 +63,21 @@ never return a badge that some other run had already put into `Processing`. A ba
 only if a card is genuinely on its way for it - an outstanding job - not merely because it printed
 at some point in the past.
 
+**The render lane has its own queue connection, not just its own queue.** `badge-render` runs on
+`config('queue.long_running')` - `redis-long-running` under Horizon, `database-long-running` under a
+plain `queue:work` - because `retry_after` is a property of the connection. The shared connections
+keep it at 90 seconds so a job lost with its worker comes back quickly, and a run of a hundred cards
+is minutes of work: at 90 seconds the queue handed the still-running job to a second worker, which
+saw `attempts` past `tries = 1` and failed it with *"App\Jobs\Printing\PrepareBadgePrintBatchJob has
+been attempted too many times"*. That failure ran `failed()`, which cancelled the batch and returned
+the badges while the first worker was still rendering them - the same "sent to the printer with no
+card coming" shape the job was written to remove.
+
+The rule to keep: `LONG_RUNNING_QUEUE_RETRY_AFTER` (3660s) must stay above
+`PrepareBadgePrintBatchJob::$timeout` (3600s) and above `badge-render-supervisor`'s Horizon
+`timeout`. `BadgePrintPreparationTest` asserts it. Anything dispatched onto `badge-render` must set
+the same connection, or it lands in a queue no supervisor reads.
+
 This is the fix for a real outage. Rendering used to happen inline, in the request: a bulk print of
 unrendered badges spent seconds per card on an S3 read, a GD decode and an mpdf render, and blew
 PHP's 30 second limit partway through. What it left behind was worse than the error - every badge in
