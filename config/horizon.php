@@ -219,9 +219,16 @@ return [
          *
          * `tries` is 1 to match that job: a run that fails is undone and pressed again,
          * never retried underneath the operator.
+         *
+         * Its own connection too, not just its own queue. `retry_after` is per connection,
+         * and the shared one's 90 seconds is shorter than a single run: the queue handed
+         * the same job to a second worker mid-render, which failed it for exceeding
+         * `tries` and cancelled the batch out from under the run. `queue.long_running`
+         * holds the reasoning; the only rule here is that its `retry_after` stays above
+         * this `timeout`.
          */
         'badge-render-supervisor' => [
-            'connection' => 'redis',
+            'connection' => 'redis-long-running',
             'queue' => ['badge-render'],
             'balance' => 'simple',
             'autoScalingStrategy' => 'time',
@@ -230,7 +237,7 @@ return [
             'maxJobs' => 0,
             'memory' => 512,
             'tries' => 1,
-            'timeout' => 1800,
+            'timeout' => 3600,
             'nice' => 0,
         ],
     ],
@@ -253,7 +260,7 @@ return [
             // S3 bandwidth and memory for no gain.
             'badge-render-supervisor' => [
                 'maxProcesses' => 3,
-                'timeout' => 1800,
+                'timeout' => 3600,
                 'tries' => 1,
             ],
         ],
@@ -268,7 +275,7 @@ return [
             ],
             'badge-render-supervisor' => [
                 'maxProcesses' => 1,
-                'timeout' => 900,
+                'timeout' => 3600,
             ],
         ],
     ],

@@ -47,6 +47,10 @@ class GenerateBadgePrintFileJob implements ShouldQueue
         public readonly bool $force = false,
         public readonly bool $ignorePrintingLock = false,
     ) {
+        // Same connection as the queue it names. `badge-render` is consumed by one
+        // supervisor on `queue.long_running`, so a render left on the default connection
+        // would sit in a queue nothing reads.
+        $this->onConnection(config('queue.long_running'));
         $this->onQueue('badge-render');
     }
 

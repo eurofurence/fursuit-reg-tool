@@ -33,12 +33,21 @@ use Throwable;
  * anything a person is waiting on: a full page of unrendered badges is minutes of image
  * work. `failOnTimeout` matters more than the number - it is what gets `failed()` called,
  * and `failed()` is what puts the badges back when the worker is killed mid-render.
+ *
+ * The timeout alone is not enough, which is why this runs on `queue.long_running` rather
+ * than the default connection. `retry_after` belongs to the connection and the shared one
+ * is 90 seconds, so a run of a hundred cards became visible again long before it finished:
+ * a second worker reserved it, saw `attempts` past `tries = 1`, and failed it with
+ * "App\Jobs\Printing\PrepareBadgePrintBatchJob has been attempted too many times" - which
+ * ran `failed()`, cancelled the batch and returned the badges while the first worker was
+ * still rendering them. The long-running connection's `retry_after` sits above `$timeout`,
+ * so nothing re-serves a run that is still going.
  */
 class PrepareBadgePrintBatchJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 1800;
+    public $timeout = 3600;
 
     public $tries = 1;
 
@@ -53,6 +62,7 @@ class PrepareBadgePrintBatchJob implements ShouldQueue
         public readonly array $badgeIds,
         public readonly bool $autoName = true,
     ) {
+        $this->onConnection(config('queue.long_running'));
         $this->onQueue('badge-render');
     }
 
