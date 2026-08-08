@@ -59,7 +59,7 @@ class ReapPrintJobLeases extends Command
             // Mid-card when the agent went quiet. Only a person can see whether
             // the card is in the bin, so the batch stops rather than guessing.
             if ($job->status === PrintJobStatusEnum::Printing) {
-                $job->markFailed(
+                $job->holdForOperator(
                     "Agent stopped responding while this card was printing (lease expired {$age}). "
                     .'The card may already be in the output bin. Check before reprinting.'
                 );

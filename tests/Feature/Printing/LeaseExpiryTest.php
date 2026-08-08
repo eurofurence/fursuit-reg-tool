@@ -3,6 +3,7 @@
 use App\Domain\Printing\Models\PrintBatch;
 use App\Domain\Printing\Models\Printer;
 use App\Enum\PrintBatchStatusEnum;
+use App\Enum\PrintCompletionSourceEnum;
 use App\Enum\PrintJobStatusEnum;
 use App\Models\Badge\Badge;
 use App\Models\Machine;
@@ -97,4 +98,68 @@ it('still fails a claimed card that has been round too many times', function () 
     $this->artisan('printing:reap-leases')->assertExitCode(0);
 
     expect($job->fresh()->status)->toBe(PrintJobStatusEnum::Failed);
+});
+
+/**
+ * Resume must not undo the hold.
+ *
+ * The reaper stops a mid-print card and pauses the batch. Resume requeues
+ * failed jobs, which is right for a card that never printed and wrong for one
+ * sitting in the output bin -- and it was quietly doing both.
+ */
+it('does not requeue a held card when the batch resumes', function () {
+    $batch = leaseBatch();
+    $job = expiredJob($batch, PrintJobStatusEnum::Printing);
+
+    $this->artisan('printing:reap-leases')->assertExitCode(0);
+    $batch->fresh()->resume();
+
+    expect($job->fresh()->status)->not->toBe(PrintJobStatusEnum::Pending);
+});
+
+it('still requeues an ordinary failure when the batch resumes', function () {
+    $batch = leaseBatch();
+    $job = $batch->printJobs()->orderBy('sequence')->first();
+    $job->claim(Machine::factory()->create(), 180);
+    $job->fresh()->markFailed('the spooler refused it');
+
+    $batch->fresh()->resume();
+
+    expect($job->fresh()->status)->toBe(PrintJobStatusEnum::Pending);
+});
+
+it('lets the operator say the card is in the bin', function () {
+    $batch = leaseBatch();
+    $job = expiredJob($batch, PrintJobStatusEnum::Printing);
+    $this->artisan('printing:reap-leases')->assertExitCode(0);
+
+    $job->fresh()->confirmCardExists();
+
+    expect($job->fresh()->status)->toBe(PrintJobStatusEnum::Printed)
+        ->and($job->fresh()->completion_source)->toBe(PrintCompletionSourceEnum::Recovered)
+        ->and($job->fresh()->card_may_exist)->toBeFalse();
+});
+
+it('lets the operator say there is no card and print it', function () {
+    $batch = leaseBatch();
+    $job = expiredJob($batch, PrintJobStatusEnum::Printing);
+    $this->artisan('printing:reap-leases')->assertExitCode(0);
+
+    $job->fresh()->requeueDespiteCard();
+
+    expect($job->fresh()->status)->toBe(PrintJobStatusEnum::Pending)
+        ->and($job->fresh()->card_may_exist)->toBeFalse();
+});
+
+it('serves the card again only once the operator has asked for it', function () {
+    $batch = leaseBatch();
+    $job = expiredJob($batch, PrintJobStatusEnum::Printing);
+    $this->artisan('printing:reap-leases')->assertExitCode(0);
+    $batch->fresh()->resume();
+
+    expect($batch->fresh()->claimNextJob(Machine::factory()->create())?->id)->not->toBe($job->id);
+
+    $job->fresh()->requeueDespiteCard();
+
+    expect($batch->fresh()->claimNextJob(Machine::factory()->create())?->id)->toBe($job->id);
 });
