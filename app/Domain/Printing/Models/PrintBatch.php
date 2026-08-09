@@ -43,6 +43,7 @@ class PrintBatch extends Model
     {
         return [
             'status' => PrintBatchStatusEnum::class,
+            'requested_badge_ids' => 'array',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'total_jobs' => 'integer',
@@ -81,6 +82,58 @@ class PrintBatch extends Model
     public function printJobs(): HasMany
     {
         return $this->hasMany(PrintJob::class);
+    }
+
+    /**
+     * The run this one was started to replace, when it is a retry of a failed preparation.
+     */
+    public function retryOf(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'retry_of_batch_id');
+    }
+
+    /**
+     * The attempts made after this run failed to prepare. More than one only if somebody
+     * retried a batch whose retry also failed.
+     */
+    public function retries(): HasMany
+    {
+        return $this->hasMany(self::class, 'retry_of_batch_id');
+    }
+
+    /**
+     * Whether this run died while it was being prepared, rather than while printing.
+     *
+     * Cancelled and holding no jobs is exactly that shape: `commitBadges()` and the move to
+     * Ready are one transaction, so a batch that never got jobs never got a run, and
+     * `BadgePrintQueue::abandon()` is the only thing that cancels a batch in that state. An
+     * operator cancelling a live run leaves the jobs behind, cancelled, which is a finished
+     * run rather than a failed preparation and is not something to repeat.
+     *
+     * The badge ids are part of the test rather than a separate check: without them there is
+     * nothing to try again. Batches opened before the column existed carry none.
+     */
+    /**
+     * A retry of this run that has not itself finished or been cancelled.
+     *
+     * What it guards is a second Retry pressed while the first is still a Draft: at that
+     * point the retry holds no jobs yet, so nothing downstream would drop the badges as
+     * already queued and two runs would render the same cards.
+     */
+    public function liveRetry(): ?self
+    {
+        return $this->retries()
+            ->whereNotIn('status', [PrintBatchStatusEnum::Completed, PrintBatchStatusEnum::Cancelled])
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    public function preparationFailed(): bool
+    {
+        return $this->status === PrintBatchStatusEnum::Cancelled
+            && $this->requested_badge_ids !== null
+            && $this->requested_badge_ids !== []
+            && ! $this->isSealed();
     }
 
     /**
@@ -170,6 +223,7 @@ class PrintBatch extends Model
                 createdById: $createdById,
                 createdByStaffId: $createdByStaffId,
                 expectedJobs: $badges->count(),
+                requestedBadgeIds: $badges->map(fn (Badge $badge) => (int) $badge->getKey())->all(),
             );
 
             $batch->commitBadges($badges);
@@ -191,6 +245,12 @@ class PrintBatch extends Model
      * `$expectedJobs` is what the run is expected to end up holding. It is only a
      * placeholder for the progress display; `commitBadges()` replaces it with the count
      * that was actually committed.
+     *
+     * `$requestedBadgeIds` is what the run was asked to print, written here because this is
+     * the last moment it is certainly known: a preparation that fails hands every badge back
+     * to Pending and leaves a batch with no jobs, and without this the selection an operator
+     * would have to reassemble by hand to try again is simply gone. It is the selection, not
+     * the outcome - `commitBadges()` decides what actually printed.
      */
     public static function open(
         string $name,
@@ -199,6 +259,8 @@ class PrintBatch extends Model
         ?int $createdById = null,
         ?int $createdByStaffId = null,
         int $expectedJobs = 0,
+        array $requestedBadgeIds = [],
+        ?int $retryOfBatchId = null,
     ): self {
         return self::create([
             'name' => $name,
@@ -208,6 +270,8 @@ class PrintBatch extends Model
             'created_by_staff_id' => $createdByStaffId,
             'status' => PrintBatchStatusEnum::Draft,
             'total_jobs' => $expectedJobs,
+            'requested_badge_ids' => $requestedBadgeIds === [] ? null : array_values($requestedBadgeIds),
+            'retry_of_batch_id' => $retryOfBatchId,
         ]);
     }
 
@@ -287,7 +351,11 @@ class PrintBatch extends Model
      */
     public function isSealed(): bool
     {
-        return $this->printJobs()->exists();
+        // `withCount('printJobs')` where there is one, so the batch list - which asks this
+        // per row, on a ten-second poll - does not run a query per row to find out.
+        $counted = $this->getAttribute('print_jobs_count');
+
+        return $counted !== null ? (int) $counted > 0 : $this->printJobs()->exists();
     }
 
     /**

@@ -7,13 +7,14 @@ use Illuminate\Support\Facades\Route;
 /*
  * Print batches (phase 7, audit 4.8). The run a printer works through card by card.
  *
- * Two GETs and four POSTs, and the split between them is the point. A batch is immutable
+ * Two GETs and five POSTs, and the split between them is the point. A batch is immutable
  * once built: there is no create, no store, no edit, no update and no destroy, because the
  * only thing that can populate one is PrintBatch::build(), which freezes the print order
  * and locks every badge in it at the same moment. The old panel resource says the same with
- * `canCreate(): false`.
+ * `canCreate(): false`. `retry` does not break that: it opens a *new* batch from the same
+ * badges rather than refilling the failed one.
  *
- * The four mutations live on PrintBatchRunController rather than on the read controller, so
+ * The five mutations live on PrintBatchRunController rather than on the read controller, so
  * nothing that halts, restarts or cancels a live convention print run can be reached by
  * opening a page, by the ten-second poll behind the list, or by a link somebody pasted into
  * a chat. There is no GET form of any of them.
@@ -41,6 +42,12 @@ Route::prefix('print-batches')->name('print-batches.')->middleware('can:manage-a
     Route::post('{print_batch}/cancel', [PrintBatchRunController::class, 'cancel'])
         ->whereNumber('print_batch')
         ->name('cancel');
+
+    // Queues the same badges again after a preparation failed. A POST that creates a new
+    // batch, so it is a mutation like the three above and lives on the same controller.
+    Route::post('{print_batch}/retry', [PrintBatchRunController::class, 'retry'])
+        ->whereNumber('print_batch')
+        ->name('retry');
 
     Route::post('{print_batch}/jobs/{print_job}/verify', [PrintBatchRunController::class, 'verify'])
         ->whereNumber('print_batch')

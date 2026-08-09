@@ -94,6 +94,15 @@ class PrintBatchPolicy
     }
 
     /**
+     * Retrying a failed preparation queues real cards, so it sits with the other three
+     * rather than with the reads.
+     */
+    public function retry(User $user, PrintBatch $printBatch): bool
+    {
+        return (bool) $user->is_admin;
+    }
+
+    /**
      * Asked through Gate rather than retyped, so "who administers the panel" keeps one
      * definition in AuthServiceProvider.
      */

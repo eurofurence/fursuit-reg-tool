@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manage;
 
 use App\Domain\Printing\Models\PrintBatch;
 use App\Domain\Printing\Models\PrintJob;
+use App\Domain\Printing\Services\BadgePrintQueue;
 use App\Enum\PrintBatchStatusEnum;
 use App\Enum\PrintJobStatusEnum;
 use App\Enum\PrintVerificationSourceEnum;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * The four verbs that change a print run: pause, resume, cancel and verify.
+ * The five verbs that change a print run: pause, resume, cancel, verify and retry.
  *
  * They live apart from PrintBatchController for the same reason retry lives apart from
  * PrintJobController: the read controller owns pages and props, and this owns the verbs
@@ -132,6 +133,72 @@ class PrintBatchRunController extends Controller
         Toast::flashSuccess('Batch cancelled');
 
         return back();
+    }
+
+    /**
+     * Queue the same badges again after a run failed while it was being prepared.
+     *
+     * A preparation that dies - a render that threw, a worker killed mid-run - cancels its
+     * batch and hands the badges back to Pending, leaving a cancelled run holding no cards
+     * and an operator with nothing to press. Until now the only way forward was to find the
+     * same attendees in the badge list and select them again by hand, which for a run of a
+     * hundred cards is how badges get missed.
+     *
+     * The retry is a new batch. Batches are immutable and Cancelled is terminal, so the run
+     * that failed stays exactly as it is - with its reason on it - and the new one points
+     * back at it.
+     *
+     * Two guards, both re-asked here rather than trusted from the button that was drawn ten
+     * seconds ago. The batch has to be a failed preparation, which is the only failure a
+     * repeat is the right answer to: a cancelled *run* had cards, and some of them may have
+     * printed. And a retry that is still live blocks another, because a second attempt
+     * started while the first is still a Draft holds no jobs yet, so nothing downstream
+     * would recognise the badges as already queued and both would render the same cards.
+     */
+    public function retry(PrintBatch $printBatch): RedirectResponse
+    {
+        Gate::authorize('retry', $printBatch);
+
+        if (! $printBatch->preparationFailed()) {
+            Toast::flashDanger(
+                'Nothing was queued',
+                'Only a run that failed while it was being prepared can be retried.',
+            );
+
+            return back();
+        }
+
+        if ($live = $printBatch->liveRetry()) {
+            Toast::flashDanger(
+                'Nothing was queued',
+                'These badges are already being printed again by batch #'.$live->id.'.',
+            );
+
+            return back();
+        }
+
+        $retry = BadgePrintQueue::retry($printBatch, auth()->id());
+
+        if ($retry === null) {
+            // Every badge was filtered out on the way through: a fursuit rejected since, or
+            // another run holding the card now. Both are reasons not to print, and neither
+            // is something to report as a success.
+            Toast::flashDanger(
+                'Nothing was queued',
+                'None of the badges in this run can be sent to a printer any more.',
+            );
+
+            return back();
+        }
+
+        Toast::flashSuccess(
+            'Batch queued again',
+            $retry->status === PrintBatchStatusEnum::Ready
+                ? ($retry->name ?? 'Batch #'.$retry->id).' is ready to print.'
+                : ($retry->name ?? 'Batch #'.$retry->id).' is being prepared. It will show as ready to print once the artwork is rendered.',
+        );
+
+        return redirect()->route('admin.print-batches.show', $retry);
     }
 
     /**

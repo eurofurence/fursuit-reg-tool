@@ -98,7 +98,7 @@ class PrintBatchController extends Controller
     {
         Gate::authorize('view', $printBatch);
 
-        $printBatch->load(['printer', 'event', 'createdBy']);
+        $printBatch->load(['printer', 'event', 'createdBy', 'retries'])->loadCount('printJobs');
 
         return inertia('Manage/PrintBatches/Show', [
             'batch' => $this->batchData($printBatch),
@@ -142,7 +142,11 @@ class PrintBatchController extends Controller
      */
     private function query(): Builder
     {
-        return PrintBatch::query()->with(['printer', 'event', 'createdBy']);
+        // The card count comes along because Retry has to know whether a batch ever held
+        // any: `isSealed()` reads it off the row rather than asking per row on every poll.
+        return PrintBatch::query()
+            ->with(['printer', 'event', 'createdBy'])
+            ->withCount('printJobs');
     }
 
     /**
@@ -413,7 +417,50 @@ class PrintBatchController extends Controller
             $actions[] = $cancel;
         }
 
+        if (Gate::allows('retry', $batch)) {
+            $actions[] = $this->retryAction($batch);
+        }
+
         return $actions;
+    }
+
+    /**
+     * Retry: send the same badges to a printer again after a preparation failed.
+     *
+     * A run that dies while it is being prepared cancels itself and hands every badge back,
+     * so what an operator is left looking at is a cancelled batch with no cards in it and
+     * the reason on the row. Without this the only way on is to find the same attendees in
+     * the badge list and select them again by hand.
+     *
+     * Disabled rather than hidden, with the reason, like the other three: a control that
+     * disappears leaves somebody hunting for it. The predicates are the endpoint's own,
+     * re-asked there before anything is queued.
+     */
+    private function retryAction(PrintBatch $batch): Action
+    {
+        $retry = Action::post('retry', 'Retry', route('admin.print-batches.retry', $batch))
+            // heroicon-o-arrow-path, as the card-level retry uses.
+            ->icon('refresh-cw')
+            ->tone(Status::WARN)
+            ->confirm(
+                'Print this run again',
+                'The badges of this run are sent to a printer again as a new batch. Anything since rejected or already queued elsewhere is left out.',
+                'Confirm',
+            );
+
+        if (! $batch->preparationFailed()) {
+            $label = $batch->status?->label() ?? 'in an unknown state';
+
+            $retry->disabled("This batch is {$label}. Only a run that failed while it was being prepared can be retried.");
+
+            return $retry;
+        }
+
+        if ($live = $batch->liveRetry()) {
+            $retry->disabled("These badges are already being printed again by batch #{$live->id}.");
+        }
+
+        return $retry;
     }
 
     /**
@@ -431,6 +478,21 @@ class PrintBatchController extends Controller
             'event' => $batch->event?->name,
             'createdBy' => $batch->createdBy?->name,
             'pauseReason' => $batch->pause_reason,
+            // A failed preparation and the run that replaced it are two rows. Naming each
+            // other on the page is what makes "these cards were printed after all" readable
+            // months later, when the cancelled batch is the one somebody opens.
+            'retryOf' => $batch->retry_of_batch_id === null ? null : [
+                'id' => (int) $batch->retry_of_batch_id,
+                'url' => route('admin.print-batches.show', $batch->retry_of_batch_id),
+            ],
+            'retries' => $batch->retries
+                ->sortBy('id')
+                ->map(fn (PrintBatch $retry) => [
+                    'id' => $retry->id,
+                    'url' => route('admin.print-batches.show', $retry),
+                ])
+                ->values()
+                ->all(),
             'progress' => [
                 'total' => (int) $batch->total_jobs,
                 'printed' => (int) $batch->printed_count,

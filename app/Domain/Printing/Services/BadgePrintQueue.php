@@ -63,6 +63,7 @@ class BadgePrintQueue
         ?string $name = null,
         ?int $createdById = null,
         ?int $createdByStaffId = null,
+        ?int $retryOfBatchId = null,
     ): ?PrintBatch {
         $badges = self::printable($badges->filter(fn (Badge $badge) => $badge->exists));
 
@@ -81,6 +82,11 @@ class BadgePrintQueue
             createdById: $createdById,
             createdByStaffId: $createdByStaffId,
             expectedJobs: $badges->count(),
+            // Written on the batch, not only handed to the job: a preparation that fails
+            // leaves a cancelled batch with no jobs and no other record of what it was
+            // asked to print, and `retry()` reads this back.
+            requestedBadgeIds: $badges->map(fn (Badge $badge) => (int) $badge->getKey())->all(),
+            retryOfBatchId: $retryOfBatchId,
         );
 
         Log::info('badge print batch opened', [
@@ -89,6 +95,7 @@ class BadgePrintQueue
             'printer_id' => $printer?->id,
             'created_by_id' => $createdById,
             'created_by_staff_id' => $createdByStaffId,
+            'retry_of_batch_id' => $retryOfBatchId,
         ]);
 
         PrepareBadgePrintBatchJob::dispatch(
@@ -98,6 +105,43 @@ class BadgePrintQueue
         )->afterCommit();
 
         return $batch->fresh();
+    }
+
+    /**
+     * Send the badges of a run whose preparation failed to the printer again.
+     *
+     * A preparation that dies - a render that threw, a worker that was killed - cancels its
+     * batch and hands every badge back to Pending, so what is left on screen is a cancelled
+     * run holding nothing, and the operator's only recourse was to find the same badges in
+     * the badge list and select them by hand. That is the failure this closes: the selection
+     * is on the batch, so the run can be asked for again in one press.
+     *
+     * A new batch rather than a revived one. Batches are immutable and Cancelled is
+     * terminal; the failed run stays as the record that it failed, and the retry points back
+     * at it through `retry_of_batch_id`.
+     *
+     * The selection is re-filtered on the way through `queue()`, which is the point of going
+     * back through it: a fursuit rejected since, or a badge some other run has already taken,
+     * is dropped rather than printed twice. Null comes back when nothing in it is printable
+     * any more, exactly as it does for a first attempt.
+     *
+     * The desk clerk who queued the original keeps the attribution, so the run that replaces
+     * theirs still reaches their own print list and their dashboard - they are the one
+     * standing at the counter waiting for the card. `createdById` is whoever pressed Retry.
+     */
+    public static function retry(
+        PrintBatch $batch,
+        ?int $createdById = null,
+    ): ?PrintBatch {
+        $badges = Badge::whereIn('id', $batch->requested_badge_ids ?? [])->get();
+
+        return self::queue(
+            badges: $badges,
+            printer: $batch->printer,
+            createdById: $createdById,
+            createdByStaffId: $batch->created_by_staff_id,
+            retryOfBatchId: (int) $batch->getKey(),
+        );
     }
 
     /**
