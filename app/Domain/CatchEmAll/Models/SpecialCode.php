@@ -40,7 +40,17 @@ class SpecialCode extends Model
      */
     public function createActionInstance(): SpecialCodeAction
     {
-        $className = SpecialActionsRegister::getClassForSpecialCodeType($this->type);
+        $className = $this->type instanceof SpecialCodeType
+            ? SpecialActionsRegister::getClassForSpecialCodeType($this->type)
+            : null;
+
+        if (($className === null || $className === '') && is_string($this->class_name)) {
+            $className = $this->class_name;
+        }
+
+        if (! is_string($className) || $className === '' || ! class_exists($className)) {
+            throw new \InvalidArgumentException("Class {$className} does not exist.");
+        }
 
         return new $className(
             $this->event_id,

@@ -2,11 +2,11 @@
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
 import { router } from "@inertiajs/vue3";
 import { Award, Crown, Star, TrendingUp, Trophy } from "lucide-vue-next";
-import Card from "primevue/card";
+import Card from "@/Components/UI/UiCard.vue";
 import Dropdown from "primevue/dropdown";
 import { computed, ref } from "vue";
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
     user : {
         id : number;
         name : string;
@@ -18,32 +18,23 @@ const props = withDefaults(defineProps<{
         catches : number;
     }>;
     eventsWithEntries: Array<any>;
-    selectedEvent?: Number | null;
+    selectedEvent?: string | null;
     isGlobal: boolean;
     flash?: any;
-  }>(),
-  {
-    selectedEvent: null,
-    isGlobal: false,
-  }
-);
+}>();
 
 // Event selection
 const eventOptions = computed(() => [
+    { label: "Global (All-Time)", value: "global" },
     ...props.eventsWithEntries.map((event) => ({
         label: `${event.name} (${new Date(event.starts_at).getFullYear()})`,
         value: event.id.toString(),
     })),
 ]);
 
-const selectedEventValue = ref(props.selectedEvent != null ? String(props.selectedEvent) : props.eventsWithEntries[0].id.toString());
-console.log(selectedEventValue)
-
-const isGlobalView = computed(() => selectedEventValue.value === "global");
-
+const selectedEventValue = ref(props.selectedEvent || "global");
 
 const onEventChange = () => {
-
     router.get(
         route("catch-em-all.leaderboard"),
         {
@@ -123,7 +114,7 @@ const getProperCatch = (catchCount: number) => {
                     </div>
                     <p class="text-sm text-gray-300">
                         {{
-                            isGlobalView
+                            props.isGlobal
                                 ? "All-time champions"
                                 : "Event champions"
                         }}
