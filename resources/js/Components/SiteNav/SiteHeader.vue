@@ -1,11 +1,15 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LogOut, User } from 'lucide-vue-next';
+import { LogOut, ShieldCheck, User } from 'lucide-vue-next';
 
 const page = usePage();
 
 const user = computed(() => page.props.auth?.user ?? null);
+
+// Staff only. HandleInertiaRequests resolves the access-manage gate, so reviewers get
+// the entry as well - the panel admits them. Never derived from a user flag here.
+const canAccessManage = computed(() => page.props.auth?.can_access_manage === true);
 
 const initials = computed(() => {
     const name = user.value?.name?.trim();
@@ -90,6 +94,16 @@ onBeforeUnmount(() => {
                         <div class="font-semibold truncate">{{ user.name }}</div>
                         <div class="text-xs text-gray-500">Signed in</div>
                     </div>
+                    <Link
+                        v-if="canAccessManage"
+                        :href="route('admin.dashboard')"
+                        class="w-full flex items-center gap-2 px-4 py-3 text-sm text-left hover:bg-gray-50 border-b border-gray-100"
+                        role="menuitem"
+                        @click="open = false"
+                    >
+                        <ShieldCheck class="h-4 w-4"/>
+                        Admin Panel
+                    </Link>
                     <Link
                         :href="route('auth.logout')"
                         method="POST"

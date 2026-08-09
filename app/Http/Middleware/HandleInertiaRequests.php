@@ -140,9 +140,15 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
+        $user = $request->user();
+
         return [
-            'user' => $request->user()?->load('badges'),
-            'amountDue' => $request->user()?->amountDue(),
+            'user' => $user?->load('badges'),
+            'amountDue' => $user?->amountDue(),
+            // Puts the Admin entry in the public header menu for staff. The gate rather
+            // than is_admin, because access-manage is the panel door and reviewers hold
+            // it too; see docs/admin/roles.md.
+            'can_access_manage' => $user !== null && Gate::forUser($user)->allows('access-manage'),
         ];
     }
 

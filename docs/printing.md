@@ -42,6 +42,16 @@ costs nothing but trouble. See `App\Badges\ImagePreparer`.
 
 ## Starting a run
 
+**A run is not capped by the page.** `Print Badges` on `/admin/badges` acts on the ticked rows, and
+ticking used to mean one page - 100 badges at the largest per-page, no matter how well the filter had
+already isolated the run. Once every row on the page is ticked the bulk bar offers **Select all N
+matching**, which asks the list for the key of every record the current filters match
+(`X-Table-Select-All`, `App\Support\Manage\Table::requestedIds`) and hands those keys to the same
+bulk action. The count on the button is what will be printed, so a filter that has not been narrowed
+enough says so before the confirm dialog rather than after. The selection is dropped whenever the
+view changes - a filter, a search, a tab or a page - because the keys mean "everything matching
+*that* view" and nothing else.
+
 Pressing Print does not print, and does not render. The request opens an empty `Draft` batch and
 dispatches `PrepareBadgePrintBatchJob` on the `badge-render` queue; everything expensive happens
 there. The operator gets the batch back immediately and watches it turn from preparing to ready.

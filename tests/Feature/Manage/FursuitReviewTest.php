@@ -905,7 +905,6 @@ test('a Code of Conduct rejection stops the card, a publication block does not',
      */
     $rejected = ($this->fursuit)(['name' => 'Refused']);
     $blocked = ($this->fursuit)(['name' => 'Not published']);
-    $pending = ($this->fursuit)(['name' => 'Still waiting']);
 
     ($this->scoped)($this->reviewer)->post(route('admin.fursuits.reject', $rejected), [
         'custom_reason' => 'Against the Code of Conduct.',
@@ -936,10 +935,9 @@ test('a Code of Conduct rejection stops the card, a publication block does not',
 
     $printer = Printer::factory()->badge()->create();
 
-    // The rejected one is dropped, and so is the one still waiting for a verdict: neither
-    // has been cleared.
-    expect(BadgePrintQueue::queue(collect([$rejected->badges()->sole()]), $printer))->toBeNull()
-        ->and(BadgePrintQueue::queue(collect([$pending->badges()->sole()]), $printer))->toBeNull();
+    // The rejected one is dropped. A fursuit still waiting for a verdict is not - review
+    // runs behind and the desk does not wait for it; BadgePrintQueueTest covers that pair.
+    expect(BadgePrintQueue::queue(collect([$rejected->badges()->sole()]), $printer))->toBeNull();
 
     $batch = BadgePrintQueue::queue(collect([$blockedBadge->fresh()]), $printer);
 

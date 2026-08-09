@@ -14,7 +14,8 @@
  * gathered back up here.
  */
 import { computed } from 'vue';
-import { Head, usePoll } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+import { usePagePoll } from '@/Components/Manage/usePagePoll.js';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import DataTable from '@/Components/Manage/DataTable.vue';
 import PageHeader from '@/Components/Manage/PageHeader.vue';
@@ -48,7 +49,7 @@ const table = computed(() => ({
 // the old batch list polls this table every 10 seconds. Only the data props
 // are reloaded: columns, filters and actions do not change under an operator's hands, and
 // a poll must never be able to pause, resume or cancel a run.
-usePoll(10000, { only: ['rows', 'meta'] });
+usePagePoll(10000, { only: ['rows', 'meta'] });
 </script>
 
 <template>

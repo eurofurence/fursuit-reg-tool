@@ -25,7 +25,8 @@
  * filters partials by top-level key.
  */
 import { computed } from 'vue';
-import { Head, Link, usePoll } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
+import { usePagePoll } from '@/Components/Manage/usePagePoll.js';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import ActionButton from '@/Components/Manage/ActionButton.vue';
 import DataTable from '@/Components/Manage/DataTable.vue';
@@ -67,7 +68,7 @@ const cards = computed(() => ({
 /** The infolist placeholders, which are per-entry rather than one shared dash. */
 const or = (value, placeholder) => (value === null || value === undefined || value === '' ? placeholder : value);
 
-usePoll(10000, { only: ['batch', 'actions', 'rows', 'meta'] });
+usePagePoll(10000, { only: ['batch', 'actions', 'rows', 'meta'] });
 </script>
 
 <template>

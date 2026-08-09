@@ -17,7 +17,8 @@
  * whenever the printer scope was on, and it still does now that the scope is a filter.
  */
 import { computed } from 'vue';
-import { Head, usePoll } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+import { usePagePoll } from '@/Components/Manage/usePagePoll.js';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import DataTable from '@/Components/Manage/DataTable.vue';
 import PageHeader from '@/Components/Manage/PageHeader.vue';
@@ -52,7 +53,7 @@ const table = computed(() => ({
 // the old print-job list polls this table every 5 seconds. Only the data props are
 // reloaded: columns, filters and actions do not change under an operator's hands, and a
 // poll must never be able to act on a job.
-usePoll(5000, { only: ['rows', 'meta'] });
+usePagePoll(5000, { only: ['rows', 'meta'] });
 </script>
 
 <template>

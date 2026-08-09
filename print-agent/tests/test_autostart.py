@@ -15,7 +15,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from agent.autostart import should_autostart  # noqa: E402
+from agent.autostart import should_autostart, should_poll_batches  # noqa: E402
 
 
 def decision(**overrides):
@@ -57,7 +57,7 @@ class ShouldAutostartTest(unittest.TestCase):
         self.assertFalse(decision(printer_ready=False))
 
     def test_the_hunt_is_throttled(self):
-        # Otherwise an agent left on overnight asks the server every tick.
+        # Otherwise a start that does not take is retried on every UI tick.
         self.assertFalse(decision(since_last=0.5))
 
     def test_it_tries_again_once_the_interval_passes(self):
@@ -65,6 +65,30 @@ class ShouldAutostartTest(unittest.TestCase):
 
     def test_demo_mode_never_reaches_the_network(self):
         self.assertFalse(decision(demo=True))
+
+
+class ShouldPollBatchesTest(unittest.TestCase):
+    """The background listing that feeds both the chooser and the hunt."""
+
+    def test_an_idle_configured_station_polls(self):
+        # The whole point: a batch built in the admin panel is noticed without
+        # anybody walking over and opening the chooser.
+        self.assertTrue(should_poll_batches(
+            configured=True, demo=False, printing_now=False))
+
+    def test_it_stays_off_the_wire_mid_run(self):
+        # The worker is already claiming card by card, and nothing is waiting
+        # on a refreshed listing until that run ends.
+        self.assertFalse(should_poll_batches(
+            configured=True, demo=False, printing_now=True))
+
+    def test_an_unconfigured_agent_does_not_poll(self):
+        self.assertFalse(should_poll_batches(
+            configured=False, demo=False, printing_now=False))
+
+    def test_demo_mode_never_reaches_the_network(self):
+        self.assertFalse(should_poll_batches(
+            configured=True, demo=True, printing_now=False))
 
 
 if __name__ == "__main__":

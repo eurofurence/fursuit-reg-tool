@@ -12,7 +12,8 @@
  * hid at table level with `->searchable(false)` and which the name column needs.
  */
 import { computed } from 'vue';
-import { Head, usePoll } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+import { usePagePoll } from '@/Components/Manage/usePagePoll.js';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import DataTable from '@/Components/Manage/DataTable.vue';
 import PageHeader from '@/Components/Manage/PageHeader.vue';
@@ -50,7 +51,7 @@ const table = computed(() => ({
  * a GET that reloads rows can never fire the inline is_active toggle - that is a POST,
  * and only a click makes it.
  */
-usePoll(15000, { only: ['rows', 'meta'] });
+usePagePoll(15000, { only: ['rows', 'meta'] });
 </script>
 
 <template>

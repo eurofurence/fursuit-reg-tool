@@ -361,11 +361,11 @@ class BadgePrintQueue
      */
     private static function printable(Collection $badges): Collection
     {
-        return self::withoutCardsAlreadyOnTheirWay(self::withoutUnapprovedFursuits($badges));
+        return self::withoutCardsAlreadyOnTheirWay(self::withoutRejectedFursuits($badges));
     }
 
     /**
-     * Drop badges whose fursuit has not been cleared for printing.
+     * Drop badges a reviewer has refused.
      *
      * This is where a Code of Conduct rejection actually stops a card. Nothing used to
      * enforce it: printing looked only at the badge, so a rejected fursuit - a submission
@@ -374,14 +374,20 @@ class BadgePrintQueue
      * meant an email. A badge that never reaches Processing also never reaches PickedUp,
      * so this one filter closes both the printer and the desk.
      *
-     * A publication block deliberately does not appear here. It bars the gallery and the
-     * game, and the whole reason it exists is that the card is fine: an attendee does not
-     * lose their badge over a gallery rule.
+     * A rejection, and nothing else. It used to drop anything not Approved, which swept up
+     * every fursuit still waiting for review - a queue that runs days behind while the
+     * attendee is at the desk now - and refused a perfectly good card because nobody had
+     * looked at it yet. Deciding whether an unreviewed badge goes out belongs to the person
+     * handing it over, not to this filter; see Fursuit::isPrintable().
+     *
+     * A publication block deliberately does not appear here either. It bars the gallery and
+     * the game, and the whole reason it exists is that the card is fine: an attendee does
+     * not lose their badge over a gallery rule.
      *
      * @param  Collection<int, Badge>  $badges
      * @return Collection<int, Badge>
      */
-    private static function withoutUnapprovedFursuits(Collection $badges): Collection
+    private static function withoutRejectedFursuits(Collection $badges): Collection
     {
         if ($badges->isEmpty()) {
             return $badges;
@@ -394,7 +400,7 @@ class BadgePrintQueue
         );
 
         if ($blocked->isNotEmpty()) {
-            Log::info('badges skipped: their fursuit is not approved', [
+            Log::info('badges skipped: their fursuit was rejected', [
                 'badge_ids' => $blocked->map(fn (Badge $badge) => $badge->getKey())->values()->all(),
             ]);
         }
