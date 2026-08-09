@@ -1,5 +1,5 @@
 <script setup>
-import { Head, router } from "@inertiajs/vue3";
+import { Head, Link, router } from "@inertiajs/vue3";
 import POSLayout from "@/Layouts/POSLayout.vue";
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -125,16 +125,15 @@ function onPageChange(event) {
         <title>POS - Print Queue</title>
     </Head>
 
-    <div class="w-full p-4">
-        <!-- Back Button at Top -->
-        <div class="mb-6">
-            <Button
-                label="Back to Dashboard"
-                icon="pi pi-arrow-left"
-                severity="secondary"
-                @click="router.visit(route('pos.dashboard'))"
-                class="mb-4"
-            />
+    <div class="w-full flex flex-col gap-2">
+        <div class="pos-card flex items-center justify-between gap-4 flex-wrap">
+            <div>
+                <h1 class="text-2xl font-bold leading-tight">Print Queue</h1>
+                <span class="text-sm text-pos-muted pos-num">{{ printJobs.total }} job(s)</span>
+            </div>
+            <Link :href="route('pos.dashboard')" class="pos-btn">
+                Dashboard <span class="pos-kcap">−</span>
+            </Link>
         </div>
 
         <!-- Print Jobs Table -->
@@ -171,13 +170,13 @@ function onPageChange(event) {
                         <template #body="slotProps">
                             <div v-if="slotProps.data.printable_type === 'App\\Models\\Badge\\Badge'">
                                 <div class="font-semibold">Badge #{{ slotProps.data.printable?.custom_id }}</div>
-                                <div class="text-sm text-gray-600">{{ slotProps.data.printable?.fursuit?.name }}</div>
+                                <div class="text-sm text-pos-muted">{{ slotProps.data.printable?.fursuit?.name }}</div>
                             </div>
                             <div v-else-if="slotProps.data.printable_type === 'App\\Domain\\Checkout\\Models\\Checkout\\Checkout'">
                                 <div class="font-semibold">Receipt #{{ slotProps.data.printable?.id }}</div>
-                                <div class="text-sm text-gray-600">Checkout receipt</div>
+                                <div class="text-sm text-pos-muted">Checkout receipt</div>
                             </div>
-                            <div v-else class="text-gray-500">Unknown item</div>
+                            <div v-else class="text-pos-muted">Unknown item</div>
                         </template>
                     </Column>
 
@@ -185,7 +184,7 @@ function onPageChange(event) {
                         <template #body="slotProps">
                             <div>
                                 <div class="font-semibold">{{ slotProps.data.printer?.name || 'Unknown' }}</div>
-                                <div class="text-sm text-gray-600">{{ slotProps.data.printer?.type }}</div>
+                                <div class="text-sm text-pos-muted">{{ slotProps.data.printer?.type }}</div>
                             </div>
                         </template>
                     </Column>
@@ -203,7 +202,7 @@ function onPageChange(event) {
                         <template #body="slotProps">
                             <div class="text-sm">
                                 <div>{{ dayjs(slotProps.data.created_at).format('DD.MM.YY') }}</div>
-                                <div class="text-gray-600">{{ dayjs(slotProps.data.created_at).format('HH:mm') }}</div>
+                                <div class="text-pos-muted">{{ dayjs(slotProps.data.created_at).format('HH:mm') }}</div>
                             </div>
                         </template>
                     </Column>
@@ -212,9 +211,9 @@ function onPageChange(event) {
                         <template #body="slotProps">
                             <div v-if="slotProps.data.printed_at" class="text-sm">
                                 <div>{{ dayjs(slotProps.data.printed_at).format('DD.MM.YY') }}</div>
-                                <div class="text-gray-600">{{ dayjs(slotProps.data.printed_at).format('HH:mm') }}</div>
+                                <div class="text-pos-muted">{{ dayjs(slotProps.data.printed_at).format('HH:mm') }}</div>
                             </div>
-                            <span v-else class="text-gray-400">-</span>
+                            <span v-else class="text-pos-muted">-</span>
                         </template>
                     </Column>
 
@@ -249,15 +248,5 @@ function onPageChange(event) {
                 </DataTable>
             </template>
         </Card>
-
-        <!-- Back Button -->
-        <div class="mt-6 flex justify-center">
-            <Button
-                label="Back to Dashboard"
-                icon="pi pi-arrow-left"
-                severity="secondary"
-                @click="router.visit(route('pos.dashboard'))"
-            />
-        </div>
     </div>
 </template>

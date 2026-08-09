@@ -25,9 +25,4 @@ abstract class AbstractSpecialCodeAction implements SpecialCodeAction
         $this->code = $code;
         $this->constructorData = $constructorData;
     }
-
-    public static function getConfigData(): ?array
-    {
-        return null;
-    }
 }

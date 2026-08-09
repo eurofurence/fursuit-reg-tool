@@ -9,16 +9,17 @@ use App\Models\Badge\State_Payment\Paid;
 use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Event;
 use App\Models\EventUser;
+use App\Models\Fursuit\States\Pending;
 use App\Models\Species;
 use App\Models\User;
 use App\Notifications\BadgeCreatedNotification;
 use App\Services\BadgeCalculationService;
+use App\Services\FursuitImageService;
 use App\Services\TokenRefreshService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class BadgeController extends Controller
@@ -26,19 +27,24 @@ class BadgeController extends Controller
     public function show(Request $request, Badge $badge)
     {
         $user = $request->user();
-        
+
         // Check if user can view this badge
         Gate::authorize('view', $badge);
-        
+
         // Load relationships
         $badge->load(['fursuit.species', 'fursuit.event', 'fursuit.user']);
-        
-        // Add edit permission
-        $badge->canEdit = Gate::allows('update', $badge);
-        
+
+        // Add edit permission. `updateAsOwner` and not `update`: this is the attendee
+        // editor, and the panel override on `update` would offer an operator an edit
+        // button that skips the print-lock and event-ended rules.
+        $badge->canEdit = Gate::allows('updateAsOwner', $badge);
+
         return Inertia::render('Badges/BadgeShow', [
             'badge' => $badge,
             'canEdit' => $badge->canEdit,
+            // The page states the reviewer's finding itself instead of sending the attendee
+            // back to their mail to find out what to change. Null unless a rejection stands.
+            'rejectionReason' => $badge->fursuit->rejectionReason(),
         ]);
     }
 
@@ -83,6 +89,10 @@ class BadgeController extends Controller
             'canCreate' => Gate::allows('create', Badge::class),
             'prepaidBadges' => $prepaidBadges,
             'prepaidBadgesLeft' => $prepaidBadgesLeft,
+            'attendeeId' => $eventUser?->attendee_id,
+            // No booth split and no opening hours here. This page used to render its own
+            // copy of both, which meant the desk retiming itself had to be reflected in
+            // two templates; the pickup card now links to /pickup, which owns them.
             'event' => $activeEvent ? [
                 'id' => $activeEvent->id,
                 'name' => $activeEvent->name,
@@ -90,6 +100,8 @@ class BadgeController extends Controller
                 'allowsOrders' => $activeEvent->allowsOrders(),
                 'orderStartsAt' => $activeEvent->order_starts_at,
                 'orderEndsAt' => $activeEvent->order_ends_at,
+                'startsAt' => $activeEvent->starts_at,
+                'massPrintedAt' => $activeEvent->mass_printed_at,
             ] : null,
         ]);
     }
@@ -112,8 +124,6 @@ class BadgeController extends Controller
     {
         Gate::authorize('create', Badge::class);
         $badge = DB::transaction(function () use ($request) {
-            // Lock Wallet Balance
-            $request->user()->balanceInt;
             // Lock user for update
             User::where('id', $request->user()->id)->lockForUpdate()->first();
             Badge::whereHas('fursuit', function ($query) use ($request) {
@@ -127,7 +137,7 @@ class BadgeController extends Controller
             $validated = $request->validated();
             // Create Fursuit
             $fursuit = $request->user()->fursuits()->create([
-                'status' => \App\Models\Fursuit\States\Pending::$name,
+                'status' => Pending::$name,
                 'event_id' => $event->id,
                 'species_id' => Species::firstOrCreate([
                     'name' => $validated['species'],
@@ -136,7 +146,10 @@ class BadgeController extends Controller
                     'checked' => false,
                 ])->id,
                 'name' => $validated['name'],
-                'image' => $request->file('image')->store('fursuits'),
+                'image' => app(FursuitImageService::class)->store(
+                    $request->file('image'),
+                    $validated['crop'] ?? null,
+                ),
                 'published' => $validated['publish'],
                 'catch_em_all' => $validated['catchEmAll'] ?? false,
             ]);
@@ -147,10 +160,11 @@ class BadgeController extends Controller
 
             $isPrepaidBadge = $prepaidBadgesLeft > 0;
 
-            // Returns in cents - all badges cost 2€ unless prepaid
+            // Returns in cents - the event's badge price unless prepaid
             $total = BadgeCalculationService::calculate(
                 isFreeBadge: $isPrepaidBadge, // Use prepaid logic for "free" calculation
                 isLate: false, // No late fees in new system
+                event: $event,
             );
 
             // Tax is 19% in Germany
@@ -159,7 +173,7 @@ class BadgeController extends Controller
 
             $badge = $fursuit->badges()->create([
                 'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
-                'status_payment' => $total === 0 ? Paid::$name : Unpaid::class,
+                'status_payment' => $total === 0 ? Paid::$name : Unpaid::$name,
                 'subtotal' => round($subtotal),
                 'tax_rate' => 0.19,
                 'tax' => round($tax),
@@ -169,12 +183,10 @@ class BadgeController extends Controller
                 'apply_late_fee' => false, // No late fees in new system
                 'paid_at' => $total === 0 ? now() : null,
             ]);
-            // Pay for Badge (force pay as we allow negative balance)
-            $request->user()->forcePay($badge);
 
             // Handle spare copy if requested
             if ($validated['upgrades']['spareCopy']) {
-                $total = BadgeCalculationService::calculate(isSpareCopy: true);
+                $total = BadgeCalculationService::calculate(isSpareCopy: true, event: $event);
                 $clone = $badge->replicate();
                 $clone->is_free_badge = false;
                 $clone->extra_copy = true;
@@ -182,10 +194,9 @@ class BadgeController extends Controller
                 $clone->subtotal = round($total / 1.19);
                 $clone->tax = round($clone->total - $clone->subtotal);
                 $clone->extra_copy_of = $badge->id;
-                $clone->status_payment = Unpaid::class;
+                $clone->status_payment = Unpaid::$name;
                 $clone->paid_at = null; // Spare copies are not paid immediately
                 $clone->save();
-                $request->user()->forcePay($clone->fresh());
             }
 
             return $badge;
@@ -199,10 +210,10 @@ class BadgeController extends Controller
 
     public function edit(Badge $badge, Request $request)
     {
-        Gate::authorize('update', $badge);
+        Gate::authorize('updateAsOwner', $badge);
 
         return Inertia::render('Badges/BadgeForm', [
-            'canEdit' => $request->user()->can('update', $badge),
+            'canEdit' => $request->user()->can('updateAsOwner', $badge),
             'canDelete' => $request->user()->can('delete', $badge),
             'badge' => $badge->load('fursuit.species'),
             'species' => Species::has('fursuits', count: 5)->orWhere('checked', true)->get('name'),
@@ -212,11 +223,12 @@ class BadgeController extends Controller
 
     public function update(BadgeUpdateRequest $request, Badge $badge)
     {
-        Gate::authorize('update', $badge);
+        // `updateAsOwner`, not `update`: the panel override on `update` is request
+        // independent since rebuild-plan 2.2, and this write path resets the fursuit to
+        // pending review and recalculates the total, so it has to keep answering to the
+        // extra-copy, print-lock, event-ended and "still Pending" rules.
+        Gate::authorize('updateAsOwner', $badge);
         $badge = DB::transaction(function () use ($request, $badge) {
-            $request->user()->can('update', $badge);
-            // Lock Wallet Balance
-            $request->user()->balanceInt;
             // Lock Badge
             $badge->where('id', $badge->id)->orWhere('extra_copy_of', $badge->id)->lockForUpdate()->get();
             // Update Badge
@@ -234,43 +246,52 @@ class BadgeController extends Controller
                 'catch_em_all' => $validated['catchEmAll'] ?? false,
             ]);
             if ($request->hasFile('image')) {
-                Storage::delete($fursuit->image);
-                $fursuit->image = $request->file('image')->store('fursuits');
+                /*
+                 * The replaced photo is deliberately kept. FursuitObserver writes a
+                 * submission revision pointing at this path, and a history entry with no
+                 * picture cannot answer the question a reviewer is asking on a resubmission -
+                 * "is this actually a different image?". The derived gallery variants are
+                 * still cleaned up by the observer; only the master survives.
+                 */
+                $fursuit->image = app(FursuitImageService::class)->store(
+                    $request->file('image'),
+                    $validated['crop'] ?? null,
+                );
             }
-            // if species_id, name or image changed, status goes back to pending review
+            /*
+             * A changed submission goes back to the queue, and takes its publication
+             * verdict with it.
+             *
+             * Clearing the block is the attendee's way back into the gallery: a badge that
+             * was approved but barred from the public surfaces - digital art rather than a
+             * photo of the suit - is told it may resubmit, and that promise is worthless if
+             * the block outlives the photo it was about. The record is pending again, so
+             * nothing prints until a reviewer has looked at the new submission and decided
+             * both questions afresh.
+             *
+             * The status column is written directly rather than through a transition: the
+             * machine has no approved -> pending edge, and this is not a review verdict, it
+             * is the withdrawal of the thing a verdict was about.
+             */
             if ($fursuit->isDirty(['species_id', 'name', 'image', 'catch_em_all', 'published'])) {
-                $fursuit->status = \App\Models\Badge\State_Fulfillment\Pending::$name;
+                $fursuit->status = Pending::$name;
+                $fursuit->clearPublicationBlock();
             }
             $fursuit->save();
             /**
              * Badge
              */
-            $previousTotal = $badge->total;
+            // The badge's own event, not the active one: editing an order must reprice it
+            // at the price it was placed under, even if a later event has moved on.
             $total = BadgeCalculationService::calculate(
                 isFreeBadge: $badge->is_free_badge,
                 isLate: $badge->apply_late_fee,
+                event: $fursuit->event,
             );
-            if ($previousTotal !== $total) {
-                try {
-                    $badge->fursuit->user->refund($badge);
-                } catch (\Bavix\Wallet\Internal\Exceptions\ModelNotFoundException $e) {
-                    // No transfer found to refund - this is fine for test scenarios
-                    // or when the badge was created without a payment
-                }
-            }
             $badge->total = round($total);
             $badge->subtotal = round($total / 1.19);
             $badge->tax = round($badge->total - $badge->subtotal);
             $badge->saveQuietly();
-            // Difference needs to be paid
-            if ($previousTotal !== $total) {
-                try {
-                    $request->user()->forcePay($badge);
-                } catch (\Exception $e) {
-                    // Payment failed - this is fine for test scenarios
-                    // or when there are wallet/payment issues
-                }
-            }
 
             return $badge;
         });
@@ -281,26 +302,13 @@ class BadgeController extends Controller
     public function destroy(Request $request, Badge $badge)
     {
         Gate::authorize('delete', $badge);
-        DB::transaction(function () use ($request, $badge) {
-            // Lock Wallet Balance
-            $request->user()->balanceInt;
+        DB::transaction(function () use ($badge) {
             // Lock Badge
             Badge::where('id', $badge->id)->orWhere('extra_copy_of', $badge->id)->lockForUpdate()->get();
-            // Delete Badge and Refund
+            // Deleting a badge removes it from what the user owes: amountDue() only
+            // counts badges that are unpaid and not soft deleted.
             if ($badge->extra_copy_of === null) {
-                $copies = Badge::where('extra_copy_of', $badge->id)->get();
-                // Delete all copies and refund each one
-                foreach ($copies as $copy) {
-                    $request->user()->refund($copy);
-                    $copy->delete();
-                }
-            }
-            // Refund Badge
-            try {
-                $request->user()->refund($badge);
-            } catch (\Bavix\Wallet\Internal\Exceptions\ModelNotFoundException $e) {
-                // No transfer found to refund - this is fine for test scenarios
-                // or when the badge was created without a payment
+                Badge::where('extra_copy_of', $badge->id)->get()->each->delete();
             }
             $badge->delete();
             // Delete Fursuit if no badges left

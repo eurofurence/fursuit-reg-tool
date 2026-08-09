@@ -5,9 +5,12 @@ import { router, usePage } from '@inertiajs/vue3';
 const page = usePage();
 const machine = computed(() => page.props.auth.machine);
 
-// Get timeout from machine prop with fallback
+// null is a real setting here — it means "Off" — so only an absent value falls
+// back to 5 minutes.
 const getTimeoutFromMachine = () => {
-    return machine.value?.auto_logout_timeout ?? 300; // Default 5 minutes
+    const timeout = machine.value?.auto_logout_timeout;
+
+    return timeout === undefined ? 300 : timeout;
 };
 
 // Reactive timeout configuration
@@ -61,8 +64,16 @@ const isTimerActive = computed(() => {
         return false;
     }
 
-    // Timer is active on all POS routes except auth routes
-    const isActive = currentRoute.value && currentRoute.value.startsWith('pos.') && !currentRoute.value.startsWith('pos.auth.');
+    // Timer is active on all POS routes except auth routes, and except the
+    // verification screen. Checking a crate off is minutes of handling cards
+    // with no keyboard or mouse in between, and locking there throws away the
+    // list of what was already checked - the one thing the clerk is reading
+    // off the screen. That screen holds no attendee data and no till, so the
+    // lock buys nothing there; it polls the server itself to hold the session.
+    const isActive = currentRoute.value
+        && currentRoute.value.startsWith('pos.')
+        && !currentRoute.value.startsWith('pos.auth.')
+        && !currentRoute.value.startsWith('pos.verification.');
     console.log('[InactivityTimer] Route check:', {
         currentRoute: currentRoute.value,
         isActive,
@@ -214,7 +225,16 @@ let removeFinishListener = null;
 watch(() => machine.value?.auto_logout_timeout, (newTimeout) => {
     console.log('[InactivityTimer] Machine timeout changed to:', newTimeout);
 
-    configuredTimeout.value = newTimeout ?? 300;
+    // Same rule as getTimeoutFromMachine: null means Off, not "use the default".
+    configuredTimeout.value = newTimeout === undefined ? 300 : newTimeout;
+
+    // Switching to Off has to stop a running timer, not just skip the restart.
+    if (configuredTimeout.value === null) {
+        stopTimer();
+        resetTimer();
+
+        return;
+    }
 
     // If timer is currently active, restart it with new timeout
     if (isTimerActive.value) {
@@ -296,7 +316,7 @@ const overlayStyle = computed(() => {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: `rgba(0, 0, 0, ${blurLevel.value * 0.7})`,
+        backgroundColor: `rgb(var(--pos-text) / ${blurLevel.value * 0.6})`,
         backdropFilter: `blur(${blurLevel.value * 20}px)`,
         WebkitBackdropFilter: `blur(${blurLevel.value * 20}px)`,
         zIndex: 9998,
@@ -314,10 +334,11 @@ const warningMessageStyle = computed(() => {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: 9999,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: 'rgb(var(--pos-panel))',
+        color: 'rgb(var(--pos-text))',
         padding: '2rem 3rem',
-        borderRadius: '1rem',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+        border: '1px solid rgb(var(--pos-line-strong))',
+        borderRadius: 'var(--pos-radius)',
         textAlign: 'center',
         minWidth: '300px',
         pointerEvents: 'auto',
@@ -345,21 +366,18 @@ const handleContinue = () => {
 
     <!-- Warning message -->
     <div v-if="isWarning" :style="warningMessageStyle">
-        <div class="flex flex-col items-center space-y-4">
-            <i class="pi pi-clock text-6xl text-orange-500 animate-pulse"></i>
-            <h2 class="text-2xl font-bold text-gray-800">Session Timeout Warning</h2>
-            <p class="text-lg text-gray-600">
-                Your session will expire in
-            </p>
-            <div class="text-4xl font-bold text-red-600 font-mono">
+        <div class="flex flex-col items-center gap-3">
+            <i class="pi pi-clock text-5xl text-pos-warn animate-pulse"></i>
+            <h2 class="text-xl font-semibold text-pos-text">Session Timeout Warning</h2>
+            <p class="pos-label">Your session expires in</p>
+            <div class="pos-num text-5xl font-bold text-pos-bad leading-none">
                 {{ formattedCountdown }}
             </div>
-            <p class="text-sm text-gray-500">
-                seconds
-            </p>
+            <p class="text-sm text-pos-muted">seconds</p>
             <button
+                type="button"
                 @click="handleContinue"
-                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg shadow-lg"
+                class="pos-btn pos-btn--primary pos-btn--commit w-full"
             >
                 Continue Working
             </button>

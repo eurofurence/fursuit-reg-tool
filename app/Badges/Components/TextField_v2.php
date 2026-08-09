@@ -17,19 +17,33 @@ use Imagine\Image\PointInterface;
 class TextField_v2
 {
     private string $text;
+
     private int $width;
+
     private int $height;
+
     private int $minFontSize;
+
     private int $startFontSize;
+
     private string $font_path;
+
     private ColorInterface $font_color;
+
     private string $alignment;
+
     private int $maxRows;
+
     private ?ColorInterface $backgroundColor;
+
     private ?ColorInterface $borderColor;
+
     private int $borderThickness;
+
     private int $borderRadius;
+
     private ?ColorInterface $textStrokeColor;
+
     private int $textStrokeThickness;
 
     public function __construct(
@@ -65,7 +79,7 @@ class TextField_v2
         $this->borderThickness = $borderThickness;
         $this->borderRadius = $borderRadius;
         $this->textStrokeColor = $textStrokeColor;
-        $this->textStrokeThickness = (int)$textStrokeThickness;
+        $this->textStrokeThickness = (int) $textStrokeThickness;
 
         $this->drawTextInBox($image, $position);
     }
@@ -99,7 +113,7 @@ class TextField_v2
             // Filter out empty rows
             $filteredLines = [];
             foreach ($lines as $line) {
-                if (!empty(trim($line))) {
+                if (! empty(trim($line))) {
                     $filteredLines[] = trim($line);
                 }
             }
@@ -107,6 +121,7 @@ class TextField_v2
 
             if (empty($lines)) {
                 $fontSize--;
+
                 continue;
             }
 
@@ -147,14 +162,14 @@ class TextField_v2
                             $image->draw()->text(
                                 $line,
                                 new Font($this->font_path, $fontSize, $this->textStrokeColor),
-                                new Point($x + $offsetX, (int)$y + $offsetY)
+                                new Point($x + $offsetX, (int) $y + $offsetY)
                             );
                         }
                     }
                 }
             }
 
-            $image->draw()->text($line, $font, new Point($x, (int)$y));
+            $image->draw()->text($line, $font, new Point($x, (int) $y));
         }
 
         return $image;
@@ -179,7 +194,7 @@ class TextField_v2
 
                 $chars = mb_str_split($word);
                 foreach ($chars as $char) {
-                    $testLine = $currentLine . $char;
+                    $testLine = $currentLine.$char;
                     if ($font->box($testLine)->getWidth() <= $maxWidth) {
                         $currentLine = $testLine;
                     } else {
@@ -189,7 +204,7 @@ class TextField_v2
                 }
             } else {
                 // Normal word processing
-                $testLine = $currentLine . ($currentLine === '' ? '' : ' ') . $word;
+                $testLine = $currentLine.($currentLine === '' ? '' : ' ').$word;
                 if ($font->box($testLine)->getWidth() <= $maxWidth) {
                     $currentLine = $testLine;
                 } else {

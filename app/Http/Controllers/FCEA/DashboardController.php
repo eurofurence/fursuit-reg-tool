@@ -5,6 +5,7 @@ namespace App\Http\Controllers\FCEA;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserCatchRequest;
 use App\Jobs\UpdateRankingsJob;
+use App\Models\Event;
 use App\Models\FCEA\UserCatch;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\FCEA\UserCatchRanking;
@@ -36,7 +37,7 @@ class DashboardController extends Controller
         // Simplified event logic: default to current event unless explicitly specified
         $filterEvent = null;
         if (! $isGlobal && $selectedEventId) {
-            $filterEvent = \App\Models\Event::find($selectedEventId);
+            $filterEvent = Event::find($selectedEventId);
         } elseif (! $isGlobal && ! $selectedEventId) {
             // Always default to current event, even if user has no catches there yet
             $filterEvent = $currentEvent;
@@ -333,7 +334,7 @@ class DashboardController extends Controller
         return 0;
     }
 
-    private function getMyUserInfo(?\App\Models\Event $filterEvent = null, bool $isGlobal = false): UserCatchRanking
+    private function getMyUserInfo(?Event $filterEvent = null, bool $isGlobal = false): UserCatchRanking
     {
         if ($isGlobal) {
             // For global view, calculate all-time stats
@@ -367,7 +368,7 @@ class DashboardController extends Controller
         return $myUserInfo;
     }
 
-    private function getUserRanking(UserCatchRanking $myUserInfo, int $rankingSize, ?\App\Models\Event $filterEvent = null, bool $isGlobal = false)
+    private function getUserRanking(UserCatchRanking $myUserInfo, int $rankingSize, ?Event $filterEvent = null, bool $isGlobal = false)
     {
         if ($isGlobal) {
             return $this->getGlobalUserRanking($myUserInfo, $rankingSize);
@@ -616,10 +617,10 @@ class DashboardController extends Controller
      * Get the event to use for FCEA activities.
      * Prefers the latest event, but falls back to the latest event with catch_em_all fursuits.
      */
-    private function getFceaEvent(): ?\App\Models\Event
+    private function getFceaEvent(): ?Event
     {
         // Always use the latest event by starts_at, but prefer events with catch_em_all fursuits
-        $event = \App\Models\Event::latest('starts_at')->first();
+        $event = Event::latest('starts_at')->first();
 
         // If the latest event has no catch_em_all fursuits, find the latest event that does
         if ($event) {
@@ -629,7 +630,7 @@ class DashboardController extends Controller
 
             if ($fursuitCount === 0) {
                 // Find the latest event that has catch_em_all fursuits
-                $eventWithFursuits = \App\Models\Event::whereHas('fursuits', function ($query) {
+                $eventWithFursuits = Event::whereHas('fursuits', function ($query) {
                     $query->where('catch_em_all', true);
                 })
                     ->latest('starts_at')
@@ -649,7 +650,7 @@ class DashboardController extends Controller
      */
     private function getEventsWithFceaEntries(): Collection
     {
-        return \App\Models\Event::whereHas('fursuits.catchedByUsers')
+        return Event::whereHas('fursuits.catchedByUsers')
             ->orderByDesc('starts_at')
             ->get(['id', 'name', 'starts_at']);
     }
@@ -657,7 +658,7 @@ class DashboardController extends Controller
     /**
      * Get only the top fursuit rankings without user position logic or separators.
      */
-    private function getTopFursuitRanking(int $rankingSize, ?\App\Models\Event $filterEvent = null, bool $isGlobal = false): Collection
+    private function getTopFursuitRanking(int $rankingSize, ?Event $filterEvent = null, bool $isGlobal = false): Collection
     {
         if ($isGlobal) {
             // For global view, we need to rebuild rankings based on all-time data

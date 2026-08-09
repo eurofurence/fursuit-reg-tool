@@ -11,7 +11,8 @@ use Spatie\ModelStates\Transition;
 
 class PendingToRejected extends Transition
 {
-    public function __construct(public Fursuit $fursuit, public User $reviewer, public string $reason) {}
+    /** `$notify` is off when a review decision owns the mail; see PendingToApproved. */
+    public function __construct(public Fursuit $fursuit, public User $reviewer, public string $reason, public bool $notify = true) {}
 
     public function handle()
     {
@@ -27,7 +28,7 @@ class PendingToRejected extends Transition
                 ->log('Fursuit rejected');
             // Only notify if we are reviewing before the event has ended (i.e., notification is still relevant)
             $eventEndsAt = $this->fursuit->event->ends_at ?? null;
-            if ($eventEndsAt && now()->lt($eventEndsAt)) {
+            if ($this->notify && $eventEndsAt && now()->lt($eventEndsAt)) {
                 $this->fursuit->user->notify(new FursuitRejectedNotification($this->fursuit, $this->reason));
             }
 

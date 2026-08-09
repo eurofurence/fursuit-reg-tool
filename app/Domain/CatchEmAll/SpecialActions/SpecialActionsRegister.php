@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\SpecialActions;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
+use App\Domain\CatchEmAll\Interface\ConfigurableSpecialCodeAction;
 use App\Domain\CatchEmAll\Interface\SpecialCodeAction;
 
 class SpecialActionsRegister
@@ -84,15 +85,35 @@ class SpecialActionsRegister
             self::$specialCodeClassNameIndex[$class] = [
                 'display_name' => $class::getDisplayName(),
                 'type' => $class::getSpecialCodeType(),
-                'config' => $class::getConfigData(),
+                'config' => self::legacyConfigDataForClass($class),
             ];
 
             self::$specialCodeTypeIndex[$class::getSpecialCodeType()->value] = [
                 'class' => $class,
                 'display_name' => $class::getDisplayName(),
-                'config' => $class::getConfigData(),
+                'config' => self::legacyConfigDataForClass($class),
             ];
         }
+    }
+
+    /**
+     * Keep compatibility with old consumers that still read config arrays from this register.
+     *
+     * @param  class-string<SpecialCodeAction>  $class
+     */
+    private static function legacyConfigDataForClass(string $class): ?array
+    {
+        if (! is_a($class, ConfigurableSpecialCodeAction::class, true)) {
+            return null;
+        }
+
+        $config = [];
+
+        foreach ($class::constructorFields() as $field) {
+            $config[$field->name] = $field->defaultValue();
+        }
+
+        return $config === [] ? null : $config;
     }
 
     public static function getDisplayNameForClass(string $className): ?string

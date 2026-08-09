@@ -11,6 +11,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Mpdf\Config\ConfigVariables;
 use Mpdf\Config\FontVariables;
+use Mpdf\Mpdf;
+use Mpdf\Output\Destination;
 
 class CreateReceiptFromCheckoutJob implements ShouldQueue
 {
@@ -29,7 +31,7 @@ class CreateReceiptFromCheckoutJob implements ShouldQueue
             'bc' => '#FFFFFF',
             // ...
         ];
-        $base64_qr_encoded = QrCode::png($qrcodeData, $options);
+        $base64_qr_encoded = QRCode::png($qrcodeData, $options);
         $receiptHtml = view('receipts.sale', ['checkout' => $checkout, 'qr' => $base64_qr_encoded])->render();
 
         $defaultConfig = (new ConfigVariables)->getDefaults();
@@ -38,7 +40,7 @@ class CreateReceiptFromCheckoutJob implements ShouldQueue
         $defaultFontConfig = (new FontVariables)->getDefaults();
         $fontData = $defaultFontConfig['fontdata'];
 
-        $mpdf = new \Mpdf\Mpdf([
+        $mpdf = new Mpdf([
             'format' => [80, 500],
             'mode' => 'utf-8',
             'margin_left' => 0,
@@ -58,6 +60,6 @@ class CreateReceiptFromCheckoutJob implements ShouldQueue
         ]);
         $mpdf->WriteHTML($receiptHtml);
 
-        \Storage::put('checkouts/'.$this->checkout->id.'.pdf', $mpdf->Output($this->checkout->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN));
+        \Storage::put('checkouts/'.$this->checkout->id.'.pdf', $mpdf->Output($this->checkout->id.'.pdf', Destination::STRING_RETURN));
     }
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import {usePage} from "@inertiajs/vue3";
   import {computed} from "vue";
-  import Message from "primevue/message";
+  import Message from "@/Components/UI/UiMessage.vue";
 
   const props = defineProps<{
     flash?: { message?: string | null, error?: string | null, success?: string | null }

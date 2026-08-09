@@ -6,7 +6,7 @@
 /storage/*.key
 /vendor
 .env
-.env.backup
+.env.backup*
 .env.production
 .phpactor.json
 .phpunit.result.cache
@@ -23,3 +23,13 @@ yarn-error.log
 .direnv/*
 dataimport/
 /logs
+
+# Playwright MCP debug dumps
+.playwright-mcp/
+
+# Ad-hoc screenshots taken while debugging
+/*.png
+
+# Python bytecode from running the agent test suite
+__pycache__/
+*.pyc

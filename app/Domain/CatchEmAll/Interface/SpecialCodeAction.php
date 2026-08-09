@@ -4,7 +4,6 @@ namespace App\Domain\CatchEmAll\Interface;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Models\EventUser;
-use App\Models\User;
 
 interface SpecialCodeAction
 {
@@ -34,9 +33,4 @@ interface SpecialCodeAction
      * Get the displayed name for the admin panel for this action.
      */
     public static function getDisplayName(): string;
-
-    /**
-     * Get the config data for this action, if any.
-     */
-    public static function getConfigData(): ?array;
 }

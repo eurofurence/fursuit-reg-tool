@@ -3,9 +3,10 @@
 namespace App\Domain\CatchEmAll\SpecialActions;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
+use App\Domain\CatchEmAll\Interface\ConfigurableSpecialCodeAction;
 use App\Models\EventUser;
 
-class CatchEmAllTeamAction extends AbstractSpecialCodeAction
+class CatchEmAllTeamAction extends AbstractSpecialCodeAction implements ConfigurableSpecialCodeAction
 {
     /**
      * Execute the Catch 'Em All Team special code action for the given user.
@@ -30,8 +31,17 @@ class CatchEmAllTeamAction extends AbstractSpecialCodeAction
         return 'Catch \'Em All Team';
     }
 
-    public static function getConfigData(): ?array
+    public static function constructorDescription(): ?string
     {
-        return ['name' => 'Hunter'];
+        return 'Catch \"Em All Team stores the team member name for this special code.';
+    }
+
+    public static function constructorFields(): array
+    {
+        return [
+            ActionField::text('name', 'Name')
+                ->default('Hunter')
+                ->help('Team member name associated with this code.'),
+        ];
     }
 }

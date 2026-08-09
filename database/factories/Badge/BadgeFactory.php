@@ -2,6 +2,7 @@
 
 namespace Database\Factories\Badge;
 
+use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Badge\Badge;
 use App\Models\Badge\State_Fulfillment\Pending;
 use App\Models\Badge\State_Fulfillment\PickedUp;
@@ -45,5 +46,27 @@ class BadgeFactory extends Factory
             'picked_up_at' => Carbon::now(),
             'fursuit_id' => Fursuit::factory(),
         ];
+    }
+
+    /**
+     * A badge whose artwork has already been rendered and still matches the
+     * order behind it.
+     *
+     * PrintBatch::build() refuses badges whose print file is missing or stale,
+     * so anything exercising batching needs a badge that looks like it came out
+     * of a `badges:generate-print-files` pass.
+     */
+    public function withPrintFile(): self
+    {
+        return $this->afterCreating(function (Badge $badge) {
+            $fresh = $badge->fresh(['fursuit.species', 'fursuit.event']);
+
+            $badge->forceFill([
+                'print_file_path' => 'badges/'.$badge->id.'.pdf',
+                'print_file_hash' => GenerateBadgePrintFileJob::inputHash($fresh),
+                'print_file_renderer' => class_basename(GenerateBadgePrintFileJob::rendererFor($fresh)),
+                'print_file_generated_at' => now(),
+            ])->saveQuietly();
+        });
     }
 }

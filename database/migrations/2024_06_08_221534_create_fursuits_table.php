@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Event;
 use App\Models\Species;
 use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
@@ -15,7 +16,7 @@ return new class extends Migration
                 $table->id();
                 $table->foreignIdFor(User::class)->constrained()->cascadeOnDelete();
                 $table->foreignIdFor(Species::class)->constrained()->cascadeOnDelete();
-                $table->foreignIdFor(\App\Models\Event::class)->constrained()->cascadeOnDelete(); // When fursuit was created, can be updated to current year at any time
+                $table->foreignIdFor(Event::class)->constrained()->cascadeOnDelete(); // When fursuit was created, can be updated to current year at any time
                 $table->string('status');
                 $table->string('name');
                 $table->string('image');

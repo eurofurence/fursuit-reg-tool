@@ -11,7 +11,16 @@ use Spatie\ModelStates\Transition;
 
 class PendingToApproved extends Transition
 {
-    public function __construct(public Fursuit $fursuit, public User $reviewer) {}
+    /**
+     * `$notify` is off when a review decision owns the mail.
+     *
+     * FursuitReviewService queues the attendee's mail against a decision row with a delay,
+     * so a reviewer who mis-clicks can undo before anything is sent. The transition
+     * mailing immediately would defeat that, so the review path suppresses it here and
+     * DeliverFursuitReviewDecisionJob sends the same notification later. Every other
+     * caller - the edit form, the legacy panel - keeps the old behaviour.
+     */
+    public function __construct(public Fursuit $fursuit, public User $reviewer, public bool $notify = true) {}
 
     public function handle()
     {
@@ -27,7 +36,7 @@ class PendingToApproved extends Transition
 
             // Only notify if we are reviewing before the event has ended (i.e., notification is still relevant)
             $eventEndsAt = $this->fursuit->event->ends_at ?? null;
-            if ($eventEndsAt && now()->lt($eventEndsAt)) {
+            if ($this->notify && $eventEndsAt && now()->lt($eventEndsAt)) {
                 $this->fursuit->user->notify(new FursuitApprovedNotification($this->fursuit));
             }
 

@@ -3,9 +3,10 @@
 namespace App\Domain\CatchEmAll\SpecialActions;
 
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
+use App\Domain\CatchEmAll\Interface\ConfigurableSpecialCodeAction;
 use App\Models\EventUser;
 
-class ExplorerAction extends AbstractSpecialCodeAction
+class ExplorerAction extends AbstractSpecialCodeAction implements ConfigurableSpecialCodeAction
 {
     /**
      * Execute the Explorer special code action for the given user.
@@ -30,8 +31,20 @@ class ExplorerAction extends AbstractSpecialCodeAction
         return 'Explorer';
     }
 
-    public static function getConfigData(): ?array
+    public static function constructorDescription(): ?string
     {
-        return ['location' => 'ABC'];
+        return 'Explorer stores a location label that is shown in management tools.';
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public static function constructorFields(): array
+    {
+        return [
+            ActionField::text('location', 'Location')
+                ->default('ABC')
+                ->help('Identifier for the explorer location this code represents.'),
+        ];
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Machine;
 use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -11,7 +12,7 @@ return new class extends Migration
     {
         Schema::table('checkouts', function (Blueprint $table) {
             if (SchemaGuard::missingColumn('checkouts', 'machine_id')) {
-                $table->foreignIdFor(\App\Models\Machine::class)->nullable()->after('cashier_id')->constrained()->nullOnDelete();
+                $table->foreignIdFor(Machine::class)->nullable()->after('cashier_id')->constrained()->nullOnDelete();
             }
         });
     }

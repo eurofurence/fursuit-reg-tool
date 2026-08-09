@@ -25,7 +25,7 @@ class FiskalyService
             return;
         }
 
-        $authDataCacheKey = 'fiskaly_auth_data';
+        $authDataCacheKey = self::authCacheKey();
 
         if (cache()->has($authDataCacheKey)) {
             $authData = decrypt(cache()->get($authDataCacheKey));
@@ -44,6 +44,15 @@ class FiskalyService
         $this->getNewAuthToken();
     }
 
+    /**
+     * Cache key is bound to the API key, so rotating credentials misses the cache
+     * instead of replaying a token issued to the previous fiskaly organization.
+     */
+    public static function authCacheKey(): string
+    {
+        return 'fiskaly_auth_data_'.substr(hash('sha256', config('services.fiskaly.api_key')), 0, 16);
+    }
+
     private function getNewAuthToken()
     {
         $authResponse = Http::fiskaly()->post('auth', [
@@ -55,7 +64,7 @@ class FiskalyService
         $this->accessToken = $authData['access_token'];
         $this->refreshToken = $authData['refresh_token'];
         // Set the auth data in the cache for 24 hours
-        cache()->put('fiskaly_auth_data', encrypt($authData), $authData['refresh_token_expires_in'] - 60);
+        cache()->put(self::authCacheKey(), encrypt($authData), $authData['refresh_token_expires_in'] - 60);
     }
 
     private function refreshAuthToken()
@@ -68,7 +77,7 @@ class FiskalyService
         $this->accessToken = $authData['access_token'];
         $this->refreshToken = $authData['refresh_token'];
         // Update the auth data in the cache
-        cache()->put('fiskaly_auth_data', encrypt($authData), $authData['refresh_token_expires_in'] - 60);
+        cache()->put(self::authCacheKey(), encrypt($authData), $authData['refresh_token_expires_in'] - 60);
     }
 
     private function request()
@@ -100,7 +109,7 @@ class FiskalyService
         }
 
         $response = $this->request()->post('tss/'.config('services.fiskaly.tss_id').'/admin/auth', [
-            'admin_pin' => config('services.fiskaly.puk'),
+            'admin_pin' => config('services.fiskaly.pin'),
         ])->throw();
 
         return $response->json();
@@ -114,7 +123,7 @@ class FiskalyService
         }
 
         $response = $this->request()->post('tss/'.config('services.fiskaly.tss_id').'/admin/logout', [
-            'admin_pin' => config('services.fiskaly.puk'),
+            'admin_pin' => config('services.fiskaly.pin'),
         ])->throw();
 
         return true;
@@ -184,7 +193,7 @@ class FiskalyService
             throw new \InvalidArgumentException('Checkout must have a remote_id to update Fiskaly transaction');
         }
 
-        if (! $checkout->machine?->tseClient?->remote_id) {
+        if (! $checkout->machine?->signingTseClient()?->remote_id) {
             throw new \InvalidArgumentException('Checkout must have a valid TSE client with remote_id');
         }
 
@@ -203,7 +212,7 @@ class FiskalyService
 
         $response = $this->request()
             ->put('tss/'.config('services.fiskaly.tss_id').'/tx/'.$checkout->remote_id.'?tx_revision='.$checkout->remote_rev_count, [
-                'client_id' => $checkout->machine->tseClient->remote_id,
+                'client_id' => $checkout->machine->signingTseClient()->remote_id,
                 'type' => 'RECEIPT',
                 'state' => 'ACTIVE',
                 'schema' => [
@@ -324,7 +333,7 @@ class FiskalyService
             throw new \InvalidArgumentException('Checkout must have a remote_id to update Fiskaly transaction state');
         }
 
-        if (! $checkout->machine?->tseClient?->remote_id) {
+        if (! $checkout->machine?->signingTseClient()?->remote_id) {
             throw new \InvalidArgumentException('Checkout must have a valid TSE client with remote_id');
         }
 
@@ -342,7 +351,7 @@ class FiskalyService
 
         $response = $this->request()
             ->put('tss/'.config('services.fiskaly.tss_id').'/tx/'.$checkout->remote_id.'?tx_revision='.$checkout->remote_rev_count, [
-                'client_id' => $checkout->machine->tseClient->remote_id,
+                'client_id' => $checkout->machine->signingTseClient()->remote_id,
                 'type' => 'RECEIPT',
                 'state' => $newState,
                 'schema' => [

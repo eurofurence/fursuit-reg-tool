@@ -7,13 +7,13 @@ use App\Badges\Components\TextAlignment;
 use App\Badges\Components\TextField_v2 as TextField;
 use App\Interfaces\BadgeInterface_V2;
 use App\Models\Badge\Badge;
-use Illuminate\Support\Facades\Storage;
 use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
 use Imagine\Image\Palette\Color\ColorInterface;
 use Imagine\Image\Palette\RGB;
 use Imagine\Image\Point;
 use Mpdf\Mpdf;
+use Mpdf\Output\Destination;
 
 // Documentation: https://imagine.readthedocs.io/en/stable/
 
@@ -24,11 +24,18 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
         $this->init();
 
         // Overwrite default values
+        // 1024x648 is the ZXP Series 9 edge-to-edge dot grid (86.6 x 54.8 mm at
+        // its native 300 dpi), so the composite is one pixel per printer dot.
         $this->height_px = 648;
         $this->width_px = 1024;
         $this->font_color = '#FFFFFF';
         $this->font_path = resource_path('badges/ef30/fonts/classic_market.ttf');
-        $this->file_format = 'jpg';
+        // PNG, not JPEG. Imagine passes no jpeg_quality, so GD falls back to
+        // quality 75 and bakes visible blocking into the pastel gradients of
+        // the EF30 artwork. Nothing downstream resamples it away, because the
+        // image already sits at the printer's own resolution. EF28 and EF29
+        // both use PNG; this was the odd one out.
+        $this->file_format = 'png';
 
         $this->text_filter_active = false;
     }
@@ -82,16 +89,18 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
             $mpdf->Image('var:badgeImageBack', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
         }
 
-        return $mpdf->Output($badge->id.'.pdf', \Mpdf\Output\Destination::STRING_RETURN);
+        return $mpdf->Output($badge->id.'.pdf', Destination::STRING_RETURN);
     }
 
     private function filterText(string $text): string
     {
         if ($this->text_filter_active) {
-            $search  = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü'];
+            $search = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü'];
             $replace = ['ae', 'oe', 'ue', 'Ae', 'Oe', 'Ue'];
+
             return str_replace($search, $replace, $text);
         }
+
         return $text;
     }
 
@@ -123,9 +132,19 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
         // Adjust to badge size
         $overlayImage->resize($size);
 
-        // Load the image to be used as a replacement for green
-        $replacementImageUrl = Storage::temporaryUrl($this->badge->fursuit->image, now()->addMinutes(1));
-        $replacementImage = $this->imagine->open($replacementImageUrl);
+        // Load the image to be used as a replacement for green.
+        //
+        // ImagePreparer downloads once and caps the decode at badge size. This
+        // used to pull the full-size attendee upload over HTTP twice, once here
+        // and again for the getimagesize() type check further down, and decode a
+        // multi-megapixel photo in full. The exact target box is not known until
+        // the greenscreen has been scanned below, so cap at the badge and resize
+        // again once it is.
+        $prepared = (new ImagePreparer($this->imagine))
+            ->prepare($this->badge->fursuit->image, $size->getWidth(), $size->getHeight());
+
+        $replacementImage = $prepared->image;
+        $isPng = $prepared->isPng;
 
         if (self::$greenBoundingBox === null) {
             $minX = $size->getWidth();
@@ -142,10 +161,18 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
                     $blue = $color->getValue(ColorInterface::COLOR_BLUE);
 
                     if (abs($red - 147) <= 10 && abs($green - 192) <= 10 && abs($blue - 152) <= 10) {
-                        if ($x < $minX) $minX = $x;
-                        if ($x > $maxX) $maxX = $x;
-                        if ($y < $minY) $minY = $y;
-                        if ($y > $maxY) $maxY = $y;
+                        if ($x < $minX) {
+                            $minX = $x;
+                        }
+                        if ($x > $maxX) {
+                            $maxX = $x;
+                        }
+                        if ($y < $minY) {
+                            $minY = $y;
+                        }
+                        if ($y > $maxY) {
+                            $maxY = $y;
+                        }
                         $found = true;
                     }
                 }
@@ -155,6 +182,7 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
 
         if (self::$greenBoundingBox === false) {
             $badge_object->paste($overlayImage, new Point(0, 0));
+
             return;
         }
 
@@ -166,13 +194,6 @@ class EF30_Badge extends BadgeBase_V2 implements BadgeInterface_V2
         $replacementImage->resize(new Box($targetWidth, $targetHeight));
 
         $replacementSize = $replacementImage->getSize();
-
-        // Check whether the file is a PNG
-        $isPng = false;
-        if (! empty($replacementImage)) {
-            $imageInfo = getimagesize($replacementImageUrl);
-            $isPng = ($imageInfo[2] === IMAGETYPE_PNG);
-        }
 
         // Replace green areas in the overlay image with the replacement image
         for ($x = $box['minX']; $x <= $box['maxX']; $x++) {

@@ -6,6 +6,8 @@ use App\Enum\PrinterStatusEnum;
 use App\Enum\PrintJobTypeEnum;
 use App\Events\PrinterStatusUpdated;
 use App\Models\Machine;
+use Database\Factories\PrinterFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,7 +20,7 @@ class Printer extends Model
 
     protected static function newFactory()
     {
-        return \Database\Factories\PrinterFactory::new();
+        return PrinterFactory::new();
     }
 
     public function casts()
@@ -38,12 +40,12 @@ class Printer extends Model
 
     public function currentJob(): BelongsTo
     {
-        return $this->belongsTo(\App\Domain\Printing\Models\PrintJob::class, 'current_job_id');
+        return $this->belongsTo(PrintJob::class, 'current_job_id');
     }
 
     public function printJobs()
     {
-        return $this->hasMany(\App\Domain\Printing\Models\PrintJob::class);
+        return $this->hasMany(PrintJob::class);
     }
 
     // State management methods (migrated from PrinterState)
@@ -69,7 +71,7 @@ class Printer extends Model
         $printerType = self::determinePrinterType($printerName);
 
         // Broadcast status update to all POS clients
-        broadcast(new PrinterStatusUpdated(
+        broadcast(PrinterStatusUpdated::fromStatus(
             $printerName,
             $printerType,
             $statusEnum,
@@ -105,7 +107,7 @@ class Printer extends Model
             ->toArray();
     }
 
-    public static function getPausedPrinters(): \Illuminate\Database\Eloquent\Collection
+    public static function getPausedPrinters(): Collection
     {
         return self::whereIn('status', [PrinterStatusEnum::PAUSED->value, PrinterStatusEnum::OFFLINE->value])
             ->where('is_active', true)
@@ -128,7 +130,7 @@ class Printer extends Model
 
             // Broadcast status update
             $printerType = self::determinePrinterType($printerName);
-            broadcast(new PrinterStatusUpdated(
+            broadcast(PrinterStatusUpdated::fromStatus(
                 $printerName,
                 $printerType,
                 PrinterStatusEnum::IDLE,

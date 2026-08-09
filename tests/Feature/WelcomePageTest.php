@@ -1,5 +1,7 @@
 <?php
 
+use App\Enum\EventStateEnum;
+use App\Models\Event;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -12,17 +14,17 @@ test('Closed when no Event', function () {
     $response->assertStatus(200);
     $response->assertInertia(fn (Assert $page) => $page
         ->component('Welcome')
-        ->where('showState', \App\Enum\EventStateEnum::CLOSED->value));
+        ->where('showState', EventStateEnum::CLOSED->value));
     $response->assertStatus(200);
 });
 
 test('Check Different States on Welcome Screen', function () {
     // Create Event
-    $event = \App\Models\Event::factory()->create([
-        'starts_at' => \Carbon\Carbon::parse('2024-06-01'),
-        'ends_at' => \Carbon\Carbon::parse('2024-06-30'),
-        'order_starts_at' => \Carbon\Carbon::parse('2024-06-01'),
-        'order_ends_at' => \Carbon\Carbon::parse('2024-06-25'),
+    $event = Event::factory()->create([
+        'starts_at' => Carbon\Carbon::parse('2024-06-01'),
+        'ends_at' => Carbon\Carbon::parse('2024-06-30'),
+        'order_starts_at' => Carbon\Carbon::parse('2024-06-01'),
+        'order_ends_at' => Carbon\Carbon::parse('2024-06-25'),
     ]);
     $tests = [
         ['2024-05-25' => 'closed'], // Before event starts

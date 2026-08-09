@@ -55,6 +55,20 @@ class SumUpReaderPolicy
     }
 
     /**
+     * Determine whether the user can read the pairing code back in the clear.
+     *
+     * Its own ability rather than a reuse of view/update: the pairing code is a payment
+     * terminal credential and is never part of the list payload, so "may open the page"
+     * and "may read the secret" have to be answerable separately even though both answer
+     * is_admin today. Widening an existing ability to cover the reveal would change the
+     * answer for every other caller of that ability.
+     */
+    public function reveal(User $user, SumUpReader $sumUpReader): bool
+    {
+        return $user->is_admin;
+    }
+
+    /**
      * Determine whether the user can restore the SumUp reader.
      */
     public function restore(User $user, SumUpReader $sumUpReader): bool

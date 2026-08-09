@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Printing\Models\Printer;
 use App\Enum\PrinterStatusEnum;
 use Illuminate\Database\Eloquent\Model;
 
@@ -76,7 +77,7 @@ class PrinterEvent extends Model
         // Determine appropriate status based on event type
         $status = $this->determineStatusFromEvent();
 
-        \App\Domain\Printing\Models\Printer::updatePrinterState(
+        Printer::updatePrinterState(
             $this->printer_name,
             $status,
             null, // Don't change current job
@@ -119,7 +120,7 @@ class PrinterEvent extends Model
         }
 
         // Check if the printer is currently in a state that needs restoration
-        $printer = \App\Domain\Printing\Models\Printer::where('name', $this->printer_name)->first();
+        $printer = Printer::where('name', $this->printer_name)->first();
 
         if (! $printer) {
             return false;
@@ -134,7 +135,7 @@ class PrinterEvent extends Model
     // Restore the printer to idle state
     public function restorePrinter(): void
     {
-        \App\Domain\Printing\Models\Printer::updatePrinterState(
+        Printer::updatePrinterState(
             $this->printer_name,
             PrinterStatusEnum::IDLE,
             null, // Clear any current job assignment

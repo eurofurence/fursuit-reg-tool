@@ -1,6 +1,6 @@
 <script setup>
 import {Link, Head} from '@inertiajs/vue3';
-import Button from 'primevue/button';
+import Button from '@/Components/UI/UiButton.vue';
 </script>
 
 <template>

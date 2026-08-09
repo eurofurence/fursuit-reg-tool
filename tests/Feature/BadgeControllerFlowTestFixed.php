@@ -2,6 +2,8 @@
 
 use App\Enum\EventStateEnum;
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Fulfillment\Pending;
+use App\Models\Badge\State_Fulfillment\Printed;
 use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
@@ -209,7 +211,7 @@ describe('Badge Controller Flow - Event Active, Orders Open', function () {
             ->recycle($this->event)
             ->recycle($this->user)
             ->create([
-                'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Pending::$name,
+                'status_fulfillment' => Pending::$name,
             ]);
 
         actingAs($this->user);
@@ -223,7 +225,7 @@ describe('Badge Controller Flow - Event Active, Orders Open', function () {
             ->recycle($this->event)
             ->recycle($this->user)
             ->create([
-                'status_fulfillment' => \App\Models\Badge\State_Fulfillment\Printed::$name,
+                'status_fulfillment' => Printed::$name,
             ]);
 
         actingAs($this->user);
