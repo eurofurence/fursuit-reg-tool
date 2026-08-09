@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class PWAController extends Controller
 {
@@ -108,7 +109,7 @@ class PWAController extends Controller
         ]);
     }
 
-    public function serviceWorker(): \Illuminate\Http\Response
+    public function serviceWorker(): Response
     {
         $serviceWorkerContent = "
 // Service Worker for Catch-Em-All PWA

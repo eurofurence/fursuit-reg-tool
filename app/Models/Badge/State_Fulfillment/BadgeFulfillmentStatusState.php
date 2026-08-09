@@ -2,15 +2,13 @@
 
 namespace App\Models\Badge\State_Fulfillment;
 
-use App\Models\Badge\State_Fulfillment\Transitions\ToPrinted;
+use App\Models\Badge\State_Fulfillment\Transitions\ToPickedUp;
 use App\Models\Badge\State_Fulfillment\Transitions\ToProcessing;
 use App\Models\Badge\State_Fulfillment\Transitions\ToReadyForPickup;
-use App\Models\Badge\State_Fulfillment\Transitions\ToPickedUp;
-use Filament\Support\Contracts\HasColor;
-use Filament\Support\Contracts\HasIcon;
 use Spatie\ModelStates\State;
+use Spatie\ModelStates\StateConfig;
 
-abstract class BadgeFulfillmentStatusState extends State implements HasColor, HasIcon
+abstract class BadgeFulfillmentStatusState extends State
 {
     public static string $name;
 
@@ -23,7 +21,7 @@ abstract class BadgeFulfillmentStatusState extends State implements HasColor, Ha
         return $this->getColor();
     }
 
-    public static function config(): \Spatie\ModelStates\StateConfig
+    public static function config(): StateConfig
     {
         return parent::config()
             ->default(Pending::class)

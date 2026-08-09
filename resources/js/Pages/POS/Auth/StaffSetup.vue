@@ -137,13 +137,13 @@ function submitSetup() {
 </script>
 
 <template>
-    <div class="w-full min-h-full bg-gray-50 flex items-center justify-center p-6">
+    <div class="w-full min-h-full bg-pos-panel-2 flex items-center justify-center p-6">
         <div class="w-full max-w-lg">
             <div class="text-center mb-6">
-                <h2 class="text-3xl font-extrabold text-gray-900">
+                <h2 class="text-3xl font-extrabold text-pos-text">
                     Staff Account Setup
                 </h2>
-                <p class="mt-2 text-sm text-gray-600">
+                <p class="mt-2 text-sm text-pos-muted">
                     Welcome {{ staff_name }}! Complete your account setup.
                 </p>
             </div>
@@ -153,7 +153,7 @@ function submitSetup() {
                     <form @submit.prevent="submitSetup" class="space-y-6">
                         <!-- PIN Code Setup -->
                         <div>
-                            <label for="pin_code" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label for="pin_code" class="block text-sm font-medium text-pos-text mb-2">
                                 Set Your PIN Code (6 digits)
                             </label>
                             <Password
@@ -172,14 +172,14 @@ function submitSetup() {
                                     {{ form.errors.pin_code }}
                                 </Message>
                             </div>
-                            <p class="mt-1 text-xs text-gray-500">
+                            <p class="mt-1 text-xs text-pos-muted">
                                 Choose a secure PIN. Avoid simple patterns like 123456 or 111111.
                             </p>
                         </div>
 
                         <!-- PIN Confirmation -->
                         <div>
-                            <label for="pin_code_confirmation" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label for="pin_code_confirmation" class="block text-sm font-medium text-pos-text mb-2">
                                 Confirm PIN Code
                             </label>
                             <Password
@@ -202,7 +202,7 @@ function submitSetup() {
 
                         <!-- RFID Setup -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <label class="block text-sm font-medium text-pos-text mb-2">
                                 Register RFID Tag
                             </label>
                             
@@ -213,16 +213,16 @@ function submitSetup() {
                                     label="Scan RFID Tag"
                                     class="p-button-outlined"
                                 />
-                                <p class="mt-2 text-xs text-gray-500">
+                                <p class="mt-2 text-xs text-pos-muted">
                                     Click and then scan your RFID tag/badge (8-20 digits)
                                 </p>
                             </div>
 
-                            <div v-if="isScanning" class="text-center p-4 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50">
+                            <div v-if="isScanning" class="text-center p-4 border-2 border-dashed border-pos-accent/30 rounded-pos bg-pos-accent/10">
                                 <div class="animate-pulse">
-                                    <i class="pi pi-qrcode text-3xl text-blue-500 mb-2"></i>
-                                    <p class="text-blue-700 font-medium">Scanning for RFID tag...</p>
-                                    <p class="text-xs text-blue-600 mt-1">Hold your tag near the scanner</p>
+                                    <i class="pi pi-qrcode text-3xl text-pos-accent mb-2"></i>
+                                    <p class="text-pos-accent font-medium">Scanning for RFID tag...</p>
+                                    <p class="text-xs text-pos-accent mt-1">Hold your tag near the scanner</p>
                                 </div>
                                 <Button
                                     @click="resetRfidScan"
@@ -233,11 +233,11 @@ function submitSetup() {
                                 />
                             </div>
 
-                            <div v-if="rfidTag" class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div v-if="rfidTag" class="p-3 bg-pos-good/10 border border-pos-good/30 rounded-pos">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <i class="pi pi-check-circle text-green-500 mr-2"></i>
-                                        <span class="text-green-700 font-medium">Tag Registered</span>
+                                        <i class="pi pi-check-circle text-pos-good mr-2"></i>
+                                        <span class="text-pos-good font-medium">Tag Registered</span>
                                     </div>
                                     <Button
                                         @click="resetRfidScan"
@@ -247,7 +247,7 @@ function submitSetup() {
                                         label="Scan Different Tag"
                                     />
                                 </div>
-                                <p class="text-xs text-green-600 mt-1 font-mono">{{ rfidTag }}</p>
+                                <p class="text-xs text-pos-good mt-1 font-mono">{{ rfidTag }}</p>
                             </div>
 
                             <!-- Hidden input for RFID scanner -->

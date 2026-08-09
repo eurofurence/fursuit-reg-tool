@@ -9,7 +9,15 @@ const props = defineProps({
 
 const rankingConfig = computed(() => {
     const level = props.ranking?.level || 'bronze';
+});
 
+// The grid gets the 500px thumbnail; callers that do not carry one (the
+// Catch-Em-All collection) fall back to the full gallery variant.
+const thumbSrc = computed(() => props.fursuit.thumb || props.fursuit.image);
+
+const rarityConfig = computed(() => {
+    const level = props.rarity?.level || 'common';
+    
     const config = {
         'bronze': {
             bgClass: 'bg-gray-100/95',
@@ -69,7 +77,7 @@ const rankingConfig = computed(() => {
          :class="[rankingConfig.cardGlow, rankingConfig.cardRing]">
         <div class="overflow-hidden">
             <img
-                :src="fursuit.image"
+                :src="thumbSrc"
                 :alt="fursuit.name"
                 class="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-110"
                 loading="lazy"

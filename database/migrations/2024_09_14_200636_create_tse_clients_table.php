@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Checkout\Models\TseClient;
 use App\Support\Migrations\SchemaGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -20,7 +21,7 @@ return new class extends Migration
         }
         if (SchemaGuard::missingColumn('machines', 'tse_client_id')) {
             Schema::table('machines', function (Blueprint $table) {
-                $table->foreignIdFor(\App\Domain\Checkout\Models\TseClient::class)->nullable()->after('receipt_printer_id')->constrained()->nullOnDelete();
+                $table->foreignIdFor(TseClient::class)->nullable()->after('receipt_printer_id')->constrained()->nullOnDelete();
             });
         }
     }

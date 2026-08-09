@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# PyInstaller output
+build/
+dist/
+dist-onedir/
+
+# Local runtime state, if anyone points the agent at this directory
+*.db
+captures/
+cache/
+condition-journal.jsonl

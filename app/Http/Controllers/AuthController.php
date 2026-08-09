@@ -6,7 +6,9 @@ use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
 use App\Services\TokenRefreshService;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
@@ -27,9 +29,9 @@ class AuthController extends Controller
 
         if ($isCatchEmAll) {
             $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-            $callbackUrl = $protocol . '://' . $currentHost . '/auth/callback';
+            $callbackUrl = $protocol.'://'.$currentHost.'/auth/callback';
         } else {
-            $callbackUrl = rtrim(config('app.url'), '/') . '/auth/callback';
+            $callbackUrl = rtrim(config('app.url'), '/').'/auth/callback';
         }
 
         $url = Socialite::driver('identity')
@@ -50,9 +52,9 @@ class AuthController extends Controller
 
             if ($isCatchEmAll) {
                 $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-                $callbackUrl = $protocol . '://' . $currentHost . '/auth/callback';
+                $callbackUrl = $protocol.'://'.$currentHost.'/auth/callback';
             } else {
-                $callbackUrl = rtrim(config('app.url'), '/') . '/auth/callback';
+                $callbackUrl = rtrim(config('app.url'), '/').'/auth/callback';
             }
 
             $socialLiteUser = Socialite::driver('identity')
@@ -65,13 +67,14 @@ class AuthController extends Controller
 
             if ($isCatchEmAll) {
                 $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-                return redirect($protocol . '://' . $currentHost . '/auth/login');
+
+                return redirect($protocol.'://'.$currentHost.'/auth/login');
             } else {
                 return redirect()->route('auth.login');
             }
         }
 
-        $attendeeListResponse = \Illuminate\Support\Facades\Http::attsrv()
+        $attendeeListResponse = Http::attsrv()
             ->withToken($socialLiteUser->token)
             ->get('/attendees')
             ->json();
@@ -102,12 +105,10 @@ class AuthController extends Controller
             'avatar' => $socialLiteUser->getAvatar(),
         ]);
 
-        $user->wallet->balance;
-
         $activeEvent = Event::getActiveEvent();
         $eventUser = null;
         if ($activeEvent) {
-            $statusResponse = \Illuminate\Support\Facades\Http::attsrv()
+            $statusResponse = Http::attsrv()
                 ->withToken($socialLiteUser->token)
                 ->get('/attendees/'.$regId.'/status');
 
@@ -127,7 +128,7 @@ class AuthController extends Controller
                 refreshToken: $socialLiteUser->refreshToken,
                 expiresIn: 3500
             );
-        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+        } catch (DecryptException $e) {
             // Handle MAC invalid error - clear corrupted token data and retry
             $user->update([
                 'token' => null,
@@ -145,13 +146,13 @@ class AuthController extends Controller
         }
 
         if ($activeEvent && $eventUser) {
-            $fursuit = \Illuminate\Support\Facades\Http::attsrv()
+            $fursuit = Http::attsrv()
                 ->withToken($socialLiteUser->token)
                 ->get('/attendees/'.$regId.'/packages/fursuit')
                 ->json();
             if ($fursuit['present'] && $fursuit['count'] > 0) {
 
-                $fursuitAdditional = \Illuminate\Support\Facades\Http::attsrv()
+                $fursuitAdditional = Http::attsrv()
                     ->withToken($socialLiteUser->token)
                     ->get('/attendees/'.$regId.'/packages/fursuitadd')
                     ->json();
@@ -163,7 +164,7 @@ class AuthController extends Controller
                     'prepaid_badges' => $totalPrepaidBadges,
                 ]);
 
-                \Illuminate\Support\Facades\Http::attsrv()
+                Http::attsrv()
                     ->withToken($socialLiteUser->token)
                     ->post('/attendees/'.$regId.'/additional-info/fursuitbadge', [
                         'created' => false,
@@ -193,8 +194,9 @@ class AuthController extends Controller
         if ($isCatchEmAll) {
             // Include post logout redirect for Catch-Em-All
             $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-            $returnUrl = $protocol . '://' . $currentHost;
-            return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout?post_logout_redirect_uri=' . urlencode($returnUrl));
+            $returnUrl = $protocol.'://'.$currentHost;
+
+            return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout?post_logout_redirect_uri='.urlencode($returnUrl));
         } else {
             return Inertia::location('https://identity.eurofurence.org/oauth2/sessions/logout');
         }
@@ -212,7 +214,8 @@ class AuthController extends Controller
 
         if ($isCatchEmAll) {
             $protocol = str_contains($currentHost, 'localhost') ? 'http' : 'https';
-            return redirect($protocol . '://' . $currentHost);
+
+            return redirect($protocol.'://'.$currentHost);
         }
 
         // For main domain, just complete the logout (no redirect needed)

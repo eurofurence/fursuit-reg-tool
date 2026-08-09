@@ -39,7 +39,7 @@ class FursuitCreateCatchCodeCommand extends Command
             // Handle regeneration for unprinted badges
             if ($this->option('regen-unprinted')) {
                 $this->info('Regenerating catch codes for unprinted badges...');
-                
+
                 // Get fursuits with badges in 'pending' fulfillment status
                 $unprintedFursuits = $activeEvent->fursuits()
                     ->where('catch_em_all', true)
@@ -50,11 +50,12 @@ class FursuitCreateCatchCodeCommand extends Command
 
                 if ($unprintedFursuits->isEmpty()) {
                     $this->info('No fursuits with unprinted badges found for catch code regeneration.');
+
                     return;
                 }
 
                 $this->info("Found {$unprintedFursuits->count()} fursuits with unprinted badges.");
-                
+
                 $progressBar = $this->output->createProgressBar($unprintedFursuits->count());
                 $progressBar->setFormat('Regenerating codes: %current%/%max% [%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s%');
                 $progressBar->start();
@@ -66,7 +67,7 @@ class FursuitCreateCatchCodeCommand extends Command
                     $fursuit->save();
                     $counter++;
                     $progressBar->advance();
-                    
+
                     if ($oldCode) {
                         $this->line(" - {$fursuit->name}: {$oldCode} → {$fursuit->catch_code}");
                     } else {
@@ -77,6 +78,7 @@ class FursuitCreateCatchCodeCommand extends Command
                 $progressBar->finish();
                 $this->newLine();
                 $this->info($counter.' catch codes regenerated for unprinted badges!');
+
                 return;
             }
 

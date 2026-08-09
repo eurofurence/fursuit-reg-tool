@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\Token;
 
@@ -18,7 +19,7 @@ class TokenRefreshService
             }
 
             return $this->user->token;
-        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+        } catch (DecryptException $e) {
             // Token is corrupted, return null to force re-authentication
             return null;
         }
@@ -30,7 +31,7 @@ class TokenRefreshService
             if ($this->user->refresh_token_expires_at && $this->user->refresh_token_expires_at->isPast()) {
                 $this->refreshToken();
             }
-        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+        } catch (DecryptException $e) {
             // Clear corrupted token data
             $this->clearTokenData();
         }
@@ -50,7 +51,7 @@ class TokenRefreshService
                 ->refreshToken($this->user->refresh_token);
 
             $this->save($token->token, $token->refreshToken, $token->expiresIn);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+        } catch (DecryptException $e) {
             // Clear corrupted token data and throw exception to force re-authentication
             $this->clearTokenData();
             throw new \Exception('Token data corrupted, please re-authenticate');

@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import Card from "primevue/card";
+import Card from "@/Components/UI/UiCard.vue";
 import Dropdown from "primevue/dropdown";
 import {
     BookOpen,
@@ -45,6 +45,33 @@ const props = defineProps<{
     flash?: any;
 }>();
 
+
+interface Fursuit {
+    id: number,
+    name: string,
+    species: string,
+    image: string,
+    scoring: number,
+    event?: string,
+    archival_notice?: string,
+}
+
+const viewFursuit = ref<Fursuit | null>(null);
+const imageViewIsOpen = ref<boolean>(false);
+
+
+function toggleImageView() {
+    imageViewIsOpen.value = !imageViewIsOpen.value;
+    if (!imageViewIsOpen.value) {
+        viewFursuit.value = null;
+    }
+}
+
+function setImageView(fursuit: Fursuit) {
+    viewFursuit.value = fursuit;
+    imageViewIsOpen.value = true;
+}
+
 // Event selection
 const eventOptions = computed(() => [
     { label: "Global (All-Time)", value: "global" },
@@ -54,7 +81,14 @@ const eventOptions = computed(() => [
     })),
 ]);
 
-const selectedEventValue = ref(props.selectedEvent || "global");
+const selectedEventValue = ref(currentPropValue());
+
+function currentPropValue() {
+  return props.selectedEvent != null ? String(props.selectedEvent) : "global";
+}
+
+const isGlobalView = computed(() => selectedEventValue.value === "global");
+
 // View mode toggle
 const viewMode = ref<"grid" | "list">("grid");
 // Counter visibility toggle
@@ -62,7 +96,7 @@ const showCounters = ref(false);
 const showTooltip = ref(false);
 
 const onEventChange = () => {
-    console.log("[Collection] Event changed to:", selectedEventValue.value);
+    // console.log("[Collection] Event changed to:", selectedEventValue.value);
     router.get(
         route("catch-em-all.collection"),
         {
@@ -86,7 +120,9 @@ onMounted(() => {
         viewMode.value = savedViewMode;
     }
 });
-
+watch(() => props.selectedEvent, () => {
+  selectedEventValue.value = currentPropValue();
+});
 watch(viewMode, (newMode) => {
     localStorage.setItem("catch-em-all-collection-view-mode", newMode);
 });
@@ -183,6 +219,7 @@ const rankingStats = computed(() => {
 const getRankingBgColor = (textColor: string) => {
     return colorMap[textColor] || "bg-gray-500";
 };
+
 </script>
 
 <template>
@@ -267,15 +304,16 @@ const getRankingBgColor = (textColor: string) => {
         <Card class="bg-white shadow-sm border border-gray-700">
             <template #content>
                 <div
-                    class="flex flex-col gap-4 items-start sm:items-center justify-between"
+                    class="flex flex-col flex-wrap gap-4 items-start sm:items-center justify-between"
                     :class="
                         eventOptions.length > 2 ? 'sm:flex-row' : 'xs:flex-row'
                     "
                 >
+                <div class="flex flex-row flex-wrap gap-5 w-full items-start sm:items-center justify-between align-middle">
                     <!-- Event Filter -->
-                    <!-- <div v-if="eventOptions.length > 2" class="flex-1 min-w-20">
+                    <div v-if="eventOptions.length > 2" class="flex-1 min-w-40">
                         <label
-                            class="block text-sm font-medium text-gray-700 mb-2"
+                            class="block text-sm font-medium text-gray-300 mb-2"
                             >Event:</label
                         >
                         <Dropdown
@@ -287,10 +325,10 @@ const getRankingBgColor = (textColor: string) => {
                             @change="onEventChange"
                             fluid
                         />
-                    </div> -->
+                    </div>
 
                     <!-- Ranking Filter -->
-                    <div class="flex-1 min-w-20">
+                    <div class="flex-1 min-w-40">
                         <label
                             class="block text-sm font-medium text-gray-300 mb-2"
                             >Ranking:</label
@@ -304,6 +342,8 @@ const getRankingBgColor = (textColor: string) => {
                             fluid
                         />
                     </div>
+                </div>
+                <div class="flex flex-row flex-wrap gap-4 w-full items-start sm:items-center align-middle">
                     <!-- View Mode Toggle -->
                     <div class="flex-shrink-0">
                         <label
@@ -337,9 +377,8 @@ const getRankingBgColor = (textColor: string) => {
                             </button>
                         </div>
                     </div>
-
                     <!-- Counter Toggle -->
-                    <div class="flex-shrink-0 relative tooltip-container">
+                    <div class="flex-shrink-0 relative tooltip-container ">
                         <label
                             class="block text-sm font-medium text-gray-300 mb-2"
                             >Counters:</label
@@ -386,6 +425,7 @@ const getRankingBgColor = (textColor: string) => {
                         </div>
                     </div>
                 </div>
+                </div>
             </template>
         </Card>
 
@@ -400,6 +440,7 @@ const getRankingBgColor = (textColor: string) => {
                     <div
                         v-for="fursuit in filteredCollection"
                         :key="fursuit.gallery.id"
+                        @click="setImageView(fursuit.gallery)"
                         class="cursor-pointer transform transition-transform hover:scale-105"
                     >
                         <GalleryItem
@@ -420,6 +461,7 @@ const getRankingBgColor = (textColor: string) => {
                         <img
                             :src="fursuit.gallery.image"
                             :alt="fursuit.gallery.name"
+                            @click="setImageView(fursuit.gallery)"
                             class="w-12 h-12 rounded-md object-cover mr-4"
                         />
                         <div class="flex-1">
@@ -455,6 +497,53 @@ const getRankingBgColor = (textColor: string) => {
                         </div>
                     </div>
                 </div>
+
+                                    <!-- Image View Modal -->
+                    <div
+                        v-if="imageViewIsOpen"
+                        @click="toggleImageView"
+                        class="  fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-all"
+                    >
+                        <div @click.stop class="relative max-w-5xl max-h-[90vh] mx-4">
+
+                            <img
+                                v-if="viewFursuit"
+                                :src="viewFursuit.image"
+                                :alt="viewFursuit.name"
+                                class="max-w-[90%] m-auto max-h-[90vh] object-contain rounded-lg cursor-pointer"
+                            />
+
+                            <div v-if="viewFursuit" class="bg-black bg-opacity-50 rounded-lg mt-4 p-4 text-white">
+                                <h3 class="text-2xl font-bold mb-2">{{ viewFursuit.name }}</h3>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                        </svg>
+                                        <span>{{ viewFursuit.species }}</span>
+                                    </div>
+                                    <div v-if="viewFursuit.scoring > 0" class="flex items-center gap-2">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                        </svg>
+                                        <span>{{ viewFursuit.scoring }} catches</span>
+                                    </div>
+                                    <div v-if="viewFursuit.event" class="flex items-center gap-2">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span>{{ viewFursuit.event }}</span>
+                                    </div>
+                                    <!-- <div v-if="selected_event?.archival_notice" class="flex items-center gap-2 text-amber-200">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="text-sm">📜 {{ selected_event.archival_notice }}</span>
+                                    </div> -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                 <!-- Empty State -->
                 <div

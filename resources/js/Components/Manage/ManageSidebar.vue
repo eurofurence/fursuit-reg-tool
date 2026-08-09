@@ -1,0 +1,183 @@
+<script setup>
+/**
+ * Left navigation: a permanent full-height rail from md up, a slide-over drawer below it.
+ *
+ * An icon rail saves 180px and costs a guess on every click; this panel is used to edit
+ * things, not to watch a wall, so the labels stay. Fixed width also means the content
+ * column never reflows mid-session.
+ *
+ * There is no collapse on the desktop rail, and the drawer is not a second nav: it is this
+ * same element repositioned, so the module list has one implementation. The shell owns the
+ * open state and this component only asks to be closed - on a link, on the brand, on the
+ * close button - because the shell is also what draws the scrim over the content.
+ *
+ * The rail owns the whole left edge rather than starting below the strip, and it carries
+ * the brand at its top. The strip used to span the page above the menu, which put its
+ * left-most segment at x=0 while every page below it started at the rail's edge, so
+ * nothing in the header lined up with anything under it. Giving the rail the full height
+ * moves the header into the content column, where its left edge and the page's left edge
+ * are the same edge.
+ *
+ * Width and brand height come from --mg-rail and --mg-strip rather than from numbers
+ * typed here: the brand block has to be exactly as tall as the header on the other side
+ * of the seam or the two hairlines under them do not meet. This component used to hardcode
+ * 220px against a 240px token, which is the drift that removes.
+ *
+ * Groups and badges come from App\Support\Manage\Navigation, which declares the group
+ * order the old panel never had and drops items whose route does not exist yet -
+ * that is how rebuild phases add modules without touching this component.
+ */
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import ManageIcon from './ManageIcon.vue';
+import { resolve, toneBadge } from './tones.js';
+
+const props = defineProps({
+  groups: { type: Array, default: () => [] },
+  /** Whether the drawer is showing. Ignored from md up, where the rail is permanent. */
+  open: { type: Boolean, default: false },
+});
+
+const emit = defineEmits(['close']);
+
+const page = usePage();
+
+const path = (url) => new URL(url, window.location.origin).pathname.replace(/\/+$/, '') || '/';
+
+const matches = (current, target) => current === target
+  || current.startsWith(target === '/' ? '/' : `${target}/`);
+
+/**
+ * Only the deepest matching item lights up. A plain prefix match lit every ancestor
+ * too, so /admin/print-batches also highlighted Dashboard (/admin). The longest match
+ * still keeps a detail page on its section, e.g. /admin/fursuits/3 highlights Fursuits.
+ */
+const activeRoute = computed(() => {
+  const current = path(page.url.split('?')[0]);
+
+  return props.groups
+    .flatMap((group) => group.items ?? [])
+    .map((item) => ({ route: item.route, target: path(item.url) }))
+    .filter((item) => matches(current, item.target))
+    .sort((a, b) => b.target.length - a.target.length)[0]?.route ?? null;
+});
+
+const isActive = (item) => item.route === activeRoute.value;
+
+/**
+ * Whether the rail is currently a drawer, tracked off the same md breakpoint the classes
+ * below use. Only `inert` needs this: a closed drawer is translated off screen but still
+ * focusable, so tabbing from the header would walk into an invisible menu. The permanent
+ * rail must never be inert, hence the query rather than a plain `!open`.
+ */
+const isNarrow = ref(false);
+
+let query = null;
+const syncNarrow = () => {
+  isNarrow.value = query.matches;
+};
+
+onMounted(() => {
+  query = window.matchMedia('(max-width: 767.98px)');
+  syncNarrow();
+  query.addEventListener('change', syncNarrow);
+});
+
+onBeforeUnmount(() => query?.removeEventListener('change', syncNarrow));
+</script>
+
+<template>
+  <!--
+    A plain div, not an <aside>: the only landmark in here is the <nav> below, and it is
+    the one screen readers already know by name. Wrapping it in a complementary landmark
+    would add a second, unnamed one for a brand link.
+
+    Below md the rail would eat 240px of a 375px screen, so there it is a drawer: taken out
+    of the flex row, slid off the left edge, and brought back over the content. From md up
+    every one of those classes is undone by its md: counterpart and this is the permanent
+    rail it has always been - same element, same width, no second copy of the nav to keep
+    in step. `fixed` is also what the close button positions against, so there is no
+    `relative` here: the two are the same property and would fight.
+
+    Transform rather than display, so the panel animates and, more importantly, so its
+    links stay in the DOM in one predictable order for the keyboard. inert is what keeps
+    them off the tab sequence while it is closed, which visibility alone would not do.
+  -->
+  <div
+    id="manage-nav"
+    class="fixed inset-y-0 left-0 z-40 flex h-full w-mg-rail shrink-0 flex-col border-r border-hairline bg-mg-surface-1 transition-transform duration-200 md:static md:z-auto md:translate-x-0 md:transition-none"
+    :class="open ? 'translate-x-0 shadow-xl shadow-black/40' : '-translate-x-full'"
+    :inert="!open && isNarrow ? true : null">
+    <!--
+      h-mg-strip, the same token the header uses, so the hairline under the brand and the
+      hairline under the header are one continuous line across the seam.
+
+      The string is hardcoded because there is nothing to read it from: config('app.name')
+      is still Laravel, and the only place the product is named is the <title> in
+      app.blade.php, which never reaches the client. The public Layout.vue spells the brand
+      out in markup too.
+    -->
+    <Link
+      :href="route('admin.dashboard')"
+      class="flex h-mg-strip shrink-0 items-center border-b border-hairline px-4 text-[13px] font-semibold tracking-wide text-fg-1 outline-none transition-colors hover:text-state-live focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
+      @click="emit('close')"
+    >
+      Fursuit Badges
+    </Link>
+
+    <!--
+      Closes the drawer without navigating. Only exists while the rail is a drawer; from md
+      up there is nothing to close.
+    -->
+    <button
+      type="button"
+      class="absolute top-0 right-0 flex h-mg-strip w-10 items-center justify-center text-fg-3 outline-none transition-colors hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40 md:hidden"
+      aria-label="Close navigation"
+      @click="emit('close')"
+    >
+      <ManageIcon name="x" :size="16" />
+    </button>
+
+    <!--
+      min-h-0 is what lets flex-1 shrink below the nav's content height, which is what
+      makes the rail itself the thing that scrolls when the module list outgrows the
+      viewport. Without it a long list pushes the rail past the bottom of the screen and
+      the last groups become unreachable. overscroll-contain keeps that scroll from
+      chaining into the page behind it.
+    -->
+    <nav
+      class="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      aria-label="Manage navigation"
+    >
+      <div v-for="group in groups" :key="group.label" class="py-2">
+        <p class="px-4 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-3">
+          {{ group.label }}
+        </p>
+
+        <Link
+          v-for="item in group.items ?? []"
+          :key="item.route"
+          :href="item.url"
+          class="relative flex h-9 items-center gap-2.5 px-4 text-[13px] transition-colors"
+          :class="isActive(item)
+            ? 'bg-state-live/10 font-medium text-state-live'
+            : 'text-fg-2 hover:bg-mg-surface-2 hover:text-fg-1'"
+          @click="emit('close')"
+        >
+          <span
+            v-if="isActive(item)"
+            class="absolute top-1 bottom-1 left-0 w-0.5 rounded-r bg-state-live"
+            aria-hidden="true"
+          />
+          <ManageIcon :name="item.icon" :size="16" class="shrink-0" />
+          <span class="flex-1 truncate">{{ item.label }}</span>
+          <span
+            v-if="item.badge"
+            class="rounded px-1 text-[10px] font-medium ring-1 ring-inset"
+            :class="resolve(toneBadge, item.badge.tone)"
+          >{{ item.badge.label }}</span>
+        </Link>
+      </div>
+    </nav>
+  </div>
+</template>

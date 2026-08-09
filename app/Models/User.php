@@ -4,20 +4,16 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Badge\Badge;
+use App\Models\Badge\State_Payment\Unpaid;
 use App\Models\Fursuit\Fursuit;
-use Bavix\Wallet\Interfaces\Customer;
-use Bavix\Wallet\Interfaces\WalletFloat;
-use Bavix\Wallet\Traits\CanPayFloat;
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Gate;
 
-class User extends Authenticatable implements Customer, FilamentUser, WalletFloat
+class User extends Authenticatable
 {
-    use CanPayFloat, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -43,6 +39,9 @@ class User extends Authenticatable implements Customer, FilamentUser, WalletFloa
 
     protected $casts = [
         'is_admin' => 'bool',
+        // Uncast until now while is_admin was cast, so `is_reviewer === true` was false
+        // against the raw tinyint (rebuild-plan 2.10 change 47, audit landmine 58).
+        'is_reviewer' => 'bool',
         'refresh_token' => 'encrypted',
         'refresh_token_expires_at' => 'datetime',
         'token' => 'encrypted',
@@ -59,6 +58,20 @@ class User extends Authenticatable implements Customer, FilamentUser, WalletFloa
         return $this->hasMany(Fursuit::class);
     }
 
+    /**
+     * Total the user still owes, in cents, positive for debt.
+     *
+     * Derived from badge state rather than the wallet: `status_payment` is what POS checkout
+     * selects on (CheckoutController@store), and it is the record that stayed correct where the
+     * wallet drifted. Note the sign flip from `balanceInt`, which was negative-for-debt.
+     */
+    public function amountDue(): int
+    {
+        return (int) $this->badges()
+            ->where('badges.status_payment', Unpaid::$name)
+            ->sum('badges.total');
+    }
+
     public function eventUsers()
     {
         return $this->hasMany(EventUser::class);
@@ -69,11 +82,6 @@ class User extends Authenticatable implements Customer, FilamentUser, WalletFloa
         $eventId = $eventId ?? Event::getActiveEvent()?->id;
 
         return $this->eventUsers()->where('event_id', $eventId)->first();
-    }
-
-    public function canAccessPanel(Panel $panel): bool
-    {
-        return $this->is_admin || $this->is_reviewer;
     }
 
     public function hasFreeBadge($eventId = null): bool

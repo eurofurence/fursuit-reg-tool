@@ -13,8 +13,13 @@ class PrintJobStatusEnumTest extends TestCase
 
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Queued));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
-        $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Printed));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Printing));
+
+        // A reaped job is Pending again while the agent that claimed it may still
+        // have the card in the printer. It has to be able to report the outcome
+        // late, or the card is handed out and printed a second time.
+        $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Printed));
+        $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Failed));
     }
 
     public function test_can_transition_from_queued()
@@ -25,7 +30,10 @@ class PrintJobStatusEnumTest extends TestCase
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Failed));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Printed));
-        $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Pending));
+
+        // A claimed job returns to the queue when its lease expires, so the work
+        // survives an agent or host that dies mid-run.
+        $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Pending));
     }
 
     public function test_can_transition_from_printing()
@@ -34,8 +42,19 @@ class PrintJobStatusEnumTest extends TestCase
 
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Printed));
         $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Failed));
+        $this->assertTrue($status->canTransitionTo(PrintJobStatusEnum::Pending));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Queued));
         $this->assertFalse($status->canTransitionTo(PrintJobStatusEnum::Cancelled));
+    }
+
+    public function test_lease_holding_states()
+    {
+        $this->assertTrue(PrintJobStatusEnum::Queued->holdsLease());
+        $this->assertTrue(PrintJobStatusEnum::Printing->holdsLease());
+
+        $this->assertFalse(PrintJobStatusEnum::Pending->holdsLease());
+        $this->assertFalse(PrintJobStatusEnum::Printed->holdsLease());
+        $this->assertFalse(PrintJobStatusEnum::Failed->holdsLease());
     }
 
     public function test_can_transition_from_failed()

@@ -2,29 +2,25 @@
 
 namespace App\Domain\CatchEmAll\Achievements;
 
-use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class GottaCatchEmAll implements Achievement
+class GottaCatchEmAll extends SimpleAchievement implements LockedBy, HiddenIfLocked
 {
-    public function getId(): string
+    public function __construct()
     {
-        return 'gotta_catch_em_all';
-    }
-
-    public function getTile(): string
-    {
-        return 'Gotta Catch \'Em All';
-    }
-
-    public function getDescription(): string
-    {
-        return 'There is still something more to do.';
-    }
-
-    public function getIcon(): string
-    {
-        return '💯';
+        parent::__construct(
+            id: 'gotta_catch_em_all',
+            title: 'Gotta Catch \'Em All',
+            description: 'There is still something more to do.',
+            task: 'Catch 50 Fursuits.',
+            icon: '💯',
+            isSecret: false,
+            isOptional: false,
+            isHidden: false
+        );
     }
 
     public function getMaxProgress(): int
@@ -32,25 +28,10 @@ class GottaCatchEmAll implements Achievement
         return 50;
     }
 
-    public function isSecret(): bool
-    {
-        return false;
-    }
-
-    public function isOptional(): bool
-    {
-        return false;
-    }
-
-    public function isHidden(): bool
-    {
-        return false;
-    }
-
     public function updateAchievementProgress(AchievementUpdateContext $context): int
     {
         // Only trigger on actual catches, not special codes
-        if (!$context->hasCatch()) {
+        if (! $context->hasCatch()) {
             return -1; // Ignore this update
         }
 
@@ -58,5 +39,12 @@ class GottaCatchEmAll implements Achievement
         $currentProgress = min($context->userTotalCatches, $this->getMaxProgress());
 
         return $currentProgress;
+    }
+
+    public function lockedBy(): array
+    {
+        return [
+            'curator',
+        ];
     }
 }

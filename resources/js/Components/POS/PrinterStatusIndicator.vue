@@ -4,16 +4,28 @@ import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 
+// Seeded from the server so the icons are honest before the first broadcast
+// arrives. Defaulting to green meant a printer that jammed before this page
+// was opened looked exactly like a ready one until it next changed state.
+const seed = (type) => {
+    const seeded = page.props.printerStatus?.conditions?.[type];
+
+    return seeded
+        ? { ...seeded }
+        : { status: 'unknown', severity: 'secondary', label: 'No report yet' };
+};
+
 // Printer statuses with priorities: red (error) > blue (processing) > green (ready)
-const badgePrinterStatus = ref({ status: 'idle', severity: 'success' });
-const receiptPrinterStatus = ref({ status: 'idle', severity: 'success' });
+const badgePrinterStatus = ref(seed('badge'));
+const receiptPrinterStatus = ref(seed('receipt'));
 
 // Get color class based on severity
 const getStatusColor = (severity) => {
     switch (severity) {
-        case 'danger': return 'text-red-500';
-        case 'info': return 'text-blue-500';
-        default: return 'text-green-500';
+        case 'danger': return 'text-pos-bad';       // stopped: jam, out of ribbon, offline
+        case 'info': return 'text-pos-accent';      // busy: printing or warming up
+        case 'secondary': return 'text-pos-muted';  // nothing reported yet
+        default: return 'text-pos-good';            // ready
     }
 };
 

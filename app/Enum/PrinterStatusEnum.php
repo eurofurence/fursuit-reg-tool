@@ -10,7 +10,7 @@ enum PrinterStatusEnum: string
     case PAUSED = 'paused';
     case OFFLINE = 'offline';
 
-    // QZ-Tray specific statuses (for external printer monitoring)
+    // Reported by printer hardware, as distinct from the queue states above.
     case ONLINE = 'online';
     case BUSY = 'busy';
     case PROCESSING = 'processing';
@@ -20,7 +20,7 @@ enum PrinterStatusEnum: string
     case COVER_OPEN = 'cover-open';
     case UNKNOWN = 'unknown';
 
-    public static function fromQzStatusCode(string $code): self
+    public static function fromStatusCode(string $code): self
     {
         return match ($code) {
             'online' => self::ONLINE,

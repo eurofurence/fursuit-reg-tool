@@ -2,6 +2,14 @@
 
 use Illuminate\Support\Str;
 
+// PHP 8.4+ moved the PDO MySQL driver constants to the Pdo\Mysql subclass and
+// deprecated the PDO::MYSQL_ATTR_* aliases.
+$mysqlAttrSslCa = match (true) {
+    ! extension_loaded('pdo_mysql') => null,
+    defined('Pdo\Mysql::ATTR_SSL_CA') => Pdo\Mysql::ATTR_SSL_CA,
+    default => PDO::MYSQL_ATTR_SSL_CA,
+};
+
 return [
 
     /*
@@ -54,8 +62,8 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            'options' => $mysqlAttrSslCa ? array_filter([
+                $mysqlAttrSslCa => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
 
@@ -74,8 +82,8 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            'options' => $mysqlAttrSslCa ? array_filter([
+                $mysqlAttrSslCa => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
 

@@ -31,12 +31,16 @@
             $numColumns = $columns ?? 12;
             $fontSize = $fontSize ?? 6;
             $columnData = array_chunk($attendeeList, $rowsPerColumn);
+            // Never fewer columns than the list needs. This used to array_slice() the chunks
+            // down to the requested column count, which dropped every badge past
+            // rowsPerColumn x columns while the header above went on printing the full count.
+            // The controller pages a range before it gets here, so this only has to hold when
+            // the view is rendered directly.
+            $numColumns = max($numColumns, count($columnData));
             // Ensure we have exactly the number of columns requested (some may be empty)
             while (count($columnData) < $numColumns) {
                 $columnData[] = [];
             }
-            // Limit to the requested number of columns
-            $columnData = array_slice($columnData, 0, $numColumns);
             $maxRows = max(array_map('count', $columnData));
         @endphp
 
@@ -53,12 +57,17 @@
                                     $firstPart = $parts[0] ?? '';
                                     $secondPart = isset($parts[1]) ? '-' . $parts[1] : '';
                                     
-                                    // Calculate how many spaces needed (4 digit alignment)
-                                    $spacesNeeded = 4 - strlen($firstPart);
+                                    // Calculate how many spaces needed (4 digit alignment).
+                                    // Clamped: an attendee id longer than four characters made
+                                    // this negative and str_repeat() throws on PHP 8, taking the
+                                    // whole document with it.
+                                    $spacesNeeded = max(0, 4 - strlen($firstPart));
                                     $padding = str_repeat('&nbsp;', $spacesNeeded);
-                                    
-                                    // Create the padded badge ID with non-breaking spaces
-                                    $paddedBadgeId = $padding . $firstPart . $secondPart;
+
+                                    // Create the padded badge ID with non-breaking spaces. Only
+                                    // the padding is markup; the id itself comes from the
+                                    // registration service, so it is escaped.
+                                    $paddedBadgeId = $padding . e($firstPart . $secondPart);
                                 @endphp
                                 {!! $paddedBadgeId !!}
                             @endif

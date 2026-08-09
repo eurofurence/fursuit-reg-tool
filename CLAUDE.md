@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) working in this repository. This file carries what every
+agent needs; per-subsystem detail lives in `docs/` (see **Subsystem docs** at the end) - read the one
+for the area you are touching.
 
 ## Development Commands
 
@@ -8,24 +10,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The project supports two development environments:
 
-**Nix / devenv (primary)** — `.envrc` uses `direnv` + `use flake`. With direnv allowed, the
-toolchain (PHP 8.3, Node) is provided automatically and a `sail` alias is exported.
+**Nix / devenv (primary)** - `.envrc` uses `direnv` + `use flake`. With direnv allowed, the
+toolchain (PHP, Node) is provided automatically and a `sail` alias is exported.
 
-**Laravel Sail (Docker)** — the classic path:
+**Yerd (local `.test` domain)** - the app is also served at `https://fursuit-reg-tool.test`
+via the `yerd` CLI, with `catch.fursuit-reg-tool.test` for the Catch-Em-All routes. The site
+runs **PHP 8.5** against a local MariaDB (`yerd service start mariadb`, database `fursuit`,
+user `root`, no password). Yerd's own default PHP applies to new sites, so a fresh link needs
+`yerd use <site> 8.5`.
+
+**Laravel Sail (Docker)** - the classic path:
 
 ```bash
-# Initial setup
-cp .env.example .env       # or: mv .env.example .env
-composer install
-npm install
-npm run build
-
-# Start development environment
-./vendor/bin/sail up
-
-# Database operations
-./vendor/bin/sail artisan migrate
-./vendor/bin/sail artisan migrate:fresh --seed
+cp .env.example .env               # or: mv .env.example .env
+composer install && npm install && npm run build
+./vendor/bin/sail up               # start the environment
+./vendor/bin/sail artisan migrate  # or: migrate:fresh --seed
 ```
 
 > Note: `.env.example` defaults `DB_CONNECTION=sqlite` (a `database/database.sqlite` file).
@@ -35,39 +35,28 @@ npm run build
 ### Development Commands
 
 ```bash
-# Frontend development
-npm run dev           # Start Vite dev server with hot reload
-npm run build         # Build production assets
-
-# Laravel Artisan commands
-./vendor/bin/sail artisan tinker              # Interactive REPL
-./vendor/bin/sail artisan migrate:status      # Check migration status
-./vendor/bin/sail artisan queue:work          # Process background jobs (queue=database)
-./vendor/bin/sail artisan horizon             # Laravel Horizon for queues
-./vendor/bin/sail artisan octane:start        # Laravel Octane (Swoole) app server
-./vendor/bin/sail artisan reverb:start        # Laravel Reverb (WebSockets)
-
-# Testing
+npm run dev                                    # Vite dev server with hot reload
+npm run build                                  # Build production assets
+./vendor/bin/sail artisan tinker               # Interactive REPL
+./vendor/bin/sail artisan migrate:status       # Check migration status
+./vendor/bin/sail artisan queue:work           # Process background jobs (queue=database)
+./vendor/bin/sail artisan horizon              # Laravel Horizon for queues
+./vendor/bin/sail artisan octane:start         # Laravel Octane (Swoole) app server
+./vendor/bin/sail artisan reverb:start         # Laravel Reverb (WebSockets)
 ./vendor/bin/sail test                         # Run all tests with Pest
-./vendor/bin/sail test --filter=BadgeTest     # Run specific test class
-./vendor/bin/pest tests/Feature/BadgeTest.php # Run specific test file
-
-# Code quality
+./vendor/bin/sail test --filter=BadgeTest      # Run specific test class
+./vendor/bin/pest tests/Feature/BadgeTest.php  # Run specific test file
 ./vendor/bin/sail pint                         # Laravel Pint (PHP CS Fixer)
-```
-
-### Event State Management
-
-```bash
-# Useful for development/testing - sets up an event in a given state.
-# Accepted states: pre-order | order | event-order | closed  (open = legacy alias)
-php artisan event:state order      # Order window open
-php artisan event:state closed     # Orders closed
 ```
 
 ### Other Useful Artisan Commands
 
 ```bash
+# Event state, for development/testing - sets up an event in a given state.
+# Accepted states: pre-order | order | event-order | closed (open = legacy alias)
+php artisan event:state order             # Order window open
+php artisan event:state closed            # Orders closed
+
 php artisan badges:print                  # Print all unprinted badges
 php artisan badges:unprint                # Revert badges to unprinted
 php artisan fursuit:create-catch-code     # (Re)generate Catch-Em-All codes (--purge-all, --regen-unprinted)
@@ -94,7 +83,7 @@ compliance (TSE / DSFinV-K via Fiskaly), and a "Catch-Em-All" social game.
 
 **Event System**: Events have order windows (`order_starts_at` to `order_ends_at`) that
 determine when badges can be ordered. Event state is computed dynamically (see
-`App\Enum\EventStateEnum`) based on the current time vs. the order window — there is no
+`App\Enum\EventStateEnum`) based on the current time vs. the order window - there is no
 `state` column.
 
 **Badge Lifecycle**: Badges use Spatie Model States with two parallel state machines
@@ -107,9 +96,10 @@ determine when badges can be ordered. Event state is computed dynamically (see
 
 **Fursuit Management**: Fursuits require approval before badges can be created
 (`app/Models/Fursuit/States/`): `Pending` → `Approved` / `Rejected`, with `Rejected` → `Pending`
-and `Rejected` → `Approved` recovery transitions.
+and `Rejected` → `Approved` recovery transitions. A verdict also decides publication separately from
+printability - see [`docs/fursuit-review.md`](docs/fursuit-review.md).
 
-**Wallet Integration**: Uses `bavix/laravel-wallet` for payment processing. Badges implement
+**Wallet Integration**: `bavix/laravel-wallet` for payment processing; badges implement
 `ProductInterface` for seamless wallet transactions. The checkout domain (`app/Domain/Checkout/`)
 wraps this with its own models, services, and states.
 
@@ -117,149 +107,104 @@ wraps this with its own models, services, and states.
 
 **Multi-Interface Design**:
 
-- `/` — Public fursuit badge registration interface (Vue/Inertia)
-- `/admin` — Filament admin panel for staff
-- `/pos` — Point-of-sale system for on-site operations (machine + staff PIN auth)
-- `/catch-em-all` — "Catch-Em-All" game interface (mobile-first, PWA)
-- `/gallery` — Public fursuit gallery
-- `/api` — REST API (e.g. `GET /api/fursuits`) guarded by API auth middleware
+- `/` - Public fursuit badge registration interface (Vue/Inertia)
+- `/admin` - the Inertia admin panel for staff, and the only one. Route names are `admin.*` (the
+  prefix is applied in `bootstrap/app.php`, so the files under `routes/manage/` declare only their
+  own segment); files and controllers still live under `Manage/`. `/admin-legacy` is a redirect
+  kept for one release so old bookmarks land on `/admin`
+- `/pos` - Point-of-sale system for on-site operations (machine + staff PIN auth)
+- `/catch-em-all` - "Catch-Em-All" game interface (mobile-first, PWA)
+- `/gallery` - Public fursuit gallery
+- `/api` - REST API (e.g. `GET /api/fursuits`) guarded by API auth middleware
 
-**Route files** (`routes/`): `web.php`, `pos.php`, `pos-auth.php` (machine login + QZ Tray
-cert/signing), `catch-em-all.php`, `gallery.php`, `api.php`, `channels.php`, `console.php`.
+**Route files** (`routes/`): `web.php`, `pos.php`, `pos-auth.php` (machine login, printer states),
+`catch-em-all.php`, `gallery.php`, `api.php`, `channels.php`, `console.php`, plus `routes/manage/`
+for the admin panel.
 
 **Key Directories**:
 
-- `app/Models/Badge/` — Badge model with the two state machines
-- `app/Models/Fursuit/` — Fursuit management with approval workflow
-- `app/Models/FCEA/` — Catch-Em-All catch/log/ranking models
-- `app/Badges/` — Badge rendering system (PDF generation); bases in `app/Badges/Bases/`
-- `app/Domain/` — Domain-specific logic: `CatchEmAll/`, `Checkout/`, `Printing/`
-- `app/Filament/` — Admin panel resources, pages, and widgets
-- `app/Http/Controllers/` — Grouped by interface: `Admin/`, `POS/` (incl. `Printing/`),
-  `FCEA/`, `GALLERY/`, `API/`, plus public controllers
-- `app/Jobs/` — Queued jobs (receipt generation, `Printing/` jobs, ranking updates)
-- `app/Console/Commands/` — Artisan commands (see above)
-- `app/Notifications/` — Badge/fursuit lifecycle notifications and receipts
-- `app/Services/`, `app/Enum/`, `app/Providers/` — Supporting services, enums, providers
-- `resources/js/Pages/` — Vue components grouped by interface: `Badges/`, `POS/`,
+- `app/Models/` - `Badge/` (the two state machines), `Fursuit/` (approval workflow), `FCEA/`
+  (Catch-Em-All catch/log/ranking models)
+- `app/Badges/` - Badge rendering system (PDF generation); bases in `app/Badges/Bases/`
+- `app/Domain/` - Domain-specific logic: `CatchEmAll/`, `Checkout/`, `Printing/`
+- `app/Support/Manage/` - the admin table/column/filter/action layer the `/admin` panel is built on
+- `app/Http/Controllers/` - Grouped by interface: `Manage/` (one controller per admin module),
+  `Admin/`, `POS/` (incl. `Printing/`), `FCEA/`, `GALLERY/`, `API/`, plus public controllers
+- `app/Jobs/` - Queued jobs (receipt generation, `Printing/` jobs, ranking updates)
+- `app/Console/Commands/` - Artisan commands (see above)
+- `app/Notifications/` - Badge/fursuit lifecycle notifications and receipts
+- `app/Services/`, `app/Enum/`, `app/Providers/` - Supporting services, enums, providers
+- `resources/js/Pages/` - Vue components grouped by interface: `Badges/`, `POS/`,
   `CatchEmAll/`, `FCEA/`, `Gallery/`, `Statistics/`, `Auth/`
 
 ### State Management Pattern
 
-The system heavily uses **Spatie Model States** for complex entity lifecycles (Badges,
-Fursuits, Checkouts). When working with these entities, always consider the current state and
-the available transitions rather than mutating state properties directly.
+The system heavily uses **Spatie Model States** for complex entity lifecycles (Badges, Fursuits,
+Checkouts). Always consider the current state and the available transitions rather than mutating
+state properties directly.
 
 ### Event-Driven Architecture
 
-- Badge creation triggers notifications
-- State transitions are logged via `spatie/laravel-activitylog`
-- Background jobs handle printing, ranking updates, and receipt generation
-- Laravel Horizon manages queue processing; the default queue/cache/session driver is `database`
+- Badge creation triggers notifications; state transitions are logged via
+  `spatie/laravel-activitylog`
+- Background jobs handle printing, ranking updates, and receipt generation. Laravel Horizon manages
+  queue processing; the default queue/cache/session driver is `database`
 - A scheduler (`routes/console.php`) runs token refresh (daily), FCEA ranking refresh
   (every 15 min), and stuck-print-job checks (every 3 min)
 
-### Badge Generation System
-
-- Badges are rendered as PDFs using custom badge classes in `app/Badges/`
-- Each badge type (e.g. `EF28_Badge`, `EF29_Badge`) extends `BadgeBase_V1` (in `Bases/`) and
-  defines positioning/fonts; reusable field/layout helpers live in `app/Badges/Components/`
-- PDF generation uses `mpdf/mpdf`; images are processed with Intervention/Imagine and stored on S3
-- QR codes are generated for the Catch-Em-All game integration
-
-### Printing System
-
-- On-site printing is driven through **QZ Tray** (browser-to-printer bridge); the POS exposes
-  certificate and signing endpoints (`pos-auth.php`) for QZ
-- Print jobs and printer state are modeled in `app/Domain/Printing/` with their own enums
-  (`PrintJobStatusEnum`, `PrinterStatusEnum`, etc.) and queued jobs (`PrintBadgeJob`, `BatchPrintJob`)
-- See `PRINTING_SYSTEM.md` and the `PRINTING_SYSTEM_IMPROVEMENTS*.md` docs for design notes
-
-### Fiscal Compliance (German market)
-
-- SumUp card readers handle on-site card payments (`SumUpReader` model)
-- A Fiskaly **TSE** (Technical Security System) signs transactions; managed via the `tse:*`
-  commands. See `TSE.md`
-- DSFinV-K exports are produced by `dsfin:generate-direct-export`. See `DSFinV_K_2_4.pdf`
-
 ### Database Design Notes
 
-- Default connection is SQLite (`.env.example`); Sail provisions MySQL
-- Events use computed state (no `state` column) based on date comparisons
-- Badges have `custom_id` for human-readable identification
-- Soft deletes are used throughout for audit trails
-- Activity logging tracks all important changes
+Badges have `custom_id` for human-readable identification. Soft deletes are used throughout for
+audit trails, and activity logging tracks all important changes.
 
 ### Testing Approach
 
-- Uses **Pest PHP** testing framework (`tests/Feature`, `tests/Unit`)
+- **Pest PHP** (`tests/Feature`, `tests/Unit`), with database factories for test data
 - Feature tests cover critical user journeys (badge flow, checkout, printing, notifications,
-  event order state)
-- Database factory patterns for test data creation
-- Event state can be manipulated via the `event:state` command for testing
+  event order state); event state can be manipulated via the `event:state` command
 
-### Observability
+### Stack and Observability
 
-- **Sentry** (`sentry/sentry-laravel`) for error tracking
-- **Clockwork** (`itsgoingd/clockwork`) for local request profiling/debugging
-
-### Development Environment
-
-- **Nix / devenv** (`.envrc` + flake) or **Laravel Sail** for Docker-based development
+- **Sentry** (`sentry/sentry-laravel`) for error tracking, **Clockwork**
+  (`itsgoingd/clockwork`) for local request profiling/debugging
 - **Laravel Octane** (Swoole) is available as the production app server
 - **Laravel Reverb** provides WebSockets; the frontend uses `laravel-echo`
 - **Vite** for frontend asset compilation with HMR
 - **Inertia.js** bridges the Laravel backend with the Vue frontend (`tightenco/ziggy` for routes)
 - **PrimeVue** component library + **Tailwind CSS** for UI; Lucide icons
 
-### Domain Gotchas
-
-**Prepaid badges: "can create" vs. "free badges left" are two different things.** Two related
-prepaid calculations — do **not** merge their values:
-
-- `App\Policies\BadgePolicy::create()` uses `prepaid_badges − ordered` to decide whether a user
-  may create a badge **at all** (the badge may end up **paid**). A prepaid allowance bypasses the
-  closed order-window restriction.
-- `App\Models\User::getPrepaidBadgesLeft()` = `prepaid_badges − orderedMainBadges` (only main
-  badges count; spare copies — `extra_copy_of != null` — are always separately paid and never
-  consume the allowance). It answers **how many free badges remain** and drives badge **pricing**
-  in `BadgeController@store`.
-
-The **full** `prepaid_badges` entitlement is honored as free. (Until bugfix-03 this method also
-deducted an extra `1` after `order_starts_at` — "the included badge is no longer honored" — which
-wrongly **charged** the user's last prepaid badge; that `−1` is gone. See
-`docs/bugfix-03-fix.md`.)
-
-A user with `getPrepaidBadgesLeft() == 0` can still order an additional **paid** badge while the
-order window is open. The public Welcome page (`Welcome.vue`) therefore gates its create/customize
-button on the authoritative `canCreate` (`Gate::allows('create', Badge::class)`) passed by
-`WelcomeController`, not on `prepaidBadgesLeft`. `PrepaidBadgePriceConsistencyTest` locks in the
-pricing; `FreeBadgeRepairService` (admin → Maintenance → DB Service) repairs already-wrongly-charged
-badges. See `docs/bugfix-01-result.md`, `docs/bugfix-03-fix.md`, and `docs/handoff.md`.
-
-### Migrations must be idempotent
+## Migrations must be idempotent
 
 Migrations run as an ArgoCD PreSync **Job** (`php artisan migrate --force`) against MySQL, and
-**MySQL DDL is not transactional** — a migration that fails partway leaves its applied steps in
+**MySQL DDL is not transactional** - a migration that fails partway leaves its applied steps in
 place but is never recorded, so the next run hits "Duplicate column / key / table" and blocks every
-later migration (this caused a dev outage; see `docs/bugfix-02-*.md`).
-
+later migration. This has already caused a dev outage.
 Every migration must therefore be safe to re-run. Guard each operation with
-`App\Support\Migrations\SchemaGuard`:
-
-- `Schema::create('t', …)` → wrap in `if (SchemaGuard::missingTable('t')) { … }` (and use
-  `Schema::dropIfExists` in `down()`).
-- add/drop column → `SchemaGuard::missingColumn(...)` / `SchemaGuard::hasColumn(...)`.
-- add/drop index or unique → `SchemaGuard::hasIndex($table, $nameOrColumns)`.
-- add/drop foreign key → `SchemaGuard::hasForeignKeyOn(...)` / `hasForeignKeyTo(...)`.
-- `->change()` may be left unguarded (re-applying is safe). Data `UPDATE`s should use `WHERE`
-  guards so they converge. Order destructive steps so a new FK is only added after conflicting
-  data is cleared.
-
+`App\Support\Migrations\SchemaGuard`: `missingTable` / `missingColumn` / `hasColumn` /
+`hasIndex($table, $nameOrColumns)` / `hasForeignKeyOn` / `hasForeignKeyTo`, and `dropIfExists` in
+`down()`. `->change()` may be left unguarded; data `UPDATE`s need `WHERE` guards so they converge.
 `tests/Feature/MigrationIdempotencyTest.php` locks in the helper's behaviour.
 
-### Additional Documentation
+Full rule, per-operation examples and the outage story: [`docs/migrations.md`](docs/migrations.md).
 
-The repo root contains focused design docs worth consulting: `CATCH.md` (Catch-Em-All game),
-`PRINTING_SYSTEM*.md` (printing), `TSE.md` + `zebra.md` (fiscal/printer hardware),
-`openapi.yml` (API spec), and `README.md` (setup). Bugfix write-ups live in `docs/`.
+## Subsystem docs
+
+Read the file for the area you are changing; each records decisions that were re-broken once already.
+
+| Doc | Read it when you touch |
+|---|---|
+| [`docs/site-navigation.md`](docs/site-navigation.md) | the public header, pill rail, bottom tab bar, footer or `SiteNav/navItems.js` |
+| [`docs/gallery.md`](docs/gallery.md) | `/gallery` routes, folder caching, or the derived webp variants |
+| [`docs/fursuit-review.md`](docs/fursuit-review.md) | the approval queue, review reasons, publication blocks, undo |
+| [`docs/desk-corrections.md`](docs/desk-corrections.md) | POS badge edits, the manager gate, or repricing an open checkout |
+| [`docs/prepaid-badges.md`](docs/prepaid-badges.md) | `BadgePolicy::create()`, `getPrepaidBadgesLeft()`, badge pricing |
+| [`docs/badge-generation.md`](docs/badge-generation.md) | badge artwork classes in `app/Badges/` |
+| [`docs/printing.md`](docs/printing.md) | print batches, jobs, leases, verification, the print agent (build/debug companion: [`docs/printing-implementation.md`](docs/printing-implementation.md)) |
+| [`docs/fiscal-compliance.md`](docs/fiscal-compliance.md) | SumUp, Fiskaly TSE signing, DSFinV-K exports |
+| [`docs/migrations.md`](docs/migrations.md) | writing any migration |
+| [`docs/admin/roles.md`](docs/admin/roles.md) | any route under `routes/manage/`, a policy's `viewAny`/`view`, or a new Settings pane or Tools card - it is the reviewer/admin boundary |
+| [`docs/wallet-removal-plan.md`](docs/wallet-removal-plan.md) | wallet / payment plumbing |
+
+Repo root also has `CATCH.md` (Catch-Em-All game), `TSE.md` and `zebra.md` (fiscal / printer
+hardware), `DSFinV_K_2_4.pdf` (fiscal export spec), `openapi.yml` (API spec) and `README.md` (setup).
+`PRINTING_SYSTEM.md` and `PRINTING_SYSTEM_IMPROVEMENTS*.md` describe the retired QZ Tray system - history, not current behaviour.

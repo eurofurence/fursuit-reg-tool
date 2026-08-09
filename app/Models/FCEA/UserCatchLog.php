@@ -42,8 +42,13 @@ class UserCatchLog extends Model
                 "fursuit_code_{$this->catch_code}",
                 3600, // Cache for 1 hour
                 function () {
+                    // publicationAllowed(): a fursuit a reviewer barred from the public
+                    // surfaces is not catchable either, even if its owner has since turned
+                    // the switch back on. Blocking clears `catch_em_all` too, so this is
+                    // the second lock rather than the only one.
                     return Fursuit::where('catch_code', $this->catch_code)
                         ->where('catch_em_all', true)
+                        ->publicationAllowed()
                         ->first();
                 }
             );

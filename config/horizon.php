@@ -206,6 +206,40 @@ return [
             'timeout' => 300,
             'nice' => 0,
         ],
+
+        /*
+         * Badge artwork, and the runs built out of it. Its own lane because it is the only
+         * work here that is heavy in both senses: an attendee's phone upload decoded in GD
+         * plus an mpdf render, per card, for as long as the selection is. On the default
+         * queue it would starve everything else the panel dispatches, and it does not fit
+         * that supervisor's 128MB or its 60 second timeout.
+         *
+         * Nothing prints without this supervisor: PrepareBadgePrintBatchJob is what turns
+         * a Draft batch into a run an agent can claim.
+         *
+         * `tries` is 1 to match that job: a run that fails is undone and pressed again,
+         * never retried underneath the operator.
+         *
+         * Its own connection too, not just its own queue. `retry_after` is per connection,
+         * and the shared one's 90 seconds is shorter than a single run: the queue handed
+         * the same job to a second worker mid-render, which failed it for exceeding
+         * `tries` and cancelled the batch out from under the run. `queue.long_running`
+         * holds the reasoning; the only rule here is that its `retry_after` stays above
+         * this `timeout`.
+         */
+        'badge-render-supervisor' => [
+            'connection' => 'redis-long-running',
+            'queue' => ['badge-render'],
+            'balance' => 'simple',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 512,
+            'tries' => 1,
+            'timeout' => 3600,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -221,15 +255,27 @@ return [
                 'timeout' => 600,
                 'tries' => 3,
             ],
+            // Three at once: a run is prepared as one job, and two operators sending runs
+            // at the same time is normal at the desk. More than that competes for the same
+            // S3 bandwidth and memory for no gain.
+            'badge-render-supervisor' => [
+                'maxProcesses' => 3,
+                'timeout' => 3600,
+                'tries' => 1,
+            ],
         ],
 
         'local' => [
             'supervisor-1' => [
-                'maxProcesses' => 3,
+                'maxProcesses' => 10,
             ],
             'batch-print-supervisor' => [
                 'maxProcesses' => 1,
                 'timeout' => 300,
+            ],
+            'badge-render-supervisor' => [
+                'maxProcesses' => 1,
+                'timeout' => 3600,
             ],
         ],
     ],

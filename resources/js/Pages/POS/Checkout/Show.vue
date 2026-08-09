@@ -10,6 +10,7 @@ import {useForm} from "laravel-precognition-vue-inertia";
 import Message from 'primevue/message'
 import {router} from "@inertiajs/vue3";
 import {usePage} from '@inertiajs/vue3';
+import PriceOverrideModal from '@/Components/POS/PriceOverrideModal.vue';
 
 defineOptions({
     layout: POSLayout,
@@ -26,6 +27,7 @@ const props = defineProps({
 
 const page = usePage();
 const machine = computed(() => page.props.auth.machine);
+const flashError = computed(() => page.props.flash?.error);
 
 // Debug: Log machine data to console
 console.log('🔍 Machine data:', machine.value);
@@ -44,7 +46,37 @@ const cashDenominations = {
     coins: [2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01]
 };
 
-const positions = props.checkout.items;
+/*
+ * The lines of the open transaction, in the shape the attendee screen uses for
+ * a badge: artwork, name, badge number. The clerk pays and hands out from this
+ * same screen, so the panel has to be lookup-able - a row that only said
+ * "Fursuit Badge  15,00 €" told them nothing about which card to fetch.
+ *
+ * Derived, never captured: a reload of `checkout` alone (the card-payment poll)
+ * and a repriced-and-reopened transaction both have to redraw these.
+ */
+const positions = computed(() => props.checkout.items.map((item) => {
+    const badge = item.payable ?? {};
+    const extras = [];
+
+    if (badge.dual_side_print) {
+        extras.push('double sided');
+    }
+    if (badge.extra_copy_of) {
+        extras.push('extra copy');
+    }
+
+    return {
+        id: item.id,
+        name: badge.fursuit?.name || item.name,
+        badgeNumber: badge.custom_id || `#${item.payable_id}`,
+        species: badge.fursuit?.species?.name || '',
+        image: badge.fursuit?.image_url || null,
+        printed: !! badge.printed_at,
+        extras,
+        total: item.total,
+    };
+}));
 
 const cardPaymentCheckInterval = ref(null);
 
@@ -120,6 +152,47 @@ function isCardPaymentDisabled() {
     return !!(props.transaction && (props.transaction.status === 'SUCCESSFUL' || props.transaction.status === 'PENDING'));
 }
 
+// Auto-start the card payment as soon as the page is ready. This is done
+// client-side on purpose: if SumUp is unreachable the request simply fails and
+// the operator can still fall back to cash on the very same screen.
+//
+// The attempt is remembered in sessionStorage because a failed start redirects
+// back to this page, which remounts the component - without the marker that
+// would retry forever while the reader is offline.
+const autoCardPaymentKey = `pos.checkout.${props.checkout.id}.autoCardPayment`;
+
+function autoCardPaymentAttempted() {
+    try {
+        return window.sessionStorage.getItem(autoCardPaymentKey) === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
+function markAutoCardPaymentAttempted() {
+    try {
+        window.sessionStorage.setItem(autoCardPaymentKey, '1');
+    } catch (e) {
+        // Private mode or storage full - worst case we retry once more.
+    }
+}
+
+function canAutoStartCardPayment() {
+    return props.checkout.status !== 'FINISHED'
+        && props.checkout.total > 0
+        && !!machine.value?.sumup_reader
+        && !props.transaction
+        && !startCardPaymentForm.processing;
+}
+
+onMounted(() => {
+    if (autoCardPaymentAttempted() || !canAutoStartCardPayment()) {
+        return;
+    }
+    markAutoCardPaymentAttempted();
+    startCardPayment();
+});
+
 // Use keyboard composable with custom handlers
 usePosKeyboard({
     // Override divide key (/) for different actions based on state
@@ -164,6 +237,24 @@ function getSeverityFromTransactionStatus(status) {
     }
 }
 
+/* --- Price override -------------------------------------------------------
+ * The transaction is signed against its total, so a correction cannot edit this
+ * one: the server voids it and opens a fresh transaction at the new price, and
+ * this page is replaced by the new one. That is only possible while nothing has
+ * been taken yet, hence the guard on a live or completed card payment.
+ */
+const showOverride = ref(false);
+
+const overrideItems = computed(() => props.checkout.items.map((item) => ({
+    id: item.payable_id,
+    label: item.payable?.fursuit?.name || item.name,
+    sublabel: item.payable?.custom_id || `Badge #${item.payable_id}`,
+    total: item.total,
+})));
+
+const canOverride = computed(() => props.checkout.status !== 'FINISHED'
+    && ! (props.transaction && (props.transaction.status === 'SUCCESSFUL' || props.transaction.status === 'PENDING')));
+
 const emailReceiptForm = useForm('POST', route('pos.checkout.receipt.email', {'checkout': props.checkout.id}), {});
 const printReceiptForm = useForm('POST', route('pos.checkout.receipt.print', {'checkout': props.checkout.id}), {});
 
@@ -179,6 +270,12 @@ function receiptForm(via) {
 
 <template>
     <div class="w-full flex-1 flex flex-col">
+        <PriceOverrideModal
+            :show="showOverride"
+            :items="overrideItems"
+            @close="showOverride = false"
+        />
+
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-row gap-2 mb-2">
             <!-- Left Side - Cash Calculator -->
@@ -196,7 +293,7 @@ function receiptForm(via) {
                             <div class="h-full overflow-y-auto flex-1">
                                 <div class="flex justify-between items-center mb-2">
                                     <span class="text-sm font-medium">Amount Given:</span>
-                                    <div class="text-xl font-bold" :class="given >= (checkout.total / 100) ? 'text-green-600' : 'text-red-600'">
+                                    <div class="text-xl font-bold" :class="given >= (checkout.total / 100) ? 'text-pos-good' : 'text-pos-bad'">
                                         {{ given.toFixed(2) }}€
                                     </div>
                                 </div>
@@ -226,13 +323,13 @@ function receiptForm(via) {
 
                                 <!-- Status Message -->
                                 <div class="text-xs">
-                                    <div v-if="given < (checkout.total / 100)" class="text-red-600 font-medium">
+                                    <div v-if="given < (checkout.total / 100)" class="text-pos-bad font-medium">
                                         Need {{ ((checkout.total / 100) - given).toFixed(2) }}€ more
                                     </div>
-                                    <div v-else-if="currentChange.length === 0" class="text-green-600 font-medium">
+                                    <div v-else-if="currentChange.length === 0" class="text-pos-good font-medium">
                                         Exact change - Ready to complete!
                                     </div>
-                                    <div v-else class="text-yellow-600 font-medium">
+                                    <div v-else class="text-pos-warn font-medium">
                                         Change: {{ (given - (checkout.total / 100)).toFixed(2) }}€
                                     </div>
                                 </div>
@@ -247,7 +344,7 @@ function receiptForm(via) {
                                         <button v-for="denomination in cashDenominations.banknotes"
                                                 :key="denomination"
                                                 @click="addCash(denomination)"
-                                                class="aspect-[3/2] hover:bg-blue-50 transition-colors rounded">
+                                                class="aspect-[3/2] hover:bg-pos-accent/10 transition-colors rounded">
                                             <CashSVG :denomination="denomination" size="large" />
                                         </button>
                                     </div>
@@ -257,7 +354,7 @@ function receiptForm(via) {
                                         <button v-for="denomination in cashDenominations.coins"
                                                 :key="denomination"
                                                 @click="addCash(denomination)"
-                                                class="flex-1 hover:bg-blue-50 transition-colors rounded">
+                                                class="flex-1 hover:bg-pos-accent/10 transition-colors rounded">
                                             <CashSVG :denomination="denomination" size="normal" />
                                         </button>
                                     </div>
@@ -273,7 +370,7 @@ function receiptForm(via) {
                 <Card class="h-full flex items-center justify-center">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-green-600 mb-4">
+                            <div class="text-pos-good mb-4">
                                 <i class="pi pi-check-circle text-4xl"></i>
                                 <div class="text-xl font-bold mt-2">Transaction Complete</div>
                             </div>
@@ -316,18 +413,33 @@ function receiptForm(via) {
                     <template #content>
                         <!-- Items List -->
                         <div class="flex-1 ">
-                            <div class="mb-4 max-h-80 overflow-y-auto">
-                                <div v-for="pos in positions" :key="pos.id" class="mb-3 p-2 border-b border-gray-200">
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <div class="font-medium text-sm">{{ pos.name }}</div>
-                                            <div class="text-xs text-gray-600">Fursuit Badge #{{ pos.payable_id }}</div>
-                                            <div v-if="pos.description && pos.description.length" class="text-xs text-gray-500 mt-1">
-                                                {{ pos.description.join(', ') }}
-                                            </div>
+                            <div class="mb-4 max-h-80 overflow-y-auto divide-y divide-pos-line">
+                                <div v-for="pos in positions" :key="pos.id" class="flex items-center gap-3 py-2">
+                                    <img
+                                        v-if="pos.image"
+                                        :src="pos.image"
+                                        :alt="`${pos.name} artwork`"
+                                        class="pos-badge__img"
+                                        loading="lazy"
+                                    />
+                                    <span v-else class="pos-badge__img pos-badge__img--empty">
+                                        <i class="pi pi-image text-xl"></i>
+                                    </span>
+
+                                    <div class="flex-1 min-w-0">
+                                        <div class="pos-badge__name">
+                                            <span class="pos-badge__nametext">{{ pos.name }}</span>
                                         </div>
-                                        <div class="font-bold">{{ formatEuroFromCents(pos.total) }}</div>
+                                        <div class="pos-badge__meta">
+                                            <span class="pos-num font-bold">{{ pos.badgeNumber }}</span>
+                                            <span v-if="pos.species">· {{ pos.species }}</span>
+                                            <span v-for="extra in pos.extras" :key="extra" class="pos-pill">{{ extra }}</span>
+                                            <!-- Not printed yet means there is no card in the box to hand over. -->
+                                            <span v-if="!pos.printed" class="pos-pill text-pos-warn">not printed</span>
+                                        </div>
                                     </div>
+
+                                    <div class="pos-badge__price">{{ formatEuroFromCents(pos.total) }}</div>
                                 </div>
                             </div>
                         </div>
@@ -344,12 +456,16 @@ function receiptForm(via) {
                             </div>
                             <div class="flex justify-between font-bold text-lg border-t pt-2">
                                 <span>TOTAL:</span>
-                                <span class="text-green-600">{{ formatEuroFromCents(checkout.total) }}</span>
+                                <span class="text-pos-good">{{ formatEuroFromCents(checkout.total) }}</span>
                             </div>
                         </div>
 
                         <!-- Status -->
                         <div class="mt-4">
+                            <!-- Card payment problems must not hide the cash fallback -->
+                            <Message v-if="flashError" :closable="false" severity="error" class="text-xs p-2 mb-2">
+                                {{ flashError }}
+                            </Message>
                             <div v-if="transaction" class="mb-2">
                                 <div class="text-xs font-medium mb-1">Payment Status:</div>
                                 <Message :closable="false" :severity="getSeverityFromTransactionStatus(transaction.status)" class="text-xs p-2">
@@ -370,7 +486,7 @@ function receiptForm(via) {
                 :disabled="given < (checkout.total / 100) || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))"
                 severity="success"
                 size="small"
-                class="flex-1 h-12 text-xs font-bold"
+                class="pos-commit-accent flex-1 h-12 text-xs font-bold"
                 icon="pi pi-money-bill"
                 label="Complete Cash" />
 
@@ -381,13 +497,22 @@ function receiptForm(via) {
                 :loading="startCardPaymentForm.processing"
                 severity="primary"
                 size="small"
-                class="flex-1 h-12 text-xs font-bold relative"
+                class="pos-commit-accent flex-1 h-12 text-xs font-bold relative"
                 icon="pi pi-credit-card">
                 <template #default>
                     <span>Pay Card</span>
                     <span class="ml-2 text-xs opacity-75">[/]</span>
                 </template>
             </Button>
+
+            <!-- Price Override Button -->
+            <Button v-if="canOverride"
+                @click="showOverride = true"
+                severity="secondary"
+                size="small"
+                class="flex-1 h-12 text-xs font-bold"
+                icon="pi pi-pencil"
+                label="Override Price" />
 
             <!-- Clear Cash Button -->
             <Button v-if="checkout.status !== 'FINISHED'"

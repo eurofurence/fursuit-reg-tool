@@ -3,6 +3,8 @@
 namespace App\Domain\Checkout\Services;
 
 use App\Domain\Checkout\Models\Checkout\Checkout;
+use App\Domain\Checkout\Models\TseClient;
+use App\Models\Machine;
 use Carbon\Carbon;
 use ZipArchive;
 
@@ -72,7 +74,7 @@ class DSFinVKExportService
     private function generateCashRegisterInfo(string $exportDir): void
     {
         // Get all machines used in the export period
-        $machines = \App\Models\Machine::whereHas('checkouts', function ($query) {
+        $machines = Machine::whereHas('checkouts', function ($query) {
             $query->whereBetween('created_at', [$this->dateFrom, $this->dateTo]);
         })->get();
 
@@ -129,7 +131,7 @@ class DSFinVKExportService
      */
     private function generateCashRegister(string $exportDir): void
     {
-        $machines = \App\Models\Machine::whereHas('checkouts', function ($query) {
+        $machines = Machine::whereHas('checkouts', function ($query) {
             $query->whereBetween('created_at', [$this->dateFrom, $this->dateTo]);
         })->get();
 
@@ -186,7 +188,7 @@ class DSFinVKExportService
      */
     private function generateCashPointClosing(string $exportDir): void
     {
-        $machines = \App\Models\Machine::whereHas('checkouts', function ($query) {
+        $machines = Machine::whereHas('checkouts', function ($query) {
             $query->whereBetween('created_at', [$this->dateFrom, $this->dateTo]);
         })->get();
 
@@ -266,7 +268,7 @@ class DSFinVKExportService
      */
     private function generateVat(string $exportDir): void
     {
-        $machines = \App\Models\Machine::whereHas('checkouts', function ($query) {
+        $machines = Machine::whereHas('checkouts', function ($query) {
             $query->whereBetween('created_at', [$this->dateFrom, $this->dateTo]);
         })->get();
 
@@ -332,7 +334,7 @@ class DSFinVKExportService
      */
     private function generateTse(string $exportDir): void
     {
-        $tseClients = \App\Domain\Checkout\Models\TseClient::whereHas('machine.checkouts', function ($query) {
+        $tseClients = TseClient::whereHas('machine.checkouts', function ($query) {
             $query->whereBetween('created_at', [$this->dateFrom, $this->dateTo]);
         })->get();
 
@@ -436,7 +438,7 @@ class DSFinVKExportService
     {
         $content = "Z_KASSE_ID|Z_ERSTELLUNG|Z_NR|GV_TYP|GV_NAME|AGENTUR_ID|UST_SCHLUESSEL|Z_UMS_BRUTTO|Z_UMS_NETTO|Z_UST\n";
 
-        $machines = \App\Models\Machine::whereHas('checkouts', function ($query) {
+        $machines = Machine::whereHas('checkouts', function ($query) {
             $query->whereBetween('created_at', [$this->dateFrom, $this->dateTo]);
         })->get();
 
@@ -462,7 +464,7 @@ class DSFinVKExportService
     {
         $content = "Z_KASSE_ID|Z_ERSTELLUNG|Z_NR|ZAHLART_TYP|ZAHLART_NAME|Z_ZAHLART_BETRAG\n";
 
-        $machines = \App\Models\Machine::whereHas('checkouts', function ($query) {
+        $machines = Machine::whereHas('checkouts', function ($query) {
             $query->whereBetween('created_at', [$this->dateFrom, $this->dateTo]);
         })->get();
 
@@ -497,7 +499,7 @@ class DSFinVKExportService
     {
         $content = "Z_KASSE_ID|Z_ERSTELLUNG|Z_NR|ZAHLART_WAEH|ZAHLART_BETRAG_WAEH\n";
 
-        $machines = \App\Models\Machine::whereHas('checkouts', function ($query) {
+        $machines = Machine::whereHas('checkouts', function ($query) {
             $query->whereBetween('created_at', [$this->dateFrom, $this->dateTo]);
         })->get();
 

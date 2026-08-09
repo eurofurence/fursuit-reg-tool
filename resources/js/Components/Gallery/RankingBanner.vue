@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 
 interface Ranking {
     user: string,
@@ -6,72 +7,54 @@ interface Ranking {
     catches: number,
 }
 
-const props = defineProps({
-    ranking: Array<Ranking>,
+const props = defineProps<{
+    ranking?: Ranking[],
+    eventName?: string | null,
+}>();
+
+/**
+ * Podium order (silver, gold, bronze) so the winner stands in the middle. Places nobody
+ * reached yet are dropped rather than rendered as an empty column.
+ */
+const podium = computed(() => {
+    const entries = props.ranking ?? [];
+
+    return [
+        { place: 2, entry: entries[1], height: 'h-20 sm:h-24' },
+        { place: 1, entry: entries[0], height: 'h-28 sm:h-36' },
+        { place: 3, entry: entries[2], height: 'h-16 sm:h-20' },
+    ].filter(step => step.entry);
 });
+
+function numberFormat(value: number): string {
+    return new Intl.NumberFormat().format(value ?? 0);
+}
 </script>
 
 <template>
-    <div class="ranking-banner flex flex-col justify-between items-center bg-primary-500/60 shadow rounded py-2">
-        <h2 class="text-center font-bold mb-4">This year's Catch-am-all winners</h2>
-        <div class="ranking-items flex justify-between w-full">
-            <div class="ranking-item text-silver font-bold" @mouseover="showScore(1)" @mouseleave="showName(1)">
-                <span v-if="!showScores[1]">#2 {{ props.ranking[1]?.user }}</span>
-                <span v-else>{{ props.ranking[1]?.catches }}</span>
-            </div>
-            <div class="ranking-item text-gold font-bold" @mouseover="showScore(0)" @mouseleave="showName(0)">
-                <span v-if="!showScores[0]">#1 {{ props.ranking[0]?.user }}</span>
-                <span v-else>{{ props.ranking[0]?.catches }}</span>
-            </div>
-            <div class="ranking-item text-bronze font-bold" @mouseover="showScore(2)" @mouseleave="showName(2)">
-                <span v-if="!showScores[2]">#3 {{ props.ranking[2]?.user }}</span>
-                <span v-else>{{ props.ranking[2]?.catches }}</span>
-            </div>
-        </div>
-    </div>
+    <section v-if="podium.length">
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            {{ eventName ? `${eventName} leaders` : 'Catch \'Em All leaders' }}
+        </h2>
+
+        <ol class="flex items-end justify-center gap-2 sm:gap-4">
+            <li v-for="step in podium" :key="step.place" class="w-full max-w-[13rem]">
+                <div class="mb-1 text-center">
+                    <p class="truncate text-sm font-semibold text-gray-900 sm:text-base">
+                        {{ step.entry.user }}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        {{ numberFormat(step.entry.catches) }} catches
+                    </p>
+                </div>
+                <div
+                    class="flex items-end justify-center rounded-t-md border border-b-0 border-gray-200 bg-gray-100"
+                    :class="step.height"
+                >
+                    <span class="pb-2 text-2xl font-bold text-gray-400 sm:text-3xl">{{ step.place }}</span>
+                </div>
+            </li>
+        </ol>
+        <div class="border-t border-gray-300"></div>
+    </section>
 </template>
-
-<script lang="ts">
-import { ref } from 'vue';
-
-const showScores = ref([false, false, false]);
-
-function showScore(index) {
-    showScores.value[index] = true;
-}
-
-function showName(index) {
-    showScores.value[index] = false;
-}
-</script>
-
-<style scoped>
-.ranking-banner {
-    width: 100%;
-    padding: 10px;
-}
-
-.ranking-items {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-}
-
-.ranking-item {
-    flex: 1;
-    text-align: center;
-    font-size: 1.5rem;
-}
-
-.text-gold {
-    color: gold;
-}
-
-.text-silver {
-    color: silver;
-}
-
-.text-bronze {
-    color: rgb(205, 127, 50);
-}
-</style>
