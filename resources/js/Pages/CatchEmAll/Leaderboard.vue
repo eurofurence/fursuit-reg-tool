@@ -6,7 +6,7 @@ import Card from "@/Components/UI/UiCard.vue";
 import Dropdown from "primevue/dropdown";
 import { computed, ref } from "vue";
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     user : {
         id : number;
         name : string;
@@ -21,7 +21,10 @@ const props = defineProps<{
     selectedEvent?: string | null;
     isGlobal: boolean;
     flash?: any;
-}>();
+}>(), {
+    selectedEvent: null,
+    isGlobal: false,
+});
 
 // Event selection
 const eventOptions = computed(() => [
