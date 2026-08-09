@@ -9,7 +9,6 @@ use App\Interfaces\BadgeInterface;
 use App\Models\Badge\Badge;
 use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
-use Imagine\Image\Palette\Color\ColorInterface;
 use Imagine\Image\Palette\RGB;
 use Imagine\Image\Point;
 use Mpdf\Mpdf;
@@ -70,11 +69,13 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $mpdf->img_dpi = 300;
         $mpdf->dpi = 300;
         $mpdf->imageVars['badgeImageFront'] = $this->getPng($badge, 0);
-        $mpdf->imageVars['badgeImageBack'] = $this->getPng($badge, 1);
         // Add Page 1
         $mpdf->AddPageByArray($options);
         $mpdf->Image('var:badgeImageFront', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
+        // Only render the back if it is going to be printed; it used to be rendered for
+        // every badge and then discarded on the single-sided ones.
         if ($badge->dual_side_print) {
+            $mpdf->imageVars['badgeImageBack'] = $this->getPng($badge, 1);
             $mpdf->AddPageByArray($options);
             $mpdf->Image('var:badgeImageBack', 0, 0, $options['format'][0], $options['format'][1], 'png', '', true, false);
         }
@@ -85,20 +86,15 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
     private function addFirstLayer(Box $size)
     {
         // Add background
-        $image = $this->imagine->open(resource_path('badges/ef28/images/first_layer_bg_purple.png'));
-        $image->resize($size);
-
-        return $image;
+        return BadgeAssets::image(
+            resource_path('badges/ef28/images/first_layer_bg_purple.png'),
+            $size->getWidth(),
+            $size->getHeight(),
+        );
     }
 
     private function addSecondLayer(ImageInterface $badge_object, Box $size)
     {
-        // Load the overlay image in which green is to be replaced
-        $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/second_layer_green_screen.png'));
-
-        // Adjust to badge size
-        $overlayImage->resize($size);
-
         // Load the image to be used as a replacement for green.
         //
         // ImagePreparer downloads once and scales on the way in, rather than
@@ -107,55 +103,34 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
         $prepared = (new ImagePreparer($this->imagine))
             ->prepare($this->badge->fursuit->image, 380, 507);
 
-        $replacementImage = $prepared->image;
-        $replacementSize = $prepared->size();
+        // EF28 never looked at the photo's alpha, so a transparent PNG pixel is drawn as it
+        // is. Kept that way deliberately: these cards were printed in 2022.
+        $greenscreen = new Greenscreen(
+            overlayPath: resource_path('badges/ef28/images/second_layer_green_screen.png'),
+            key: [134, 194, 148],
+            tolerance: 0,
+            left: 35,
+            top: 100,
+            rightInset: 610,
+            bottomInset: 45,
+        );
 
-        // Define the offsets for the shift
-        $xOffset = 35; // For example, move it 30 pixels to the right
-        $yOffset = 100; // For example, move it down by 100 pixels
-
-        // Replace green areas in the overlay image with the replacement image
-        for ($x = 35; $x < $size->getWidth() - 610; $x++) {
-            for ($y = 100; $y < $size->getHeight() - 45; $y++) {
-                // Get the color of the pixel in the overlay image
-                $color = $overlayImage->getColorAt(new Point($x, $y));
-
-                // Get the RGB values of the pixel
-                $red = $color->getValue(ColorInterface::COLOR_RED);
-                $green = $color->getValue(ColorInterface::COLOR_GREEN);
-                $blue = $color->getValue(ColorInterface::COLOR_BLUE);
-
-                // Define the area for "green"
-                if ($red == 134 && $green == 194 && $blue == 148) {
-                    // Calculate the position in the replacementImage taking into account the offsets
-                    $replacementX = $x - $xOffset;
-                    $replacementY = $y - $yOffset;
-
-                    // Check whether the calculated coordinates are within the replacementImage
-                    if (
-                        $replacementX >= 0 && $replacementX < $replacementSize->getWidth() &&
-                        $replacementY >= 0 && $replacementY < $replacementSize->getHeight()
-                    ) {
-
-                        // Replace the green pixel with the corresponding pixel from the replacement image
-                        $replacementColor = $replacementImage->getColorAt(new Point($replacementX, $replacementY));
-                        $overlayImage->draw()->dot(new Point($x, $y), $replacementColor);
-                    }
-                }
-            }
-        }
-
-        // Add the edited overlay image as a second layer to the base image
-        $badge_object->paste($overlayImage, new Point(0, 0));
+        $greenscreen->apply(
+            base: $badge_object,
+            photo: $prepared->gd(),
+            offsetX: 35,
+            offsetY: 100,
+        );
     }
 
     private function addThirdLayer(ImageInterface $badge_object, Box $size)
     {
         // Load the overlay image
-        $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/third_layer_overlay.png'));
-
-        // Adjust to badge size
-        $overlayImage->resize($size);
+        $overlayImage = BadgeAssets::image(
+            resource_path('badges/ef28/images/third_layer_overlay.png'),
+            $size->getWidth(),
+            $size->getHeight(),
+        );
 
         // Add to badge
         $badge_object->paste($overlayImage, new Point(0, 0));
@@ -311,11 +286,11 @@ class EF28_Badge extends BadgeBase_V1 implements BadgeInterface
     private function addFifthLayer(ImageInterface $badge_object, Box $size)
     {
         // Add catch em all field
-        // Load the overlay image in which green is to be replaced
-        $overlayImage = $this->imagine->open(resource_path('badges/ef28/images/fifth_layer_catch_em_all.png'));
-
-        // Customize to badge size
-        $overlayImage->resize($size);
+        $overlayImage = BadgeAssets::image(
+            resource_path('badges/ef28/images/fifth_layer_catch_em_all.png'),
+            $size->getWidth(),
+            $size->getHeight(),
+        );
 
         // Textposition
         $position = new Point($this->width_px - 558, $this->height_px - 182);
