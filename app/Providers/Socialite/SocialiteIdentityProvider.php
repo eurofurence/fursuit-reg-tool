@@ -89,6 +89,20 @@ class SocialiteIdentityProvider extends AbstractProvider
             'email_verified' => $user['email_verified'],
             'name' => $user['name'],
             'groups' => $user['groups'],
+            'avatar' => $this->normalizeAvatarUrl($user['avatar'] ?? null),
         ]);
+    }
+
+    private function normalizeAvatarUrl(?string $avatar): ?string
+    {
+        if ($avatar === null || $avatar === '') {
+            return null;
+        }
+
+        if (str_starts_with($avatar, 'http://') || str_starts_with($avatar, 'https://')) {
+            return $avatar;
+        }
+
+        return rtrim($this->getIdentityConfig()->issuer, '/').'/'.ltrim($avatar, '/');
     }
 }
