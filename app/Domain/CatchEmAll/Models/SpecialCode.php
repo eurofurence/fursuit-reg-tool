@@ -48,7 +48,13 @@ class SpecialCode extends Model
             $className = $this->class_name;
         }
 
-        if (! is_string($className) || $className === '' || ! class_exists($className)) {
+        if (! is_string($className) || $className === '') {
+            $type = $this->type instanceof SpecialCodeType ? $this->type->name : 'none';
+
+            throw new \InvalidArgumentException("No action class could be resolved for special code type '{$type}'.");
+        }
+
+        if (! class_exists($className)) {
             throw new \InvalidArgumentException("Class {$className} does not exist.");
         }
 
