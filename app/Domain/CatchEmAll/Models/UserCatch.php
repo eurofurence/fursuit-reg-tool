@@ -36,17 +36,7 @@ class UserCatch extends Model
     public function getFursuitRarity(): FursuitRarity
     {
         // Calculate rarity based on global frequency of fursuits
-        $count = $this->getCatches();
-
-        $rarity = match (true) {
-            $count >= config('fcea.species_rarity_threshold_legendary') => FursuitRarity::LEGENDARY,
-            $count >= config('fcea.species_rarity_threshold_epic') => FursuitRarity::EPIC,
-            $count >= config('fcea.species_rarity_threshold_rare') => FursuitRarity::RARE,
-            $count >= config('fcea.species_rarity_threshold_uncommon') => FursuitRarity::UNCOMMON,
-            default => FursuitRarity::COMMON,
-        };
-
-        return $rarity;
+        return FursuitRarity::fromCatchCount($this->getCatches());
     }
 
     public function getFursuitSpecies(): string

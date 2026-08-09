@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\MirrorUserAvatarJob;
 use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
@@ -104,6 +105,15 @@ class AuthController extends Controller
             'email' => $socialLiteUser->getEmail(),
             'avatar' => $socialLiteUser->getAvatar(),
         ]);
+
+        // Mirror the IDP avatar onto our storage bucket if it's out of sync.
+        if ($user->wasRecentlyCreated
+            || $user->wasChanged('avatar')
+            || ($user->avatar && ! $user->avatar_path)) {
+            MirrorUserAvatarJob::dispatch($user);
+        }
+
+        $user->wallet->balance;
 
         $activeEvent = Event::getActiveEvent();
         $eventUser = null;
