@@ -48,7 +48,7 @@ final class SpecialCodeActionRegistry
      * @var array<class-string<SpecialCodeAction>, string>
      */
     private const BUILT_IN = [
-        BugBountyAction::class => 'Bug Hunter Bounty',
+        BugBountyAction::class => 'Bug Bounty',
         CatchEmAllTeamAction::class => 'Catch \'Em All Team',
         ExplorerAction::class => 'Explorer',
     ];

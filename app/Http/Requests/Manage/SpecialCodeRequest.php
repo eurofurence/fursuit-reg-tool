@@ -50,7 +50,7 @@ class SpecialCodeRequest extends FormRequest
 
         $rules = [
             'event_id' => ['required', 'integer', 'exists:events,id'],
-            'type' => ['nullable', 'integer', Rule::in(array_map(fn (SpecialCodeType $type) => $type->value, SpecialCodeType::cases()))],
+            'type' => ['required', 'integer', Rule::in(array_map(fn (SpecialCodeType $type) => $type->value, SpecialCodeType::cases()))],
             'data' => ['nullable', 'array'],
             'code' => [
                 'required',

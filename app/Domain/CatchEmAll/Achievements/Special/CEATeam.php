@@ -19,6 +19,19 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
 
     private const INFO_CACHE_KEY = 'info_cea_team';
 
+    private function teamMemberName(mixed $constructorData): string
+    {
+        if (is_object($constructorData)) {
+            return $constructorData->name ?? 'Unknown';
+        }
+
+        if (is_array($constructorData)) {
+            return $constructorData['name'] ?? 'Unknown';
+        }
+
+        return 'Unknown';
+    }
+
     /**
      * Get the info cache key for a specific event user.
      */
@@ -36,7 +49,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
     {
         return Cache::remember(self::CACHE_KEY, now()->addHours(1), function () {
             $names = SpecialCode::where('type', SpecialCodeType::CATCH_EM_ALL_TEAM)->get()->map(function (SpecialCode $code) {
-                return $code->constructor_data['name'] ?? 'Unknown';
+                return $this->teamMemberName($code->constructor_data);
             })->toArray();
             sort($names);
 
@@ -94,7 +107,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
                 ->where('user_special_catches.type', SpecialCodeType::CATCH_EM_ALL_TEAM)
                 ->get()
                 ->map(function (UserSpecialCatch $catch): string {
-                    return $catch->specialCode?->constructor_data['name'] ?? 'Unknown';
+                    return $this->teamMemberName($catch->specialCode?->constructor_data);
                 })
                 ->unique()
                 ->values()

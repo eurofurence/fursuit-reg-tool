@@ -6,6 +6,7 @@ use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\SpecialCodeAction;
 use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Models\Event;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,9 +19,32 @@ class SpecialCode extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'constructor_data' => 'array',
         'type' => SpecialCodeType::class,
     ];
+
+    protected function constructorData(): Attribute
+    {
+        return Attribute::make(
+            get: function (mixed $value): mixed {
+                if ($value === null || $value === '') {
+                    return null;
+                }
+
+                if (is_string($value)) {
+                    return json_decode($value);
+                }
+
+                return $value;
+            },
+            set: function (mixed $value): ?string {
+                if ($value === null || $value === '') {
+                    return null;
+                }
+
+                return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            },
+        );
+    }
 
     /**
      * Get the event that owns the special code.
@@ -41,11 +65,16 @@ class SpecialCode extends Model
     public function createActionInstance(): SpecialCodeAction
     {
         $className = SpecialActionsRegister::getClassForSpecialCodeType($this->type);
+        $constructorData = $this->constructor_data;
+
+        if (is_object($constructorData)) {
+            $constructorData = get_object_vars($constructorData);
+        }
 
         return new $className(
             $this->event_id,
             $this->code,
-            $this->constructor_data
+            $constructorData
         );
     }
 }
