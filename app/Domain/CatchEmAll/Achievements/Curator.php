@@ -2,49 +2,30 @@
 
 namespace App\Domain\CatchEmAll\Achievements;
 
-use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class Curator implements Achievement
+class Curator extends SimpleAchievement implements LockedBy, HiddenIfLocked
 {
-    public function getId(): string
+    public function __construct()
     {
-        return 'curator';
-    }
-
-    public function getTile(): string
-    {
-        return 'Curator';
-    }
-
-    public function getDescription(): string
-    {
-        return 'Your reputation as a collector is growing.';
-    }
-
-    public function getIcon(): string
-    {
-        return '🏛️';
+        parent::__construct(
+            id: 'curator',
+            title: 'Curator',
+            description: 'Your reputation as a collector is growing.',
+            task: 'Catch 20 Fursuits.',
+            icon: '🏛️',
+            isSecret: false,
+            isOptional: false,
+            isHidden: false
+        );
     }
 
     public function getMaxProgress(): int
     {
         return 20;
-    }
-
-    public function isSecret(): bool
-    {
-        return false;
-    }
-
-    public function isOptional(): bool
-    {
-        return false;
-    }
-
-    public function isHidden(): bool
-    {
-        return false;
     }
 
     public function updateAchievementProgress(AchievementUpdateContext $context): int
@@ -58,5 +39,12 @@ class Curator implements Achievement
         $currentProgress = min($context->userTotalCatches, $this->getMaxProgress());
 
         return $currentProgress;
+    }
+
+    public function lockedBy(): array
+    {
+        return [
+            'collector',
+        ];
     }
 }

@@ -2,49 +2,30 @@
 
 namespace App\Domain\CatchEmAll\Achievements;
 
-use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class TheLegendary151 implements Achievement
+class TheLegendary151 extends SimpleAchievement implements HiddenIfLocked, LockedBy
 {
-    public function getId(): string
+    public function __construct()
     {
-        return 'the_legendary_151';
-    }
-
-    public function getTile(): string
-    {
-        return 'The Legendary 151';
-    }
-
-    public function getDescription(): string
-    {
-        return 'Just like a certain little mouse.';
-    }
-
-    public function getIcon(): string
-    {
-        return '⚡';
+        parent::__construct(
+            id: 'the_legendary_151',
+            title: 'The Legendary 151',
+            description: 'Just like a certain little mouse.',
+            task: 'Catch 151 Fursuits.',
+            icon: '⚡',
+            isSecret: false,
+            isOptional: false,
+            isHidden: false
+        );
     }
 
     public function getMaxProgress(): int
     {
         return 151;
-    }
-
-    public function isSecret(): bool
-    {
-        return false;
-    }
-
-    public function isOptional(): bool
-    {
-        return false;
-    }
-
-    public function isHidden(): bool
-    {
-        return false;
     }
 
     public function updateAchievementProgress(AchievementUpdateContext $context): int
@@ -58,5 +39,12 @@ class TheLegendary151 implements Achievement
         $currentProgress = min($context->userUniqueFursuits, $this->getMaxProgress());
 
         return $currentProgress;
+    }
+
+    public function lockedBy(): array
+    {
+        return [
+            'archivist',
+        ];
     }
 }

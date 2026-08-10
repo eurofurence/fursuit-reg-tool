@@ -67,7 +67,7 @@ export function usePosKeyboard(options = {}) {
         if (event.code === 'NumpadDivide') {
             event.preventDefault();
             event.stopImmediatePropagation(); // Stop other handlers from firing
-            
+
             if (onNumpadDivide) {
                 onNumpadDivide(event);
                 return; // Exit early when override is handled
@@ -84,7 +84,7 @@ export function usePosKeyboard(options = {}) {
         if (event.code === 'NumpadMultiply') {
             event.preventDefault();
             event.stopImmediatePropagation(); // Stop other handlers from firing
-            
+
             if (onNumpadMultiply) {
                 onNumpadMultiply(event);
                 return; // Exit early when override is handled
@@ -108,19 +108,19 @@ export function usePosKeyboard(options = {}) {
                 event.preventDefault();
                 router.visit('/pos');
             }
-            
+
             // Ctrl+P: Start Payment
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
                 event.preventDefault();
                 window.dispatchEvent(new CustomEvent('pos-shortcut-payment'));
             }
-            
+
             // Ctrl+H: Handout All
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'h') {
                 event.preventDefault();
                 window.dispatchEvent(new CustomEvent('pos-shortcut-handout'));
             }
-            
+
             // Enter: Confirm Dialogs.
             //
             // The event is cancelable; a page that confirms something calls

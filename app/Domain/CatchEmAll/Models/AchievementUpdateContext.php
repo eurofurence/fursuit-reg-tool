@@ -6,11 +6,13 @@ use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\Fursuit\Fursuit;
-use App\Models\User;
 
 /**
  * Readonly context object that contains the essential data for achievement updates.
  * This provides a clean, minimal interface for achievement processing.
+ *
+ * Add your new properties here if you need additional context for achievement updates.
+ * If you use the ProgressInfo interface, you can also use your local context to calculate progress for the achievement.
  */
 readonly class AchievementUpdateContext
 {
@@ -21,6 +23,8 @@ readonly class AchievementUpdateContext
         public int $userTotalCatches,
         public int $totalCatchableFursuits,
         public int $userUniqueFursuits,
+        public int $locationsExplored,
+        public int $userTotalDaysCaught
     ) {}
 
     /**
@@ -39,11 +43,20 @@ readonly class AchievementUpdateContext
         // Calculate user statistics
         $userTotalCatches = UserCatch::where('event_user_id', $eventUser->id)
             ->count();
-        $totalCatchableFursuits = Fursuit::where('event_id', operator: $currentEvent->id)
+        $totalCatchableFursuits = Fursuit::where('event_id', $currentEvent->id)
             ->where('catch_em_all', true)
             ->count();
         $userUniqueFursuits = UserCatch::where('event_user_id', $eventUser->id)
             ->distinct('fursuit_id')
+            ->count();
+        $locationsExplored = ($specialCodeType !== SpecialCodeType::EXPLORER) ? 0 : UserSpecialCatch::query()
+            ->where('event_user_id', $eventUser->id)
+            ->where('user_special_catches.type', SpecialCodeType::EXPLORER)
+            ->distinct('special_code_id')
+            ->count();
+        $userTotalDaysCaught = UserCatch::where('event_user_id', $eventUser->id)
+            ->selectRaw('DISTINCT DATE(created_at) as date')
+            ->get()
             ->count();
 
         return new self(
@@ -53,6 +66,8 @@ readonly class AchievementUpdateContext
             userTotalCatches: $userTotalCatches,
             totalCatchableFursuits: $totalCatchableFursuits,
             userUniqueFursuits: $userUniqueFursuits,
+            locationsExplored: $locationsExplored,
+            userTotalDaysCaught: $userTotalDaysCaught,
         );
     }
 

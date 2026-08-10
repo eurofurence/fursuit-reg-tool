@@ -43,4 +43,22 @@ class ConfiguredCodeAction extends AbstractSpecialCodeAction
     {
         return SpecialCodeType::BUG_BOUNTY;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    public static function getDisplayName(): string
+    {
+
+        return 'Configured Code Action';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public static function getSpecialCodeType(): SpecialCodeType
+    {
+
+        return SpecialCodeType::BUG_BOUNTY;
+    }
 }

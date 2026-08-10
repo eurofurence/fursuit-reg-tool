@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\BadgePdfController;
 use App\Http\Controllers\Manage\BadgePreviewController;
+use App\Http\Controllers\Manage\CatchEmAllCacheController;
 use App\Http\Controllers\Manage\DbServiceController;
 use App\Http\Controllers\Manage\PdfGeneratorController;
 use App\Http\Controllers\Manage\ToolsController;
@@ -116,6 +117,9 @@ Route::prefix('tools')->name('tools.')->middleware('can:manage-admin')->group(fu
     Route::get('pdf-generator', [PdfGeneratorController::class, 'index'])->name('pdf');
     Route::get('pdf-generator/badge-list', [PdfGeneratorController::class, 'badgeList'])->name('pdf.badge-list');
     Route::get('pdf-generator/box-labels', [PdfGeneratorController::class, 'boxLabels'])->name('pdf.box-labels');
+    Route::get('catch-em-all-cache', [CatchEmAllCacheController::class, 'index'])->name('catch-em-all-cache');
+    Route::post('catch-em-all-cache/{key}/forget', [CatchEmAllCacheController::class, 'forget'])->name('catch-em-all-cache.forget');
+    Route::post('catch-em-all-cache/forget-all', [CatchEmAllCacheController::class, 'forgetAll'])->name('catch-em-all-cache.forget-all');
 });
 
 /*

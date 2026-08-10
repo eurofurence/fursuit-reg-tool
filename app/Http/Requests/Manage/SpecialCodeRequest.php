@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Manage;
 
+use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\SpecialActions\ActionField;
+use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Domain\CatchEmAll\SpecialActions\SpecialCodeActionRegistry;
 use App\Models\Fursuit\Fursuit;
 use Illuminate\Foundation\Http\FormRequest;
@@ -48,9 +50,7 @@ class SpecialCodeRequest extends FormRequest
 
         $rules = [
             'event_id' => ['required', 'integer', 'exists:events,id'],
-            // Not required, matching the form today. The list renders a missing class
-            // as an empty cell rather than crashing on it.
-            'class_name' => ['nullable', 'string', Rule::in(array_keys(SpecialCodeActionRegistry::options()))],
+            'type' => ['required', 'integer', Rule::in(array_map(fn (SpecialCodeType $type) => $type->value, SpecialCodeType::cases()))],
             'data' => ['nullable', 'array'],
             'code' => [
                 'required',
@@ -88,7 +88,7 @@ class SpecialCodeRequest extends FormRequest
     {
         $attributes = [
             'event_id' => 'Event',
-            'class_name' => 'Class',
+            'type' => 'Type',
             'data' => 'Action data',
             'code' => 'Code',
         ];
@@ -120,13 +120,7 @@ class SpecialCodeRequest extends FormRequest
 
         return [
             'event_id' => (int) $validated['event_id'],
-            /*
-             * `special_codes.class_name` is NOT NULL while the field is optional, so an
-             * unselected class has to write something. It writes '', which the list
-             * renders as an empty cell exactly like the null rows already in the
-             * database; writing null would make saving the form a database error.
-             */
-            'class_name' => $this->className(),
+            'type' => $this->specialCodeType(),
             'constructor_data' => $this->constructorData($validated['data'] ?? []),
             'code' => $validated['code'],
         ];
@@ -151,10 +145,10 @@ class SpecialCodeRequest extends FormRequest
          * to keep there and writing the value back would restore the shape that raises a
          * TypeError in the redeem path.
          */
-        $sameClass = $this->className() === (string) ($this->route('code')?->class_name ?? '');
+        $sameType = $this->specialCodeType()?->value === $this->route('code')?->type?->value;
         $data = [];
 
-        if ($sameClass) {
+        if ($sameType) {
             $data = SpecialCodeActionRegistry::undeclaredKeys($this->className(), $stored);
         }
 
@@ -169,17 +163,34 @@ class SpecialCodeRequest extends FormRequest
          * row that already held an object under the same class keeps holding one.
          */
         if ($data === []) {
-            return $sameClass && $stored !== null ? (object) [] : null;
+            return $sameType && $stored !== null ? (object) [] : null;
         }
 
         return (object) $data;
     }
 
+    private function specialCodeType(): ?SpecialCodeType
+    {
+        $type = $this->input('type');
+
+        if (is_numeric($type)) {
+            return SpecialCodeType::tryFrom((int) $type);
+        }
+
+        $specialCode = $this->route('code');
+
+        if ($specialCode instanceof SpecialCode && $specialCode->type instanceof SpecialCodeType) {
+            return $specialCode->type;
+        }
+
+        return null;
+    }
+
     private function className(): string
     {
-        $className = $this->input('class_name');
+        $type = $this->specialCodeType();
 
-        return is_string($className) ? $className : '';
+        return $type !== null ? (SpecialActionsRegister::getClassForSpecialCodeType($type) ?? '') : '';
     }
 
     /**

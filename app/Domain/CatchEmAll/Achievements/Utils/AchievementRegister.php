@@ -3,17 +3,30 @@
 namespace App\Domain\CatchEmAll\Achievements\Utils;
 
 use App\Domain\CatchEmAll\Achievements\Archivist;
-use App\Domain\CatchEmAll\Achievements\BugBountyHunter;
 use App\Domain\CatchEmAll\Achievements\Collector;
 use App\Domain\CatchEmAll\Achievements\Curator;
 use App\Domain\CatchEmAll\Achievements\FirstCatch;
+use App\Domain\CatchEmAll\Achievements\Furedex10;
+use App\Domain\CatchEmAll\Achievements\Furedex20;
+use App\Domain\CatchEmAll\Achievements\Furedex5;
 use App\Domain\CatchEmAll\Achievements\FuredexComplete;
 use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
 use App\Domain\CatchEmAll\Achievements\Nice;
+use App\Domain\CatchEmAll\Achievements\NightOwl;
+use App\Domain\CatchEmAll\Achievements\Special\BugBountyHunter;
+use App\Domain\CatchEmAll\Achievements\Special\CEATeamAll;
+use App\Domain\CatchEmAll\Achievements\Special\CEATeamOne;
+use App\Domain\CatchEmAll\Achievements\Special\CEATeamThree;
+use App\Domain\CatchEmAll\Achievements\Special\Explorer;
+use App\Domain\CatchEmAll\Achievements\TheCompletionist;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Interface\HasGlobalCache;
+use App\Domain\CatchEmAll\Interface\HasUserCache;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
+use App\Models\EventUser;
 use Illuminate\Support\Facades\Log;
 
 class AchievementRegister
@@ -25,15 +38,25 @@ class AchievementRegister
      * @var array<class-string<Achievement>>
      */
     private static array $achievementClasses = [
-        BugBountyHunter::class,
         FirstCatch::class,
         Collector::class,
         Curator::class,
         Archivist::class,
         GottaCatchEmAll::class,
         Nice::class,
+        NightOwl::class,
         TheLegendary151::class,
+        Furedex5::class,
+        Furedex10::class,
+        Furedex20::class,
         FuredexComplete::class,
+        TheCompletionist::class,
+        // Special achievements
+        BugBountyHunter::class,
+        CEATeamOne::class,
+        CEATeamThree::class,
+        CEATeamAll::class,
+        Explorer::class,
         // Add new achievements here in the format:
         // AchievementClassName::class,
     ];
@@ -71,6 +94,22 @@ class AchievementRegister
     protected static array $normalAchievements = [];
 
     /**
+     * Array of achievments having HasUserCache interface implemented
+     * Built during initialization.
+     *
+     * @var array<HasUserCache>
+     */
+    protected static array $hasUserCacheAchievements = [];
+
+    /**
+     * Array of achievments having HasGlobalCache interface implemented
+     * Built during initialization.
+     *
+     * @var array<HasGlobalCache>
+     */
+    protected static array $hasGlobalCacheAchievements = [];
+
+    /**
      * Count of required (non-optional) achievements for 100% completion.
      * Built during initialization.
      */
@@ -88,6 +127,8 @@ class AchievementRegister
      */
     public static function init(): void
     {
+        self::resetState();
+
         // Build achievement instances from classes
         self::buildAchievementInstances();
 
@@ -100,6 +141,9 @@ class AchievementRegister
         // Calculate achievement counts
         self::calculateAchievementCounts();
 
+        // Check if lockedBy dependencies are valid
+        self::validateLockedByDependencies();
+
         // Log initialization
         Log::info('AchievementRegister initialized with '.count(self::$achievements).' achievements', [
             'total_achievements' => count(self::$achievements),
@@ -111,12 +155,25 @@ class AchievementRegister
     }
 
     /**
+     * Clear all cached registry state before rebuilding it.
+     */
+    private static function resetState(): void
+    {
+        self::$achievements = [];
+        self::$idIndex = [];
+        self::$specialCodeIndex = [];
+        self::$normalAchievements = [];
+        self::$hasUserCacheAchievements = [];
+        self::$hasGlobalCacheAchievements = [];
+        self::$requiredAchievementCount = 0;
+        self::$optionalAchievementCount = 0;
+    }
+
+    /**
      * Build achievement instances from registered classes.
      */
     protected static function buildAchievementInstances(): void
     {
-        self::$achievements = [];
-
         foreach (self::$achievementClasses as $className) {
             self::$achievements[$className] = new $className;
         }
@@ -131,6 +188,7 @@ class AchievementRegister
         self::buildIdIndex();
         self::buildSpecialCodeIndex();
         self::buildNormalAchievementsIndex();
+        self::buildHasCacheAchievements();
     }
 
     /**
@@ -138,8 +196,6 @@ class AchievementRegister
      */
     protected static function buildIdIndex(): void
     {
-        self::$idIndex = [];
-
         foreach (self::$achievements as $achievement) {
             $id = $achievement->getId();
             self::$idIndex[$id] = $achievement;
@@ -151,12 +207,10 @@ class AchievementRegister
      */
     protected static function buildSpecialCodeIndex(): void
     {
-        self::$specialCodeIndex = [];
-
         foreach (self::$achievements as $achievement) {
             if ($achievement instanceof SpecialAchievement) {
                 $specialCode = $achievement->getSpecialCode();
-                $codeValue = $specialCode->name;
+                $codeValue = $specialCode->value;
 
                 if (! isset(self::$specialCodeIndex[$codeValue])) {
                     self::$specialCodeIndex[$codeValue] = [];
@@ -172,11 +226,24 @@ class AchievementRegister
      */
     protected static function buildNormalAchievementsIndex(): void
     {
-        self::$normalAchievements = [];
-
         foreach (self::$achievements as $achievement) {
             if (! ($achievement instanceof SpecialAchievement)) {
                 self::$normalAchievements[] = $achievement;
+            }
+        }
+    }
+
+    /**
+     * Build the list of achievements that implement HasCache interface.
+     */
+    protected static function buildHasCacheAchievements(): void
+    {
+        foreach (self::$achievements as $achievement) {
+            if ($achievement instanceof HasUserCache) {
+                self::$hasUserCacheAchievements[] = $achievement;
+            }
+            if ($achievement instanceof HasGlobalCache) {
+                self::$hasGlobalCacheAchievements[] = $achievement;
             }
         }
     }
@@ -187,14 +254,33 @@ class AchievementRegister
      */
     protected static function calculateAchievementCounts(): void
     {
-        self::$requiredAchievementCount = 0;
-        self::$optionalAchievementCount = 0;
-
         foreach (self::$achievements as $achievement) {
             if ($achievement->isOptional()) {
                 self::$optionalAchievementCount++;
             } else {
                 self::$requiredAchievementCount++;
+            }
+        }
+    }
+
+    /**
+     * Validate that all lockedBy dependencies are valid.
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected static function validateLockedByDependencies(): void
+    {
+        foreach (self::$achievements as $achievement) {
+            if ($achievement instanceof LockedBy) {
+                $lockedByIds = $achievement->lockedBy();
+
+                foreach ($lockedByIds as $lockedById) {
+                    if (! isset(self::$idIndex[$lockedById])) {
+                        throw new \InvalidArgumentException(
+                            "Achievement '{$achievement->getId()}' is locked by unknown achievement ID '{$lockedById}'."
+                        );
+                    }
+                }
             }
         }
     }
@@ -214,7 +300,7 @@ class AchievementRegister
      */
     public static function getAchievementsBySpecialCode(SpecialCodeType $specialCode): array
     {
-        return self::$specialCodeIndex[$specialCode->name] ?? [];
+        return self::$specialCodeIndex[$specialCode->value] ?? [];
     }
 
     /**
@@ -244,7 +330,7 @@ class AchievementRegister
      */
     public static function getSpecialAchievementsByCode(SpecialCodeType $specialCode): array
     {
-        return self::$specialCodeIndex[$specialCode->name] ?? [];
+        return self::$specialCodeIndex[$specialCode->value] ?? [];
     }
 
     /**
@@ -338,51 +424,6 @@ class AchievementRegister
                 throw new \InvalidArgumentException("Duplicate achievement ID found: {$id}");
             }
         }
-
-        // Validate SpecialCodeType duplicates
-        self::validateSpecialCodeTypes();
-    }
-
-    /**
-     * Validate that no SpecialCodeType is used by multiple SpecialAchievements.
-     *
-     * @throws \InvalidArgumentException
-     */
-    private static function validateSpecialCodeTypes(): void
-    {
-        $specialCodeUsage = [];
-
-        foreach (self::$achievements as $className => $instance) {
-            if ($instance instanceof SpecialAchievement) {
-                $specialCode = $instance->getSpecialCode();
-                $codeValue = $specialCode->name;
-
-                if (isset($specialCodeUsage[$codeValue])) {
-                    $firstClass = $specialCodeUsage[$codeValue]['className'];
-                    $firstId = $specialCodeUsage[$codeValue]['achievementId'];
-
-                    throw new \InvalidArgumentException(
-                        "Duplicate SpecialCodeType '{$codeValue}' found: ".
-                        "Used by both '{$firstClass}' (ID: {$firstId}) and '{$className}' (ID: {$instance->getId()}). ".
-                        'Each SpecialCodeType must be unique across all SpecialAchievements.'
-                    );
-                }
-
-                $specialCodeUsage[$codeValue] = [
-                    'className' => $className,
-                    'achievementId' => $instance->getId(),
-                    'instance' => $instance,
-                ];
-            }
-        }
-
-        // Log successful validation
-        if (! empty($specialCodeUsage)) {
-            Log::debug('SpecialCodeType validation passed', [
-                'special_code_types_found' => count($specialCodeUsage),
-                'codes' => array_keys($specialCodeUsage),
-            ]);
-        }
     }
 
     /**
@@ -411,5 +452,22 @@ class AchievementRegister
     public static function getAllRegisteredIds(): array
     {
         return array_keys(self::$idIndex);
+    }
+
+    public static function getHasCacheAchievements(): array
+    {
+        return self::$hasUserCacheAchievements;
+    }
+
+    public static function getAllUserCachedKeys(EventUser $eventUser): array
+    {
+        $cacheKeys = [];
+
+        foreach (self::$hasUserCacheAchievements as $achievement) {
+            $keys = $achievement->getCacheKeys($eventUser);
+            $cacheKeys = array_merge($cacheKeys, $keys);
+        }
+
+        return array_unique($cacheKeys);
     }
 }

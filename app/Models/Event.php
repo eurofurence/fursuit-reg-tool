@@ -135,4 +135,9 @@ class Event extends Model
 
         return $this->catch_em_all_enabled && $catchEmAllStarted && $catchEmAllNotEnded;
     }
+
+    public function getDayCountAttribute(): int
+    {
+        return $this->starts_at->diffInDays($this->ends_at) + 1; // Include both start and end dates
+    }
 }

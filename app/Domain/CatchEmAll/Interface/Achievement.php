@@ -27,12 +27,17 @@ interface Achievement
     /**
      * Get the display title for the achievement.
      */
-    public function getTile(): string;
+    public function getTitle(): string;
 
     /**
      * Get the description of the achievement.
      */
     public function getDescription(): string;
+
+    /**
+     * Get the task of the achievement.
+     */
+    public function getTask(): string;
 
     /**
      * Get the icon representing the achievement.
