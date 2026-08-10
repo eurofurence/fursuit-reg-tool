@@ -177,7 +177,7 @@ class TextField_v2
 
     private function wrapText(string $text, int $fontSize, int $maxWidth): string
     {
-        $words = explode(' ', $text);
+        $words = preg_split('/\s+/u', trim($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $lines = [];
         $currentLine = '';
 

@@ -115,6 +115,10 @@ class TextField
      */
     protected function drawTextInBox(ImageInterface $image, PointInterface $position): ImageInterface
     {
+        if (trim($this->text) === '') {
+            return $image;
+        }
+
         $fontSize = $this->startFontSize;  // Starts with the initial font size
         $palette = new RGB;              // Create an RGB palette
 
