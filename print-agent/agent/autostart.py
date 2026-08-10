@@ -7,10 +7,32 @@ decision in it.
 
 from __future__ import annotations
 
-# How often an idle unattended station asks the server for something to print.
-# Often enough that nobody waits on it, rarely enough that an agent left on
-# overnight is not hammering the API.
+# How often an idle station asks the server what there is to print. Often
+# enough that nobody waits on it, rarely enough that an agent left on overnight
+# is not hammering the API.
 AUTOSTART_SECONDS = 5.0
+
+# How soon a start that did not take may be tried again. Shorter than the poll
+# above because it costs nothing: by then the listing is already in hand, and
+# the only thing this spaces out is a failed start retrying on every UI tick.
+AUTOSTART_RETRY_SECONDS = 2.0
+
+
+def should_poll_batches(configured: bool, demo: bool, printing_now: bool) -> bool:
+    """Whether the background poller should ask the server for the batch list.
+
+    The chooser used to be the only caller of /batches, so an idle station
+    learned about a new batch only when somebody opened it -- which is exactly
+    the person unattended mode exists to do without.
+
+    Not while a card is going through. The worker is already talking to the
+    server for every claim, and the listing it would refresh is one nobody is
+    waiting on until that run ends.
+    """
+    if demo or not configured:
+        return False
+
+    return not printing_now
 
 
 def should_autostart(unattended: bool, demo: bool, worker_running: bool,

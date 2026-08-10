@@ -19,7 +19,8 @@
  * place for the printer options to go stale.
  */
 import { computed } from 'vue';
-import { Head, usePoll } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+import { usePagePoll } from '@/Components/Manage/usePagePoll.js';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import DataTable from '@/Components/Manage/DataTable.vue';
 import PageHeader from '@/Components/Manage/PageHeader.vue';
@@ -64,7 +65,7 @@ const table = computed(() => ({
  * is `POST /admin/badges/{badge}/print` and `POST /admin/badges/bulk/print`, and only a
  * deliberate click reaches either.
  */
-usePoll(5000, { only: ['rows', 'meta', 'bulkActions'] });
+usePagePoll(5000, { only: ['rows', 'meta', 'bulkActions'] });
 </script>
 
 <template>

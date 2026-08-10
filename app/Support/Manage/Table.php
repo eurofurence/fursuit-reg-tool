@@ -15,9 +15,16 @@ use Illuminate\Http\Request;
  * column-visibility behave identically and are worth testing only once.
  *
  * Request contract: ?tab=&search=&sort=&dir=&page=&per_page=&filter[key]=
+ * plus the `X-Table-Select-All` header, which fills `meta.allIds` with every matching key.
  */
 final class Table
 {
+    /**
+     * The header a client sends to ask for the key of every matching record, not just the
+     * page it is looking at. See requestedIds() below.
+     */
+    public const SELECT_ALL_HEADER = 'X-Table-Select-All';
+
     private string $name = 'table';
 
     /** @var array<int, Column> */
@@ -207,6 +214,10 @@ final class Table
         $sort = $this->applySort($request);
 
         $perPage = $this->resolvePerPage($request);
+
+        // Before paginate(), which puts a limit and an offset on this very builder.
+        $allIds = $this->requestedIds($request);
+
         $paginator = $this->query->paginate($perPage)->withQueryString();
 
         return $this->tabEnvelope($tabs) + [
@@ -237,10 +248,48 @@ final class Table
                 'lastPage' => $paginator->lastPage(),
                 'from' => $paginator->firstItem(),
                 'to' => $paginator->lastItem(),
+                'allIds' => $allIds,
             ],
             'bulkActions' => array_map(fn (Action $action) => $action->toArray(), $this->bulkActions),
             'pageActions' => array_map(fn (Action $action) => $action->toArray(), $this->pageActions),
         ];
+    }
+
+    /**
+     * Every key the current filters match, or null when the client did not ask.
+     *
+     * A bulk action posts `ids[]`, so a selection is a list of keys and nothing else - and
+     * a checkbox can only ever tick a row that is rendered, which caps every bulk action at
+     * one page. Twenty-five badges per print run is not the cap an operator wants when a
+     * filter has just narrowed nine thousand rows down to the four hundred that need
+     * printing, and raising per-page to cover it renders four hundred rows to tick one box.
+     *
+     * So the list itself answers the question: the same query that produced this page,
+     * without its limit, plucked down to keys. The client asks for it on an explicit
+     * "select all" click, hands the keys straight to the bulk action, and nothing else in
+     * the contract changes - no endpoint learns to re-derive a filter, and no action grows
+     * a second "and also everything matching" mode that could disagree with what the
+     * operator was looking at.
+     *
+     * Asked for by header rather than by a query parameter, because it is a property of one
+     * request and not of the view: `?select_all=1` would land in the address bar, be shared
+     * in a link, and be re-sent by the poll on every tick.
+     *
+     * @return array<int, int|string>|null
+     */
+    private function requestedIds(Request $request): ?array
+    {
+        if (! $request->hasHeader(self::SELECT_ALL_HEADER)) {
+            return null;
+        }
+
+        $counting = clone $this->query;
+        $key = $counting->getModel()->getQualifiedKeyName();
+
+        return $counting->toBase()
+            ->pluck($key)
+            ->map(fn ($id) => is_numeric($id) ? (int) $id : $id)
+            ->all();
     }
 
     /**

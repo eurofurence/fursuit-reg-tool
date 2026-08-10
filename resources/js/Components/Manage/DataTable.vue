@@ -53,6 +53,27 @@ const { toggleSort } = useTableQuery();
 const page = usePage();
 
 const selected = ref([]);
+
+/**
+ * The query string the selection was taken against, while it covers every matching record
+ * rather than the page on screen; null the rest of the time.
+ *
+ * It is both the flag and the guard. A selection that reaches past this page cannot be
+ * pruned to the rows that are rendered - that is the whole point of it - so the prune
+ * below has to know it is looking at one, and something else has to decide when it is
+ * stale. The query string is that something: the ids answer "everything matching *this*
+ * view", so they stop meaning anything the moment the view changes, and a filter, a search
+ * or a tab is exactly a change of query string. Paging is too, which costs nothing here -
+ * an operator who has ticked all 9 000 badges and then steps a page is not still holding a
+ * selection they can reason about.
+ */
+const selectionScope = ref(null);
+
+const clearSelection = () => {
+  selected.value = [];
+  selectionScope.value = null;
+};
+
 const hidden = ref([...(props.table.hiddenColumns ?? [])]);
 
 watch(
@@ -73,9 +94,21 @@ watch(
 watch(
   () => props.table.rows,
   (rows) => {
+    anchor.value = null;
+
+    // A selection that covers the whole result set is not prunable to the rows on screen.
+    // It survives a poll, which is what makes ticking 9 000 badges usable at all, and it
+    // is dropped whole the moment the view it was taken against is not the view any more.
+    if (selectionScope.value !== null) {
+      if (selectionScope.value !== window.location.search) {
+        clearSelection();
+      }
+
+      return;
+    }
+
     const ids = rows.map((row) => row.id);
     selected.value = selected.value.filter((id) => ids.includes(id));
-    anchor.value = null;
   },
 );
 
@@ -153,8 +186,20 @@ const showToolbar = computed(
   () => props.searchable || filters.value.length > 0 || toggleableColumns.value.length > 0,
 );
 
+/*
+ * Membership is asked once per render rather than per row, because a selection that
+ * covers every match is thousands of ids long and the header box alone would otherwise
+ * scan it once for each row on the page.
+ */
+const selectedIds = computed(() => new Set(selected.value));
+
+/*
+ * Every row on this page is ticked - which is no longer the same statement as "the
+ * selection is this page", now that it can reach past it. Counting was the old test and it
+ * silently stopped being true.
+ */
 const allSelected = computed(
-  () => props.table.rows.length > 0 && selected.value.length === props.table.rows.length,
+  () => props.table.rows.length > 0 && props.table.rows.every((row) => selectedIds.value.has(row.id)),
 );
 
 /*
@@ -166,7 +211,63 @@ const allSelected = computed(
 const someSelected = computed(() => selected.value.length > 0 && !allSelected.value);
 
 const toggleAll = () => {
-  selected.value = allSelected.value ? [] : props.table.rows.map((row) => row.id);
+  if (allSelected.value || selectionScope.value !== null) {
+    clearSelection();
+
+    return;
+  }
+
+  selected.value = props.table.rows.map((row) => row.id);
+};
+
+/*
+ * Selecting past the page.
+ *
+ * The header checkbox can only ever tick what is rendered, so every bulk action used to
+ * stop at one page: a print run of the four hundred badges a filter had just isolated was
+ * sixteen trips through the pager, or a per-page of 400 rendered to tick one box. Offered
+ * only once the page itself is fully ticked, which is the point at which "and the rest"
+ * is the obvious next thing to want, and only when there is a rest to have.
+ */
+const selectingAll = ref(false);
+
+const canSelectAll = computed(
+  () =>
+    selectionScope.value === null &&
+    allSelected.value &&
+    (props.table.meta?.total ?? 0) > props.table.rows.length,
+);
+
+/**
+ * The ids come from the server rather than from anything the client can derive, because
+ * "everything matching" is a fact about the query - the filters, the search, the tab and
+ * the event scope, resolved together - and only App\Support\Manage\Table holds all of it.
+ * They are fetched as a partial reload of `meta`, so the answer is the same builder that
+ * produced the page, and the header keeps `select_all` out of the address bar.
+ *
+ * The reload is one request that returns as many keys as the filter matches; the count is
+ * on the button, so nothing here is a surprise.
+ */
+const selectAllMatching = () => {
+  selectingAll.value = true;
+
+  router.reload({
+    only: ['meta'],
+    headers: { 'X-Table-Select-All': '1' },
+    onSuccess: () => {
+      const ids = props.table.meta?.allIds;
+
+      if (!ids) {
+        return;
+      }
+
+      selected.value = [...ids];
+      selectionScope.value = window.location.search;
+    },
+    onFinish: () => {
+      selectingAll.value = false;
+    },
+  });
 };
 
 /*
@@ -257,20 +358,41 @@ const open = (row, event) => {
     <!-- Bulk bar: only present while something is selected, so it never costs vertical space. -->
     <div
       v-if="selected.length && table.bulkActions.length"
-      class="flex h-10 items-center gap-2 border-b border-hairline bg-mg-surface-2 px-3"
+      class="flex min-h-10 flex-wrap items-center gap-x-2 gap-y-1 border-b border-hairline bg-mg-surface-2 px-3 py-1.5"
     >
       <span class="text-[12px] text-fg-2">{{ selected.length }} selected</span>
+
+      <!--
+        The way past the page, and it is a link rather than a second checkbox state: it
+        costs a request and it changes what the buttons next to it will act on, which is
+        a thing an operator should have to say rather than something a tick can imply.
+        It names the number so "print everything that matches" is never a guess.
+      -->
+      <button
+        v-if="canSelectAll"
+        type="button"
+        class="rounded px-1.5 py-0.5 text-[12px] text-state-live underline decoration-state-live/40 underline-offset-2 outline-none transition-colors hover:bg-state-live/10 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:opacity-50"
+        :disabled="selectingAll"
+        @click="selectAllMatching"
+      >
+        {{ selectingAll ? 'Selecting…' : `Select all ${table.meta.total} matching` }}
+      </button>
+
+      <span v-else-if="selectionScope !== null" class="text-[12px] text-fg-3">
+        every record matching the current filters
+      </span>
+
       <ActionButton
         v-for="action in table.bulkActions"
         :key="action.name"
         :action="action"
         :data="{ ids: selected }"
-        @completed="selected = []"
+        @completed="clearSelection"
       />
       <button
         type="button"
         class="ml-auto text-[12px] text-fg-3 transition-colors hover:text-fg-1"
-        @click="selected = []"
+        @click="clearSelection"
       >
         Clear
       </button>
@@ -366,7 +488,7 @@ const open = (row, event) => {
             <td v-if="table.bulkActions.length" class="px-3">
               <input
                 type="checkbox"
-                :checked="selected.includes(row.id)"
+                :checked="selectedIds.has(row.id)"
                 class="cursor-pointer"
                 :aria-label="`Select row ${row.id}`"
                 :title="'Shift-click to select a range'"

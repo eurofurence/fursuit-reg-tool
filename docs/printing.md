@@ -42,6 +42,16 @@ costs nothing but trouble. See `App\Badges\ImagePreparer`.
 
 ## Starting a run
 
+**A run is not capped by the page.** `Print Badges` on `/admin/badges` acts on the ticked rows, and
+ticking used to mean one page - 100 badges at the largest per-page, no matter how well the filter had
+already isolated the run. Once every row on the page is ticked the bulk bar offers **Select all N
+matching**, which asks the list for the key of every record the current filters match
+(`X-Table-Select-All`, `App\Support\Manage\Table::requestedIds`) and hands those keys to the same
+bulk action. The count on the button is what will be printed, so a filter that has not been narrowed
+enough says so before the confirm dialog rather than after. The selection is dropped whenever the
+view changes - a filter, a search, a tab or a page - because the keys mean "everything matching
+*that* view" and nothing else.
+
 Pressing Print does not print, and does not render. The request opens an empty `Draft` batch and
 dispatches `PrepareBadgePrintBatchJob` on the `badge-render` queue; everything expensive happens
 there. The operator gets the batch back immediately and watches it turn from preparing to ready.
@@ -62,6 +72,24 @@ cleanup, working from the list of badges the job recorded before it started rend
 never return a badge that some other run had already put into `Processing`. A badge is left alone
 only if a card is genuinely on its way for it - an outstanding job - not merely because it printed
 at some point in the past.
+
+**A failed preparation can be run again.** The selection is written onto the batch
+(`requested_badge_ids`) when it is opened, before any of the expensive work, because that is the only
+record that survives the undo: the badges are back in `Pending` and the batch holds no jobs. **Retry**
+on `/admin/print-batches` (row and detail page, `is_admin`) sends that selection through
+`BadgePrintQueue::queue()` again as a **new** batch pointing at the failed one through
+`retry_of_batch_id` - batches are immutable and `Cancelled` is terminal, so the run that failed stays
+as the record that it failed. Without this the only way forward was to find the same attendees in the
+badge list and select them by hand, which for a hundred cards is how badges get missed.
+
+Retry is offered only where the run died *while being prepared*: cancelled, and holding no jobs at
+all (`PrintBatch::preparationFailed()`). A cancelled *run* had cards and some of them may have
+printed, so repeating it wholesale would put duplicates in the pickup bins. A second Retry is refused
+while the first is still live, because a retry that is still a `Draft` holds no jobs yet and nothing
+downstream would recognise the badges as already queued. The selection is re-filtered on the way
+through, so a fursuit rejected since, or a badge another run has taken, is dropped rather than
+printed twice. The desk clerk who queued the original keeps `created_by_staff_id` on the retry, so
+the run that replaces theirs still reaches their own print list and dashboard.
 
 **The render lane has its own queue connection, not just its own queue.** `badge-render` runs on
 `config('queue.long_running')` - `redis-long-running` under Horizon, `database-long-running` under a

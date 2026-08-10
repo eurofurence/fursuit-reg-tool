@@ -135,8 +135,10 @@ class BadgePrintController extends Controller
     /**
      * `printBadgeBulk`, the bulk action.
      *
-     * The selection can never cross a page, which is `->selectCurrentPageOnly()` and a
-     * deliberate operational cap the panel keeps.
+     * The selection is whatever the operator ticked, and it is no longer capped at the page
+     * they were looking at: the badge list can hand over every key its filters match (see
+     * App\Support\Manage\Table::requestedIds). Nothing here changes for it - the payload is
+     * the same `ids[]` it always was, and the run is still one batch.
      *
      * The badges are read in a single query ordered by id, only so the request is
      * deterministic. The print order is `PrintBatch::build()`'s and nothing here competes

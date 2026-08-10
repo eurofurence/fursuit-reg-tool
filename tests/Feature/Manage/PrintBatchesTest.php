@@ -450,6 +450,44 @@ test('cancel carries its heading, its description and its default reason verbati
         ]);
 });
 
+test('retry is live only on a run that failed while it was being prepared', function () {
+    // The shape a failed preparation leaves: cancelled, carrying its reason, holding no
+    // cards, with the selection it was asked for still on the row.
+    ($this->batch)([
+        'status' => PrintBatchStatusEnum::Cancelled,
+        'pause_reason' => 'The print run could not be prepared.',
+        'requested_badge_ids' => [($this->badge)()->id],
+    ]);
+
+    $retry = ($this->rowActions)(($this->props)()['rows'][0]['actions'], 'retry');
+
+    expect($retry)->toMatchArray([
+        'label' => 'Retry',
+        'icon' => 'refresh-cw',
+        'tone' => 'warn',
+        'disabledReason' => null,
+        'url' => route('admin.print-batches.retry', PrintBatch::sole()),
+    ])->and($retry['confirm'])->toBe([
+        'heading' => 'Print this run again',
+        'description' => 'The badges of this run are sent to a printer again as a new batch. Anything since rejected or already queued elsewhere is left out.',
+        'submit' => 'Confirm',
+    ]);
+});
+
+test('retry is refused on a run that was cancelled after it had cards', function () {
+    // A cancelled run held jobs, and some of them may have printed. Repeating it wholesale
+    // would put duplicate cards in the pickup bins.
+    $batch = ($this->batch)([
+        'status' => PrintBatchStatusEnum::Cancelled,
+        'requested_badge_ids' => [($this->badge)()->id],
+    ]);
+
+    ($this->card)($batch, ['status' => PrintJobStatusEnum::Cancelled]);
+
+    expect(($this->rowActions)(($this->props)()['rows'][0]['actions'], 'retry')['disabledReason'])
+        ->toContain('Only a run that failed while it was being prepared can be retried');
+});
+
 test('a control that cannot fire is offered disabled with the reason rather than hidden', function () {
     // plan 2.5: the old panel hid actions, which leaves an operator staring at a
     // paused run wondering where Resume went. PrinterController's clear-error does the
@@ -458,11 +496,14 @@ test('a control that cannot fire is offered disabled with the reason rather than
 
     $actions = ($this->props)()['rows'][0]['actions'];
 
-    expect(array_column($actions, 'name'))->toBe(['view', 'pause', 'resume', 'cancel'])
+    expect(array_column($actions, 'name'))->toBe(['view', 'pause', 'resume', 'cancel', 'retry'])
         ->and(($this->rowActions)($actions, 'pause')['disabledReason'])->toContain('Only a batch that is printing can be paused')
         ->and(($this->rowActions)($actions, 'resume')['disabledReason'])->toContain('Only a paused batch can be resumed')
         // Draft is not terminal, so cancel is live.
-        ->and(($this->rowActions)($actions, 'cancel')['disabledReason'])->toBeNull();
+        ->and(($this->rowActions)($actions, 'cancel')['disabledReason'])->toBeNull()
+        // Retry repeats a preparation that failed. A Draft has not failed at anything yet.
+        ->and(($this->rowActions)($actions, 'retry')['disabledReason'])
+        ->toContain('Only a run that failed while it was being prepared can be retried');
 });
 
 test('a terminal batch offers no live control at all', function () {
@@ -652,7 +693,7 @@ test('the run controls are reachable from the detail page, not only from the row
         ->get(route('admin.print-batches.show', $batch))
         ->viewData('page')['props'];
 
-    expect(array_column($props['actions'], 'name'))->toBe(['pause', 'resume', 'cancel'])
+    expect(array_column($props['actions'], 'name'))->toBe(['pause', 'resume', 'cancel', 'retry'])
         ->and(($this->rowActions)($props['actions'], 'pause')['disabledReason'])->toBeNull();
 });
 

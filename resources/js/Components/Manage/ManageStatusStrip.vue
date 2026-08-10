@@ -25,7 +25,8 @@
  * list page is being filtered or a form is being filled in.
  */
 import { computed } from 'vue';
-import { Link, usePoll } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
+import { usePagePoll } from './usePagePoll.js';
 import EventSelector from './EventSelector.vue';
 import ManageIcon from './ManageIcon.vue';
 import { resolve, toneDot, toneText } from './tones.js';
@@ -38,7 +39,7 @@ const props = defineProps({
   user: { type: Object, default: null },
 });
 
-usePoll(15000, { only: ['manageStrip'] });
+usePagePoll(15000, { only: ['manageStrip'] });
 
 const segments = computed(() => props.strip?.segments ?? []);
 

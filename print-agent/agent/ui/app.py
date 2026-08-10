@@ -22,14 +22,17 @@ from . import calibration, console
 from .. import config as config_module
 from .. import monitor as monitor_module
 from .. import printing, vocabulary, zebra
-from ..autostart import AUTOSTART_SECONDS, first_auto_startable, should_autostart
+from ..autostart import (
+    AUTOSTART_RETRY_SECONDS, AUTOSTART_SECONDS, first_auto_startable,
+    should_autostart, should_poll_batches,
+)
 from ..config import AgentConfig, config_dir
 
 POLL_SECONDS = 3.0
 
-# How often an idle unattended station asks the server for something to print.
-# Often enough that nobody waits on it, rarely enough that an agent left on
-# overnight is not hammering the API.
+# How often the batch list is fetched in the background. Its own thread: the
+# call blocks, and a slow server must not freeze the console.
+BATCH_POLL_SECONDS = AUTOSTART_SECONDS
 
 
 # Condition colours. Green only when it is genuinely safe to print.
@@ -142,6 +145,16 @@ class AgentApp(tk.Tk):
         self._store = None
         self._notifier = None
 
+        # Built from two threads -- the monitor reports conditions, the batch
+        # poller lists batches -- so the lazy build happens once, not twice.
+        self._services_lock = threading.Lock()
+
+        # What the server last said there is to print. Kept here rather than
+        # read out of the chooser's Treeview, so the unattended hunt does not
+        # depend on anybody having opened the chooser.
+        self.available_batches: list = []
+        self._batches_seen = False
+
         # Filled from the server so the header can say which station this is.
         self.machine_name = ""
         self.events: "queue.Queue" = queue.Queue()
@@ -175,6 +188,7 @@ class AgentApp(tk.Tk):
         if not headless:
             self._load_identity()
             self._start_monitor()
+            self._start_batch_poller()
             self._sync_camera_preview()
             self.after(200, self._drain_events)
             self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -1440,6 +1454,88 @@ class AgentApp(tk.Tk):
 
             self.stop_flag.wait(POLL_SECONDS)
 
+    def _start_batch_poller(self) -> None:
+        """Keep the batch list fresh without anybody opening the chooser."""
+        if self.demo:
+            # Fabricated locally; there is no server to poll.
+            self._refresh_batches()
+            return
+
+        thread = threading.Thread(target=self._batch_poll_loop, daemon=True)
+        thread.start()
+
+    def _batch_poll_loop(self) -> None:
+        """Ask the server what there is to print, every few seconds, off the UI
+        thread.
+
+        The chooser used to be the only thing that ever called /batches. An
+        unattended station therefore learned about a batch built in the admin
+        panel only when somebody walked over and opened the chooser, which is
+        the person unattended mode is there to do without.
+
+        Must never raise: this thread dying takes the station's only view of
+        the queue with it.
+        """
+        while not self.stop_flag.is_set():
+            if should_poll_batches(
+                configured=self.config_data.is_configured(),
+                demo=bool(self.demo),
+                printing_now=self._is_printing(),
+            ):
+                try:
+                    client, _store, _notifier = self._services()
+                    self.events.put(("batches", list(client.batches() or [])))
+                except Exception:  # noqa: BLE001 - try again on the next tick
+                    pass
+
+            self.stop_flag.wait(BATCH_POLL_SECONDS)
+
+    def _is_printing(self) -> bool:
+        """A worker that is alive and not parked, i.e. cards are going through."""
+        worker = self.worker
+
+        return worker is not None and worker.is_alive() and not worker.is_paused()
+
+    def _on_batches(self, batches) -> None:
+        """A fresh listing from the poller, applied on the UI thread."""
+        self.available_batches = list(batches or [])
+        self._batches_seen = True
+
+        # Only when the chooser is on screen. Rewriting a Treeview nobody is
+        # looking at is wasted work, and opening the page loads it anyway.
+        if self.picker_view.winfo_ismapped():
+            self.picker_view.show(self.available_batches)
+
+        # Straight into the hunt rather than waiting for the next UI tick, so a
+        # batch built in the admin panel starts printing within a poll.
+        self._autostart_if_idle()
+
+    def _resume_parked_worker(self) -> bool:
+        """Wake a worker that parked because the last batch ran dry.
+
+        A parked worker is alive, so the hunt below leaves it alone -- but it is
+        asleep in its paused branch and never looks for a batch again. Unattended,
+        that is a station stopped for the rest of the day. Resuming hands the
+        search back to the worker, which does it every few seconds itself.
+
+        Only ever a worker waiting for work. One paused on a jam stays paused:
+        unattended means nobody is watching, which is the worst possible moment
+        to shrug a fault off.
+        """
+        worker = self.worker
+
+        if not self.auto_next.get() or worker is None or not worker.is_alive():
+            return False
+
+        if not worker.is_paused() or not getattr(worker, "waiting_for_work", False):
+            return False
+
+        worker.set_unattended(True)
+        worker.resume()
+        self._log("Unattended: looking for the next batch.")
+
+        return True
+
     def _autostart_if_idle(self) -> None:
         """Start a run on our own when unattended and nothing is printing.
 
@@ -1448,9 +1544,15 @@ class AgentApp(tk.Tk):
         ticking the box changed a flag that nothing was left to read. A station
         restarted overnight sat idle with the box ticked and batches waiting.
 
+        Works from the list the poller keeps, so it never blocks the UI thread
+        on a server call.
+
         Deliberately silent about failure. Nothing here may raise a dialog: the
         whole point is that nobody is standing in front of the screen.
         """
+        if self._resume_parked_worker():
+            return
+
         if not should_autostart(
             unattended=bool(self.auto_next.get()),
             demo=bool(self.demo),
@@ -1459,21 +1561,21 @@ class AgentApp(tk.Tk):
             has_printer=self._selected_card_binding() is not None,
             printer_ready=self.monitor is None or self.monitor.may_print(),
             since_last=time.monotonic() - self._last_autostart,
+            interval=AUTOSTART_RETRY_SECONDS,
         ):
             return
 
-        self._last_autostart = time.monotonic()
-
-        try:
-            client, _store, _notifier = self._services()
-            batches = client.batches() or []
-        except Exception:  # noqa: BLE001 - try again on the next tick
+        if not self._batches_seen:
+            # Nothing has been heard from the server yet. Starting on an empty
+            # list would only log a miss.
             return
 
-        batch = first_auto_startable(batches)
+        batch = first_auto_startable(self.available_batches)
 
         if batch is None:
             return
+
+        self._last_autostart = time.monotonic()
 
         self.active_batch = batch
         self._render_batch()
@@ -1488,10 +1590,8 @@ class AgentApp(tk.Tk):
         inside the click handlers left Start greyed out on a run that had
         already stopped, with no way back other than restarting the agent.
         """
-        running = self.worker is not None and self.worker.is_alive()
-        printing = running and not self.worker.is_paused()
-
-        self.start_button.config(state="disabled" if printing else "normal")
+        self.start_button.config(
+            state="disabled" if self._is_printing() else "normal")
 
     def _drain_events(self) -> None:
         try:
@@ -1534,6 +1634,8 @@ class AgentApp(tk.Tk):
                     self._on_telegram_command(payload)
                 elif kind == "decision":
                     self._ask_reprint(payload)
+                elif kind == "batches":
+                    self._on_batches(payload)
                 elif kind == "batch_change":
                     self._on_worker_batch_change(payload)
                 elif kind == "identity":
@@ -1923,7 +2025,12 @@ class AgentApp(tk.Tk):
             messagebox.showerror("Could not load batches", str(error))
             return
 
-        self.picker_view.show(batches)
+        # Same list the poller keeps, so a hand refresh feeds the unattended
+        # hunt too rather than only the page in front of whoever pressed it.
+        self.available_batches = list(batches or [])
+        self._batches_seen = True
+
+        self.picker_view.show(self.available_batches)
         self._log("%d batch(es) available" % len(batches))
 
     def _start_printing(self) -> None:
@@ -2125,14 +2232,15 @@ class AgentApp(tk.Tk):
         from .. import notify as notify_module
         from .. import store as store_module
 
-        if self._client is None:
-            self._client = api_module.PrintAgentClient(self.config_data)
-        if self._store is None:
-            self._store = store_module.LocalStore()
-        if self._notifier is None:
-            self._notifier = notify_module.Notifier(self.config_data.pushover)
+        with self._services_lock:
+            if self._client is None:
+                self._client = api_module.PrintAgentClient(self.config_data)
+            if self._store is None:
+                self._store = store_module.LocalStore()
+            if self._notifier is None:
+                self._notifier = notify_module.Notifier(self.config_data.pushover)
 
-        return self._client, self._store, self._notifier
+            return self._client, self._store, self._notifier
 
     def _send_to_printer(self, job, path, binding):
         """Hand a rendered PDF to the Windows spooler."""

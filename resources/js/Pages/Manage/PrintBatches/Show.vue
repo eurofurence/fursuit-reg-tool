@@ -25,7 +25,8 @@
  * filters partials by top-level key.
  */
 import { computed } from 'vue';
-import { Head, usePoll } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
+import { usePagePoll } from '@/Components/Manage/usePagePoll.js';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import ActionButton from '@/Components/Manage/ActionButton.vue';
 import DataTable from '@/Components/Manage/DataTable.vue';
@@ -36,7 +37,7 @@ import StatusBadge from '@/Components/Manage/StatusBadge.vue';
 
 const props = defineProps({
   batch: { type: Object, required: true },
-  /** Pause, Resume and Cancel, already policy-filtered and already carrying their copy. */
+  /** Pause, Resume, Cancel and Retry, already policy-filtered and carrying their own copy. */
   actions: { type: Array, default: () => [] },
 
   name: { type: String, required: true },
@@ -67,7 +68,7 @@ const cards = computed(() => ({
 /** The infolist placeholders, which are per-entry rather than one shared dash. */
 const or = (value, placeholder) => (value === null || value === undefined || value === '' ? placeholder : value);
 
-usePoll(10000, { only: ['batch', 'actions', 'rows', 'meta'] });
+usePagePoll(10000, { only: ['batch', 'actions', 'rows', 'meta'] });
 </script>
 
 <template>
@@ -92,6 +93,25 @@ usePoll(10000, { only: ['batch', 'actions', 'rows', 'meta'] });
         <FormField label="Event" :model-value="or(batch.event, 'None')" readonly />
         <FormField label="Built by" :model-value="or(batch.createdBy, 'System')" readonly />
         <FormField label="Pause reason" :model-value="or(batch.pauseReason, 'None')" readonly />
+
+        <!-- Only where there is one: a run whose preparation failed and the run that was
+             queued in its place are two rows, and each is only readable next to the other. -->
+        <FormField v-if="batch.retryOf" label="Retry of">
+          <Link :href="batch.retryOf.url" class="flex h-8 items-center text-[13px] text-state-live underline">
+            Batch #{{ batch.retryOf.id }}
+          </Link>
+        </FormField>
+
+        <FormField v-if="batch.retries.length" label="Retried as">
+          <span class="flex h-8 items-center gap-3 text-[13px]">
+            <Link
+              v-for="retry in batch.retries"
+              :key="retry.id"
+              :href="retry.url"
+              class="text-state-live underline"
+            >Batch #{{ retry.id }}</Link>
+          </span>
+        </FormField>
       </FormSection>
 
       <FormSection title="Progress" :columns="4">

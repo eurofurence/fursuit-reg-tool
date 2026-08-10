@@ -10,9 +10,14 @@ A verdict answers **two independent questions**, so do not collapse them:
 
 - `status` (Spatie state) decides whether the **card** may be printed and handed out. Only a
   rejection blocks it, and `BadgePrintQueue` is where that is enforced
-  (`withoutUnapprovedFursuits`) - before that, printing looked only at the badge, so a rejected
+  (`withoutRejectedFursuits`) - before that, printing looked only at the badge, so a rejected
   submission was printed anyway and the rejection only ever meant an email. A badge that never
   reaches Processing also never reaches PickedUp, so that one filter closes printer and desk.
+  **Pending is not a block.** The filter used to drop anything not `Approved`, which meant an
+  unreviewed submission could not be printed or handed over - 3 461 of EF30's 3 632 badges - while
+  the attendee stood at the desk with a paid badge that nothing was wrong with. Review runs behind;
+  pickup does not wait for it. Whether an unreviewed badge goes out is the desk's call, so
+  `Fursuit::isPrintable()` is a deny-list: everything prints except a verdict that said no.
 - `publication_blocked_at` / `publication_block_reason` decide whether the fursuit may be **shown**
   (gallery *and* Catch-Em-All - hence "publication", not "gallery"). Blocking also clears the
   attendee's `published` / `catch_em_all` switches, because `catch_em_all` is read by the badge

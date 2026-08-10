@@ -63,6 +63,7 @@ class BadgePrintQueue
         ?string $name = null,
         ?int $createdById = null,
         ?int $createdByStaffId = null,
+        ?int $retryOfBatchId = null,
     ): ?PrintBatch {
         $badges = self::printable($badges->filter(fn (Badge $badge) => $badge->exists));
 
@@ -81,6 +82,11 @@ class BadgePrintQueue
             createdById: $createdById,
             createdByStaffId: $createdByStaffId,
             expectedJobs: $badges->count(),
+            // Written on the batch, not only handed to the job: a preparation that fails
+            // leaves a cancelled batch with no jobs and no other record of what it was
+            // asked to print, and `retry()` reads this back.
+            requestedBadgeIds: $badges->map(fn (Badge $badge) => (int) $badge->getKey())->all(),
+            retryOfBatchId: $retryOfBatchId,
         );
 
         Log::info('badge print batch opened', [
@@ -89,6 +95,7 @@ class BadgePrintQueue
             'printer_id' => $printer?->id,
             'created_by_id' => $createdById,
             'created_by_staff_id' => $createdByStaffId,
+            'retry_of_batch_id' => $retryOfBatchId,
         ]);
 
         PrepareBadgePrintBatchJob::dispatch(
@@ -98,6 +105,43 @@ class BadgePrintQueue
         )->afterCommit();
 
         return $batch->fresh();
+    }
+
+    /**
+     * Send the badges of a run whose preparation failed to the printer again.
+     *
+     * A preparation that dies - a render that threw, a worker that was killed - cancels its
+     * batch and hands every badge back to Pending, so what is left on screen is a cancelled
+     * run holding nothing, and the operator's only recourse was to find the same badges in
+     * the badge list and select them by hand. That is the failure this closes: the selection
+     * is on the batch, so the run can be asked for again in one press.
+     *
+     * A new batch rather than a revived one. Batches are immutable and Cancelled is
+     * terminal; the failed run stays as the record that it failed, and the retry points back
+     * at it through `retry_of_batch_id`.
+     *
+     * The selection is re-filtered on the way through `queue()`, which is the point of going
+     * back through it: a fursuit rejected since, or a badge some other run has already taken,
+     * is dropped rather than printed twice. Null comes back when nothing in it is printable
+     * any more, exactly as it does for a first attempt.
+     *
+     * The desk clerk who queued the original keeps the attribution, so the run that replaces
+     * theirs still reaches their own print list and their dashboard - they are the one
+     * standing at the counter waiting for the card. `createdById` is whoever pressed Retry.
+     */
+    public static function retry(
+        PrintBatch $batch,
+        ?int $createdById = null,
+    ): ?PrintBatch {
+        $badges = Badge::whereIn('id', $batch->requested_badge_ids ?? [])->get();
+
+        return self::queue(
+            badges: $badges,
+            printer: $batch->printer,
+            createdById: $createdById,
+            createdByStaffId: $batch->created_by_staff_id,
+            retryOfBatchId: (int) $batch->getKey(),
+        );
     }
 
     /**
@@ -317,11 +361,11 @@ class BadgePrintQueue
      */
     private static function printable(Collection $badges): Collection
     {
-        return self::withoutCardsAlreadyOnTheirWay(self::withoutUnapprovedFursuits($badges));
+        return self::withoutCardsAlreadyOnTheirWay(self::withoutRejectedFursuits($badges));
     }
 
     /**
-     * Drop badges whose fursuit has not been cleared for printing.
+     * Drop badges a reviewer has refused.
      *
      * This is where a Code of Conduct rejection actually stops a card. Nothing used to
      * enforce it: printing looked only at the badge, so a rejected fursuit - a submission
@@ -330,14 +374,20 @@ class BadgePrintQueue
      * meant an email. A badge that never reaches Processing also never reaches PickedUp,
      * so this one filter closes both the printer and the desk.
      *
-     * A publication block deliberately does not appear here. It bars the gallery and the
-     * game, and the whole reason it exists is that the card is fine: an attendee does not
-     * lose their badge over a gallery rule.
+     * A rejection, and nothing else. It used to drop anything not Approved, which swept up
+     * every fursuit still waiting for review - a queue that runs days behind while the
+     * attendee is at the desk now - and refused a perfectly good card because nobody had
+     * looked at it yet. Deciding whether an unreviewed badge goes out belongs to the person
+     * handing it over, not to this filter; see Fursuit::isPrintable().
+     *
+     * A publication block deliberately does not appear here either. It bars the gallery and
+     * the game, and the whole reason it exists is that the card is fine: an attendee does
+     * not lose their badge over a gallery rule.
      *
      * @param  Collection<int, Badge>  $badges
      * @return Collection<int, Badge>
      */
-    private static function withoutUnapprovedFursuits(Collection $badges): Collection
+    private static function withoutRejectedFursuits(Collection $badges): Collection
     {
         if ($badges->isEmpty()) {
             return $badges;
@@ -350,7 +400,7 @@ class BadgePrintQueue
         );
 
         if ($blocked->isNotEmpty()) {
-            Log::info('badges skipped: their fursuit is not approved', [
+            Log::info('badges skipped: their fursuit was rejected', [
                 'badge_ids' => $blocked->map(fn (Badge $badge) => $badge->getKey())->values()->all(),
             ]);
         }

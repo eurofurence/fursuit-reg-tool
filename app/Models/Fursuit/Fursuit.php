@@ -297,12 +297,23 @@ class Fursuit extends Model
     /**
      * Whether this fursuit's badges may be printed and handed out.
      *
-     * Only a Code of Conduct rejection blocks the card, and a fursuit still waiting for
-     * review has not been cleared yet either. A publication block never reaches here.
+     * Only a Code of Conduct rejection blocks the card. A publication block never reaches
+     * here, and neither does a review that has not happened yet.
+     *
+     * Pending used to block too, which read as the safe default and was not: reviewing is
+     * a queue that runs behind, printing is an attendee standing at the desk, and tying
+     * the second to the first means a paid badge with nothing wrong with it cannot be
+     * handed over because nobody has looked at it yet. In EF30 that was 3 461 of 3 632
+     * badges. Whether an unreviewed submission should go out is a judgement for whoever is
+     * at the desk with the attendee in front of them; the queue's job is to refuse the one
+     * case a reviewer has actually ruled on.
+     *
+     * So this is a deny-list, not an allow-list, and it stays one: a state added to the
+     * machine prints unless it is explicitly refused here.
      */
     public function isPrintable(): bool
     {
-        return $this->status instanceof Approved;
+        return ! $this->status instanceof Rejected;
     }
 
     /**

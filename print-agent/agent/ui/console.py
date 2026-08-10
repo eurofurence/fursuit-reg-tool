@@ -516,6 +516,14 @@ class BatchPicker(ttk.Frame):
         self._batches: Dict[str, dict] = {}
 
     def show(self, batches: List[dict]) -> None:
+        """Redraw the list, keeping whatever the operator had highlighted.
+
+        The list is refreshed in the background every few seconds now, and a
+        rebuilt Treeview loses its selection: without this, the highlight went
+        out from under somebody halfway to pressing "Print this batch".
+        """
+        chosen = (self.selected_batch() or {}).get("id")
+
         self.tree.delete(*self.tree.get_children())
         self._batches = {}
 
@@ -530,6 +538,9 @@ class BatchPicker(ttk.Frame):
                 batch.get("printer_name") or "Not assigned",
             ))
             self._batches[item] = batch
+
+            if chosen is not None and batch.get("id") == chosen:
+                self.tree.selection_set(item)
 
         self.empty.config(
             text="" if batches else "No batches are waiting. Build one in the admin panel.")

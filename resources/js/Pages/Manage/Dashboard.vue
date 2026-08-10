@@ -10,10 +10,11 @@
  * The poll reloads `stats` and `charts` and nothing else. 15s, not the 5s all
  * three widgets inherited from CanPoll: an open dashboard used to re-run four counts and
  * a GROUP BY over the whole badges table twelve times a minute per tab.
- * usePoll stops while the tab is hidden, and this page has no form or dialog to guard.
+ * The poll stops while the tab is hidden, and this page has no form or dialog to guard.
  */
 import { computed } from 'vue';
-import { Head, usePage, usePoll } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import { usePagePoll } from '@/Components/Manage/usePagePoll.js';
 import ManageLayout from '@/Layouts/ManageLayout.vue';
 import ChartBar from '@/Components/Manage/ChartBar.vue';
 import ChartDoughnut from '@/Components/Manage/ChartDoughnut.vue';
@@ -29,7 +30,7 @@ defineProps({
 
 const page = usePage();
 
-usePoll(15000, { only: ['stats', 'charts'] });
+usePagePoll(15000, { only: ['stats', 'charts'] });
 
 const scope = computed(() => {
   const event = page.props.manageEvent;

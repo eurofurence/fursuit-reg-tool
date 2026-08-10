@@ -341,10 +341,11 @@ class BadgeController extends Controller
             // deliberately no bulk delete, no export and no dissociate, because
             // the old badge list passes bulkActions() an explicit array.
             //
-            // The selection keeps ->selectCurrentPageOnly() semantics for free: DataTable
-            // derives it from the current page's rows and prunes it on every reload, so it
-            // cannot cross a page. That cap is deliberate, not accidental, and
-            // the bulk print inherits it.
+            // The selection is no longer capped at the page. DataTable still derives it
+            // from the rendered rows by default, but once they are all ticked it offers to
+            // take every key the current filters match - which is the print run an operator
+            // actually wants, and the reason the cutoff filter above exists at all. See
+            // App\Support\Manage\Table::requestedIds.
             ->bulkActions(array_values(array_filter([
                 BadgePrintController::bulkAction(),
                 self::bulkStatusAction(),

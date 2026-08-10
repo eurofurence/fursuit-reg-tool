@@ -10,6 +10,8 @@ use App\Enum\PrintJobTypeEnum;
 use App\Jobs\Printing\GenerateBadgePrintFileJob;
 use App\Models\Badge\Badge;
 use App\Models\EventUser;
+use App\Models\Fursuit\States\Pending as FursuitPending;
+use App\Models\Fursuit\States\Rejected as FursuitRejected;
 use App\Models\Machine;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -126,6 +128,46 @@ it('locks the badges it queues', function () {
 
 it('returns null rather than an empty batch when there is nothing to print', function () {
     expect(BadgePrintQueue::queue(collect()))->toBeNull();
+});
+
+/**
+ * Which verdicts stop a card, and which do not.
+ *
+ * The filter is a deny-list on purpose. It used to pass only Approved, which
+ * swept up every fursuit still waiting for review: the review queue runs days
+ * behind, so an attendee stood at the desk with a paid badge that nothing was
+ * wrong with and the printer refused it. Whether an unreviewed submission goes
+ * out is the desk's judgement; the queue refuses only what a reviewer ruled on.
+ */
+it('prints a badge whose fursuit has not been reviewed yet', function () {
+    $badge = queueableBadges()->first();
+    $badge->fursuit->update(['status' => FursuitPending::$name]);
+
+    $batch = BadgePrintQueue::queue(collect([$badge->fresh()]), Printer::factory()->badge()->create());
+
+    expect($batch)->not->toBeNull()
+        ->and($batch->printJobs()->pluck('printable_id')->all())->toBe([$badge->id]);
+});
+
+it('refuses a badge whose fursuit a reviewer rejected', function () {
+    $badge = queueableBadges()->first();
+    $badge->fursuit->update(['status' => FursuitRejected::$name]);
+
+    expect(BadgePrintQueue::queue(collect([$badge->fresh()]), Printer::factory()->badge()->create()))
+        ->toBeNull()
+        ->and(PrintJob::where('printable_id', $badge->id)->count())->toBe(0);
+});
+
+it('queues the unreviewed badges of a selection and drops only the rejected one', function () {
+    $badges = queueableBadges(3);
+    $badges[0]->fursuit->update(['status' => FursuitPending::$name]);
+    $badges[1]->fursuit->update(['status' => FursuitRejected::$name]);
+
+    $batch = BadgePrintQueue::queue($badges->map->fresh(), Printer::factory()->badge()->create());
+
+    expect($batch->total_jobs)->toBe(2)
+        ->and($batch->printJobs()->pluck('printable_id')->sort()->values()->all())
+        ->toBe(collect([$badges[0]->id, $badges[2]->id])->sort()->values()->all());
 });
 
 /**
