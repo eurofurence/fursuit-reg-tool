@@ -14,7 +14,7 @@ use App\Models\Event;
 use App\Models\EventUser;
 use Cache;
 
-class Explorer extends SimpleAchievement implements HasGlobalCache, ProgressInfo, SpecialAchievement
+class Explorer extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, SpecialAchievement
 {
     private const CACHE_KEY = 'explorer_locations';
 
@@ -136,5 +136,13 @@ class Explorer extends SimpleAchievement implements HasGlobalCache, ProgressInfo
     public function getTotalProgress(): array
     {
         return $this->getLocations();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getUserCacheKeys(EventUser $eventUser): array
+    {
+        return [$this->getInfoCacheKey($eventUser)];
     }
 }
