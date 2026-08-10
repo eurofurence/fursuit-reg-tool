@@ -1,21 +1,21 @@
 <?php
 
-namespace App\Domain\CatchEmAll\Achievements;
+namespace App\Domain\CatchEmAll\Achievements\Special;
 
 use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
 use App\Domain\CatchEmAll\Interface\LockedBy;
 
 use function count;
 
-class FuredexComplete extends AFuredex implements HiddenIfLocked, LockedBy
+class CEATeamAll extends ACEATeam implements HiddenIfLocked, LockedBy
 {
     public function __construct()
     {
         parent::__construct(
-            id: 'furedex_complete',
-            title: 'Your Furédex is complete!',
-            description: 'You caught all species at least once. Congratulations!',
-            task: 'Catch all species at least once.',
+            id: 'cea_team_all',
+            title: 'Catch \'Em All Team III',
+            description: 'You found all of us! Congratulations!',
+            task: 'Now find the rest of us!',
             icon: '👑',
             isSecret: false,
             isOptional: true,
@@ -25,7 +25,7 @@ class FuredexComplete extends AFuredex implements HiddenIfLocked, LockedBy
 
     public function getMaxProgress(): int
     {
-        return count($this->getSpecies());
+        return count($this->getNames());
     }
 
     /**
@@ -33,8 +33,6 @@ class FuredexComplete extends AFuredex implements HiddenIfLocked, LockedBy
      */
     public function lockedBy(): array
     {
-        return [
-            'furedex_20',
-        ];
+        return ['cea_team_three'];
     }
 }

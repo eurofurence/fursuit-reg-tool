@@ -6,12 +6,17 @@ use App\Domain\CatchEmAll\Achievements\Archivist;
 use App\Domain\CatchEmAll\Achievements\Collector;
 use App\Domain\CatchEmAll\Achievements\Curator;
 use App\Domain\CatchEmAll\Achievements\FirstCatch;
+use App\Domain\CatchEmAll\Achievements\Furedex10;
+use App\Domain\CatchEmAll\Achievements\Furedex20;
+use App\Domain\CatchEmAll\Achievements\Furedex5;
 use App\Domain\CatchEmAll\Achievements\FuredexComplete;
 use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
 use App\Domain\CatchEmAll\Achievements\Nice;
 use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\Special\BugBountyHunter;
-use App\Domain\CatchEmAll\Achievements\Special\CEATeam;
+use App\Domain\CatchEmAll\Achievements\Special\CEATeamAll;
+use App\Domain\CatchEmAll\Achievements\Special\CEATeamOne;
+use App\Domain\CatchEmAll\Achievements\Special\CEATeamThree;
 use App\Domain\CatchEmAll\Achievements\Special\Explorer;
 use App\Domain\CatchEmAll\Achievements\TheCompletionist;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
@@ -41,11 +46,16 @@ class AchievementRegister
         Nice::class,
         NightOwl::class,
         TheLegendary151::class,
+        Furedex5::class,
+        Furedex10::class,
+        Furedex20::class,
         FuredexComplete::class,
         TheCompletionist::class,
         // Special achievements
         BugBountyHunter::class,
-        CEATeam::class,
+        CEATeamOne::class,
+        CEATeamThree::class,
+        CEATeamAll::class,
         Explorer::class,
         // Add new achievements here in the format:
         // AchievementClassName::class,
@@ -413,51 +423,6 @@ class AchievementRegister
             if (count($duplicates) > 1) {
                 throw new \InvalidArgumentException("Duplicate achievement ID found: {$id}");
             }
-        }
-
-        // Validate SpecialCodeType duplicates
-        self::validateSpecialCodeTypes();
-    }
-
-    /**
-     * Validate that no SpecialCodeType is used by multiple SpecialAchievements.
-     *
-     * @throws \InvalidArgumentException
-     */
-    private static function validateSpecialCodeTypes(): void
-    {
-        $specialCodeUsage = [];
-
-        foreach (self::$achievements as $className => $instance) {
-            if ($instance instanceof SpecialAchievement) {
-                $specialCode = $instance->getSpecialCode();
-                $codeValue = $specialCode->name;
-
-                if (isset($specialCodeUsage[$codeValue])) {
-                    $firstClass = $specialCodeUsage[$codeValue]['className'];
-                    $firstId = $specialCodeUsage[$codeValue]['achievementId'];
-
-                    throw new \InvalidArgumentException(
-                        "Duplicate SpecialCodeType '{$codeValue}' found: ".
-                        "Used by both '{$firstClass}' (ID: {$firstId}) and '{$className}' (ID: {$instance->getId()}). ".
-                        'Each SpecialCodeType must be unique across all SpecialAchievements.'
-                    );
-                }
-
-                $specialCodeUsage[$codeValue] = [
-                    'className' => $className,
-                    'achievementId' => $instance->getId(),
-                    'instance' => $instance,
-                ];
-            }
-        }
-
-        // Log successful validation
-        if (! empty($specialCodeUsage)) {
-            Log::debug('SpecialCodeType validation passed', [
-                'special_code_types_found' => count($specialCodeUsage),
-                'codes' => array_keys($specialCodeUsage),
-            ]);
         }
     }
 
