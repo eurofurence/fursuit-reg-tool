@@ -68,7 +68,7 @@ abstract class ACEATeam extends SimpleAchievement implements HasGlobalCache, Has
         Cache::forget($this->getInfoCacheKey($context->eventUser));
 
         // Return completion progress - achievement granting is handled by AchievementService
-        return min($this->getMaxProgress(), $context->userTotalTeamCatches);
+        return min($this->getMaxProgress(), \count($this->getCurrentProgress($context->eventUser)));
     }
 
     public function getSpecialCode(): SpecialCodeType

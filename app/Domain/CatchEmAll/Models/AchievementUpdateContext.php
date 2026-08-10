@@ -10,6 +10,9 @@ use App\Models\Fursuit\Fursuit;
 /**
  * Readonly context object that contains the essential data for achievement updates.
  * This provides a clean, minimal interface for achievement processing.
+ *
+ * Add your new properties here if you need additional context for achievement updates.
+ * If you use the ProgressInfo interface, you can also use your local context to calculate progress for the achievement.
  */
 readonly class AchievementUpdateContext
 {
@@ -20,10 +23,8 @@ readonly class AchievementUpdateContext
         public int $userTotalCatches,
         public int $totalCatchableFursuits,
         public int $userUniqueFursuits,
-        public int $userUniqueSpecies,
         public int $locationsExplored,
-        public int $userTotalDaysCaught,
-        public int $userTotalTeamCatches
+        public int $userTotalDaysCaught
     ) {}
 
     /**
@@ -48,12 +49,6 @@ readonly class AchievementUpdateContext
         $userUniqueFursuits = UserCatch::where('event_user_id', $eventUser->id)
             ->distinct('fursuit_id')
             ->count();
-        $userUniqueSpecies = UserCatch::where('event_user_id', $eventUser->id)
-            ->join('fursuits', 'user_catches.fursuit_id', '=', 'fursuits.id')
-            ->join('species', 'fursuits.species_id', '=', 'species.id')
-            ->where('species.checked', true)
-            ->distinct('fursuits.species_id')
-            ->count('fursuits.species_id');
         $locationsExplored = ($specialCodeType !== SpecialCodeType::EXPLORER) ? 0 : UserSpecialCatch::query()
             ->where('event_user_id', $eventUser->id)
             ->where('user_special_catches.type', SpecialCodeType::EXPLORER)
@@ -63,10 +58,6 @@ readonly class AchievementUpdateContext
             ->selectRaw('DISTINCT DATE(created_at) as date')
             ->get()
             ->count();
-        $userTotalTeamCatches = ($specialCodeType !== SpecialCodeType::CATCH_EM_ALL_TEAM) ? 0 : UserSpecialCatch::query()
-            ->where('event_user_id', $eventUser->id)
-            ->where('user_special_catches.type', SpecialCodeType::CATCH_EM_ALL_TEAM)
-            ->count();
 
         return new self(
             eventUser: $eventUser,
@@ -75,10 +66,8 @@ readonly class AchievementUpdateContext
             userTotalCatches: $userTotalCatches,
             totalCatchableFursuits: $totalCatchableFursuits,
             userUniqueFursuits: $userUniqueFursuits,
-            userUniqueSpecies: $userUniqueSpecies,
             locationsExplored: $locationsExplored,
             userTotalDaysCaught: $userTotalDaysCaught,
-            userTotalTeamCatches: $userTotalTeamCatches
         );
     }
 

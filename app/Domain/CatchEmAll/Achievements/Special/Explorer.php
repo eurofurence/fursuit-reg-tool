@@ -5,6 +5,7 @@ namespace App\Domain\CatchEmAll\Achievements\Special;
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
+use App\Domain\CatchEmAll\Interface\HasUserCache;
 use App\Domain\CatchEmAll\Interface\ProgressInfo;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;

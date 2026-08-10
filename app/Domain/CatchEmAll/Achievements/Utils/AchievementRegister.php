@@ -6,6 +6,9 @@ use App\Domain\CatchEmAll\Achievements\Archivist;
 use App\Domain\CatchEmAll\Achievements\Collector;
 use App\Domain\CatchEmAll\Achievements\Curator;
 use App\Domain\CatchEmAll\Achievements\FirstCatch;
+use App\Domain\CatchEmAll\Achievements\Furedex10;
+use App\Domain\CatchEmAll\Achievements\Furedex20;
+use App\Domain\CatchEmAll\Achievements\Furedex5;
 use App\Domain\CatchEmAll\Achievements\FuredexComplete;
 use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
 use App\Domain\CatchEmAll\Achievements\Nice;
@@ -43,6 +46,9 @@ class AchievementRegister
         Nice::class,
         NightOwl::class,
         TheLegendary151::class,
+        Furedex5::class,
+        Furedex10::class,
+        Furedex20::class,
         FuredexComplete::class,
         TheCompletionist::class,
         // Special achievements
