@@ -13,11 +13,11 @@ use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\Models\UserSpecialCatch;
 use Cache;
 
-class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, SpecialAchievement //
+abstract class ACEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, SpecialAchievement //
 {
-    private const CACHE_KEY = 'cea_team';
+    protected const CACHE_KEY = 'cea_team';
 
-    private const INFO_CACHE_KEY = 'info_cea_team';
+    protected const INFO_CACHE_KEY = 'info_cea_team';
 
     private function teamMemberName(mixed $constructorData): string
     {
@@ -35,7 +35,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
     /**
      * Get the info cache key for a specific event user.
      */
-    private function getInfoCacheKey(\App\Models\EventUser $eventUser): string
+    protected function getInfoCacheKey(\App\Models\EventUser $eventUser): string
     {
         return self::INFO_CACHE_KEY.'_'.$eventUser->id;
     }
@@ -45,7 +45,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
      *
      * @return string[]
      */
-    private function getNames(): array
+    protected function getNames(): array
     {
         return Cache::remember(self::CACHE_KEY, now()->addHours(1), function () {
             $names = SpecialCode::where('type', SpecialCodeType::CATCH_EM_ALL_TEAM)->get()->map(function (SpecialCode $code) {
@@ -55,25 +55,6 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
 
             return $names;
         });
-    }
-
-    public function __construct()
-    {
-        parent::__construct(
-            id: 'cea_team',
-            title: 'Catch \'Em All Team',
-            description: 'You found someone that made this game!',
-            task: 'Find a member of the Catch \'Em All development team.',
-            icon: '👑',
-            isSecret: false,
-            isOptional: false,
-            isHidden: false
-        );
-    }
-
-    public function getMaxProgress(): int
-    {
-        return 1;
     }
 
     public function updateAchievementProgress(AchievementUpdateContext $context): int
@@ -87,7 +68,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
         Cache::forget($this->getInfoCacheKey($context->eventUser));
 
         // Return completion progress - achievement granting is handled by AchievementService
-        return self::getMaxProgress(); // Return 1 (completed)
+        return min($this->getMaxProgress(), $context->userTotalTeamCatches);
     }
 
     public function getSpecialCode(): SpecialCodeType
