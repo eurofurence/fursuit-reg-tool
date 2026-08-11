@@ -33,3 +33,10 @@ dataimport/
 # Python bytecode from running the agent test suite
 __pycache__/
 *.pyc
+
+# Database snapshots pulled for local debugging. One was committed to this
+# public repo once already (`fursuit_prod_copy`); keep them out by default.
+*.sqlite
+*.sqlite3
+*.sql.gz
+*_prod_copy*
