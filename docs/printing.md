@@ -417,6 +417,7 @@ On-site printing used to be driven through **QZ Tray**, a browser-to-printer bri
 exposing certificate and signing endpoints in `routes/pos-auth.php` for it. That is removed:
 `QZPrintService.vue`, `QzStatusIndicator.vue`, `QzCertController`, the `qz-tray` package and
 `MachineQzStatusTest` are all deleted, and `pos-auth.php` now carries machine login and printer-state
-endpoints only. The design notes from that era are still in the repo root as `PRINTING_SYSTEM.md`,
-`PRINTING_SYSTEM_IMPROVEMENTS.md` and `PRINTING_SYSTEM_IMPROVEMENTS_LARAVEL.md`; read them as history,
-not as a description of the current system. Zebra hardware notes are in `zebra.md`.
+endpoints only. The design notes from that era (`PRINTING_SYSTEM.md`, the two
+`PRINTING_SYSTEM_IMPROVEMENTS*.md` files and the QZ-era `zebra.md` status map) have been deleted
+rather than left lying around to be mistaken for current behaviour; `git log` has them if you ever
+need the history.

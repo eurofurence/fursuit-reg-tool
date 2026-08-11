@@ -133,9 +133,10 @@ Application configuration is supplied entirely through environment variables (se
 ## Further documentation
 
 - [`CLAUDE.md`](CLAUDE.md) — architecture overview and conventions
-- [`CATCH.md`](CATCH.md) — Catch-Em-All game design
-- [`PRINTING_SYSTEM.md`](PRINTING_SYSTEM.md) — printing subsystem
-- [`TSE.md`](TSE.md) — fiscal / TSE integration
+- [`docs/`](docs/) — one file per subsystem; start with the table at the end of `CLAUDE.md`
+- [`docs/catch-em-all.md`](docs/catch-em-all.md) — Catch-Em-All game
+- [`docs/printing.md`](docs/printing.md) — printing subsystem
+- [`docs/fiscal-compliance.md`](docs/fiscal-compliance.md) — fiscal / TSE integration
 - [`openapi.yml`](openapi.yml) — API specification
 
 ---

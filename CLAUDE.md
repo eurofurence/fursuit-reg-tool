@@ -113,8 +113,7 @@ printability - see [`docs/fursuit-review.md`](docs/fursuit-review.md).
 sums `badges.total` where `status_payment` is `Unpaid`, and `badges.status_payment` is the single
 source of truth. The checkout domain (`app/Domain/Checkout/`) owns the POS checkout with its own
 models, services and states (`Active` → `Finished` / `Cancelled`); `ToFinished` transitions the
-badges to `Paid`. Background: [`docs/wallet-removal-plan.md`](docs/wallet-removal-plan.md) (its
-"Status: proposed" header is stale - the removal shipped).
+badges to `Paid`. Background: [`docs/wallet-removal-plan.md`](docs/wallet-removal-plan.md).
 
 ### Application Structure
 
@@ -221,12 +220,15 @@ Read the file for the area you are changing; each records decisions that were re
 | [`docs/desk-corrections.md`](docs/desk-corrections.md) | POS badge edits, the manager gate, or repricing an open checkout |
 | [`docs/prepaid-badges.md`](docs/prepaid-badges.md) | `BadgePolicy::create()`, `getPrepaidBadgesLeft()`, badge pricing |
 | [`docs/badge-generation.md`](docs/badge-generation.md) | badge artwork classes in `app/Badges/` |
+| [`docs/catch-em-all.md`](docs/catch-em-all.md) | `routes/catch-em-all.php`, `app/Domain/CatchEmAll/`, rarity, achievements, the FCEA ranking models |
 | [`docs/printing.md`](docs/printing.md) | print batches, jobs, leases, verification, the print agent (build/debug companion: [`docs/printing-implementation.md`](docs/printing-implementation.md)) |
 | [`docs/fiscal-compliance.md`](docs/fiscal-compliance.md) | SumUp, Fiskaly TSE signing, DSFinV-K exports |
 | [`docs/migrations.md`](docs/migrations.md) | writing any migration |
 | [`docs/admin/roles.md`](docs/admin/roles.md) | any route under `routes/manage/`, a policy's `viewAny`/`view`, or a new Settings pane or Tools card - it is the reviewer/admin boundary |
 | [`docs/wallet-removal-plan.md`](docs/wallet-removal-plan.md) | payment plumbing - the record of the already-shipped wallet removal (`fa0554e`), not a pending plan |
 
-Repo root also has `CATCH.md` (Catch-Em-All game), `TSE.md` and `zebra.md` (fiscal / printer
-hardware), `DSFinV_K_2_4.pdf` (fiscal export spec), `openapi.yml` (API spec) and `README.md` (setup).
-`PRINTING_SYSTEM.md` and `PRINTING_SYSTEM_IMPROVEMENTS*.md` describe the retired QZ Tray system - history, not current behaviour.
+Repo root carries only `README.md` (setup), `openapi.yml` (API spec) and this file. Everything else
+is under `docs/`. The old root notes - `CATCH.md`, `TSE.md`, `zebra.md`, `PRINTING_SYSTEM.md` and the
+`PRINTING_SYSTEM_IMPROVEMENTS*.md` pair - are deleted: they described the retired QZ Tray printing
+system, or a compliance gap analysis whose gaps have since been closed. Do not reintroduce
+subsystem notes at the root; add or extend a file in `docs/` and list it in the table above.

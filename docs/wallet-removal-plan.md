@@ -1,13 +1,13 @@
 # Removing `bavix/laravel-wallet`
 
-Status: proposed. Target branch: fresh branch off `main`.
+Status: shipped in `fa0554e`. Kept as the record of why the wallet went and what the numbers were.
 
 ## Why
 
 The wallet is a second, weaker copy of information `badges.status_payment` already holds, and it
 is the copy that drifts.
 
-Reconciliation against the prod copy (`fursuit_prod_copy`, 5,283 user wallets):
+Reconciliation against a production snapshot (5,283 user wallets):
 
 | | |
 |---|---|
