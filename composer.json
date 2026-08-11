@@ -16,17 +16,17 @@
         "intervention/image": "^3.8",
         "itsgoingd/clockwork": "^5.3",
         "kirschbaum-development/eloquent-power-joins": "^4.3",
-        "laravel/framework": "^12.0",
+        "laravel/framework": "^13.0",
         "laravel/horizon": "^5.25",
         "laravel/octane": "^2.4",
         "laravel/reverb": "^1.0",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.14",
-        "laravel/tinker": "^2.9",
+        "laravel/tinker": "^3.0",
         "league/flysystem-aws-s3-v3": "^3.0",
         "mpdf/mpdf": "^8.2",
         "sentry/sentry-laravel": "^4.8",
-        "spatie/laravel-activitylog": "^4.8",
+        "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-model-states": "^2.7",
         "tightenco/ziggy": "^2.0"
     },
@@ -37,8 +37,8 @@
         "laravel/sail": "^1.31",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.0",
-        "pestphp/pest": "^3.0",
-        "pestphp/pest-plugin-laravel": "^3.0"
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0"
     },
     "autoload": {
         "psr-4": {

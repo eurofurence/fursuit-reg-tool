@@ -16,6 +16,7 @@ use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -94,7 +95,7 @@ class BadgeEditTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function a_cashier_can_edit_badge_details_without_a_manager()
     {
         $badge = $this->badge();
@@ -123,9 +124,8 @@ class BadgeEditTest extends TestCase
      * The attendee-facing edit sends the fursuit back for review. This one must
      * not: the badge is being handed over now, and a pending fursuit would drop
      * out of the desk's own lists.
-     *
-     * @test
      */
+    #[Test]
     public function editing_at_the_desk_leaves_the_fursuit_approved()
     {
         $badge = $this->badge();
@@ -142,7 +142,7 @@ class BadgeEditTest extends TestCase
         $this->assertSame('approved', $badge->fursuit->refresh()->status->getValue());
     }
 
-    /** @test */
+    #[Test]
     public function a_cashier_cannot_override_a_price_without_approval()
     {
         $badge = $this->badge();
@@ -153,7 +153,7 @@ class BadgeEditTest extends TestCase
         $this->assertSame(500, (int) $badge->refresh()->total);
     }
 
-    /** @test */
+    #[Test]
     public function a_non_manager_pin_does_not_approve()
     {
         $badge = $this->badge();
@@ -165,7 +165,7 @@ class BadgeEditTest extends TestCase
         $this->assertSame(500, (int) $badge->refresh()->total);
     }
 
-    /** @test */
+    #[Test]
     public function a_manager_pin_approves_an_override_for_a_cashier()
     {
         $badge = $this->badge();
@@ -181,7 +181,7 @@ class BadgeEditTest extends TestCase
         $this->assertSame(0, (int) $badge->tax);
     }
 
-    /** @test */
+    #[Test]
     public function a_manager_rfid_tag_approves_an_override()
     {
         $badge = $this->badge();
@@ -199,7 +199,7 @@ class BadgeEditTest extends TestCase
         $this->assertSame(250, (int) $badge->refresh()->total);
     }
 
-    /** @test */
+    #[Test]
     public function an_inactive_manager_tag_does_not_approve()
     {
         $badge = $this->badge();
@@ -215,7 +215,7 @@ class BadgeEditTest extends TestCase
             ->assertSessionHasErrors('manager_code');
     }
 
-    /** @test */
+    #[Test]
     public function a_manager_signed_in_at_the_till_needs_no_code()
     {
         $badge = $this->badge();
@@ -226,7 +226,7 @@ class BadgeEditTest extends TestCase
         $this->assertSame(750, (int) $badge->refresh()->total);
     }
 
-    /** @test */
+    #[Test]
     public function an_override_recomputes_the_tax_split()
     {
         $badge = $this->badge();
@@ -242,7 +242,7 @@ class BadgeEditTest extends TestCase
         $this->assertSame((int) $badge->total, (int) $badge->subtotal + (int) $badge->tax);
     }
 
-    /** @test */
+    #[Test]
     public function a_paid_badge_cannot_be_repriced()
     {
         $badge = $this->badge(['status_payment' => 'paid']);
@@ -253,7 +253,7 @@ class BadgeEditTest extends TestCase
         $this->assertSame(500, (int) $badge->refresh()->total);
     }
 
-    /** @test */
+    #[Test]
     public function an_override_is_recorded_with_who_approved_it()
     {
         $badge = $this->badge();
@@ -273,9 +273,8 @@ class BadgeEditTest extends TestCase
      * The Fiskaly receipt is signed against a total, so a repriced transaction
      * cannot be edited in place: the open one is cancelled and a new one opens
      * at the new price, holding the same badges.
-     *
-     * @test
      */
+    #[Test]
     public function overriding_a_price_reopens_the_active_checkout()
     {
         $badge = $this->badge();
@@ -306,7 +305,7 @@ class BadgeEditTest extends TestCase
         $this->assertTrue($checkout->refresh()->status->equals(Cancelled::class));
     }
 
-    /** @test */
+    #[Test]
     public function an_override_does_not_touch_a_checkout_on_another_till()
     {
         $badge = $this->badge();

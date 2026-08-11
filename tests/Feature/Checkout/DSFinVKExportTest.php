@@ -11,6 +11,7 @@ use App\Models\Machine;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -53,7 +54,7 @@ class DSFinVKExportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_generates_complete_dsfin_export()
     {
         // Create test data
@@ -100,7 +101,7 @@ class DSFinVKExportTest extends TestCase
         unlink($exportPath);
     }
 
-    /** @test */
+    #[Test]
     public function it_exports_cash_register_info_correctly()
     {
         $this->createTestCheckouts();
@@ -130,7 +131,7 @@ class DSFinVKExportTest extends TestCase
         unlink($exportPath);
     }
 
-    /** @test */
+    #[Test]
     public function it_exports_transactions_with_tse_data()
     {
         $checkout = $this->createTestCheckouts()[0];
@@ -177,7 +178,7 @@ class DSFinVKExportTest extends TestCase
         unlink($exportPath);
     }
 
-    /** @test */
+    #[Test]
     public function it_exports_receipt_line_items()
     {
         $checkouts = $this->createTestCheckouts();
@@ -239,7 +240,7 @@ class DSFinVKExportTest extends TestCase
         unlink($exportPath);
     }
 
-    /** @test */
+    #[Test]
     public function it_exports_tse_specific_transactions()
     {
         $checkout = $this->createTestCheckouts()[0];
@@ -294,7 +295,7 @@ class DSFinVKExportTest extends TestCase
         unlink($exportPath);
     }
 
-    /** @test */
+    #[Test]
     public function it_filters_exports_by_date_range()
     {
         // Create checkouts on different dates
@@ -325,7 +326,7 @@ class DSFinVKExportTest extends TestCase
         unlink($exportPath);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_csv_field_escaping()
     {
         $checkout = $this->createCheckout();
