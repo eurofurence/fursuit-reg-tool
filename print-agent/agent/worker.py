@@ -115,6 +115,12 @@ STOPPED = "stopped"          # the worker was told to stop
 # an empty claim is a reason to stop, not evidence the batch is done.
 CLAIMABLE_STATUSES = ("printing",)
 
+# ...except these, which mean the batch is over rather than stuck. The server
+# completes a batch as its last card is confirmed, so the very next claim comes
+# back "completed": treating that as a batch that will not yield parked the
+# worker on a fault nobody could clear, with the next batch sitting ready.
+FINISHED_STATUSES = ("completed", "cancelled")
+
 # --- Worker state -------------------------------------------------------------
 
 IDLE = "idle"
@@ -1253,6 +1259,11 @@ class PrintWorker(_BaseWorker):
             # A paused or not-yet-started batch still holds all its cards.
             # Treating that as finished would move the operator on and quietly
             # skip the whole run.
+            if batch_status in FINISHED_STATUSES:
+                self._progress(STEP_CLAIM, SKIPPED, "batch %s" % batch_status)
+
+                return Outcome(EMPTY, "Batch %s is %s" % (self.batch_id, batch_status))
+
             if batch_status and batch_status not in CLAIMABLE_STATUSES:
                 detail = "Batch %s is %s, not printing" % (self.batch_id, batch_status)
                 self._progress(STEP_CLAIM, FAILED, "batch is %s" % batch_status)

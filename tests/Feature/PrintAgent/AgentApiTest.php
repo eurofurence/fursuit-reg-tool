@@ -136,6 +136,23 @@ it('pauses the batch and stops handing out work when a job fails', function () {
         ->assertJson(['job' => null, 'batch_status' => 'paused']);
 });
 
+it('reports a drained batch as completed so the agent moves on', function () {
+    // What the agent reads to tell "this batch is done" from "this batch is
+    // stuck". The last card completes the batch, so the claim right after it
+    // has to say completed: anything else parks the station with the next
+    // batch waiting.
+    [, , $batch] = agentSetup(1);
+    $job = $this->postJson('/api/print-agent/jobs/claim', ['batch_id' => $batch->id])->json('job');
+
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printing")->assertOk();
+    $this->postJson("/api/print-agent/jobs/{$job['id']}/printed", ['completion_source' => 'firmware'])
+        ->assertOk();
+
+    $this->postJson('/api/print-agent/jobs/claim', ['batch_id' => $batch->id])
+        ->assertOk()
+        ->assertJson(['job' => null, 'batch_status' => 'completed']);
+});
+
 it('extends a lease on heartbeat', function () {
     [, , $batch] = agentSetup(1);
     $job = $this->postJson('/api/print-agent/jobs/claim', ['batch_id' => $batch->id])->json('job');

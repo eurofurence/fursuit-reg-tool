@@ -1017,6 +1017,76 @@ class EmptyClaimTest(WorkerTestCase):
         self.assertEqual(len(self.api.started), 2)
 
 
+class BatchHandoffTest(WorkerTestCase):
+    """The claim that comes after the last card of a batch.
+
+    The server completes a batch the moment its final card is confirmed, so the
+    next claim answers "completed". Read as a batch that will not hand cards
+    out, that stopped the worker with a fault it could do nothing about, and
+    the next batch sat ready while the station stood still.
+    """
+
+    def test_a_completed_batch_ends_the_run_rather_than_faulting(self):
+        self.api.queue = []
+        self.api.drained_status = "completed"
+
+        self.assertEqual(self.build().print_next().kind, worker.EMPTY)
+
+    def test_a_cancelled_batch_is_not_a_fault_either(self):
+        self.api.queue = []
+        self.api.drained_status = "cancelled"
+
+        self.assertEqual(self.build().print_next().kind, worker.EMPTY)
+
+    def test_the_next_batch_is_taken_after_the_last_card(self):
+        self.api.queue = [job(41)]
+        self.api.drained_status = "completed"
+        self.api.available_batches = [
+            {"id": 77, "name": "Batch A", "status": "completed",
+             "totals": {"jobs": 1, "printed": 1, "failed": 0}},
+            {"id": 78, "name": "Batch B", "status": "ready",
+             "totals": {"jobs": 2, "printed": 0, "failed": 0}},
+        ]
+
+        taken = []
+
+        def stop_once_moved(batch_id):
+            if batch_id is None:
+                return
+
+            taken.append(batch_id)
+            printer.stop("enough for the test")
+
+        waits = []
+
+        def sleep(seconds):
+            # The loop runs forever by design, so a worker that parks on the
+            # handoff would hang the suite instead of failing it.
+            waits.append(seconds)
+
+            if len(waits) > 20:
+                printer.stop("test gave up waiting")
+
+            self.clock.sleep(seconds)
+
+        printer = self.build(unattended=True, on_batch_change=stop_once_moved,
+                             sleep=sleep)
+        printer.run()
+
+        self.assertEqual(taken, [78], self.logs)
+        self.assertEqual(printer.batch_id, 78)
+        self.assertIn((78, "ZXP9-Left"), self.api.started)
+        self.assertFalse(printer.is_paused(), "a finished batch is not a fault")
+
+    def test_an_unstarted_batch_still_blocks(self):
+        # The distinction this rests on: "ready" means the cards are still
+        # there and something went wrong, "completed" means they came out.
+        self.api.queue = []
+        self.api.drained_status = "ready"
+
+        self.assertEqual(self.build().print_next().kind, worker.BLOCKED)
+
+
 class SpoolResultTest(unittest.TestCase):
     """What the sender hands back, and what it means.
 
