@@ -12,6 +12,7 @@ use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -70,7 +71,7 @@ class DashboardBadgeRangeTest extends TestCase
             ->get(route('pos.dashboard'));
     }
 
-    /** @test */
+    #[Test]
     public function it_counts_every_ready_badge_when_no_range_is_set()
     {
         $this->readyBadgeForAttendee('500');
@@ -83,7 +84,7 @@ class DashboardBadgeRangeTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('stats.ready_for_pickup', 2));
     }
 
-    /** @test */
+    #[Test]
     public function it_counts_only_the_crate_this_desk_holds()
     {
         $this->readyBadgeForAttendee('500');
@@ -107,9 +108,8 @@ class DashboardBadgeRangeTest extends TestCase
     /**
      * attendee_id is a string column: compared as text, "1000" sorts below
      * "999" and the crate boundary lands in the wrong place.
-     *
-     * @test
      */
+    #[Test]
     public function it_compares_attendee_ids_numerically()
     {
         $this->readyBadgeForAttendee('999');
@@ -125,7 +125,7 @@ class DashboardBadgeRangeTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('stats.ready_for_pickup', 1));
     }
 
-    /** @test */
+    #[Test]
     public function a_desk_can_store_and_clear_its_range()
     {
         $machine = Machine::factory()->create();
@@ -156,7 +156,7 @@ class DashboardBadgeRangeTest extends TestCase
         $this->assertFalse($machine->hasBadgeRange());
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_a_range_that_ends_before_it_starts()
     {
         $machine = Machine::factory()->create();

@@ -14,13 +14,14 @@ use App\Models\User;
 use App\Notifications\BadgePrintedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ReadyForPickupNotificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function it_sends_notification_when_badge_transitions_to_ready_for_pickup_during_event()
     {
         Notification::fake();
@@ -79,7 +80,7 @@ class ReadyForPickupNotificationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_does_not_send_notification_when_transitioning_to_ready_for_pickup_outside_event()
     {
         Notification::fake();
@@ -133,7 +134,7 @@ class ReadyForPickupNotificationTest extends TestCase
         Notification::assertNotSentTo([$user], BadgePrintedNotification::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_sends_notification_when_reverting_from_picked_up_to_ready_during_event()
     {
         Notification::fake();
@@ -193,7 +194,7 @@ class ReadyForPickupNotificationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_correctly_sets_paid_at_timestamp_when_transitioning_to_ready_for_pickup()
     {
         Notification::fake();
@@ -246,7 +247,7 @@ class ReadyForPickupNotificationTest extends TestCase
         $this->assertEquals(ReadyForPickup::$name, $badge->status_fulfillment);
     }
 
-    /** @test */
+    #[Test]
     public function notification_email_contains_correct_badge_information()
     {
         Notification::fake();

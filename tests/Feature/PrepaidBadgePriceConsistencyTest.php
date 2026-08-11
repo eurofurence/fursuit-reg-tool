@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class PrepaidBadgePriceConsistencyTest extends TestCase
@@ -21,7 +22,7 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         Storage::fake('local');
     }
 
-    /** @test */
+    #[Test]
     public function it_correctly_calculates_badge_as_paid_when_prepaid_badges_exhausted_after_order_starts()
     {
         // Create an event with an open order window (a paid additional badge must stay orderable)
@@ -105,7 +106,7 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         $this->assertEquals('unpaid', $newBadge->status_payment, 'Badge should be unpaid');
     }
 
-    /** @test */
+    #[Test]
     public function it_correctly_creates_free_badge_when_prepaid_badges_available()
     {
         // Create an event with order_starts_at in the past
@@ -188,7 +189,7 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         $this->assertNotNull($newBadge->paid_at, 'Badge should have paid_at timestamp');
     }
 
-    /** @test */
+    #[Test]
     public function it_correctly_handles_prepaid_badges_before_order_starts()
     {
         // Create an event with order_starts_at in the FUTURE (no -1 deduction)
@@ -244,7 +245,7 @@ class PrepaidBadgePriceConsistencyTest extends TestCase
         $this->assertEquals('paid', $newBadge->status_payment, 'Badge should be marked as paid');
     }
 
-    /** @test */
+    #[Test]
     public function it_shows_consistent_pricing_in_frontend_and_backend()
     {
         // Create an event with order_starts_at in the past
