@@ -52,6 +52,22 @@ $allowed = [
     'admin.fursuits.block-publication',
     'admin.fursuits.unblock-publication',
     'admin.fursuits.notify',
+
+    /*
+     * The second review queue. Reviewing what an attendee wrote about themselves is the
+     * same job as reviewing their fursuit photo, so the module carries no
+     * `can:manage-admin` and every one of its routes is a verdict or the way to the next
+     * one. Editing or deleting a profile row is not among them: no such route exists, and
+     * UserProfilePolicy answers `update` and `delete` with is_admin.
+     */
+    'admin.profiles.index',
+    'admin.profiles.show',
+    'admin.profiles.review',
+    'admin.profiles.approve',
+    'admin.profiles.reject',
+    'admin.profiles.reopen',
+    'admin.profiles.unclaim',
+    'admin.profiles.next',
 ];
 
 /**
@@ -190,7 +206,7 @@ test('the upload endpoint is closed to a reviewer', function () {
         ->assertForbidden();
 });
 
-test('the rail a reviewer is served holds Dashboard, Badges and Fursuits and nothing else', function () {
+test('the rail a reviewer is served holds Dashboard, Badges, Fursuits and Profiles and nothing else', function () {
     $this->actingAs($this->reviewer);
 
     $groups = $this->get(route('admin.dashboard'))
@@ -200,5 +216,5 @@ test('the rail a reviewer is served holds Dashboard, Badges and Fursuits and not
         ->flatMap(fn (array $group) => array_column($group['items'], 'label'))
         ->all();
 
-    expect($labels)->toBe(['Dashboard', 'Badges', 'Fursuits']);
+    expect($labels)->toBe(['Dashboard', 'Badges', 'Fursuits', 'Profiles']);
 });

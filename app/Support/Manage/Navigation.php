@@ -18,6 +18,7 @@ use App\Models\Machine;
 use App\Models\Staff;
 use App\Models\SumUpReader;
 use App\Models\User;
+use App\Models\UserProfile\UserProfile;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
@@ -82,6 +83,12 @@ final class Navigation
              * nothing to do with.
              */
             ['label' => 'Catch-Em-All', 'items' => [
+                /*
+                 * The game's second review queue. Its chip is the pending count for the same
+                 * reason the fursuit one is: it is the number a reviewer acts on, and the
+                 * total would be the account count, which nobody works through.
+                 */
+                $this->item('Profiles', 'contact', 'admin.profiles.index', $badges['profiles'] ?? null, $this->permits('viewAny', UserProfile::class)),
                 $this->item('Special Codes', 'qr-code', 'admin.special-codes.index', null, $this->permits('viewAny', SpecialCode::class)),
                 $this->item('Cache', 'database', 'admin.tools.catch-em-all-cache', null, $this->permits('manage-admin')),
             ]],
@@ -375,6 +382,7 @@ final class Navigation
             'badges' => $counts['badges'] > 0 ? ['label' => (string) $counts['badges'], 'tone' => Status::IDLE] : null,
             'fursuits' => $counts['fursuits'] > 0 ? ['label' => (string) $counts['fursuits'], 'tone' => Status::WARN] : null,
             'printers' => $counts['printers'] > 0 ? ['label' => (string) $counts['printers'], 'tone' => Status::DANGER] : null,
+            'profiles' => $counts['profiles'] > 0 ? ['label' => (string) $counts['profiles'], 'tone' => Status::WARN] : null,
             'batches' => $counts['batches'] > 0 ? ['label' => (string) $counts['batches'], 'tone' => Status::WARN] : null,
         ];
     }
@@ -440,6 +448,16 @@ final class Navigation
              */
             $printedBadges = (int) $fulfillment->only(['ready_for_pickup', 'picked_up'])->sum();
 
+            /*
+             * Profiles waiting for a verdict. Not event-scoped: a profile is the attendee's
+             * own page rather than a record of one convention, and the review queue behind
+             * this chip is not scoped either.
+             */
+            $pendingProfiles = UserProfile::query()
+                ->whereNull('approved_at')
+                ->whereNull('rejected_at')
+                ->count();
+
             $stopped = Printer::query()
                 ->where('is_active', true)
                 ->whereIn('condition', $this->stopConditions())
@@ -461,6 +479,7 @@ final class Navigation
                 'unprinted' => $unprintedBadges,
                 'printed' => $printedBadges,
                 'fursuits' => $pendingFursuits,
+                'profiles' => $pendingProfiles,
                 'printers' => $stopped,
                 'cards' => $unverifiedCards,
                 'batches' => $unverifiedBatches,

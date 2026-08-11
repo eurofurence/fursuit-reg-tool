@@ -47,17 +47,18 @@ class GameStatsService
     {
         $cacheKey = 'leaderboard_'.$filterEvent->id;
 
-        $result = Cache::remember($cacheKey, 600, function () use ($limit, $rankCutoff) {
+        $result = Cache::remember($cacheKey, 600, function () use ($filterEvent, $limit, $rankCutoff) {
             $profileUuid = function ($eventUser) {
                 $profile = $eventUser?->user?->userProfile;
 
                 return $profile?->approved_at !== null ? $profile->uuid : null;
             };
-            $rows = EventUser::with('user.userProfile')
+            $rows = EventUser::where('event_id', $filterEvent->id)
+                ->with('user.userProfile')
                 ->withCount('fursuitsCatched')
                 ->having('fursuits_catched_count', '>', 0)
                 ->get()
-                ->groupby('user_id')
+                ->groupBy('user_id')
                 ->map(fn ($group) => [
                     'event_user_id' => $group->first()->id,
                     'user_id' => $group->first()->user_id,
@@ -240,39 +241,6 @@ class GameStatsService
         });
 
         return is_array($result) ? $result : [];
-
-        return Cache::remember($result) ? $result : [];
-    }
-
-    public function getDetailedCollection(EventUser $eventUser): array
-    {
-        $query = UserCatch::where('event_user_id', $eventUser->id)
-            ->with(['fursuit.species', 'fursuit.user']);
-
-        $catches = $query->orderByDesc('created_at')->get();
-
-        $result = [];
-        foreach ($catches as $catch) {
-            $rarity = $catch->getFursuitRarity();
-
-            $result[] = [
-                'id' => $catch->id,
-                'fursuitName' => $catch->fursuit?->name ?? 'Unknown Fursuit',
-                'species' => $catch->fursuit?->species?->name ?? 'Unknown',
-                'owner' => $catch->fursuit?->user?->name ?? 'Anonymous',
-                'image' => $catch->fursuit?->image,
-                'caughtAt' => $catch->created_at,
-                'rarity' => [
-                    'level' => $rarity->value,
-                    'label' => $rarity->getLabel(),
-                    'color' => $rarity->getColor(),
-                    'gradient' => $rarity->getGradient(),
-                    'icon' => $rarity->getIcon(),
-                ],
-            ];
-        }
-
-        return $result;
     }
 
     private function calculateUserRank(int $userCatches, int $eventId): int

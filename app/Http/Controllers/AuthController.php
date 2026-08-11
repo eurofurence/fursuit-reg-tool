@@ -113,8 +113,6 @@ class AuthController extends Controller
             MirrorUserAvatarJob::dispatch($user);
         }
 
-        $user->wallet->balance;
-
         $activeEvent = Event::getActiveEvent();
         $eventUser = null;
         if ($activeEvent) {

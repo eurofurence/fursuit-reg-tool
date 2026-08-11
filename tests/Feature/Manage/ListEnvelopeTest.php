@@ -824,7 +824,7 @@ test('the sidebar carries every module registered so far', function () {
     expect($labels)->not->toContain('DB Service');
 });
 
-test('the rail a reviewer gets is three entries, not the admin one filtered', function () {
+test('the rail a reviewer gets is four entries, not the admin one filtered', function () {
     $reviewer = User::factory()->create(['is_admin' => false, 'is_reviewer' => true]);
 
     actingAs($reviewer);
@@ -837,8 +837,12 @@ test('the rail a reviewer gets is three entries, not the admin one filtered', fu
      * and Settings, on the reasoning that both are menus whose contents gate themselves.
      * Every card and every pane behind those two is admin-only now, so the entries would
      * open empty pages; they are dropped whole. See docs/admin/roles.md.
+     *
+     * Profiles is the fourth, and it is here for the reason the other three are: it is a
+     * review queue, and reviewing what an attendee wrote about themselves is the same job
+     * as reviewing their photo.
      */
-    expect($labels)->toBe(['Dashboard', 'Badges', 'Fursuits']);
+    expect($labels)->toBe(['Dashboard', 'Badges', 'Fursuits', 'Profiles']);
 });
 
 test('the rail counts follow the selected event', function () {
