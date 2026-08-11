@@ -38,18 +38,18 @@ The system manages the full badge lifecycle and is split into several interfaces
 
 ## Tech stack
 
-- **Backend:** Laravel 11, PHP 8.2+ (CI and images run 8.5), Laravel Octane (Swoole) in production
+- **Backend:** Laravel 12, PHP 8.4+ (CI and images run 8.5), Laravel Octane (Swoole) in production
 - **Frontend:** Inertia.js, Vue 3, PrimeVue, Tailwind CSS, Vite
 - **Admin:** Inertia + Vue, built on `App\Support\Manage` (tables, filters, actions)
 - **Data:** MySQL, Redis, Laravel Horizon (queues)
-- **Notable packages:** spatie/laravel-model-states, spatie/laravel-activitylog, bavix/laravel-wallet,
+- **Notable packages:** spatie/laravel-model-states, spatie/laravel-activitylog,
   laravel/reverb, laravel/sanctum, laravel/socialite, mpdf/mpdf
 
 ---
 
 ## Getting started (local)
 
-**Prerequisites:** PHP 8.2+, Composer, Node.js 20+, and Docker (with the Compose plugin).
+**Prerequisites:** PHP 8.4+, Composer, Node.js 20+, and Docker (with the Compose plugin).
 Local development uses [Laravel Sail](https://laravel.com/docs/sail).
 
 ```sh

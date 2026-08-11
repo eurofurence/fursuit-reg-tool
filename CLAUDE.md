@@ -19,7 +19,7 @@ automatically and a `sail` alias is exported.
 via the `yerd` CLI, with `catch.fursuit-reg-tool.test` for the Catch-Em-All routes. The site
 runs **PHP 8.5** against a local MariaDB (`yerd service start mariadb`, database `fursuit`,
 user `root`, no password). Yerd's own default PHP applies to new sites, so a fresh link needs
-`yerd use <site> 8.5`. `composer.json` only requires `php ^8.2`, so anything from 8.2 up runs.
+`yerd use <site> 8.5`. `composer.json` requires `php ^8.4`; CI and the Docker images run 8.5.
 
 **Laravel Sail (Docker)** - the classic path:
 
