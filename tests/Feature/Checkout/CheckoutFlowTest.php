@@ -14,6 +14,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class CheckoutFlowTest extends TestCase
@@ -45,7 +46,7 @@ class CheckoutFlowTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_creates_checkout_with_basic_information()
     {
         $checkout = Checkout::create([
@@ -75,7 +76,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertEquals('POS-01', $checkout->machine->name);
     }
 
-    /** @test */
+    #[Test]
     public function it_adds_checkout_items_correctly()
     {
         $checkout = $this->createBasicCheckout();
@@ -102,7 +103,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertEquals(1, $checkout->items()->count());
     }
 
-    /** @test */
+    #[Test]
     public function it_calculates_taxes_correctly()
     {
         $checkout = $this->createBasicCheckout();
@@ -121,7 +122,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertEquals($expectedTaxAmount, $checkout->tax);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_different_payment_methods()
     {
         $cashCheckout = $this->createBasicCheckout(['payment_method' => 'cash']);
@@ -131,7 +132,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertEquals('card', $cardCheckout->payment_method);
     }
 
-    /** @test */
+    #[Test]
     public function it_integrates_with_fiskaly_tse_system()
     {
         // Set up Fiskaly config for this test
@@ -186,10 +187,9 @@ class CheckoutFlowTest extends TestCase
     }
 
     /**
-     * @test
-     *
      * @skip Fiskaly integration test - external service dependency
      */
+    #[Test]
     public function it_generates_compliant_receipt_data()
     {
         $this->markTestSkipped('Fiskaly integration test - external service dependency');
@@ -243,7 +243,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertEquals('123', $checkout->tse_signature_counter);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_checkout_state_transitions()
     {
         $checkout = $this->createBasicCheckout();
@@ -255,7 +255,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertEquals('FINISHED', $checkout->status);
     }
 
-    /** @test */
+    #[Test]
     public function it_validates_required_checkout_fields()
     {
         $this->expectException(QueryException::class);
@@ -264,7 +264,7 @@ class CheckoutFlowTest extends TestCase
         Checkout::create([]);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_fiskaly_api_errors_gracefully()
     {
         // Set up Fiskaly config for this test
@@ -298,10 +298,9 @@ class CheckoutFlowTest extends TestCase
     }
 
     /**
-     * @test
-     *
      * @skip Fiskaly integration test - external service dependency
      */
+    #[Test]
     public function it_tracks_remote_revision_count()
     {
         $this->markTestSkipped('Fiskaly integration test - external service dependency');
@@ -339,10 +338,9 @@ class CheckoutFlowTest extends TestCase
     }
 
     /**
-     * @test
-     *
      * @skip Fiskaly integration test - external service dependency
      */
+    #[Test]
     public function it_stores_complete_fiskaly_response_data()
     {
         // Set up Fiskaly config for this test

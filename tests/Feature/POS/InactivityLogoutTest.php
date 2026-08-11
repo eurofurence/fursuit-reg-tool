@@ -7,6 +7,7 @@ use App\Models\Machine;
 use App\Models\Staff;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -44,7 +45,7 @@ class InactivityLogoutTest extends TestCase
         return $test->get(route('pos.dashboard'));
     }
 
-    /** @test */
+    #[Test]
     public function it_keeps_the_user_logged_in_when_auto_logout_is_off()
     {
         $machine = Machine::factory()->create(['auto_logout_timeout' => null]);
@@ -52,7 +53,7 @@ class InactivityLogoutTest extends TestCase
         $this->dashboardAs($machine, 60 * 60)->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function it_logs_out_after_the_configured_timeout()
     {
         $machine = Machine::factory()->create(['auto_logout_timeout' => 300]);
@@ -61,7 +62,7 @@ class InactivityLogoutTest extends TestCase
             ->assertRedirect(route('pos.auth.user.select'));
     }
 
-    /** @test */
+    #[Test]
     public function it_keeps_the_user_logged_in_within_the_configured_timeout()
     {
         $machine = Machine::factory()->create(['auto_logout_timeout' => 1800]);
