@@ -88,7 +88,7 @@ final class Navigation
                  * reason the fursuit one is: it is the number a reviewer acts on, and the
                  * total would be the account count, which nobody works through.
                  */
-                $this->item('Profiles', 'contact', 'admin.profiles.index', $badges['profiles'] ?? null, $this->permits('viewAny', UserProfile::class)),
+                $this->item('Profiles', 'user-check', 'admin.profiles.index', $badges['profiles'] ?? null, $this->permits('viewAny', UserProfile::class)),
                 $this->item('Special Codes', 'qr-code', 'admin.special-codes.index', null, $this->permits('viewAny', SpecialCode::class)),
                 $this->item('Cache', 'database', 'admin.tools.catch-em-all-cache', null, $this->permits('manage-admin')),
             ]],
