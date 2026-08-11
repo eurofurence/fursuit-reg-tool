@@ -84,8 +84,8 @@ test('the admin.badge-pdf routes refuse a signed-in attendee', function () {
     // They sat behind `auth` alone, and `custom_id` is
     // `{attendee_id}-{n}`, so the whole namespace was enumerable from any attendee
     // number: every logged-in user could pull any other attendee's badge PDF, image,
-    // name, species and Catch-Em-All QR code included. `can:access-manage` closed that per
-    // rebuild-plan 2.10 change 20, and it is `can:manage-admin` now. Asserted before the
+    // name, species and Catch-Em-All QR code included. `can:access-manage` closed that,
+    // and it is `can:manage-admin` now. Asserted before the
     // record exists, because the guard has to run ahead of the lookup that would otherwise
     // 404 and hide the hole.
     actingAs($this->attendee);

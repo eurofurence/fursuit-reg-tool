@@ -40,7 +40,7 @@ class User extends Authenticatable
     protected $casts = [
         'is_admin' => 'bool',
         // Uncast until now while is_admin was cast, so `is_reviewer === true` was false
-        // against the raw tinyint (rebuild-plan 2.10 change 47, audit landmine 58).
+        // against the raw tinyint.
         'is_reviewer' => 'bool',
         'refresh_token' => 'encrypted',
         'refresh_token_expires_at' => 'datetime',

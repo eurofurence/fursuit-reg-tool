@@ -2,7 +2,7 @@
 /**
  * The TSE client detail page. It has no the old panel counterpart: the resource declared no
  * view page and no infolist, so the only way to look at a client was the edit form, and
- * that form is exactly what does not come across (rebuild-plan 2.10 #14).
+ * that form is exactly what does not come across.
  *
  * Everything on this page is read-only, and not by disabling inputs: the fields render as
  * text, so nothing on screen suggests a value that could be changed. A TSE client is the

@@ -1,7 +1,7 @@
 <script setup>
 /**
- * A badge. There is no create counterpart: that page has never been able to save
- * (rebuild-plan 2.10 #6), and no separate show page either, so this is also what a
+ * A badge. There is no create counterpart: that page has never been able to save,
+ * and no separate show page either, so this is also what a
  * reviewer opens from the list. `canEdit` is false for them: the two status selects render
  * as text like the other twelve fields and the save bar is gone, because the page is the
  * record rather than a form they can submit. The PUT refuses them independently.
@@ -10,11 +10,11 @@
  * of its fourteen fields were `->disabled()`. The two differences are both money-safety.
  *
  *  - `total` joins them. It rendered euros and had no inverse on write, so saving an
- *    unchanged badge wrote "3.00" into a cents column and turned 300 cents into 3
- *    (rebuild-plan 2.10 #3). Badge totals come from the checkout pipeline.
+ *    unchanged badge wrote "3.00" into a cents column and turned 300 cents into 3.
+ *    Badge totals come from the checkout pipeline.
  *  - the two status selects offer only the transitions the state machines allow from the
  *    badge's current state, and the server runs `transitionTo()` rather than writing the
- *    string (rebuild-plan 2.10 #8). That is why the fulfillment list is short: from
+ *    string. That is why the fulfillment list is short: from
  *    `pending` the only way on is `processing`.
  *
  * Read-only fields render as text rather than greyed-out inputs, per FormField: a disabled

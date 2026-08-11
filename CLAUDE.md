@@ -220,7 +220,6 @@ Read the file for the area you are changing; each records decisions that were re
 | [`docs/desk-corrections.md`](docs/desk-corrections.md) | POS badge edits, the manager gate, or repricing an open checkout |
 | [`docs/prepaid-badges.md`](docs/prepaid-badges.md) | `BadgePolicy::create()`, `getPrepaidBadgesLeft()`, badge pricing |
 | [`docs/badge-generation.md`](docs/badge-generation.md) | badge artwork classes in `app/Badges/` |
-| [`docs/catch-em-all.md`](docs/catch-em-all.md) | `routes/catch-em-all.php`, `app/Domain/CatchEmAll/`, rarity, achievements, the FCEA ranking models |
 | [`docs/printing.md`](docs/printing.md) | print batches, jobs, leases, verification, the print agent (build/debug companion: [`docs/printing-implementation.md`](docs/printing-implementation.md)) |
 | [`docs/fiscal-compliance.md`](docs/fiscal-compliance.md) | SumUp, Fiskaly TSE signing, DSFinV-K exports |
 | [`docs/migrations.md`](docs/migrations.md) | writing any migration |
@@ -229,6 +228,13 @@ Read the file for the area you are changing; each records decisions that were re
 
 Repo root carries only `README.md` (setup), `openapi.yml` (API spec) and this file. Everything else
 is under `docs/`. The old root notes - `CATCH.md`, `TSE.md`, `zebra.md`, `PRINTING_SYSTEM.md` and the
-`PRINTING_SYSTEM_IMPROVEMENTS*.md` pair - are deleted: they described the retired QZ Tray printing
-system, or a compliance gap analysis whose gaps have since been closed. Do not reintroduce
-subsystem notes at the root; add or extend a file in `docs/` and list it in the table above.
+`PRINTING_SYSTEM_IMPROVEMENTS*.md` pair - are deleted, as are the three `docs/admin/` files that
+tracked the Filament-to-Inertia migration: each described a retired system, a finished migration, or
+a compliance gap that has since been closed. `git log` has them. Do not reintroduce subsystem notes
+at the root; add or extend a file in `docs/` and list it in the table above.
+
+Catch-Em-All has no doc: `routes/catch-em-all.php`, `app/Domain/CatchEmAll/` and `config/fcea.php`
+are the source of truth. One trap worth knowing without reading for it - the unrouted
+`App\Http\Controllers\FCEA\DashboardController` still owns the ranking-refresh statics that
+`fcea:refresh-rankings` and `UpdateRankingsJob` call, so deleting it as dead code takes the
+leaderboard with it.

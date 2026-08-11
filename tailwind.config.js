@@ -68,7 +68,7 @@ export default {
                    PrimeVue ramp above, so they are mg-surface-0..3 here. The
                    ported components use opacity modifiers on these names
                    (mg-surface-1/95, state-live/50, hairline/60, fg-3/25 …),
-                   hence the <alpha-value> form. See docs/admin/rebuild-plan.md 1.3 */
+                   hence the <alpha-value> form. */
                 'mg-surface-0': 'rgb(var(--mg-surface-0) / <alpha-value>)',
                 'mg-surface-1': 'rgb(var(--mg-surface-1) / <alpha-value>)',
                 'mg-surface-2': 'rgb(var(--mg-surface-2) / <alpha-value>)',
@@ -100,7 +100,7 @@ export default {
                 'xs': '370px',
             },
 
-            /* /manage density (rebuild-plan 1.4). Table rows 28px, header 24px.
+            /* /manage density. Table rows 28px, header 24px.
                In spacing rather than height so h-, min-h-, py- and gap- all get
                them from one declaration. */
             spacing: {

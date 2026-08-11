@@ -78,7 +78,7 @@ Route::middleware('can:manage-admin')->group(function () {
  * both are pages rather than resources and neither is worth a file of its own; the paths
  * are a separate prefix group, so nothing about `tools.` applies to them.
  *
- * Three routes, matching the plan's table (rebuild-plan part 2, routes 450-452). The GET
+ * Three routes. The GET
  * renders idle, review (`?review=1`) or result; `preview` reads and redirects into the
  * review; `apply` is the single write. Cancel and "Run again" are plain links back to the
  * GET, because clearing the screen must not be a request that can change anything.

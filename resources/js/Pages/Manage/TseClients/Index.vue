@@ -12,13 +12,13 @@
  * mounted the search box - it did not render FilterBar before the toolbar moved into
  * DataTable, and it does not pass `searchable` now. That is left exactly as it was rather
  * than quietly fixed here: this change is about where the controls live, not about which
- * ones a module offers, and turning search on for a fiscal read-only list is a decision
- * that belongs to whoever owns the parity checklist. No column is toggleable either, so
+ * ones a module offers, and turning search on for a fiscal read-only list is a separate
+ * decision for whoever owns this module. No column is toggleable either, so
  * DataTable draws no toolbar at all.
  *
  * The page has no actions. `Create TSE Client` fabricated a client locally that Fiskaly
- * had never issued, and it is gone (rebuild-plan 2.10 #13); the row opens the record
- * rather than editing it, because the identity fields are read-only (2.10 #14). The note
+ * had never issued, and it is gone; the row opens the record
+ * rather than editing it, because the identity fields are read-only. The note
  * under the header says where clients actually come from, since the panel no longer looks
  * like it can make one.
  */

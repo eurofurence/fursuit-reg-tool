@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Route;
 | Admin panel routes
 |--------------------------------------------------------------------------
 |
-| The Inertia admin panel, and the only one: it serves /admin and the old panel
-| panel that used to sit there is gone; see docs/admin/rebuild-plan.md. The
+| The Inertia admin panel, and the only one: it serves /admin and the old
+| panel that used to sit there is gone. The
 | route names are admin.*, and this group is the only thing that registers
 | them. This file holds the panel shell only: the dashboard, the
 | session-state endpoints and the shared table endpoint. Every module lives

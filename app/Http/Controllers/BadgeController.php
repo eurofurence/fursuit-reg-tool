@@ -224,7 +224,7 @@ class BadgeController extends Controller
     public function update(BadgeUpdateRequest $request, Badge $badge)
     {
         // `updateAsOwner`, not `update`: the panel override on `update` is request
-        // independent since rebuild-plan 2.2, and this write path resets the fursuit to
+        // independent, and this write path resets the fursuit to
         // pending review and recalculates the total, so it has to keep answering to the
         // extra-copy, print-lock, event-ended and "still Pending" rules.
         Gate::authorize('updateAsOwner', $badge);

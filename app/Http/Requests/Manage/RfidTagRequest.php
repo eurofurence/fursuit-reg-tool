@@ -19,8 +19,8 @@ use Illuminate\Validation\Rule;
  * enforces `min:8`, `max:20` and digits only on a tag an attendee registers at the till;
  * this form accepts any string up to 255, so an admin can enter a tag whose reader output
  * the POS validator would refuse. Tightening it here is a behaviour change nobody asked
- * for and would lock admins out of correcting a tag that already exists, so parity wins
- * and the divergence is recorded in docs/admin/parity-checklist.md instead.
+ * for and would lock admins out of correcting a tag that already exists, so the looser
+ * rule stands here deliberately.
  */
 class RfidTagRequest extends FormRequest
 {

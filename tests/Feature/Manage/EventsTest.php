@@ -650,7 +650,7 @@ test('deleting an event that still owns fursuits is refused, single and bulk', f
      * never runs, FursuitObserver never runs, no `deleted_at` is written, no activity
      * entry is logged, and the paid badges backing DSFinV-K and TSE reconciliation are
      * gone with no restore path, because EventPolicy deliberately has no `restore` or
-     * `forceDelete`. See rebuild-plan 2.10 #62.
+     * `forceDelete`.
      */
     $event = ($this->event)();
     $fursuit = Fursuit::factory()->create(['event_id' => $event->id]);

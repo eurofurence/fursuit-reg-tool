@@ -46,7 +46,7 @@ Route::middleware(EventEndedMiddleware::class)->group(function () {
 // The badge PDF routes used to be a second `/admin` group here, named admin.badge-pdf.*
 // by hand. The panel now owns the `admin.` name prefix, so they moved into it: they are
 // registered in routes/manage/tools.php beside the badge-preview PDF routes and keep both
-// their URLs and their names. See docs/admin/rebuild-plan.md part 5 step 14.
+// their URLs and their names.
 
 // The old panel used to sit here. It is gone; the Inertia panel owns /admin.
 // Kept for one release so bookmarked deep links land on the new panel instead of a 404.

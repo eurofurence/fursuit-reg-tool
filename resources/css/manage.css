@@ -17,8 +17,6 @@
  * so they read as cool neutral rather than dead grey, and state colour as the
  * only colour in the UI.
  *
- * See docs/admin/rebuild-plan.md 1.3 and 1.4.
- *
  * Imported from Layouts/ManageLayout.vue, not from app.js, so the panel's
  * tokens ship with the panel's chunk.
  */

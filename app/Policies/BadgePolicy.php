@@ -78,8 +78,7 @@ class BadgePolicy
      * badge" to "owner rules only" without anything saying so, and
      * /admin/badges/{badge}/edit would 403 on every badge an admin does not own.
      * Answered on the actor now, with no reference to the current request, so the same
-     * question gets the same answer from a queue worker or a console command. See
-     * rebuild-plan 2.2.
+     * question gets the same answer from a queue worker or a console command.
      *
      * Dropping the route check made this ability request-independent, which is the whole
      * point, but it also meant the *public* self-service editor at `PUT /badges/{badge}`

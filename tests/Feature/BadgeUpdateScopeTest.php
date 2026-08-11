@@ -5,11 +5,11 @@
  *
  * `BadgePolicy::update` used to read `$user->is_admin && request()->routeIs('<old-panel>.*',
  * 'livewire.*')`, which is false on `Route::resource('badges')`, so every operator on the
- * public routes fell through to the owner rules. Rebuild-plan 2.2 made the override
+ * public routes fell through to the owner rules. The panel override was made
  * request-independent, which is right for /admin and wrong here: the same ability guards
  * `GET /badges/{badge}/edit` and `PUT /badges/{badge}`, a write path that resets the
  * fursuit to pending review and recalculates the total. `updateAsOwner()` is what those
- * routes ask now. See rebuild-plan 2.10 #63.
+ * routes ask now.
  */
 
 use App\Models\Badge\Badge;
@@ -112,7 +112,7 @@ test('the print lock still stops the owner, so the guard is the lock and not the
 
 test('the panel override survives for an admin and is gone for a reviewer', function () {
     /*
-     * `update` keeps answering yes for an admin, which is what rebuild-plan 2.2 asks for.
+     * `update` keeps answering yes for an admin, which is what the panel needs.
      * The reviewer half of the override is gone: reviewers were narrowed to Dashboard,
      * Badges and Fursuits, and reading a badge is what they kept, not moving one between
      * states (docs/admin/roles.md). /admin/badges/{badge}/edit authorizes `view` now and

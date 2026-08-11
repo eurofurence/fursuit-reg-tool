@@ -7,7 +7,7 @@
  *
  *  - `status` is a transition picker, not a free select. It offers the state the job is in
  *    plus the edges PrintJobStatusEnum allows from there, and the server runs the model's
- *    own state handling rather than writing the column (rebuild-plan 2.10 #10). That is
+ *    own state handling rather than writing the column. That is
  *    why the list is short: from `printed` there is nowhere left to go.
  *  - on a new job the status is fixed at Pending. There is nothing to transition from, and
  *    a create page that could fabricate a Printed card would say a card exists that nobody
