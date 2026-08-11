@@ -38,7 +38,7 @@ The system manages the full badge lifecycle and is split into several interfaces
 
 ## Tech stack
 
-- **Backend:** Laravel 11, PHP 8.2+ (CI and images run 8.4), Laravel Octane (Swoole) in production
+- **Backend:** Laravel 11, PHP 8.2+ (CI and images run 8.5), Laravel Octane (Swoole) in production
 - **Frontend:** Inertia.js, Vue 3, PrimeVue, Tailwind CSS, Vite
 - **Admin:** Inertia + Vue, built on `App\Support\Manage` (tables, filters, actions)
 - **Data:** MySQL, Redis, Laravel Horizon (queues)
@@ -110,7 +110,7 @@ Deployment is fully automated and container-based.
 1. **Build & publish** — on every push to `main` (and on releases), a GitHub Actions workflow
    (`.github/workflows/docker.yml`) builds the production image and pushes it to Docker Hub under
    the `eurofurence/` namespace as **`eurofurence/fursuit-reg-tool`**. The image is built from the
-   multi-stage [`Dockerfile`](Dockerfile) (PHP 8.4 + a Node/Vite asset build) and serves the app
+   multi-stage [`Dockerfile`](Dockerfile) (PHP 8.5 + a Node/Vite asset build) and serves the app
    with **Laravel Octane** (`octane:start`).
 
 2. **Release** — the cluster runs **Kubernetes** with **ArgoCD** syncing a Helm chart. Database
