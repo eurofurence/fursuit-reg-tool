@@ -598,9 +598,10 @@ class BadgeController extends Controller
 
             // The print cutoff. Everything approved before the last run is already printed
             // and filed, so the next run only wants what came in after it; without this the
-            // list re-offers the whole backlog on every run. BadgePrintController::bulk()
-            // sets `approved_from` to the newest badge it just queued, and the redirect
-            // carries it back onto the list.
+            // list re-offers the whole backlog on every run. Set by the operator and left
+            // alone by everything else: printing used to move this bound to the newest
+            // approval in the run it had just queued, which narrowed the list under whoever
+            // was working it on every press of Print.
             Filter::datetime('approved_from', 'Approved from')
                 ->chipLabel('Approved after')
                 ->apply(fn (Builder $query, string $value) => $this->applyApprovedBound($query, '>=', $value)),

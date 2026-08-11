@@ -15,7 +15,6 @@ use App\Models\Badge\State_Fulfillment\Processing;
 use App\Support\Manage\Action;
 use App\Support\Manage\Status;
 use App\Support\Manage\Toast;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
@@ -170,52 +169,17 @@ class BadgePrintController extends Controller
             $this->queuedBody($batch),
         );
 
-        return $this->backWithCutoff($badges);
-    }
-
-    /**
-     * Back to the list, with the approval cutoff moved past the run just queued.
-     *
-     * These badges are about to come off the printer and be filed, so the operator's next
-     * run wants what was approved after the newest of them and nothing before it. Writing
-     * the bound into `filter[approved_from]` is what makes that the default next view
-     * rather than something to set by hand between every run.
-     *
-     * The bound is the newest `approved_at` in the run rather than now(), because a badge
-     * approved between the operator ticking the boxes and pressing Print was never in this
-     * batch and must not be filtered away by it.
-     *
-     * A run whose badges carry no approval timestamp leaves the filter alone; there is no
-     * cutoff to be had, and overwriting a good one with a blank would be worse than
-     * leaving it.
-     *
-     * @param  EloquentCollection<int, Badge>  $badges
-     */
-    private function backWithCutoff(EloquentCollection $badges): RedirectResponse
-    {
-        // Parsed rather than read straight off the model: Fursuit does not cast
-        // `approved_at`, so these are raw strings from the driver.
-        $newest = $badges->loadMissing('fursuit')
-            ->pluck('fursuit.approved_at')
-            ->filter()
-            ->map(fn ($at) => Carbon::parse($at))
-            ->max();
-
-        if (! $newest) {
-            return back();
-        }
-
-        $target = back()->getTargetUrl();
-        $parts = parse_url($target);
-        parse_str($parts['query'] ?? '', $query);
-
-        // The control the chip renders is a datetime-local, whose value has no zone and no
-        // seconds; anything else round-trips into a blank box.
-        $query['filter']['approved_from'] = $newest->format('Y-m-d\TH:i');
-
-        return redirect()->to(
-            ($parts['path'] ?? '/').'?'.http_build_query($query)
-        );
+        /*
+         * Straight back to the list the operator was on, filters untouched.
+         *
+         * A print used to rewrite `filter[approved_from]` to the newest approval in the run
+         * on the way back, on the reasoning that the next run only wants what came in after
+         * this one. In practice it moved the cutoff on every press of Print - including a
+         * press that queued nothing new - so the list an operator had set up narrowed itself
+         * under them and cards approved before the bound dropped out of view without anybody
+         * asking for that. The filter stays, and stays theirs to set.
+         */
+        return back();
     }
 
     /**

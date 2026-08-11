@@ -34,7 +34,6 @@ use App\Models\Fursuit\Fursuit;
 use App\Models\Species;
 use App\Models\User;
 use App\Support\Manage\EventScope;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 use function Pest\Laravel\actingAs;
@@ -501,49 +500,28 @@ test('a user who cannot see badges is offered no print action at all', function 
     expect(actingAs($this->nobody)->get(route('admin.badges.index'))->status())->toBe(403);
 });
 
-test('the bulk action moves the approval cutoff past the run it just queued', function () {
+test('the bulk action leaves the list filters exactly as it found them', function () {
     $early = ($this->badge)('0100-1');
     $late = ($this->badge)('0200-1');
 
     $early->fursuit->update(['approved_at' => now()->subHours(2)]);
     $late->fursuit->update(['approved_at' => now()->subMinutes(10)]);
 
-    // The operator is standing on a filtered list, and lands back on it.
-    $from = route('admin.badges.index', ['filter' => ['status_payment' => ['paid']]]);
+    /*
+     * A print used to rewrite `filter[approved_from]` to the newest approval in the run on
+     * the way back, so the list narrowed itself on every press of Print - including one that
+     * queued nothing new - and cards approved before the bound left the view without anybody
+     * asking. The operator owns that filter now, so the redirect is the plain one back.
+     */
+    $from = route('admin.badges.index', [
+        'filter' => ['status_payment' => ['paid'], 'approved_from' => '2026-08-08T09:00'],
+    ]);
 
-    $response = actingAs($this->admin)
+    actingAs($this->admin)
         ->from($from)
         ->post(route('admin.badges.bulk.print'), [
             'ids' => [$early->id, $late->id],
             'printer_id' => $this->printer->id,
-        ]);
-
-    // The bound is the newest badge in the run, in the format the datetime-local control
-    // round-trips, and the rest of the query string survives.
-    $target = $response->headers->get('Location');
-
-    parse_str(parse_url($target, PHP_URL_QUERY) ?: '', $query);
-
-    // Parsed, because Fursuit does not cast `approved_at`: it comes back a raw string.
-    expect($query['filter']['approved_from'])
-        ->toBe(Carbon::parse($late->fursuit->fresh()->approved_at)->format('Y-m-d\TH:i'))
-        ->and($query['filter']['status_payment'])->toBe(['paid']);
-});
-
-test('a run with no approval timestamps leaves the cutoff alone', function () {
-    $badge = ($this->badge)();
-
-    $badge->fursuit->update(['approved_at' => null]);
-
-    // Overwriting a good cutoff with a blank would be worse than not moving it.
-    $from = route('admin.badges.index', ['filter' => ['approved_from' => '2026-08-08T09:00']]);
-
-    $response = actingAs($this->admin)
-        ->from($from)
-        ->post(route('admin.badges.bulk.print'), [
-            'ids' => [$badge->id],
-            'printer_id' => $this->printer->id,
-        ]);
-
-    $response->assertRedirect($from);
+        ])
+        ->assertRedirect($from);
 });
