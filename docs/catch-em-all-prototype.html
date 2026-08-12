@@ -1,0 +1,725 @@
+<title>Catch-Em-All Prototype</title>
+<style>
+  :root {
+    --accent: #005953;
+    --accent-hi: #0a7a71;
+    --page: #0b0f14;
+    --panel: #101822;
+    --panel-2: #16202c;
+    --line: #1d2a38;
+    --line-soft: #223142;
+    --ink: #f2f6fb;
+    --muted: #6f8296;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #070a0e; color: var(--ink); margin: 0; padding: 28px 20px 60px;
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.015em; }
+  .lede { color: var(--muted); max-width: 74ch; margin: 0 0 22px; }
+  .stage { display: flex; gap: 34px; align-items: flex-start; flex-wrap: wrap; }
+
+  /* ---------- phone shell ---------- */
+  .phone {
+    width: 390px; height: 780px; border: 1px solid #223142; border-radius: 34px; padding: 8px;
+    background: #05070a; flex: 0 0 auto; box-shadow: 0 0 0 1px #0d141c inset;
+  }
+  .screen {
+    width: 100%; height: 100%; border-radius: 27px; overflow: hidden; background: var(--page);
+    display: flex; flex-direction: column; position: relative;
+  }
+
+  /* ---------- app chrome ---------- */
+  .status {
+    height: 28px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px; font: 600 11.5px/1 inherit; color: var(--muted); flex: 0 0 auto;
+  }
+  .top {
+    padding: 6px 18px 14px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line); flex: 0 0 auto;
+  }
+  .top .t { font: 800 21px/1 inherit; letter-spacing: -0.02em; }
+  .top .sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .pill {
+    background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 999px;
+    padding: 7px 13px; font: 700 13px/1 inherit; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .pill.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 18px 24px; }
+  main::-webkit-scrollbar { width: 0; }
+  .view { display: none; }
+  .view.on { display: block; }
+
+  /* ---------- code entry ---------- */
+  .entry { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  .entry .label {
+    font: 700 11px/1 inherit; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px;
+  }
+  #code {
+    width: 100%; background: var(--page); border: 1px solid var(--line-soft); border-radius: 12px;
+    color: var(--ink); font: 800 30px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.4em; text-indent: 0.4em; text-align: center; padding: 15px 10px; outline: none;
+    text-transform: uppercase;
+  }
+  #code::placeholder { color: #223142; font-weight: 500; letter-spacing: 0.4em; }
+  #code:focus { border-color: var(--accent-hi); box-shadow: inset 0 0 0 1px var(--accent-hi); }
+  .btn {
+    margin-top: 14px; width: 100%; height: 52px; border: 0; border-radius: 12px;
+    background: var(--accent); color: #fff; font: 700 16px/1 inherit; cursor: pointer;
+  }
+  .btn:disabled { background: var(--panel-2); color: #46586d; cursor: default; }
+  .btn.ghost { background: transparent; border: 1px solid var(--line-soft); color: var(--ink); }
+  .hint { color: var(--muted); font-size: 12.5px; margin-top: 12px; }
+
+  /* ---------- tiles ---------- */
+  h3.sec {
+    font: 700 11px/1 inherit; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
+    margin: 22px 0 10px;
+  }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .tile {
+    aspect-ratio: 1; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line-soft);
+    overflow: hidden; position: relative; cursor: pointer;
+  }
+  .tile.blank { background: #0e151d; border-style: dashed; border-color: #1c2836; cursor: default; }
+  .tile.fresh::after {
+    content: ""; position: absolute; inset: 0; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--accent-hi);
+  }
+  .tile svg { width: 100%; height: 100%; display: block; }
+
+  /* ---------- rows ---------- */
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .row .rank { width: 24px; font: 800 15px/1 inherit; font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; }
+  .row .who { flex: 1; min-width: 0; }
+  .row .who b { font-weight: 700; }
+  .row .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .row .n { font: 800 17px/1 inherit; font-variant-numeric: tabular-nums; }
+  .row.me { background: rgba(0,89,83,.18); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 10px; margin: 6px 0; }
+  .accent { color: var(--accent-hi); }
+
+  /* ---------- marks ---------- */
+  .ach { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .ach .b {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line-soft);
+    display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--muted);
+  }
+  .ach .b.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ach .x { flex: 1; }
+  .ach .x b { font-weight: 700; }
+  .ach .x small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .bar { height: 5px; border-radius: 3px; background: var(--panel-2); margin-top: 9px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); transition: width .35s ease; }
+
+  /* ---------- bottom nav ---------- */
+  nav { border-top: 1px solid var(--line); display: flex; padding: 6px 4px 12px; flex: 0 0 auto; background: var(--page); }
+  nav button {
+    flex: 1; background: none; border: 0; cursor: pointer; padding: 6px 0;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    color: var(--muted); font: 600 10.5px/1 inherit;
+  }
+  nav button .box {
+    width: 46px; height: 31px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    transition: background .18s ease;
+  }
+  nav button.on { color: var(--ink); }
+  nav button.on .box { background: var(--accent); color: #fff; }
+
+  /* ---------- sheet + toast ---------- */
+  .scrim {
+    position: absolute; inset: 0; background: rgba(3,6,10,.72); display: flex; align-items: flex-end;
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .sheet {
+    width: 100%; background: var(--panel); border-top: 1px solid var(--line-soft);
+    border-radius: 22px 22px 27px 27px; padding: 6px 18px 22px; text-align: center;
+    transform: translateY(102%); touch-action: none;
+    transition: transform .42s cubic-bezier(.16, 1.02, .3, 1);
+  }
+  .scrim.on .sheet { transform: translateY(0); }
+  .sheet.dragging { transition: none; }
+  .grab { width: 40px; height: 4px; border-radius: 2px; background: #2a3a4c; margin: 8px auto 14px; }
+  .sheet .big {
+    width: 132px; height: 132px; border-radius: 18px; overflow: hidden; margin: 0 auto 14px;
+    border: 2px solid var(--accent-hi);
+  }
+  .scrim.on .sheet .big { animation: pop .5s cubic-bezier(.2, 1.3, .4, 1) both .08s; }
+  .scrim.on .sheet .nm,
+  .scrim.on .sheet .mt,
+  .scrim.on .sheet .stats,
+  .scrim.on .sheet .btn { animation: rise .38s ease both; }
+  .scrim.on .sheet .mt { animation-delay: .06s; }
+  .scrim.on .sheet .stats { animation-delay: .11s; }
+  .scrim.on .sheet .btn { animation-delay: .15s; }
+  @keyframes pop { from { transform: scale(.72) rotate(-4deg); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes rise { from { transform: translateY(9px); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes tilein { from { transform: scale(.6); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes bump { 50% { transform: scale(1.16) } }
+  .tile.fresh { animation: tilein .34s cubic-bezier(.2, 1.25, .4, 1) both; }
+  .pill.bump { animation: bump .34s ease; }
+  .btn:active { transform: scale(.985); }
+  .view.on { animation: rise .22s ease both; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  .sheet .big svg { width: 100%; height: 100%; display: block; }
+  .sheet .nm { font: 800 22px/1 inherit; }
+  .sheet .mt { color: var(--muted); font-size: 13.5px; margin-top: 7px; }
+  .stats { display: flex; justify-content: space-around; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+  .stats div div:first-child { font: 800 20px/1 inherit; font-variant-numeric: tabular-nums; }
+  .stats div div:last-child { color: var(--muted); font-size: 11.5px; margin-top: 5px; }
+  .toast {
+    position: absolute; left: 16px; right: 16px; bottom: 92px; background: var(--panel-2);
+    border: 1px solid var(--line-soft); border-radius: 12px; padding: 13px 15px; font-size: 14px;
+    opacity: 0; transform: translateY(6px); transition: all .2s ease; pointer-events: none;
+  }
+  .toast.on { opacity: 1; transform: translateY(0); }
+  .toast.bad { border-color: #4a2530; }
+
+  /* ---------- profiles ---------- */
+  .prof { text-align: center; padding-top: 4px; }
+  .prof .avatar {
+    width: 96px; height: 96px; border-radius: 50%; overflow: hidden; margin: 0 auto 12px;
+    border: 1px solid var(--line-soft);
+  }
+  .prof .avatar svg { width: 100%; height: 100%; display: block; }
+  .prof .nm { font: 800 20px/1 inherit; }
+  .prof .sp { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .prof .bio { text-align: left; font-size: 14px; color: #d5dced; margin: 16px 0 4px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 11px;
+    font: 700 11.5px/1 inherit; border: 1px solid var(--line-soft); background: var(--panel-2); color: var(--muted);
+  }
+  .chip.ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip.wait { border-color: #3d4a2a; color: #c3c98b; background: #1b2015; }
+  .chip.no { border-color: #4a2530; color: #d79a9a; background: #1f1418; }
+  .links { margin-top: 10px; }
+  .link {
+    display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line);
+    font-size: 14px; text-align: left;
+  }
+  .link span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link small { color: var(--muted); font-size: 12px; }
+  .link button {
+    background: none; border: 0; color: var(--muted); cursor: pointer; font: 600 12px/1 inherit; padding: 6px;
+  }
+  textarea.bio {
+    width: 100%; background: var(--page); border: 1px solid var(--line-soft); border-radius: 12px; color: var(--ink);
+    font: 400 14px/1.5 inherit; padding: 12px; resize: none; outline: none;
+  }
+  textarea.bio:focus { border-color: var(--accent-hi); }
+  .banner {
+    border: 1px solid var(--line-soft); background: var(--panel-2); border-radius: 12px; padding: 12px 14px;
+    font-size: 13px; color: #c8d1e2; margin-bottom: 14px; text-align: left;
+  }
+
+  /* ---------- notes ---------- */
+  .notes { flex: 1; min-width: 340px; max-width: 640px; }
+  .notes h2 { font-size: 16px; margin: 0 0 10px; }
+  .notes ul { padding-left: 18px; color: #c8d1e2; }
+  .notes li { margin-bottom: 7px; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: #9fb3d0; }
+  .try { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 18px; }
+  .try b {
+    font: 700 13px/1 ui-monospace, Menlo, monospace; background: var(--panel-2); border: 1px solid var(--line-soft);
+    border-radius: 6px; padding: 6px 9px; letter-spacing: .1em;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 6px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; }
+  td.old { color: #c98b8b; } td.new { color: #7fc9bf; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/>
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+  </symbol>
+  <symbol id="i-medal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/>
+    <path d="M11 12 5.12 2.2"/><path d="m13 12 5.88-9.8"/><path d="M8 7h8"/><circle cx="12" cy="17" r="5"/><path d="M12 18v-2h-.5"/>
+  </symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+  </symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/>
+    <rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
+  </symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 6 9 17l-5-5"/>
+  </symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>
+  </symbol>
+</defs></svg>
+
+<h1>Catch-Em-All: sticker book, working prototype</h1>
+<p class="lede">Tap the nav, type a code, catch something. Counters, collection and marks all update, so it reads as an app
+rather than five stills. One accent, <code>#005953</code>, on flat fills; <code>#0a7a71</code> only for 1px strokes on dark
+where the base green disappears. Code entry uses the con-badge framing as a single wide-tracked field.</p>
+
+<div class="stage">
+  <div class="phone"><div class="screen">
+    <div class="status"><span>18:41</span><span>EF30</span></div>
+
+    <div class="top">
+      <div><div class="t" id="title">Catch 'Em All</div><div class="sub" id="subtitle">Eurofurence 30</div></div>
+      <span class="pill" id="headpill">6 caught</span>
+    </div>
+
+    <main>
+      <!-- CATCH -->
+      <section class="view on" id="v-catch">
+        <div class="entry">
+          <div class="label">Badge code</div>
+          <input id="code" maxlength="5" placeholder="ABCDE" autocomplete="off" autocorrect="off"
+                 autocapitalize="characters" spellcheck="false" inputmode="text">
+          <button class="btn" id="catchBtn" disabled>Catch</button>
+          <div class="hint">Five characters, printed under the name on their badge.</div>
+        </div>
+        <h3 class="sec">Latest</h3>
+        <div class="tiles" id="latest"></div>
+      </section>
+
+      <!-- COLLECTION -->
+      <section class="view" id="v-collection">
+        <div class="tiles" id="grid"></div>
+        <p class="hint">Tap a sticker for who it was. Dashed slots are people still out there.</p>
+      </section>
+
+      <!-- RANKING -->
+      <section class="view" id="v-ranking"></section>
+
+      <!-- MARKS -->
+      <section class="view" id="v-marks"></section>
+
+      <!-- YOU: own profile, matching the shipped UserProfile page -->
+      <section class="view" id="v-you">
+        <div class="prof">
+          <div class="avatar" id="myAvatar"></div>
+          <div class="nm">Tin</div>
+          <div style="margin-top:9px"><span class="chip ok" id="myStatus">Approved &middot; public</span></div>
+        </div>
+        <div class="tiles" style="grid-template-columns:repeat(3,1fr);margin-top:16px">
+          <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit" id="s1">6</div><div class="hint" style="margin-top:6px">caught</div></div>
+          <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit" id="s2">6</div><div class="hint" style="margin-top:6px">species</div></div>
+          <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit" id="s3">4th</div><div class="hint" style="margin-top:6px">rank</div></div>
+        </div>
+
+        <h3 class="sec">About</h3>
+        <textarea class="bio" id="myBio" rows="3" maxlength="255">Rat person. Ask before photos, happy to pose.</textarea>
+        <div class="hint" style="text-align:right" id="bioCount">44 / 255</div>
+
+        <h3 class="sec">Links</h3>
+        <div class="links" id="myLinks"></div>
+        <button class="btn ghost" id="addLink" style="margin-top:12px">Add link</button>
+        <p class="hint">Up to ten. Editing anything here sends the profile back for review before other players see it.</p>
+        <button class="btn" id="saveProfile">Save profile</button>
+
+        <h3 class="sec">Your day</h3>
+        <div id="timeline"></div>
+      </section>
+
+      <!-- SOMEONE ELSE'S PROFILE -->
+      <section class="view" id="v-profile"></section>
+    </main>
+
+    <nav>
+      <button data-v="ranking"><span class="box"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>Ranking</button>
+      <button data-v="marks"><span class="box"><svg width="20" height="20"><use href="#i-medal"/></svg></span>Marks</button>
+      <button data-v="catch" class="on"><span class="box"><svg width="20" height="20"><use href="#i-target"/></svg></span>Catch</button>
+      <button data-v="collection"><span class="box"><svg width="20" height="20"><use href="#i-grid"/></svg></span>Collection</button>
+      <button data-v="you"><span class="box"><svg width="20" height="20"><use href="#i-user"/></svg></span>You</button>
+    </nav>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="scrim" id="scrim">
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="big" id="sheetArt"></div>
+        <div class="nm" id="sheetName">Caspian</div>
+        <div class="mt" id="sheetMeta">Beagle &middot; badge by retrogradeprotogen</div>
+        <div class="stats">
+          <div><div id="sheetCaught">7</div><div>caught</div></div>
+          <div><div id="sheetSpecies">7</div><div>species</div></div>
+          <div><div id="sheetNth">1st</div><div id="sheetNthLabel">Beagle met</div></div>
+        </div>
+        <button class="btn" id="sheetNext">Next code</button>
+        <button class="btn ghost" id="sheetSeen" style="margin-top:8px">See collection</button>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="notes">
+    <h2>Codes that work in the prototype</h2>
+    <div class="try"><b>XSEPE</b><b>UPXNE</b><b>YLSNB</b><b>KHXYZ</b><b>FBAWY</b><b>EHCVF</b><b>GAYLB</b><b>SWPBL</b></div>
+    <p class="hint" style="margin-top:-10px">Anything else gives the failure state. Re-entering a caught code gives the duplicate state.</p>
+
+    <h2 style="margin-top:24px">What the skin decides</h2>
+    <ul>
+      <li><b>One accent.</b> <code>#005953</code> fills the primary button, the active nav slot, progress bars and the "you" row. Nothing else competes, no gradients.</li>
+      <li><b>Icons.</b> lucide <code>trophy</code>, <code>medal</code>, <code>target</code>, <code>layout-grid</code>, <code>user</code>, <code>check</code>, <code>lock</code>, <code>flag</code>. Drops the emoji in <code>Leaderboard.vue:73-75</code>, <code>Achievements.vue:503,777</code>, <code>Collection.vue:557</code> and <code>FursuitRarity::getIcon()</code>.</li>
+      <li><b>One field, not five boxes.</b> Single tap, paste works, no per-box focus jumping. <code>autocapitalize="characters"</code>, <code>autocorrect="off"</code>, submit on the fifth character.</li>
+      <li><b>Collection is the payoff.</b> One tile per fursuit using the synced avatar; dashed empty slots carry the pull. Species repeats stop reading as a bug.</li>
+      <li><b>Rarity tiers gone.</b> <code>UserCatch::getFursuitRarity()</code> ranks by how often a suit was caught, so popular reads as Legendary and day one is all Common. Counts and "least common species you have" replace it.</li>
+      <li><b>Feels native.</b> Content scrolls, header and nav stay put, the catch result is a bottom sheet you can dismiss, and feedback is a toast instead of a red panel pushing the layout down.</li>
+    </ul>
+
+    <h2 style="margin-top:24px">Copy pass</h2>
+    <table>
+      <tr><th>Where</th><th>Now</th><th>Instead</th></tr>
+      <tr><td><code>Catch.vue:115</code></td><td class="old">Amazing Catch!</td><td class="new">(sheet header is the name)</td></tr>
+      <tr><td><code>Catch.vue:173</code></td><td class="old">Continue Hunting!</td><td class="new">Next code</td></tr>
+      <tr><td><code>Catch.vue:193-196</code></td><td class="old">Spot a Fursuiter? / Enter their 5-letter code!</td><td class="new">Badge code + hint under the button</td></tr>
+      <tr><td><code>Catch.vue:232</code></td><td class="old">Invalid code - try again!</td><td class="new">No badge with that code</td></tr>
+      <tr><td><code>Catch.vue:93</code></td><td class="old">Catch them all!</td><td class="new">Eurofurence 30</td></tr>
+      <tr><td><code>Profile.vue:16</code></td><td class="old">Saving space for something special next year at Eurofurence 30</td><td class="new">Your stats (the You tab here)</td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+const SUITS = {
+  XSEPE: { name: "Caspian",  species: "Beagle",           owner: "retrogradeprotogen", c: ["#22304f", "#41537f"],
+           bio: "First con in suit. Beagle noises only.", links: ["https://bsky.app/profile/caspian"] },
+  UPXNE: { name: "Nox",      species: "Kugsha Dog",       owner: "voltaic",            c: ["#2a2540", "#453e66"],
+           bio: "Dance comp regular. Say hi at the stage.", links: ["https://voltaic.example", "https://bsky.app/profile/voltaic"] },
+  YLSNB: { name: "Birch",    species: "Norsk Skogkatt",   owner: "pinefall",           c: ["#1a2b21", "#2c4a39"],
+           bio: null, links: [] },
+  KHXYZ: { name: "Juno",     species: "African Wild Dog", owner: "sunspot",            c: ["#3a2a1e", "#5f4633"],
+           bio: "Fursuit built 2024. Handler is the one with the water.", links: ["https://sunspot.example/juno"] },
+  FBAWY: { name: "Rye",      species: "Coffee fox",       owner: "brewclaw",           c: ["#33202c", "#59374b"],
+           bio: "Coffee fox. Yes, really.", links: ["https://brewclaw.example"] },
+  EHCVF: { name: "Sable",    species: "Red Deer",         owner: "hartline",           c: ["#3d1f2a", "#6a3648"],
+           bio: "Quiet suiter, loud antlers.", links: [] },
+  GAYLB: { name: "Marl",     species: "Beagle",           owner: "tuftear",            c: ["#1c3a45", "#2f5f6e"],
+           bio: null, links: [] },
+  SWPBL: { name: "Wisp",     species: "Rexouium",         owner: "glasswing",          c: ["#123028", "#1f5546"],
+           bio: "Ask before hugs, the tail is fragile.", links: ["https://glasswing.example", "https://bsky.app/profile/glasswing"] },
+};
+
+const me = {
+  name: "Tin",
+  status: "approved",
+  bio: "Rat person. Ask before photos, happy to pose.",
+  links: ["https://tin.example", "https://bsky.app/profile/tin"],
+  c: ["#1f2c3d", "#37506e"],
+};
+const SEED = ["UPXNE", "YLSNB", "KHXYZ", "FBAWY", "EHCVF", "SWPBL"];
+const TIMES = ["13:08", "14:22", "15:51", "16:15", "17:02", "18:04"];
+
+const caught = SEED.map((code, i) => ({ code, ...SUITS[code], time: TIMES[i] }));
+const SLOTS = 16;
+let clock = 18;
+let viewing = null;
+
+const $ = (id) => document.getElementById(id);
+
+// stand-in for the mirrored profile picture: a drawn fursuit head, stable per name
+function art(s) {
+  const seed = [...(s.name || "?")].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const ear = seed % 3;            // 0 pointed, 1 round, 2 tall
+  const fur = s.c[1], back = s.c[0], light = "#f4f7fb";
+  const ears = ear === 0
+    ? `<path d="M17 26 15 8l14 9z" fill="${fur}"/><path d="M47 26 49 8 35 17z" fill="${fur}"/>`
+    : ear === 1
+      ? `<circle cx="18" cy="19" r="7.5" fill="${fur}"/><circle cx="46" cy="19" r="7.5" fill="${fur}"/>`
+      : `<path d="M19 28 16 4l10 12z" fill="${fur}"/><path d="M45 28 48 4 38 16z" fill="${fur}"/>`;
+  return `<svg viewBox="0 0 64 64" role="img" aria-label="${s.name || "profile"}">
+    <rect width="64" height="64" fill="${back}"/>
+    ${ears}
+    <ellipse cx="32" cy="36" rx="17" ry="16" fill="${fur}"/>
+    <ellipse cx="32" cy="44" rx="9" ry="7.5" fill="${light}" opacity=".92"/>
+    <circle cx="25" cy="33" r="2.6" fill="#0b0f14"/><circle cx="39" cy="33" r="2.6" fill="#0b0f14"/>
+    <path d="M32 41.5c-1.6 0-3 1-3 2.1 0 1.2 1.4 2 3 2s3-.8 3-2c0-1.1-1.4-2.1-3-2.1z" fill="#0b0f14"/>
+  </svg>`;
+}
+
+const TITLES = {
+  catch:      ["Catch 'Em All", "Eurofurence 30"],
+  collection: ["Collection",    () => `${caught.length} of 2,775 badges at EF30`],
+  ranking:    ["Ranking",       "Eurofurence 30 &middot; live"],
+  marks:      ["Marks",         () => `${marks().filter(m => m.done).length} of 16 earned`],
+  you:        ["Your profile",  () => STATUS[me.status].sub],
+  profile:    [() => viewing ? viewing.owner : "Profile", "Player profile"],
+};
+
+const STATUS = {
+  approved: { chip: "ok",   label: "Approved &middot; public",  sub: "Visible to other players" },
+  pending:  { chip: "wait", label: "Waiting for review",        sub: "Hidden until a reviewer approves it" },
+  rejected: { chip: "no",   label: "Rejected",                  sub: "Hidden, see the reason below" },
+};
+
+function speciesCount() { return new Set(caught.map(c => c.species)).size; }
+function marks() {
+  const n = caught.length, s = speciesCount();
+  return [
+    { t: "First catch",    done: n >= 1,  sub: "Earned 12 Aug, 13:08" },
+    { t: "Ten in the book",done: n >= 10, sub: `${Math.min(n, 10)} of 10`, prog: Math.min(n / 10, 1) },
+    { t: "Five species",   done: s >= 5,  sub: `${Math.min(s, 5)} of 5`,   prog: Math.min(s / 5, 1) },
+    { t: "Twenty species", done: s >= 20, sub: `${s} of 20`,               prog: s / 20 },
+    { t: "Hidden",         done: false,   sub: "Unlocks when you find it", locked: true },
+  ];
+}
+
+function renderHead(view) {
+  const [t, s] = TITLES[view];
+  $("title").innerHTML = typeof t === "function" ? t() : t;
+  $("subtitle").innerHTML = typeof s === "function" ? s() : s;
+  $("headpill").textContent = `${caught.length} caught`;
+}
+
+function renderTiles(el, list, limit) {
+  const items = list.slice(0, limit || list.length);
+  el.innerHTML = items.map((c, i) =>
+    `<div class="tile ${c.fresh ? "fresh" : ""}" data-i="${caught.indexOf(c)}">${art(c)}</div>`).join("");
+}
+
+function renderCollection() {
+  const blanks = Math.max(SLOTS - caught.length, 4);
+  $("grid").innerHTML =
+    caught.map(c => `<div class="tile ${c.fresh ? "fresh" : ""}" data-i="${caught.indexOf(c)}">${art(c)}</div>`).join("") +
+    Array.from({ length: blanks }, () => `<div class="tile blank"></div>`).join("");
+}
+
+function renderRanking() {
+  const others = [
+    { n: "Rye",   sp: 41, c: 63 }, { n: "Nox",   sp: 38, c: 57 }, { n: "Birch", sp: 35, c: 49 },
+    { n: "Juno",  sp: 14, c: 15 }, { n: "Sable", sp: 13, c: 14 }, { n: "Marl",  sp: 12, c: 12 },
+  ];
+  const me = { n: "Tin", sp: speciesCount(), c: caught.length, me: true };
+  const all = [...others, me].sort((a, b) => b.c - a.c);
+  const myRank = all.indexOf(me) + 1;
+  const suffix = myRank + (["st", "nd", "rd"][myRank - 1] || "th");
+  if ($("s3")) $("s3").textContent = suffix;
+  $("v-ranking").innerHTML = all.map((r, i) => `
+    <div class="row ${r.me ? "me" : ""}">
+      <div class="rank ${i === 0 ? "accent" : ""}">${i === 0
+        ? '<svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-medal"/></svg>' : i + 1}</div>
+      <div class="who"><b>${r.n}</b><small>${r.sp} species${r.me ? " &middot; you" : ""}</small></div>
+      <div class="n">${r.c}</div>
+    </div>`).join("") +
+    `<p class="hint">Ranked by fursuits caught. Ties break by who got there first.</p>`;
+}
+
+function renderMarks() {
+  $("v-marks").innerHTML = marks().map(m => `
+    <div class="ach">
+      <div class="b ${m.done ? "done" : ""}">
+        <svg width="18" height="18" viewBox="0 0 24 24"><use href="#i-${m.done ? "check" : m.locked ? "lock" : "flag"}"/></svg>
+      </div>
+      <div class="x"><b>${m.t}</b><small>${m.sub}</small>
+        ${!m.done && m.prog !== undefined ? `<div class="bar"><i style="width:${Math.round(m.prog * 100)}%"></i></div>` : ""}
+      </div>
+    </div>`).join("") +
+    `<p class="hint">Earned first, then what is close, then locked.</p>`;
+}
+
+function renderYou() {
+  $("s1").textContent = caught.length;
+  $("s2").textContent = speciesCount();
+  $("myAvatar").innerHTML = art(me);
+  const st = STATUS[me.status];
+  $("myStatus").className = "chip " + st.chip;
+  $("myStatus").innerHTML = st.label;
+  $("myBio").value = me.bio ?? "";
+  $("bioCount").textContent = `${(me.bio ?? "").length} / 255`;
+  renderMyLinks();
+  $("timeline").innerHTML = [...caught].reverse().map(c => `
+    <div class="row"><div class="who"><b>${c.name}</b><small>${c.species}</small></div>
+    <div class="n" style="font-size:14px;color:var(--muted)">${c.time}</div></div>`).join("");
+}
+
+function renderMyLinks() {
+  $("myLinks").innerHTML = me.links.length
+    ? me.links.map((url, i) => `
+        <div class="link"><span>${url}</span><button data-rm="${i}">Remove</button></div>`).join("")
+    : `<p class="hint" style="margin:0">No links yet.</p>`;
+  $("addLink").disabled = me.links.length >= 10;
+}
+
+// public profile of another player, mirroring CatchEmAll/UserProfile
+function openProfile(entry) {
+  viewing = entry;
+  const owner = { name: entry.owner, c: entry.c };
+  const theirSuits = Object.values(SUITS).filter(s => s.owner === entry.owner);
+  $("v-profile").innerHTML = `
+    <div class="prof">
+      <div class="avatar">${art(owner)}</div>
+      <div class="nm">${entry.owner}</div>
+      <div class="sp">Player at Eurofurence 30</div>
+    </div>
+    <div class="tiles" style="grid-template-columns:repeat(2,1fr);margin-top:16px">
+      <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit">${theirSuits.length}</div><div class="hint" style="margin-top:6px">fursuit${theirSuits.length === 1 ? "" : "s"} here</div></div>
+      <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit">${12 + theirSuits.length * 7}</div><div class="hint" style="margin-top:6px">times caught</div></div>
+    </div>
+    ${entry.bio ? `<h3 class="sec">About</h3><p class="bio" style="margin:0">${entry.bio}</p>` : ""}
+    <h3 class="sec">Fursuits</h3>
+    ${theirSuits.map(s => `
+      <div class="row">
+        <div class="tile" style="width:44px;height:44px;flex:0 0 auto;border-radius:10px;cursor:default">${art(s)}</div>
+        <div class="who"><b>${s.name}</b><small>${s.species}</small></div>
+        <div class="n" style="font-size:13px;color:${caught.some(c => c.name === s.name) ? "var(--accent-hi)" : "var(--muted)"}">
+          ${caught.some(c => c.name === s.name) ? "caught" : "not yet"}</div>
+      </div>`).join("")}
+    ${entry.links && entry.links.length ? `
+      <h3 class="sec">Links</h3>
+      <div class="banner">Links are written by the attendee and lead off Eurofurence sites.</div>
+      <div class="links">${entry.links.map(u => `<div class="link"><span>${u}</span><small>open</small></div>`).join("")}</div>`
+      : `<h3 class="sec">Links</h3><p class="hint" style="margin:0">None shared.</p>`}
+    <button class="btn ghost" id="profBack" style="margin-top:18px">Back to collection</button>
+    <p class="hint">A profile only shows here once a reviewer approved it. Pending and rejected ones are hidden from other players.</p>`;
+  show("profile");
+  $("profBack").onclick = () => show("collection");
+}
+
+function renderAll() {
+  renderTiles($("latest"), [...caught].reverse(), 8);
+  renderCollection(); renderRanking(); renderMarks(); renderYou();
+  const open = document.querySelector(".view.on");
+  renderHead(open ? open.id.replace("v-", "") : "catch");
+}
+
+let toastTimer;
+function toast(msg, bad) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.toggle("bad", !!bad);
+  t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("on"), 2200);
+}
+
+function show(view) {
+  const tab = view === "profile" ? "collection" : view;   // a player profile sits under Collection
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + view));
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === tab));
+  document.querySelector("main").scrollTop = 0;
+  renderHead(view);
+}
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
+
+$("code").addEventListener("input", e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  $("catchBtn").disabled = e.target.value.length !== 5;
+});
+$("code").addEventListener("keydown", e => { if (e.key === "Enter" && !$("catchBtn").disabled) submit(); });
+$("catchBtn").onclick = submit;
+
+function submit() {
+  const code = $("code").value;
+  const suit = SUITS[code];
+  if (!suit) { toast("No badge with that code", true); return; }
+  if (caught.some(c => c.code === code)) { toast(`${suit.name} is already in your book`); return; }
+
+  clock += 1;
+  caught.forEach(c => c.fresh = false);
+  const entry = { code, ...suit, time: `${18 + Math.floor(clock / 60)}:${String(clock % 60).padStart(2, "0")}`, fresh: true };
+  caught.push(entry);
+  $("code").value = ""; $("catchBtn").disabled = true;
+
+  const nth = caught.filter(c => c.species === entry.species).length;
+  $("sheetArt").innerHTML = art(entry);
+  $("sheetName").textContent = entry.name;
+  $("sheetMeta").innerHTML = `${entry.species} &middot; badge by ${entry.owner}`;
+  $("sheetCaught").textContent = caught.length;
+  $("sheetSpecies").textContent = speciesCount();
+  $("sheetNth").textContent = nth + (["st", "nd", "rd"][nth - 1] || "th");
+  $("sheetNthLabel").textContent = `${entry.species} met`;
+  $("scrim").classList.add("on");
+  renderAll();
+  $("headpill").classList.add("bump");
+  setTimeout(() => $("headpill").classList.remove("bump"), 360);
+}
+
+const sheet = document.querySelector(".sheet");
+function closeSheet() {
+  sheet.classList.remove("dragging");
+  sheet.style.transform = "";
+  $("scrim").classList.remove("on");
+}
+$("sheetNext").onclick = () => { closeSheet(); show("catch"); $("code").focus(); };
+$("sheetSeen").onclick = () => { closeSheet(); show("collection"); };
+$("scrim").onclick = e => { if (e.target === $("scrim")) closeSheet(); };
+
+// drag the sheet down to dismiss, like a native bottom sheet
+let dragY = null, lastY = 0, lastT = 0, velocity = 0;
+sheet.addEventListener("pointerdown", e => {
+  if (e.target.closest("button")) return;
+  dragY = e.clientY; lastY = e.clientY; lastT = performance.now(); velocity = 0;
+  sheet.classList.add("dragging");
+  sheet.setPointerCapture(e.pointerId);
+});
+sheet.addEventListener("pointermove", e => {
+  if (dragY === null) return;
+  const dy = Math.max(0, e.clientY - dragY);
+  const now = performance.now();
+  if (now > lastT) { velocity = (e.clientY - lastY) / (now - lastT); lastT = now; lastY = e.clientY; }
+  sheet.style.transform = `translateY(${dy}px)`;
+  $("scrim").style.opacity = String(Math.max(0, 1 - dy / 320));
+});
+function endDrag(e) {
+  if (dragY === null) return;
+  const dy = Math.max(0, e.clientY - dragY);
+  dragY = null;
+  sheet.classList.remove("dragging");
+  $("scrim").style.opacity = "";
+  if (dy > 110 || velocity > 0.65) closeSheet();
+  else sheet.style.transform = "";
+}
+sheet.addEventListener("pointerup", endDrag);
+sheet.addEventListener("pointercancel", endDrag);
+// a downward flick on the sheet body dismisses it too
+sheet.addEventListener("wheel", e => { if (e.deltaY > 24) closeSheet(); }, { passive: true });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+
+document.addEventListener("click", e => {
+  const tile = e.target.closest(".tile[data-i]");
+  if (tile) {
+    const c = caught[+tile.dataset.i];
+    if (c) openProfile(c);
+    return;
+  }
+  const rm = e.target.closest("[data-rm]");
+  if (rm) { me.links.splice(+rm.dataset.rm, 1); dirty(); renderMyLinks(); }
+});
+
+// any edit sends the profile back to the queue (UserProfile::requiresReapproval)
+function dirty() {
+  if (me.status !== "pending") {
+    me.status = "pending";
+    const st = STATUS.pending;
+    $("myStatus").className = "chip " + st.chip;
+    $("myStatus").innerHTML = st.label;
+    renderHead("you");
+    toast("Changed. Back in the review queue until approved.");
+  }
+}
+
+$("myBio").addEventListener("input", e => {
+  me.bio = e.target.value;
+  $("bioCount").textContent = `${e.target.value.length} / 255`;
+  dirty();
+});
+$("addLink").onclick = () => {
+  const url = prompt("Link URL", "https://");
+  if (!url || !/^https?:\/\/\S+$/i.test(url)) { toast("Needs a http or https URL", true); return; }
+  if (me.links.includes(url.toLowerCase())) { toast("That link is already there", true); return; }
+  me.links.push(url.toLowerCase());
+  dirty(); renderMyLinks();
+};
+$("saveProfile").onclick = () => toast(
+  me.status === "pending" ? "Saved. A reviewer sees it next." : "Saved.");
+
+renderAll();
+</script>
