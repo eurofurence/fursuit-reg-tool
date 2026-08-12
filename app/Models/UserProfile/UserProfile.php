@@ -21,6 +21,33 @@ class UserProfile extends Model
 
     protected $guarded = [];
 
+    /**
+     * Profile colours the attendee can pick, checked against the dark surface.
+     *
+     * A key from this list is the only colour a profile can hold, which is why
+     * changing it does not require a fresh review the way the description, the
+     * links or the avatar do: a preset carries no content to moderate.
+     */
+    public const PALETTE = [
+        'teal' => '#19b3a2',
+        'green' => '#4bb161',
+        'lime' => '#9db83c',
+        'gold' => '#d9a520',
+        'orange' => '#e0762a',
+        'red' => '#d9534f',
+        'pink' => '#d95d8f',
+        'purple' => '#9b6ae0',
+        'blue' => '#4a8fe0',
+        'ice' => '#5fc3d9',
+        'slate' => '#8496ad',
+    ];
+
+    /** Hex for the chosen colour, or null when it follows the fursuit. */
+    public function colourHex(): ?string
+    {
+        return self::PALETTE[$this->colour] ?? null;
+    }
+
     protected $casts = [
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',

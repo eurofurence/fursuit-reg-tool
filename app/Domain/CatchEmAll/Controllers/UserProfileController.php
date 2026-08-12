@@ -2,6 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Controllers;
 
+use App\Domain\CatchEmAll\Achievements\Utils\AchievementFactory;
 use App\Domain\CatchEmAll\Services\GameStatsService;
 use App\Domain\CatchEmAll\Services\SpeciesRarityService;
 use App\Http\Controllers\Controller;
@@ -15,6 +16,7 @@ use App\Models\UserProfile\UserProfile;
 use App\Models\UserProfile\UserProfileLink;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -50,6 +52,8 @@ class UserProfileController extends Controller
                 'name' => $userProfile->user->name,
                 'avatar' => $userProfile->user->avatar_url,
                 'description' => $userProfile->description,
+                'colour' => $userProfile->colour,
+                'colourHex' => $userProfile->colourHex(),
                 'links' => $userProfile->links->pluck('url')->values(),
                 'status' => $isOwner ? $userProfile->status::$name : null,
                 'rejection_reason' => $isOwner && $userProfile->status instanceof Rejected
@@ -58,6 +62,9 @@ class UserProfileController extends Controller
             ],
             'fursuits' => $this->fursuits($userProfile, $event),
             'stats' => $this->stats($userProfile->user, $event),
+            'achievements' => $this->achievements($userProfile->user, $event),
+            'palette' => UserProfile::PALETTE,
+            'fromFursuit' => (int) $request->query('from') ?: null,
             'canEdit' => $isOwner,
         ]);
     }
@@ -79,6 +86,33 @@ class UserProfileController extends Controller
             'caught' => $stats['totalCatches'],
             'rank' => $stats['totalCatches'] > 0 ? $stats['rank'] : null,
         ];
+    }
+
+    /**
+     * Earned achievements, for the badge case on the profile.
+     *
+     * Only completed ones, and never the secret or hidden entries: a profile is
+     * a public page, so it must not leak what somebody has left to find.
+     */
+    private function achievements(User $user, ?Event $event): array
+    {
+        $eventUser = $event ? $user->eventUsers()->where('event_id', $event->id)->first() : null;
+
+        if (! $eventUser) {
+            return [];
+        }
+
+        return collect(AchievementFactory::getUserAchievementData($eventUser))
+            ->filter(fn ($achievement) => $achievement['completed'] && ! $achievement['hiddenByLock'])
+            ->map(fn ($achievement) => [
+                'id' => $achievement['id'],
+                'title' => $achievement['title'],
+                'maxProgress' => $achievement['maxProgress'],
+                'isOptional' => $achievement['isOptional'],
+                'earnedAt' => $achievement['earnedAt'],
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -138,11 +172,15 @@ class UserProfileController extends Controller
 
         $validated = $request->validate([
             'description' => ['nullable', 'string', 'max:255'],
+            'colour' => ['nullable', 'string', Rule::in(array_keys(UserProfile::PALETTE))],
             'links' => ['array', 'max:10'],
             'links.*' => ['required', 'string', 'url:http,https', 'max:255', 'distinct'],
         ]);
 
-        $userProfile->update(['description' => $validated['description'] ?? null]);
+        $userProfile->update([
+            'description' => $validated['description'] ?? null,
+            'colour' => $validated['colour'] ?? null,
+        ]);
 
         // Sync links by URL
         $urls = collect($validated['links'] ?? []);
