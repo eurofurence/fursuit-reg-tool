@@ -131,10 +131,12 @@
     border-radius: 6px; padding: 2px 5px; font: 700 10.5px/1.3 inherit;
   }
   .listrow {
-    display: flex; align-items: center; gap: 11px; padding: 9px 10px 9px 8px; border-bottom: 1px solid var(--line);
-    border-left: 3px solid var(--tone, transparent); border-radius: 0 10px 10px 0; background: #0d1620;
-    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 12px; padding: 9px 12px 9px 9px; margin-bottom: 7px;
+    border-radius: 14px; border: 1px solid color-mix(in srgb, var(--tone, #2b3d4f) 38%, transparent);
+    background: color-mix(in srgb, var(--tone, #22303f) 17%, var(--panel));
+    transition: background .35s ease, border-color .35s ease;
   }
+  .listrow .th { box-shadow: 0 2px 8px rgba(0,0,0,.35); }
   .listrow .th { width: 42px; height: 42px; border-radius: 10px; overflow: hidden; flex: 0 0 auto; }
   .listrow .th svg { width: 100%; height: 100%; display: block; }
   .listrow .who { flex: 1; min-width: 0; }
@@ -160,11 +162,14 @@
 
   /* ---- achievements ---- */
   .ach {
-    display: flex; gap: 12px; padding: 13px 11px; border-bottom: 1px solid var(--line); cursor: pointer;
-    border-left: 3px solid var(--tier, transparent); border-radius: 0 12px 12px 0; margin-bottom: 6px;
-    background: #0d1620;
+    display: flex; gap: 12px; padding: 13px 12px; cursor: pointer; margin-bottom: 7px; border-radius: 14px;
+    border: 1px solid var(--line); background: var(--panel);
+    transition: background .3s ease, border-color .3s ease;
   }
-  .ach.earned { background: #101d24; }
+  .ach.earned {
+    background: color-mix(in srgb, var(--tier, #2b3d4f) 16%, var(--panel));
+    border-color: color-mix(in srgb, var(--tier, #2b3d4f) 42%, transparent);
+  }
   .ach .b {
     width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
     flex: 0 0 auto; color: #0b0f14; font-weight: 800;
@@ -997,7 +1002,7 @@ function openProfile(entry) {
     <h3 class="sec">Fursuits</h3>
     ${theirs.map(s => {
       const got = caught.some(c => c.name === s.name);
-      return `<div class="listrow">
+      return `<div class="listrow" style="--tone:${pal(s.species)[1]}" data-suit="${s.name}">
         <div class="th">${art(s)}</div>
         <div class="who"><b>${s.name}</b><small>${s.species}</small></div>
         <div style="font-size:12.5px;color:${got ? "var(--accent-hi)" : "var(--muted)"}">${got ? "caught" : "not yet"}</div>
@@ -1012,6 +1017,10 @@ function openProfile(entry) {
     <button class="btn ghost" id="profBack" style="margin-top:18px">Back</button>
     <p class="hint">Profiles appear here only after a reviewer approved them. Pending and rejected ones stay hidden.</p>`;
   show("profile");
+  document.querySelectorAll("#v-profile .listrow[data-suit]").forEach(row => {
+    const suit = Object.values(SUITS).find(x => x.name === row.dataset.suit);
+    if (suit) swatchFor(suit).then(hex => row.style.setProperty("--tone", hex));
+  });
   $("profBack").onclick = () => show("collection");
 }
 
@@ -1025,8 +1034,17 @@ function dirty() {
 }
 
 // ---------- shell ----------
+// rows start on the species fallback, then settle onto the sampled colour
+function paintRowTones() {
+  document.querySelectorAll(".listrow[data-i]").forEach(row => {
+    const c = caught[+row.dataset.i];
+    if (c) swatchFor(c).then(hex => row.style.setProperty("--tone", hex));
+  });
+}
+
 function renderAll() {
   renderCatch(); renderCollection(); renderRanking(); renderMarks(); renderYou();
+  paintRowTones();
   const open = document.querySelector(".view.on");
   renderHead(open ? open.id.replace("v-", "") : "catch");
 }
@@ -1037,6 +1055,7 @@ function show(view) {
   document.querySelector("main").scrollTop = 0;
   if (view === "marks") { recentMarks = []; renderMarks(); }
   renderHead(view);
+  paintRowTones();
 }
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
 
