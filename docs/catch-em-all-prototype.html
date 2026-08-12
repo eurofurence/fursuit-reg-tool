@@ -19,6 +19,7 @@
     --tier-3: #d9a520;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  button, select, textarea, input { font-family: inherit; }
   body {
     background: #070a0e; color: var(--ink); margin: 0; padding: 26px 20px 60px;
     font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -43,7 +44,7 @@
     padding: 18px 18px 13px; display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid var(--line); flex: 0 0 auto; gap: 12px;
   }
-  .top .t { font: 800 20px/1.15 inherit; letter-spacing: -0.02em; }
+  .top .t { font-weight: 800; font-size: 20px; line-height: 1.15; letter-spacing: -0.02em; }
   .top { position: relative; z-index: 1; }
   .top::after {
     content: ""; position: absolute; left: 18px; bottom: -1px; width: 46px; height: 2px; border-radius: 2px;
@@ -53,7 +54,7 @@
   .top .sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
   .pill {
     background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 999px;
-    padding: 7px 13px; font: 700 13px/1 inherit; font-variant-numeric: tabular-nums; white-space: nowrap;
+    padding: 7px 13px; font-weight: 700; font-size: 13px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap;
   }
   .pill.on { background: var(--accent); border-color: var(--accent); color: #fff; }
   .pill.t0 { color: #93a6bb; }
@@ -71,12 +72,12 @@
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
   select, .seg {
     background: var(--panel-2); border: 1px solid var(--line-soft); color: var(--ink);
-    border-radius: 10px; font: 600 13px/1 inherit; padding: 9px 10px; outline: none;
+    border-radius: 10px; font-weight: 600; font-size: 13px; line-height: 1; padding: 9px 10px; outline: none;
   }
   select:focus { border-color: var(--accent-hi); }
   .seg { display: flex; padding: 3px; gap: 3px; }
   .seg button {
-    border: 0; background: none; color: var(--muted); font: 600 12.5px/1 inherit; padding: 7px 11px;
+    border: 0; background: none; color: var(--muted); font-weight: 600; font-size: 12.5px; line-height: 1; padding: 7px 11px;
     border-radius: 8px; cursor: pointer;
   }
   .seg button.on { background: var(--accent); color: #fff; }
@@ -84,7 +85,7 @@
   /* ---- code entry ---- */
   .entry { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
   .entry .label {
-    font: 700 11px/1 inherit; letter-spacing: 0.16em; text-transform: uppercase;
+    font-weight: 700; font-size: 11px; line-height: 1; letter-spacing: 0.16em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 12px;
   }
   #code {
@@ -97,7 +98,7 @@
   #code:focus { border-color: var(--accent-hi); box-shadow: inset 0 0 0 1px var(--accent-hi); }
   .btn {
     margin-top: 14px; width: 100%; height: 52px; border: 0; border-radius: 12px;
-    background: var(--accent); color: #fff; font: 700 16px/1 inherit; cursor: pointer;
+    background: var(--accent); color: #fff; font-weight: 700; font-size: 16px; line-height: 1; cursor: pointer;
   }
   .btn:disabled { background: var(--panel-2); color: #46586d; cursor: default; }
   .btn:active:not(:disabled) { transform: scale(.985); }
@@ -107,11 +108,11 @@
 
   /* ---- tiles: colour comes from the fursuits ---- */
   h3.sec {
-    font: 700 11px/1 inherit; letter-spacing: 0.16em; text-transform: uppercase;
+    font-weight: 700; font-size: 12.5px; line-height: 1; letter-spacing: 0; text-transform: none;
     color: var(--screen-hue, var(--muted));
-    margin: 22px 0 10px; display: flex; justify-content: space-between; align-items: center;
+    margin: 20px 0 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
   }
-  h3.sec span { color: #7286a0; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12px; }
+  h3.sec .meta { color: #7286a0; font-weight: 600; font-size: 11.5px; }
   h3.sec b.tick {
     width: 8px; height: 8px; border-radius: 2px; background: var(--screen-hue, var(--accent-bright));
     display: inline-block; margin-right: 8px; vertical-align: 1px;
@@ -129,7 +130,7 @@
   .tile svg { width: 100%; height: 100%; display: block; }
   .tile .cnt {
     position: absolute; right: 4px; bottom: 4px; background: rgba(6,10,14,.78); color: #fff;
-    border-radius: 6px; padding: 2px 5px; font: 700 10.5px/1.3 inherit;
+    border-radius: 6px; padding: 2px 5px; font-weight: 700; font-size: 10.5px; line-height: 1.3;
   }
   .listrow {
     display: flex; align-items: stretch; gap: 12px; padding: 0 12px 0 0; margin-bottom: 8px; min-height: 76px;
@@ -150,7 +151,7 @@
   }
   .progtop { display: flex; align-items: baseline; justify-content: space-between; }
   .progtop span { font-size: 12.5px; color: var(--muted); }
-  .progtop b { font: 800 15px/1 inherit; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+  .progtop b { font-weight: 800; font-size: 15px; line-height: 1; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
   .progcard .bar { margin: 10px 0 8px; }
   .progcard small { color: var(--muted); font-size: 11.5px; }
   .herostat {
@@ -158,7 +159,7 @@
     display: flex; align-items: center; gap: 16px; margin-bottom: 8px;
   }
   .hsnum { text-align: center; flex: 0 0 auto; }
-  .hsnum b { display: block; font: 800 34px/1 inherit; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+  .hsnum b { display: block; font-weight: 800; font-size: 34px; line-height: 1; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
   .hsnum span { display: block; font-size: 11px; color: var(--muted); margin-top: 5px; }
   .hsmeta { flex: 1; min-width: 0; }
   .hsmeta small { color: var(--muted); font-size: 11.5px; display: block; margin-top: 8px; }
@@ -176,7 +177,7 @@
   }
   .stat.rarity.on { background: color-mix(in srgb, var(--tone) 30%, var(--panel)); }
   .stat.rarity.on small { color: var(--ink); }
-  .rlabel { font: 700 10.5px/1 inherit; letter-spacing: .08em; text-transform: uppercase; }
+  .rlabel { font-weight: 700; font-size: 10.5px; line-height: 1; letter-spacing: .08em; text-transform: uppercase; }
 
   .specrow {
     border-radius: 14px; margin-bottom: 8px; overflow: hidden; cursor: pointer;
@@ -197,13 +198,13 @@
     background: var(--panel); border: 1px solid var(--line);
   }
   .row .rank {
-    width: 30px; flex: 0 0 auto; font: 800 15px/1 inherit; font-variant-numeric: tabular-nums;
+    width: 30px; flex: 0 0 auto; font-weight: 800; font-size: 15px; line-height: 1; font-variant-numeric: tabular-nums;
     color: var(--muted); text-align: center;
   }
   .row .who { flex: 1; min-width: 0; }
   .row .who b { font-weight: 700; }
   .row .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
-  .row .n { font: 800 17px/1 inherit; font-variant-numeric: tabular-nums; }
+  .row .n { font-weight: 800; font-size: 17px; line-height: 1; font-variant-numeric: tabular-nums; }
   .row.me { background: color-mix(in srgb, var(--accent) 30%, var(--panel)); border-color: var(--accent); }
   .row.rarity {
     background: color-mix(in srgb, var(--tone) 13%, var(--panel));
@@ -233,7 +234,7 @@
   .ach .x b { font-weight: 700; }
   .ach .x small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
   .ach .x .desc { font-size: 12.5px; color: #a9b8cb; margin-top: 6px; }
-  .ach .new { color: var(--accent-hi); font: 700 11px/1 inherit; letter-spacing: .1em; text-transform: uppercase; }
+  .ach .new { color: var(--accent-hi); font-weight: 700; font-size: 11px; line-height: 1; letter-spacing: .1em; text-transform: uppercase; }
   .bar { height: 6px; border-radius: 3px; background: #0c131b; margin-top: 9px; overflow: hidden; }
   .bar i { display: block; height: 100%; border-radius: 3px; transition: width .4s ease; }
 
@@ -246,13 +247,13 @@
   .showcase svg { width: 100%; height: 100%; display: block; }
   .profhead { position: relative; z-index: 1; text-align: center; padding: 0 4px 2px; }
   .profhead .avatar {
-    width: 104px; height: 104px; border-radius: 24px; overflow: hidden; margin: -62px auto 12px;
+    width: 92px; height: 92px; border-radius: 22px; overflow: hidden; margin: -54px auto 11px;
     border: 4px solid var(--page); position: relative; z-index: 2;
     box-shadow: 0 8px 22px rgba(0,0,0,.45);
   }
   .profhead .avatar svg { width: 100%; height: 100%; display: block; }
-  .nm { font: 800 20px/1.2 inherit; }
-  .sp { color: var(--muted); font-size: 13px; margin-top: 5px; }
+  .nm { font-weight: 800; font-size: 18px; line-height: 1.2; }
+  .sp { color: var(--muted); font-size: 12px; margin-top: 5px; }
   .statgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
   .statgrid.two { grid-template-columns: repeat(2, 1fr); }
   .stat {
@@ -260,11 +261,11 @@
     border: 1px solid color-mix(in srgb, var(--tone, #2b3d4f) 40%, transparent);
     border-radius: 13px; padding: 14px 8px; text-align: center;
   }
-  .stat b { display: block; font: 800 21px/1 inherit; font-variant-numeric: tabular-nums; color: var(--tone, var(--ink)); }
-  .stat small { color: var(--muted); font-size: 11.5px; display: block; margin-top: 6px; }
+  .stat b { display: block; font-weight: 800; font-size: 19px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--tone, var(--ink)); }
+  .stat small { color: var(--muted); font-size: 10.5px; display: block; margin-top: 6px; }
   .chip {
     display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 12px;
-    font: 700 11.5px/1 inherit; border: 1px solid var(--line-soft); background: var(--panel-2); color: var(--muted);
+    font-weight: 700; font-size: 11.5px; line-height: 1; border: 1px solid var(--line-soft); background: var(--panel-2); color: var(--muted);
   }
   .chip.ok { background: var(--accent); border-color: var(--accent); color: #fff; }
   .chip.wait { border-color: #6a5a20; color: #e3c661; background: #221d10; }
@@ -272,14 +273,14 @@
   .badgerow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
   .mini {
     width: 46px; height: 46px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
-    color: #0b0f14; font: 800 15px/1 inherit;
+    color: #0b0f14; font-weight: 800; font-size: 15px; line-height: 1;
   }
   .link { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
   .link span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .link button { background: none; border: 0; color: var(--muted); cursor: pointer; font: 600 12px/1 inherit; padding: 6px; }
+  .link button { background: none; border: 0; color: var(--muted); cursor: pointer; font-weight: 600; font-size: 12px; line-height: 1; padding: 6px; }
   textarea.bio {
     width: 100%; background: var(--page); border: 1px solid var(--line-soft); border-radius: 12px; color: var(--ink);
-    font: 400 14px/1.5 inherit; padding: 12px; resize: none; outline: none;
+    font-weight: 400; font-size: 14px; line-height: 1.5; padding: 12px; resize: none; outline: none;
   }
   textarea.bio:focus { border-color: var(--accent-hi); }
   .banner {
@@ -293,7 +294,7 @@
   nav button {
     flex: 1; background: none; border: 0; cursor: pointer; padding: 6px 0; position: relative;
     display: flex; flex-direction: column; align-items: center; gap: 5px;
-    color: var(--muted); font: 600 10.5px/1 inherit;
+    color: var(--muted); font-weight: 600; font-size: 10.5px; line-height: 1;
   }
   nav button .box {
     width: 44px; height: 30px; display: flex; align-items: center; justify-content: center;
@@ -314,15 +315,19 @@
 
   .badgecase { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .bcard {
-    background: color-mix(in srgb, var(--tone) 15%, var(--panel)); border-radius: 13px; padding: 12px 8px;
+    background: color-mix(in srgb, var(--tone) 15%, var(--panel)); border-radius: 13px; padding: 10px 7px;
     border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent); text-align: center;
+    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
   .bcard .disc {
-    width: 38px; height: 38px; border-radius: 11px; background: var(--tone); color: #0b0f14;
-    display: flex; align-items: center; justify-content: center; margin: 0 auto 9px;
+    width: 32px; height: 32px; border-radius: 10px; background: var(--tone); color: #0b0f14;
+    display: flex; align-items: center; justify-content: center; margin: 0 0 8px; flex: 0 0 auto;
   }
-  .bcard b { display: block; font: 700 11.5px/1.25 inherit; min-height: 28px; }
-  .bcard small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 5px; }
+  .bcard b {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    font-weight: 700; font-size: 10.5px; line-height: 1.25;
+  }
+  .bcard small { display: block; color: var(--muted); font-size: 9.5px; margin-top: 4px; }
   .bcard.more { display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
   .bcard.more b { min-height: 0; color: var(--accent-bright); font-size: 13px; }
 
@@ -332,7 +337,7 @@
   .tile.missing { opacity: .42; filter: saturate(.5); }
   .tile .tname {
     position: absolute; left: 0; right: 0; bottom: 0; padding: 7px 8px; background: rgba(7,11,16,.8);
-    font: 700 11px/1.2 inherit; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-weight: 700; font-size: 11px; line-height: 1.2; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   @keyframes flag {
     0% { box-shadow: 0 0 0 2px var(--accent-bright); }
@@ -349,7 +354,7 @@
     position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 14px; background: rgba(7,11,16,.82);
     display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
   }
-  .hero .cap b { font: 800 14px/1 inherit; }
+  .hero .cap b { font-weight: 800; font-size: 14px; line-height: 1; }
   .hero .cap small { color: #b9c6d6; font-size: 12px; }
   .lightbox {
     position: absolute; inset: 0; z-index: 5; background: rgba(4,7,11,.94); display: flex;
@@ -391,7 +396,7 @@
   .sheet .mt { color: var(--muted); font-size: 13.5px; margin-top: 7px; }
   .sheet .kind {
     display: inline-block; margin-top: 12px; border-radius: 999px; padding: 6px 13px;
-    font: 800 11.5px/1 inherit; letter-spacing: .12em; text-transform: uppercase; color: #0b0f14;
+    font-weight: 800; font-size: 11.5px; line-height: 1; letter-spacing: .12em; text-transform: uppercase; color: #0b0f14;
   }
   .toast {
     position: absolute; left: 16px; right: 16px; bottom: 96px; background: var(--panel-2);
@@ -534,7 +539,7 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
           <button class="btn" id="catchBtn" disabled>Catch</button>
           <div class="hint">Five characters, printed under the name on their badge. The QR opens this filled in.</div>
         </div>
-        <h3 class="sec"><span><b class="tick"></b>Latest</span> <span id="latestMeta"></span></h3>
+        <h3 class="sec"><span><b class="tick"></b>Latest</span> <span class="meta" id="latestMeta"></span></h3>
         <div class="tiles" id="latest"></div>
         <h3 class="sec"><span><b class="tick"></b>Today</span></h3>
         <div id="timeline"></div>
@@ -1182,7 +1187,7 @@ function renderMarks() {
 // ---------- profiles ----------
 const bcard = (a) => `
   <div class="bcard" style="--tone:${TIER[a.tier]}" title="${a.d}">
-    <span class="disc"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-${a.done ? "check" : "flag"}"/></svg></span>
+    <span class="disc"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-${a.done ? "check" : "flag"}"/></svg></span>
     <b>${a.t}</b><small>${a.done ? "12 Aug" : `${a.cur}/${a.max}`}</small>
   </div>`;
 
@@ -1201,15 +1206,15 @@ function renderYou() {
       <div class="stat" style="--tone:${pal(me.species)[1]}"><b>${speciesCount()}</b><small>species</small></div>
       <div class="stat" style="--tone:var(--gold)"><b>${ordinal(myRank())}</b><small>rank</small></div>
     </div>
-    <h3 class="sec"><span><b class="tick"></b>Achievements</span><span>${marks.length} of ${achievements().length}</span></h3>
+    <h3 class="sec"><span><b class="tick"></b>Achievements</span><span class="meta">${marks.length} of ${achievements().length}</span></h3>
     ${marks.length ? `<div class="badgecase">${marks.slice(0, 5).map(a => bcard(a)).join("")}
       ${marks.length > 5 || true ? `<div class="bcard more" style="--tone:var(--accent)" data-go="marks">
         <b>${marks.length > 5 ? `+${marks.length - 5}` : "See all"}</b><small>achievements</small></div>` : ""}
       </div>` : `<p class="hint" style="margin:0">None yet. Catch someone.</p>`}
-    <h3 class="sec">About</h3>
+    <h3 class="sec"><span><b class="tick"></b>About</span></h3>
     <textarea class="bio" id="myBio" rows="3" maxlength="255">${me.bio ?? ""}</textarea>
     <div class="hint" style="text-align:right" id="bioCount">${(me.bio ?? "").length} / 255</div>
-    <h3 class="sec">Links <span>${me.links.length} of 10</span></h3>
+    <h3 class="sec"><span><b class="tick"></b>Links</span><span class="meta">${me.links.length} of 10</span></h3>
     <div id="myLinks">${me.links.map((u, i) => `
       <div class="link">
         <svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--muted)"><use href="#i-link"/></svg>
@@ -1255,11 +1260,12 @@ function openProfile(entry) {
       <div class="stat" style="--tone:var(--gold)"><b>${18 + theirs.length * 9}</b><small>times caught</small></div>
       <div class="stat" style="--tone:var(--accent-bright)"><b>${theirs.filter(t => caught.some(c => c.name === t.name)).length}/${theirs.length}</b><small>you have</small></div>
     </div>
-    ${entry.bio ? `<h3 class="sec">About</h3><p style="margin:0;font-size:14px;color:#d5dced">${entry.bio}</p>` : ""}
-    <h3 class="sec"><span><b class="tick"></b>Achievements</span><span>${theirMarks.length} of ${achievements().length}</span></h3>
+    ${entry.bio ? `<h3 class="sec"><span><b class="tick"></b>About</span></h3>
+      <p style="margin:0;font-size:13px;color:#c9d3e2">${entry.bio}</p>` : ""}
+    <h3 class="sec"><span><b class="tick"></b>Achievements</span><span class="meta">${theirMarks.length} of ${achievements().length}</span></h3>
     <div class="badgecase">${theirMarks.map(a => bcard(a)).join("")}</div>
     <h3 class="sec"><span><b class="tick"></b>Fursuits</span>
-      <span>${theirs.filter(t => caught.some(c => c.name === t.name)).length} of ${theirs.length} caught</span></h3>
+      <span class="meta">${theirs.filter(t => caught.some(c => c.name === t.name)).length} of ${theirs.length} caught</span></h3>
     <div class="tiles">${theirs.map(s => {
       const got = caught.some(c => c.name === s.name);
       const here = s.name === entry.name;
@@ -1270,7 +1276,7 @@ function openProfile(entry) {
 
       </div>`;
     }).join("")}</div>
-    <h3 class="sec">Links</h3>
+    <h3 class="sec"><span><b class="tick"></b>Links</span></h3>
     ${entry.links && entry.links.length ? `
       <div class="banner">Written by the attendee. These lead off Eurofurence sites.</div>
       ${entry.links.map(u => `<div class="link">
