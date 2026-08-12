@@ -22,13 +22,6 @@ Route::prefix('/auth')->name('auth.')->group(function () {
     Route::get('/frontchannel-logout', [AuthController::class, 'logoutCallback'])->name('logout.callback');
 });
 
-Route::get('/dev-login/{id}', function ($id) {
-    abort_unless(app()->isLocal(), 404);
-    \Illuminate\Support\Facades\Auth::loginUsingId((int) $id);
-
-    return redirect('/');
-});
-
 // Introduction routes (auth required but no introduction middleware)
 Route::middleware('catch-auth:web')->group(function () {
     Route::get('/introduction', [GameController::class, 'introduction'])->name('introduction');
