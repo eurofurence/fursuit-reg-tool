@@ -294,6 +294,10 @@ button.pos-row:active,
     background: color-mix(in srgb, rgb(var(--pos-bad)) 10%, #fff);
 }
 
+/* A row that sits BESIDE another row (dismiss buttons): it must not claim the
+   full width, or the row next to it collapses to min-content. */
+.pos-row--tail { width: auto; flex: none; }
+
 .pos-row__body { flex: 1; min-width: 0; }
 .pos-row__title { display: block; font-weight: 600; font-size: 0.95rem; }
 .pos-row__sub { display: block; font-size: 0.76rem; color: rgb(var(--pos-muted)); }
