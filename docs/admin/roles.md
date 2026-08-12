@@ -24,7 +24,7 @@ signed-in user holding neither flag gets a 403.
 
 ## What a reviewer gets
 
-Three rail entries, and that is the whole panel for them:
+Four rail entries, and that is the whole panel for them:
 
 - **Dashboard** - counts and the two charts.
 - **Badges** - the list, and the detail page at `{badge}/edit`, read-only. There is no
@@ -34,9 +34,15 @@ Three rail entries, and that is the whole panel for them:
 - **Fursuits** - the list, a fursuit, its activity log, and the review queue with every
   verdict: approve, reject, block publication, unblock, approve-rejected, notify, undo.
   Editing or deleting the fursuit row is not part of that and is admin-only.
+- **Profiles** - the Catch-Em-All profile queue: the list, a profile, its activity log and
+  the three verdicts (approve, reject with a reason, move back to pending). Reviewing what
+  an attendee wrote about themselves is the same job as reviewing their photo, which is why
+  the module carries no `can:manage-admin`. There is no create, edit or delete route at all;
+  `UserProfilePolicy::update` and `delete` stay `is_admin` for whatever adds one later. See
+  [`../catch-em-all-profiles.md`](../catch-em-all-profiles.md).
 
 The header event selector and the per-table column preferences come with them, because
-the three screens need both.
+the four screens need them.
 
 ## What a reviewer does not get
 

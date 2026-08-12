@@ -57,6 +57,7 @@ import {
     ListOrdered,
     Loader,
     Lock,
+    LockOpen,
     LogOut,
     Mail,
     MapPin,
@@ -148,6 +149,7 @@ const icons = {
     "list-ordered": ListOrdered,
     loader: Loader,
     lock: Lock,
+    "lock-open": LockOpen,
     "log-out": LogOut,
     mail: Mail,
     // Settings > On-Site Desk: the badge desk is a place attendees walk to.

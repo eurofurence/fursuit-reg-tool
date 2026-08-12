@@ -24,7 +24,7 @@ class GameStatsService
             $uniqueSpecies = $catches->pluck('fursuit.species.id')->unique()->count();
 
             // Calculate rank
-            $rank = $this->calculateUserRank($totalCatches);
+            $rank = $this->calculateUserRank($totalCatches, $eventUser->event_id);
 
             // Calculate rarity distribution
             $rarityStats = $this->calculateRarityDistribution($catches);
@@ -48,20 +48,24 @@ class GameStatsService
         $cacheKey = 'leaderboard_'.$filterEvent->id;
 
         $result = Cache::remember($cacheKey, 600, function () use ($filterEvent, $limit, $rankCutoff) {
-            $rows = EventUser::where('event_id', $filterEvent->id)
-                ->with('user')
-                ->withCount(['fursuitsCatched'])
-                ->having('fursuits_catched_count', '>', 0)
-                ->orderByDesc('fursuits_catched_count')
-                ->limit($limit)
-                ->get()
-                ->map(fn ($eventUser) => [
-                    'id' => $eventUser->user_id,
-                    'name' => $eventUser->user->name ?? 'Unknown User',
-                    'catches' => $eventUser->fursuits_catched_count ?? 0,
-                ]);
+            $profileUuid = function ($eventUser) {
+                $profile = $eventUser?->user?->userProfile;
 
-            $rows = $rows
+                return $profile?->approved_at !== null ? $profile->uuid : null;
+            };
+            $rows = EventUser::where('event_id', $filterEvent->id)
+                ->with('user.userProfile')
+                ->withCount('fursuitsCatched')
+                ->having('fursuits_catched_count', '>', 0)
+                ->get()
+                ->groupBy('user_id')
+                ->map(fn ($group) => [
+                    'event_user_id' => $group->first()->id,
+                    'user_id' => $group->first()->user_id,
+                    'name' => $group->first()->user->name ?? 'Unknown User',
+                    'catches' => $group->sum('fursuits_catched_count'),
+                    'profile_uuid' => $profileUuid($group->first()),
+                ])
                 ->sortBy([
                     ['catches', 'desc'],
                     ['name', 'asc'],
@@ -82,10 +86,12 @@ class GameStatsService
                 }
 
                 $leaderboard[] = [
-                    'id' => $row['id'],
+                    'event_user_id' => $row['event_user_id'],
+                    'user_id' => $row['user_id'],
                     'name' => $row['name'],
                     'rank' => $rank,
                     'catches' => $row['catches'],
+                    'profile_uuid' => $row['profile_uuid'],
                 ];
 
                 $lastCatch = $row['catches'];
@@ -187,7 +193,7 @@ class GameStatsService
             }
 
             $catches = UserCatch::whereIn('event_user_id', $eventUserIds)
-                ->with(['fursuit.species'])
+                ->with(['fursuit.species', 'fursuit.user.userProfile'])
                 ->get()
                 ->unique('fursuit_id');
 
@@ -198,9 +204,11 @@ class GameStatsService
                 $rarity = $catch->getFursuitRarity();
                 $specie = $catch->getFursuitSpecies();
                 $catch_count = $catch->getCatches();
+                $ownerProfile = $catch->fursuit->user?->userProfile;
                 $fursuits[] = [
                     'species' => $specie,
                     'count' => $catch_count,
+                    'profileUuid' => $ownerProfile?->approved_at !== null ? $ownerProfile->uuid : null,
                     'rarity' => [
                         'level' => $rarity->value,
                         'label' => $rarity->getLabel(),
@@ -213,6 +221,8 @@ class GameStatsService
                         'species' => $catch->fursuit->species->name,
                         'image' => $catch->fursuit->image_webp_url,
                         'scoring' => $catch_count,
+                        'owner' => $catch->fursuit->user?->name,
+                        'profileUuid' => $ownerProfile?->approved_at !== null ? $ownerProfile->uuid : null,
                     ],
                 ];
                 $speciesIndex[$specie] = ($speciesIndex[$specie] ?? 0) + 1;
@@ -233,16 +243,18 @@ class GameStatsService
         return is_array($result) ? $result : [];
     }
 
-    private function calculateUserRank(int $userCatches): int
+    private function calculateUserRank(int $userCatches, int $eventId): int
     {
-        $query = EventUser::withCount([
-            'fursuitsCatched',
-        ])
-            ->having('fursuits_catched_count', '>', $userCatches)
-            ->get()
-            ->groupBy('fursuits_catched_count');
+        $higherScores = UserCatch::query()
+            ->whereHas('event_user', fn ($query) => $query->where('event_id', $eventId))
+            ->selectRaw('count(*) as total')
+            ->groupBy('event_user_id')
+            ->havingRaw('count(*) > ?', [$userCatches])
+            ->pluck('total')
+            ->unique()
+            ->count();
 
-        return $query->count() + 1;
+        return $higherScores + 1;
     }
 
     /**

@@ -1,10 +1,12 @@
 <script setup>
 import { computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
 
 const props = defineProps({
     fursuit: Object,
     rarity: Object,
-    hideCount: Boolean
+    hideCount: Boolean,
+    profileUrl: String
 });
 
 // The grid gets the 500px thumbnail; callers that do not carry one (the
@@ -84,7 +86,8 @@ const rarityConfig = computed(() => {
         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <div class="absolute bottom-0 left-0 right-0 p-4 text-white">
                 <h3 class="text-lg font-bold mb-1 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 drop-shadow-lg">
-                    {{ fursuit.name }}
+                    <Link v-if="profileUrl" :href="profileUrl" @click.stop class="hover:underline">{{ fursuit.name }}</Link>
+                    <template v-else>{{ fursuit.name }}</template>
                 </h3>
                 <p class="text-sm opacity-90 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 delay-75 drop-shadow-md">
                     {{ fursuit.species }}
@@ -95,7 +98,10 @@ const rarityConfig = computed(() => {
         <!-- Always visible info bar at bottom -->
         <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300" 
              :class="[rarityConfig.bgClass, rarityConfig.shadowClass]">
-            <h4 class="text-sm truncate" :class="[rarityConfig.titleClass]">{{ fursuit.name }}</h4>
+            <h4 class="text-sm truncate" :class="[rarityConfig.titleClass]">
+                <Link v-if="profileUrl" :href="profileUrl" @click.stop class="hover:underline">{{ fursuit.name }}</Link>
+                <template v-else>{{ fursuit.name }}</template>
+            </h4>
             <p class="text-xs truncate" :class="[rarityConfig.speciesClass]">{{ fursuit.species }}</p>
         </div>
 
