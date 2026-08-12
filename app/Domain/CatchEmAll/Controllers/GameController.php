@@ -44,11 +44,20 @@ class GameController extends Controller
             $recentCatch = $this->getRecentCatchData(session()->get('caught_fursuit'));
         }
 
+        $eventUser = $selectedEvent
+            ? Auth::user()->eventUsers()->where('event_id', $selectedEvent->id)->first()
+            : null;
+
         return Inertia::render('CatchEmAll/Catch', [
             'recentCatch' => $recentCatch,
             'isGameRunning' => $isGameRunning,
             'code' => $request->has('code') ? $request->input('code') : '',
             'autoCatch' => $request->has('auto') && $request->has('code'),
+            'recent' => $eventUser ? $this->recentCatches($eventUser) : [],
+            'caughtTotal' => $eventUser ? $eventUser->fursuitsCatched()->count() : 0,
+            'eventTotal' => $selectedEvent
+                ? Fursuit::where('event_id', $selectedEvent->id)->where('catch_em_all', true)->count()
+                : 0,
         ]);
     }
 
@@ -322,6 +331,40 @@ class GameController extends Controller
         return Event::whereHas('fursuits.catchedByUsers')
             ->orderByDesc('starts_at')
             ->get(['id', 'name', 'starts_at']);
+    }
+
+    /**
+     * The last dozen catches, for the strip and the day list on the catch screen.
+     */
+    private function recentCatches(EventUser $eventUser, int $limit = 12): array
+    {
+        return UserCatch::where('event_user_id', $eventUser->id)
+            ->with(['fursuit.species', 'fursuit.event', 'fursuit.user.userProfile'])
+            ->latest()
+            ->limit($limit)
+            ->get()
+            ->map(function (UserCatch $catch) {
+                $fursuit = $catch->fursuit;
+                $rarity = $this->speciesRarity->forFursuit($fursuit->event, $fursuit);
+                $profile = $fursuit->user?->userProfile;
+
+                return [
+                    'id' => $catch->id,
+                    'fursuitId' => $fursuit->id,
+                    'name' => $fursuit->name,
+                    'species' => $fursuit->species?->name,
+                    'owner' => $fursuit->user?->name,
+                    'image' => $fursuit->image_webp_url,
+                    'caughtAt' => $catch->created_at?->format('H:i'),
+                    'profileUuid' => $profile?->approved_at !== null ? $profile->uuid : null,
+                    'rarity' => [
+                        'level' => $rarity->value,
+                        'label' => $rarity->getLabel(),
+                        'color' => $rarity->getColor(),
+                    ],
+                ];
+            })
+            ->all();
     }
 
     private function getRecentCatchData($fursuitId)
