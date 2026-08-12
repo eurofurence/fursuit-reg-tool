@@ -187,6 +187,11 @@
   .row .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
   .row .n { font: 800 17px/1 inherit; font-variant-numeric: tabular-nums; }
   .row.me { background: color-mix(in srgb, var(--accent) 30%, var(--panel)); border-color: var(--accent); }
+  .row.rarity {
+    background: color-mix(in srgb, var(--tone) 13%, var(--panel));
+    border-color: color-mix(in srgb, var(--tone) 34%, transparent);
+  }
+  .row .th svg { width: 100%; height: 100%; display: block; }
   .medal { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #10161e; }
   /* leaderboard medals stay metal and are independent of the achievement tiers */
   .medal.g { background: #d9a520; } .medal.s { background: #b9c4cf; } .medal.b { background: #cf8b52; }
@@ -288,6 +293,49 @@
     position: absolute; top: 1px; right: 6px; width: 7px; height: 7px; border-radius: 50%;
     background: var(--gold); border: 2px solid var(--page);
   }
+
+  .badgecase { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .bcard {
+    background: color-mix(in srgb, var(--tone) 15%, var(--panel)); border-radius: 13px; padding: 12px 8px;
+    border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent); text-align: center;
+  }
+  .bcard .disc {
+    width: 38px; height: 38px; border-radius: 11px; background: var(--tone); color: #0b0f14;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 9px;
+  }
+  .bcard b { display: block; font: 700 11.5px/1.25 inherit; min-height: 28px; }
+  .bcard small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 5px; }
+  .bcard.more { display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+  .bcard.more b { min-height: 0; color: var(--accent-bright); font-size: 13px; }
+
+  /* ---- big badge photo, and the lightbox behind it ---- */
+  .hero {
+    position: relative; width: 62%; max-width: 230px; margin: 0 auto; aspect-ratio: 3 / 4;
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--tone, #2b3d4f) 40%, transparent); cursor: zoom-in;
+  }
+  .hero svg { width: 100%; height: 100%; display: block; }
+  .hero .cap {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 14px; background: rgba(7,11,16,.82);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  }
+  .hero .cap b { font: 800 14px/1 inherit; }
+  .hero .cap small { color: #b9c6d6; font-size: 12px; }
+  .lightbox {
+    position: absolute; inset: 0; z-index: 5; background: rgba(4,7,11,.94); display: flex;
+    align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  .lightbox.on { opacity: 1; pointer-events: auto; }
+  .lbinner { width: 100%; }
+  .lbart {
+    width: 100%; max-width: 300px; margin: 0 auto; aspect-ratio: 3 / 4; border-radius: 16px; overflow: hidden; border: 1px solid var(--line-soft);
+    transform: scale(.94); transition: transform .24s cubic-bezier(.2,1.1,.4,1);
+  }
+  .lightbox.on .lbart { transform: none; }
+  .lbart svg { width: 100%; height: 100%; display: block; }
+  .lbmeta { text-align: center; margin-top: 14px; }
+  .lbmeta .mt { color: var(--muted); font-size: 13px; margin-top: 6px; }
 
   /* ---- sheet, toast, flash ---- */
   .scrim {
@@ -525,6 +573,17 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
       <button data-v="collection"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-grid"/></svg></span>Collection</button>
       <button data-v="you"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-user"/></svg></span>You</button>
     </nav>
+
+    <div class="lightbox" id="lightbox">
+      <div class="lbinner">
+        <div class="lbart" id="lbArt"></div>
+        <div class="lbmeta">
+          <div class="nm" id="lbName"></div>
+          <div class="mt" id="lbMeta"></div>
+        </div>
+        <button class="btn ghost sm" id="lbClose">Close</button>
+      </div>
+    </div>
 
     <div class="toast" id="toast"></div>
 
@@ -985,24 +1044,44 @@ function renderRanking() {
       .map((s, i) => ({ ...s, times: 90 - i * 7 }))
       .sort((a, b) => b.times - a.times).slice(0, 8);
     $("lbBody").innerHTML = suits.map((s, i) => `
-      <div class="row">
+      <div class="row rarity" style="--tone:${rarityColour(s.species)}" data-zoom="${s.name}">
         <div class="rank">${medal(i)}</div>
-        <div class="th" style="width:38px;height:38px;border-radius:9px;overflow:hidden;flex:0 0 auto">${art(s)}</div>
-        <div class="who"><b>${s.name}</b><small>${s.species} · ${s.owner}</small></div>
+        <div class="th" style="width:42px;height:56px;border-radius:8px;overflow:hidden;flex:0 0 auto">${art(s)}</div>
+        <div class="who">
+          <b>${s.name}</b>
+          <small><span class="rlabel" style="color:${rarityColour(s.species)}">${RARITY[rarityOf(s.species)].label}</span> · ${s.species}</small>
+        </div>
         <div class="n">${s.times}</div>
       </div>`).join("") + `<p class="hint">How often each fursuit was caught by anyone. Not a rarity score.</p>`;
     return;
   }
+  const RANK_ORDER = ["legendary", "epic", "rare", "uncommon", "common"];
+  const best = (player) => {
+    if (player.me) {
+      const found = caught.map(c => rarityOf(c.species));
+      return RANK_ORDER.find(r => found.includes(r)) || "common";
+    }
+    // deterministic stand-in for someone else's rarest find
+    const seed = [...player.n].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+    return RANK_ORDER[seed % RANK_ORDER.length];
+  };
   const mine = { n: me.name, sp: speciesCount(), c: caught.length, me: true };
   const all = [...PLAYERS, mine].sort((a, b) => b.c - a.c);
   const myRank = all.indexOf(mine) + 1;
-  $("lbBody").innerHTML = all.map((r, i) => `
-    <div class="row ${r.me ? "me" : ""}">
+  $("lbBody").innerHTML = all.map((r, i) => {
+    const tier = best(r);
+    return `
+    <div class="row ${r.me ? "me" : "rarity"}" style="--tone:${RARITY[tier].colour}">
       <div class="rank">${medal(i)}</div>
-      <div class="who"><b>${r.n}</b><small>${r.sp} species${r.me ? " · you" : ""}</small></div>
+      <div class="who">
+        <b>${r.n}</b>
+        <small><span class="rlabel" style="color:${RARITY[tier].colour}">${RARITY[tier].label}</span> best find · ${r.sp} species${r.me ? " · you" : ""}</small>
+      </div>
       <div class="n">${r.c}</div>
-    </div>`).join("") +
-    `<p class="hint">Top 50 shown, your row is pinned wherever you land. You are ${ordinal(myRank)}.</p>`;
+    </div>`;
+  }).join("") +
+    `<p class="hint">Top 50 shown, your row is pinned wherever you land. You are ${ordinal(myRank)}.
+     The colour is the rarest species that player has found.</p>`;
 }
 const medal = (i) => i < 3
   ? `<span class="medal ${["g", "s", "b"][i]}"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-medal"/></svg></span>`
@@ -1033,6 +1112,12 @@ function renderMarks() {
 }
 
 // ---------- profiles ----------
+const bcard = (a) => `
+  <div class="bcard" style="--tone:${TIER[a.tier]}" title="${a.d}">
+    <span class="disc"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-${a.done ? "check" : "flag"}"/></svg></span>
+    <b>${a.t}</b><small>${a.done ? "12 Aug" : `${a.cur}/${a.max}`}</small>
+  </div>`;
+
 function renderYou() {
   const st = STATUS[me.status];
   const marks = achievements().filter(a => a.done);
@@ -1048,11 +1133,11 @@ function renderYou() {
       <div class="stat" style="--tone:${pal(me.species)[1]}"><b>${speciesCount()}</b><small>species</small></div>
       <div class="stat" style="--tone:var(--gold)"><b>${ordinal(myRank())}</b><small>rank</small></div>
     </div>
-    <h3 class="sec">Achievements <span>${marks.length} earned</span></h3>
-    <div class="badgerow">${marks.map(a => `
-      <span class="mini" style="background:${TIER[a.tier]}" title="${a.t}">
-        <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-star"/></svg></span>`).join("")
-      || `<p class="hint" style="margin:0">None yet.</p>`}</div>
+    <h3 class="sec"><span><b class="tick"></b>Achievements</span><span>${marks.length} of ${achievements().length}</span></h3>
+    ${marks.length ? `<div class="badgecase">${marks.slice(0, 5).map(a => bcard(a)).join("")}
+      ${marks.length > 5 || true ? `<div class="bcard more" style="--tone:var(--accent)" data-go="marks">
+        <b>${marks.length > 5 ? `+${marks.length - 5}` : "See all"}</b><small>achievements</small></div>` : ""}
+      </div>` : `<p class="hint" style="margin:0">None yet. Catch someone.</p>`}
     <h3 class="sec">About</h3>
     <textarea class="bio" id="myBio" rows="3" maxlength="255">${me.bio ?? ""}</textarea>
     <div class="hint" style="text-align:right" id="bioCount">${(me.bio ?? "").length} / 255</div>
@@ -1086,6 +1171,10 @@ function openProfile(entry) {
   viewing = entry;
   const owner = { name: entry.owner, species: entry.species };
   const theirs = Object.values(SUITS).filter(s => s.owner === entry.owner);
+  // deterministic per player, so the same profile always shows the same case
+  const seed = [...entry.owner].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const theirMarks = achievements().filter((_, i) => (seed + i * 7) % 4 === 0).slice(0, 6)
+    .map(a => ({ ...a, done: true }));
   $("v-profile").innerHTML = `
     <div class="showcase">${showcase(entry)}</div>
     <div class="profhead">
@@ -1098,11 +1187,19 @@ function openProfile(entry) {
       <div class="stat" style="--tone:var(--gold)"><b>${18 + theirs.length * 9}</b><small>times caught</small></div>
       <div class="stat" style="--tone:var(--accent-bright)"><b>${theirs.filter(t => caught.some(c => c.name === t.name)).length}/${theirs.length}</b><small>you have</small></div>
     </div>
+    <h3 class="sec"><span><b class="tick" style="background:${rarityColour(entry.species)}"></b>${entry.name}</span>
+      <span>${RARITY[rarityOf(entry.species)].label}</span></h3>
+    <div class="hero" data-zoom="${entry.name}" style="--tone:${rarityColour(entry.species)}">
+      ${art(entry)}
+      <div class="cap"><b>${entry.name}</b><small>${entry.species}</small></div>
+    </div>
     ${entry.bio ? `<h3 class="sec">About</h3><p style="margin:0;font-size:14px;color:#d5dced">${entry.bio}</p>` : ""}
+    <h3 class="sec"><span><b class="tick"></b>Achievements</span><span>${theirMarks.length} of ${achievements().length}</span></h3>
+    <div class="badgecase">${theirMarks.map(a => bcard(a)).join("")}</div>
     <h3 class="sec">Fursuits</h3>
     ${theirs.map(s => {
       const got = caught.some(c => c.name === s.name);
-      return `<div class="listrow" style="--tone:${pal(s.species)[1]}" data-suit="${s.name}">
+      return `<div class="listrow" style="--tone:${pal(s.species)[1]}" data-suit="${s.name}" data-zoom="${s.name}">
         <div class="th">${art(s)}</div>
         <div class="who"><b>${s.name}</b><small>${s.species}</small></div>
         <div style="font-size:12.5px;color:${got ? "var(--accent-hi)" : "var(--muted)"}">${got ? "caught" : "not yet"}</div>
@@ -1238,6 +1335,19 @@ function openSheet({ entry, special, earned = [] }) {
 }
 
 // ---------- sheet gestures ----------
+// lightbox: the badge photo at full size, dismissed by tap, Escape or the button
+function openLightbox(name) {
+  const suit = Object.values(SUITS).find(x => x.name === name) || caught.find(c => c.name === name);
+  if (!suit) return;
+  $("lbArt").innerHTML = art(suit);
+  $("lbName").textContent = suit.name;
+  $("lbMeta").textContent = `${suit.species} · badge by ${suit.owner}`;
+  $("lightbox").classList.add("on");
+}
+const closeLightbox = () => $("lightbox").classList.remove("on");
+$("lbClose").onclick = closeLightbox;
+$("lightbox").onclick = e => { if (!e.target.closest(".lbmeta")) closeLightbox(); };
+
 const sheet = document.querySelector(".sheet");
 function closeSheet() {
   sheet.classList.remove("dragging");
@@ -1269,7 +1379,10 @@ function endDrag(e) {
 sheet.addEventListener("pointerup", endDrag);
 sheet.addEventListener("pointercancel", endDrag);
 sheet.addEventListener("wheel", e => { if (e.deltaY > 24) closeSheet(); }, { passive: true });
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  $("lightbox").classList.contains("on") ? closeLightbox() : closeSheet();
+});
 
 // ---------- controls ----------
 $("colRarity").onchange = e => { colRarity = e.target.value; renderCollection(); };
@@ -1299,6 +1412,10 @@ document.querySelectorAll("[data-ach]").forEach(b => b.onclick = () => {
 
 // tiles, rows and achievement expanding
 document.addEventListener("click", e => {
+  const go = e.target.closest("[data-go]");
+  if (go) { show(go.dataset.go); return; }
+  const zoom = e.target.closest("[data-zoom]");
+  if (zoom) { openLightbox(zoom.dataset.zoom); return; }
   const spec = e.target.closest(".specrow");
   if (spec && !e.target.closest(".subrow")) { spec.classList.toggle("open"); return; }
   const hit = e.target.closest("[data-i]");
