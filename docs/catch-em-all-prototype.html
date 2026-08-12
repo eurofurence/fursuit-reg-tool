@@ -311,7 +311,7 @@
     display: flex; align-items: center; justify-content: center;
   }
   .swatch.on { box-shadow: 0 0 0 2px var(--page), 0 0 0 4px var(--accent-bright); }
-  .swatch[data-colour=""] { border-style: dashed; }
+  .swatch[data-colour=""] { border-style: dashed; color: var(--accent-bright); }
 
   .badgecase { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .bcard {
@@ -535,7 +535,7 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
           <input id="code" maxlength="5" placeholder="ABCDE" autocomplete="off" autocorrect="off"
                  autocapitalize="characters" spellcheck="false" inputmode="text">
           <button class="btn" id="catchBtn" disabled>Catch</button>
-          <div class="hint">Five characters, printed under the name on their badge. The QR opens this filled in.</div>
+          <div class="hint">Five characters, printed under the name on their badge.</div>
         </div>
         <h3 class="sec"><span><b class="tick"></b>Latest</span> <span class="meta" id="latestMeta"></span></h3>
         <div class="tiles" id="latest"></div>
@@ -1214,7 +1214,8 @@ function renderYou() {
     <div class="swatches">${PALETTE.map(p => `
       <button class="swatch ${(!me.colour && !p.hex) || me.colour === p.hex ? "on" : ""}"
         data-colour="${p.hex ?? ""}" title="${p.label}" aria-label="${p.label}"
-        style="--sw:${p.hex ?? "transparent"}">${p.hex ? "" : "A"}</button>`).join("")}</div>
+        style="--sw:${p.hex ?? "var(--panel-2)"}">${p.hex ? "" :
+          `<svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-sparkles"/></svg>`}</button>`).join("")}</div>
 
     <h3 class="sec"><span><b class="tick"></b>About</span></h3>
     <textarea class="bio" id="myBio" rows="3" maxlength="255">${me.bio ?? ""}</textarea>
