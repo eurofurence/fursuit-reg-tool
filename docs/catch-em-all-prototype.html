@@ -334,11 +334,6 @@
     position: absolute; left: 0; right: 0; bottom: 0; padding: 7px 8px; background: rgba(7,11,16,.8);
     font: 700 11px/1.2 inherit; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .tile .herepin {
-    position: absolute; top: 6px; left: 6px; right: 6px; background: var(--accent); color: #fff;
-    border-radius: 999px; padding: 4px 6px; font: 700 9.5px/1 inherit; letter-spacing: .06em;
-    text-transform: uppercase; text-align: center;
-  }
   @keyframes flag {
     0% { box-shadow: 0 0 0 2px var(--accent-bright); }
     35% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-bright) 55%, transparent); }
@@ -1260,10 +1255,6 @@ function openProfile(entry) {
       <div class="stat" style="--tone:var(--gold)"><b>${18 + theirs.length * 9}</b><small>times caught</small></div>
       <div class="stat" style="--tone:var(--accent-bright)"><b>${theirs.filter(t => caught.some(c => c.name === t.name)).length}/${theirs.length}</b><small>you have</small></div>
     </div>
-    <div class="hero current" data-zoom="${entry.name}" style="--tone:${rarityColour(entry.species)}">
-      ${art(entry)}
-      <div class="cap"><b>${entry.name}</b><small>${entry.species}</small></div>
-    </div>
     ${entry.bio ? `<h3 class="sec">About</h3><p style="margin:0;font-size:14px;color:#d5dced">${entry.bio}</p>` : ""}
     <h3 class="sec"><span><b class="tick"></b>Achievements</span><span>${theirMarks.length} of ${achievements().length}</span></h3>
     <div class="badgecase">${theirMarks.map(a => bcard(a)).join("")}</div>
@@ -1276,7 +1267,7 @@ function openProfile(entry) {
         style="--rare:${rarityColour(s.species)}" data-zoom="${s.name}" title="${s.name} · ${s.species}">
         ${art(s)}
         <span class="tname">${s.name}</span>
-        ${here ? `<span class="herepin">This one</span>` : ""}
+
       </div>`;
     }).join("")}</div>
     <h3 class="sec">Links</h3>
