@@ -145,6 +145,24 @@
   .listrow .who b { font-weight: 700; }
   .listrow .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 
+  .progcard {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 13px; padding: 12px 14px; margin-bottom: 8px;
+  }
+  .progtop { display: flex; align-items: baseline; justify-content: space-between; }
+  .progtop span { font-size: 12.5px; color: var(--muted); }
+  .progtop b { font: 800 15px/1 inherit; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+  .progcard .bar { margin: 10px 0 8px; }
+  .progcard small { color: var(--muted); font-size: 11.5px; }
+  .herostat {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 13px; padding: 14px;
+    display: flex; align-items: center; gap: 16px; margin-bottom: 8px;
+  }
+  .hsnum { text-align: center; flex: 0 0 auto; }
+  .hsnum b { display: block; font: 800 34px/1 inherit; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+  .hsnum span { display: block; font-size: 11px; color: var(--muted); margin-top: 5px; }
+  .hsmeta { flex: 1; min-width: 0; }
+  .hsmeta small { color: var(--muted); font-size: 11.5px; display: block; margin-top: 8px; }
+
   .raritygrid {
     display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;
     margin: 0 -12px 14px; padding: 0 2px;      /* borrow the screen gutter, five across needs it */
@@ -399,6 +417,8 @@
     border-radius: 6px; padding: 6px 9px; letter-spacing: .1em;
   }
   .try b.gold { border-color: var(--gold); color: #f0cd6d; }
+  .try b.pick { cursor: pointer; font-family: inherit; letter-spacing: 0; font-weight: 600; }
+  .try b.pick.on { border-color: var(--accent-bright); color: var(--accent-bright); }
   table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
   th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; }
@@ -606,6 +626,15 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
   </div></div>
 
   <div class="notes">
+    <h2>Collection summary, three options</h2>
+    <div class="try" id="variantPicker">
+      <b data-variant="a" class="pick on">A · three cards</b>
+      <b data-variant="b" class="pick">B · counts + progress</b>
+      <b data-variant="c" class="pick">C · one headline</b>
+    </div>
+    <p class="hint" style="margin-top:-4px">Switches the live Collection screen. A keeps the percentage as a peer of the
+    counts, B treats it as progress against the event, C leads with the number that matters and demotes the rest.</p>
+
     <h2>Try it</h2>
     <div class="try">
       <b>XSEPE</b><b>UPXNE</b><b>YLSNB</b><b>KHXYZ</b><b>FBAWY</b><b>EHCVF</b><b>GAYLB</b><b>SWPBL</b>
@@ -709,7 +738,7 @@ const me = {
 let gameRunning = true;
 let viewing = null;
 let clock = 18 * 60 + 41;
-let colView = "grid", colRarity = "all";
+let colView = "grid", colRarity = "all", summaryVariant = "a";
 let lbBoard = "players", lbEvent = "30", achFilter = "all";
 let recentMarks = [];
 
@@ -988,14 +1017,39 @@ function speciesTally(sp) { return caught.filter(c => c.species === sp).length; 
 function renderCollection() {
   const list = caught.filter(c => colRarity === "all" || rarityOf(c.species) === colRarity);
 
+  const pct = Math.round(caught.length / TOTAL_BADGES * 1000) / 10;
+  const summaries = {
+    // A: three equal cards, the percentage as its own number
+    a: `<div class="statgrid" style="margin:0 0 8px">
+          <div class="stat" style="--tone:var(--accent-bright)"><b>${caught.length}</b><small>caught</small></div>
+          <div class="stat" style="--tone:#7b9cf5"><b>${speciesCount()}</b><small>species</small></div>
+          <div class="stat" style="--tone:var(--gold)"><b>${pct}%</b><small>of event</small></div>
+        </div>`,
+    // B: two counts, and the percentage as the thing it actually is, progress
+    b: `<div class="statgrid two" style="margin:0 0 8px">
+          <div class="stat" style="--tone:var(--accent-bright)"><b>${caught.length}</b><small>caught</small></div>
+          <div class="stat" style="--tone:#7b9cf5"><b>${speciesCount()}</b><small>species</small></div>
+        </div>
+        <div class="progcard">
+          <div class="progtop"><span>Event progress</span><b>${pct}%</b></div>
+          <div class="bar"><i style="width:${Math.max(pct, 1.5)}%;background:var(--accent-bright)"></i></div>
+          <small>${caught.length} of ${TOTAL_BADGES.toLocaleString("en")} badges at EF30</small>
+        </div>`,
+    // C: one headline number, the rest as supporting text
+    c: `<div class="herostat">
+          <div class="hsnum"><b>${caught.length}</b><span>caught</span></div>
+          <div class="hsmeta">
+            <div class="bar"><i style="width:${Math.max(pct, 1.5)}%;background:var(--accent-bright)"></i></div>
+            <small>${pct}% of ${TOTAL_BADGES.toLocaleString("en")} badges · ${speciesCount()} species</small>
+          </div>
+        </div>`,
+  };
+
   const tally = Object.keys(RARITY).map(key => ({
     key, ...RARITY[key], n: caught.filter(c => rarityOf(c.species) === key).length,
   }));
   $("colSummary").innerHTML = `
-    <div class="statgrid two" style="margin:0 0 8px">
-      <div class="stat" style="--tone:var(--accent-bright)"><b>${caught.length}</b><small>caught</small></div>
-      <div class="stat" style="--tone:#7b9cf5"><b>${speciesCount()}</b><small>species</small></div>
-    </div>
+    ${summaries[summaryVariant]}
     <div class="raritygrid">${tally.map(t => `
       <button class="stat rarity ${colRarity === t.key ? "on" : ""}" data-rarity="${t.key}" style="--tone:${t.colour}">
         <svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-${t.icon}"/></svg>
@@ -1403,6 +1457,12 @@ document.querySelectorAll("[data-lb]").forEach(b => b.onclick = () => {
   lbBoard = b.dataset.lb;
   document.querySelectorAll("[data-lb]").forEach(x => x.classList.toggle("on", x === b));
   renderRanking(); renderHead("ranking");
+});
+document.querySelectorAll("[data-variant]").forEach(b => b.onclick = () => {
+  summaryVariant = b.dataset.variant;
+  document.querySelectorAll("[data-variant]").forEach(x => x.classList.toggle("on", x === b));
+  renderCollection();
+  show("collection");
 });
 document.querySelectorAll("[data-ach]").forEach(b => b.onclick = () => {
   achFilter = b.dataset.ach;
