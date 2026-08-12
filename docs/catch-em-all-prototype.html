@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Catch-Em-All Prototype</title>
 <style>
   :root {
@@ -9,49 +10,64 @@
     --line: #1d2a38;
     --line-soft: #223142;
     --ink: #f2f6fb;
-    --muted: #6f8296;
+    --muted: #7d90a6;
+    --gold: #d9a520;
+    --silver: #b9c4cf;
+    --bronze: #c07a43;
+    --team: #7b5cd6;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    background: #070a0e; color: var(--ink); margin: 0; padding: 28px 20px 60px;
+    background: #070a0e; color: var(--ink); margin: 0; padding: 26px 20px 60px;
     font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   h1 { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.015em; }
-  .lede { color: var(--muted); max-width: 74ch; margin: 0 0 22px; }
-  .stage { display: flex; gap: 34px; align-items: flex-start; flex-wrap: wrap; }
+  .lede { color: var(--muted); max-width: 76ch; margin: 0 0 20px; }
+  .stage { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
 
-  /* ---------- phone shell ---------- */
   .phone {
-    width: 390px; height: 780px; border: 1px solid #223142; border-radius: 34px; padding: 8px;
-    background: #05070a; flex: 0 0 auto; box-shadow: 0 0 0 1px #0d141c inset;
+    width: 390px; height: 800px; border: 1px solid #223142; border-radius: 34px; padding: 8px;
+    background: #05070a; flex: 0 0 auto;
   }
   .screen {
     width: 100%; height: 100%; border-radius: 27px; overflow: hidden; background: var(--page);
     display: flex; flex-direction: column; position: relative;
   }
-
-  /* ---------- app chrome ---------- */
   .status {
-    height: 28px; display: flex; align-items: center; justify-content: space-between;
+    height: 26px; display: flex; align-items: center; justify-content: space-between;
     padding: 0 18px; font: 600 11.5px/1 inherit; color: var(--muted); flex: 0 0 auto;
   }
   .top {
-    padding: 6px 18px 14px; display: flex; align-items: center; justify-content: space-between;
-    border-bottom: 1px solid var(--line); flex: 0 0 auto;
+    padding: 6px 18px 13px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line); flex: 0 0 auto; gap: 12px;
   }
-  .top .t { font: 800 21px/1 inherit; letter-spacing: -0.02em; }
+  .top .t { font: 800 20px/1.15 inherit; letter-spacing: -0.02em; }
   .top .sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
   .pill {
     background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 999px;
     padding: 7px 13px; font: 700 13px/1 inherit; font-variant-numeric: tabular-nums; white-space: nowrap;
   }
   .pill.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-  main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 18px 24px; }
+  main { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 26px; }
   main::-webkit-scrollbar { width: 0; }
   .view { display: none; }
-  .view.on { display: block; }
+  .view.on { display: block; animation: rise .22s ease both; }
 
-  /* ---------- code entry ---------- */
+  /* ---- controls ---- */
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  select, .seg {
+    background: var(--panel-2); border: 1px solid var(--line-soft); color: var(--ink);
+    border-radius: 10px; font: 600 13px/1 inherit; padding: 9px 10px; outline: none;
+  }
+  select:focus { border-color: var(--accent-hi); }
+  .seg { display: flex; padding: 3px; gap: 3px; }
+  .seg button {
+    border: 0; background: none; color: var(--muted); font: 600 12.5px/1 inherit; padding: 7px 11px;
+    border-radius: 8px; cursor: pointer;
+  }
+  .seg button.on { background: var(--accent); color: #fff; }
+
+  /* ---- code entry ---- */
   .entry { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
   .entry .label {
     font: 700 11px/1 inherit; letter-spacing: 0.16em; text-transform: uppercase;
@@ -63,56 +79,125 @@
     letter-spacing: 0.4em; text-indent: 0.4em; text-align: center; padding: 15px 10px; outline: none;
     text-transform: uppercase;
   }
-  #code::placeholder { color: #223142; font-weight: 500; letter-spacing: 0.4em; }
+  #code::placeholder { color: #223142; font-weight: 500; }
   #code:focus { border-color: var(--accent-hi); box-shadow: inset 0 0 0 1px var(--accent-hi); }
   .btn {
     margin-top: 14px; width: 100%; height: 52px; border: 0; border-radius: 12px;
     background: var(--accent); color: #fff; font: 700 16px/1 inherit; cursor: pointer;
   }
   .btn:disabled { background: var(--panel-2); color: #46586d; cursor: default; }
+  .btn:active:not(:disabled) { transform: scale(.985); }
   .btn.ghost { background: transparent; border: 1px solid var(--line-soft); color: var(--ink); }
+  .btn.sm { height: 42px; font-size: 14px; margin-top: 10px; }
   .hint { color: var(--muted); font-size: 12.5px; margin-top: 12px; }
 
-  /* ---------- tiles ---------- */
+  /* ---- tiles: colour comes from the fursuits ---- */
   h3.sec {
     font: 700 11px/1 inherit; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
-    margin: 22px 0 10px;
+    margin: 22px 0 10px; display: flex; justify-content: space-between; align-items: center;
   }
+  h3.sec span { color: #55677d; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12px; }
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .tile {
-    aspect-ratio: 1; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line-soft);
-    overflow: hidden; position: relative; cursor: pointer;
+    aspect-ratio: 1; border-radius: 13px; overflow: hidden; position: relative; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.09);
   }
-  .tile.blank { background: #0e151d; border-style: dashed; border-color: #1c2836; cursor: default; }
+  .tile.blank { background: #0e151d; border: 1px dashed #1c2836; cursor: default; }
+  .tile.fresh { animation: tilein .34s cubic-bezier(.2,1.25,.4,1) both; }
   .tile.fresh::after {
-    content: ""; position: absolute; inset: 0; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--accent-hi);
+    content: ""; position: absolute; inset: 0; border-radius: 13px; box-shadow: inset 0 0 0 2px #fff;
   }
   .tile svg { width: 100%; height: 100%; display: block; }
+  .tile .cnt {
+    position: absolute; right: 4px; bottom: 4px; background: rgba(6,10,14,.78); color: #fff;
+    border-radius: 6px; padding: 2px 5px; font: 700 10.5px/1.3 inherit;
+  }
+  .listrow {
+    display: flex; align-items: center; gap: 11px; padding: 9px 0; border-bottom: 1px solid var(--line);
+  }
+  .listrow .th { width: 42px; height: 42px; border-radius: 10px; overflow: hidden; flex: 0 0 auto; }
+  .listrow .th svg { width: 100%; height: 100%; display: block; }
+  .listrow .who { flex: 1; min-width: 0; }
+  .listrow .who b { font-weight: 700; }
+  .listrow .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 
-  /* ---------- rows ---------- */
-  .row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-  .row .rank { width: 24px; font: 800 15px/1 inherit; font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; }
+  /* ---- ranking ---- */
+  .row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .row .rank {
+    width: 30px; flex: 0 0 auto; font: 800 15px/1 inherit; font-variant-numeric: tabular-nums;
+    color: var(--muted); text-align: center;
+  }
   .row .who { flex: 1; min-width: 0; }
   .row .who b { font-weight: 700; }
   .row .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
   .row .n { font: 800 17px/1 inherit; font-variant-numeric: tabular-nums; }
-  .row.me { background: rgba(0,89,83,.18); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 10px; margin: 6px 0; }
-  .accent { color: var(--accent-hi); }
+  .row.me { background: rgba(0,89,83,.2); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 10px; margin: 8px 0; }
+  .medal { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #10161e; }
+  .medal.g { background: var(--gold); } .medal.s { background: var(--silver); } .medal.b { background: var(--bronze); color: #fff; }
 
-  /* ---------- marks ---------- */
-  .ach { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  /* ---- achievements ---- */
+  .ach { display: flex; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
   .ach .b {
-    width: 40px; height: 40px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line-soft);
-    display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--muted);
+    width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto; color: #0b0f14; font-weight: 800;
   }
-  .ach .b.done { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .ach .x { flex: 1; }
+  .ach .b.locked { background: var(--panel-2); border: 1px solid var(--line-soft); color: #46586d; }
+  .ach .x { flex: 1; min-width: 0; }
   .ach .x b { font-weight: 700; }
   .ach .x small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
-  .bar { height: 5px; border-radius: 3px; background: var(--panel-2); margin-top: 9px; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--accent); transition: width .35s ease; }
+  .ach .x .desc { font-size: 12.5px; color: #a9b8cb; margin-top: 6px; display: none; }
+  .ach.open .x .desc { display: block; }
+  .ach .new { color: var(--accent-hi); font: 700 11px/1 inherit; letter-spacing: .1em; text-transform: uppercase; }
+  .bar { height: 6px; border-radius: 3px; background: #0c131b; margin-top: 9px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; transition: width .4s ease; }
 
-  /* ---------- bottom nav ---------- */
+  /* ---- profile ---- */
+  .showcase {
+    border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.1); position: relative;
+    margin-bottom: -46px;
+  }
+  .showcase svg { width: 100%; display: block; }
+  .profhead { position: relative; padding: 0 4px; text-align: center; }
+  .profhead .avatar {
+    width: 92px; height: 92px; border-radius: 20px; overflow: hidden; margin: 0 auto 10px;
+    border: 3px solid var(--page); position: relative;
+  }
+  .profhead .avatar svg { width: 100%; height: 100%; display: block; }
+  .nm { font: 800 20px/1.2 inherit; }
+  .sp { color: var(--muted); font-size: 13px; margin-top: 5px; }
+  .statgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 13px; padding: 13px 8px; text-align: center;
+  }
+  .stat b { display: block; font: 800 21px/1 inherit; font-variant-numeric: tabular-nums; }
+  .stat small { color: var(--muted); font-size: 11.5px; display: block; margin-top: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 12px;
+    font: 700 11.5px/1 inherit; border: 1px solid var(--line-soft); background: var(--panel-2); color: var(--muted);
+  }
+  .chip.ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip.wait { border-color: #6a5a20; color: #e3c661; background: #221d10; }
+  .chip.no { border-color: #6d3040; color: #eb9aa6; background: #221319; }
+  .badgerow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .mini {
+    width: 46px; height: 46px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+    color: #0b0f14; font: 800 15px/1 inherit;
+  }
+  .link { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .link span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link button { background: none; border: 0; color: var(--muted); cursor: pointer; font: 600 12px/1 inherit; padding: 6px; }
+  textarea.bio {
+    width: 100%; background: var(--page); border: 1px solid var(--line-soft); border-radius: 12px; color: var(--ink);
+    font: 400 14px/1.5 inherit; padding: 12px; resize: none; outline: none;
+  }
+  textarea.bio:focus { border-color: var(--accent-hi); }
+  .banner {
+    border: 1px solid var(--line-soft); background: var(--panel-2); border-radius: 12px; padding: 12px 14px;
+    font-size: 13px; color: #c8d1e2; text-align: left; margin-bottom: 12px;
+  }
+  .banner.warn { border-color: #6a5a20; background: #1c1810; color: #e6d199; }
+
+  /* ---- nav ---- */
   nav { border-top: 1px solid var(--line); display: flex; padding: 6px 4px 12px; flex: 0 0 auto; background: var(--page); }
   nav button {
     flex: 1; background: none; border: 0; cursor: pointer; padding: 6px 0;
@@ -121,113 +206,73 @@
   }
   nav button .box {
     width: 46px; height: 31px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
-    transition: background .18s ease;
+    transition: background .18s ease; position: relative;
   }
   nav button.on { color: var(--ink); }
   nav button.on .box { background: var(--accent); color: #fff; }
+  nav button .dot {
+    position: absolute; top: 3px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold);
+  }
 
-  /* ---------- sheet + toast ---------- */
+  /* ---- sheet, toast, flash ---- */
   .scrim {
-    position: absolute; inset: 0; background: rgba(3,6,10,.72); display: flex; align-items: flex-end;
+    position: absolute; inset: 0; background: rgba(3,6,10,.74); display: flex; align-items: flex-end;
     opacity: 0; pointer-events: none; transition: opacity .2s ease;
   }
   .scrim.on { opacity: 1; pointer-events: auto; }
   .sheet {
     width: 100%; background: var(--panel); border-top: 1px solid var(--line-soft);
     border-radius: 22px 22px 27px 27px; padding: 6px 18px 22px; text-align: center;
-    transform: translateY(102%); touch-action: none;
-    transition: transform .42s cubic-bezier(.16, 1.02, .3, 1);
+    transform: translateY(102%); touch-action: none; transition: transform .42s cubic-bezier(.16,1.02,.3,1);
   }
   .scrim.on .sheet { transform: translateY(0); }
   .sheet.dragging { transition: none; }
   .grab { width: 40px; height: 4px; border-radius: 2px; background: #2a3a4c; margin: 8px auto 14px; }
-  .sheet .big {
-    width: 132px; height: 132px; border-radius: 18px; overflow: hidden; margin: 0 auto 14px;
-    border: 2px solid var(--accent-hi);
+  .sheet .big { width: 136px; height: 136px; border-radius: 20px; overflow: hidden; margin: 0 auto 14px; border: 2px solid #fff2; }
+  .sheet .big svg { width: 100%; height: 100%; display: block; }
+  .scrim.on .sheet .big { animation: pop .5s cubic-bezier(.2,1.3,.4,1) both .06s; }
+  .scrim.on .sheet .nm, .scrim.on .sheet .mt, .scrim.on .sheet .statgrid, .scrim.on .sheet .btn { animation: rise .38s ease both; }
+  .scrim.on .sheet .mt { animation-delay: .05s; }
+  .scrim.on .sheet .statgrid { animation-delay: .1s; }
+  .scrim.on .sheet .btn { animation-delay: .14s; }
+  .sheet .mt { color: var(--muted); font-size: 13.5px; margin-top: 7px; }
+  .sheet .kind {
+    display: inline-block; margin-top: 12px; border-radius: 999px; padding: 6px 13px;
+    font: 800 11.5px/1 inherit; letter-spacing: .12em; text-transform: uppercase; color: #0b0f14;
   }
-  .scrim.on .sheet .big { animation: pop .5s cubic-bezier(.2, 1.3, .4, 1) both .08s; }
-  .scrim.on .sheet .nm,
-  .scrim.on .sheet .mt,
-  .scrim.on .sheet .stats,
-  .scrim.on .sheet .btn { animation: rise .38s ease both; }
-  .scrim.on .sheet .mt { animation-delay: .06s; }
-  .scrim.on .sheet .stats { animation-delay: .11s; }
-  .scrim.on .sheet .btn { animation-delay: .15s; }
+  .toast {
+    position: absolute; left: 16px; right: 16px; bottom: 96px; background: var(--panel-2);
+    border: 1px solid var(--line-soft); border-radius: 12px; padding: 13px 15px; font-size: 14px;
+    opacity: 0; transform: translateY(8px); transition: all .2s ease; pointer-events: none;
+  }
+  .toast.on { opacity: 1; transform: translateY(0); }
+  .toast.bad { border-color: #6d3040; background: #1e1319; }
+  .toast.good { border-color: var(--accent); background: #0d1f1d; }
+
   @keyframes pop { from { transform: scale(.72) rotate(-4deg); opacity: 0 } to { transform: none; opacity: 1 } }
   @keyframes rise { from { transform: translateY(9px); opacity: 0 } to { transform: none; opacity: 1 } }
   @keyframes tilein { from { transform: scale(.6); opacity: 0 } to { transform: none; opacity: 1 } }
-  @keyframes bump { 50% { transform: scale(1.16) } }
-  .tile.fresh { animation: tilein .34s cubic-bezier(.2, 1.25, .4, 1) both; }
+  @keyframes bump { 50% { transform: scale(1.17) } }
   .pill.bump { animation: bump .34s ease; }
-  .btn:active { transform: scale(.985); }
-  .view.on { animation: rise .22s ease both; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-  .sheet .big svg { width: 100%; height: 100%; display: block; }
-  .sheet .nm { font: 800 22px/1 inherit; }
-  .sheet .mt { color: var(--muted); font-size: 13.5px; margin-top: 7px; }
-  .stats { display: flex; justify-content: space-around; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
-  .stats div div:first-child { font: 800 20px/1 inherit; font-variant-numeric: tabular-nums; }
-  .stats div div:last-child { color: var(--muted); font-size: 11.5px; margin-top: 5px; }
-  .toast {
-    position: absolute; left: 16px; right: 16px; bottom: 92px; background: var(--panel-2);
-    border: 1px solid var(--line-soft); border-radius: 12px; padding: 13px 15px; font-size: 14px;
-    opacity: 0; transform: translateY(6px); transition: all .2s ease; pointer-events: none;
-  }
-  .toast.on { opacity: 1; transform: translateY(0); }
-  .toast.bad { border-color: #4a2530; }
 
-  /* ---------- profiles ---------- */
-  .prof { text-align: center; padding-top: 4px; }
-  .prof .avatar {
-    width: 96px; height: 96px; border-radius: 50%; overflow: hidden; margin: 0 auto 12px;
-    border: 1px solid var(--line-soft);
-  }
-  .prof .avatar svg { width: 100%; height: 100%; display: block; }
-  .prof .nm { font: 800 20px/1 inherit; }
-  .prof .sp { color: var(--muted); font-size: 13px; margin-top: 6px; }
-  .prof .bio { text-align: left; font-size: 14px; color: #d5dced; margin: 16px 0 4px; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 11px;
-    font: 700 11.5px/1 inherit; border: 1px solid var(--line-soft); background: var(--panel-2); color: var(--muted);
-  }
-  .chip.ok { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .chip.wait { border-color: #3d4a2a; color: #c3c98b; background: #1b2015; }
-  .chip.no { border-color: #4a2530; color: #d79a9a; background: #1f1418; }
-  .links { margin-top: 10px; }
-  .link {
-    display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line);
-    font-size: 14px; text-align: left;
-  }
-  .link span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .link small { color: var(--muted); font-size: 12px; }
-  .link button {
-    background: none; border: 0; color: var(--muted); cursor: pointer; font: 600 12px/1 inherit; padding: 6px;
-  }
-  textarea.bio {
-    width: 100%; background: var(--page); border: 1px solid var(--line-soft); border-radius: 12px; color: var(--ink);
-    font: 400 14px/1.5 inherit; padding: 12px; resize: none; outline: none;
-  }
-  textarea.bio:focus { border-color: var(--accent-hi); }
-  .banner {
-    border: 1px solid var(--line-soft); background: var(--panel-2); border-radius: 12px; padding: 12px 14px;
-    font-size: 13px; color: #c8d1e2; margin-bottom: 14px; text-align: left;
-  }
-
-  /* ---------- notes ---------- */
-  .notes { flex: 1; min-width: 340px; max-width: 640px; }
-  .notes h2 { font-size: 16px; margin: 0 0 10px; }
-  .notes ul { padding-left: 18px; color: #c8d1e2; }
-  .notes li { margin-bottom: 7px; }
+  /* ---- notes ---- */
+  .notes { flex: 1; min-width: 340px; max-width: 620px; }
+  .notes h2 { font-size: 16px; margin: 22px 0 8px; }
+  .notes h2:first-child { margin-top: 0; }
+  .notes ul { padding-left: 18px; color: #c8d1e2; margin: 0; }
+  .notes li { margin-bottom: 6px; }
   code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: #9fb3d0; }
-  .try { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 18px; }
+  .try { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 4px; }
   .try b {
     font: 700 13px/1 ui-monospace, Menlo, monospace; background: var(--panel-2); border: 1px solid var(--line-soft);
     border-radius: 6px; padding: 6px 9px; letter-spacing: .1em;
   }
-  table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 6px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .try b.gold { border-color: var(--gold); color: #f0cd6d; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; }
-  td.old { color: #c98b8b; } td.new { color: #7fc9bf; }
+  td.y { color: #7fc9bf; } td.n { color: #c98b8b; }
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -250,7 +295,7 @@
   <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
   </symbol>
-  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
     <path d="M20 6 9 17l-5-5"/>
   </symbol>
   <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -259,85 +304,129 @@
   <symbol id="i-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>
   </symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11.5 2.6a.6.6 0 0 1 1 0l2.4 5 5.4.8c.5.1.7.7.3 1l-3.9 3.8.9 5.4c.1.5-.4.9-.9.6L12 16.7l-4.8 2.5c-.5.3-1-.1-.9-.6l.9-5.4-3.9-3.8c-.4-.3-.2-.9.3-1l5.4-.8z"/>
+  </symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.8 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/>
+  </symbol>
 </defs></svg>
 
 <h1>Catch-Em-All: sticker book, working prototype</h1>
-<p class="lede">Tap the nav, type a code, catch something. Counters, collection and marks all update, so it reads as an app
-rather than five stills. One accent, <code>#005953</code>, on flat fills; <code>#0a7a71</code> only for 1px strokes on dark
-where the base green disappears. Code entry uses the con-badge framing as a single wide-tracked field.</p>
+<p class="lede">Feature-paired with what is live now: intro, catch with special codes and QR auto-catch, collection with
+event / rarity filters and grid-list-counter toggles, leaderboard with the event filter, the real achievement set with
+progress, and the profile pages including edit and review status. Colour comes from the fursuits themselves, the way a
+Steam profile gets its colour from the art, not from the chrome. <code>#005953</code> stays the one interface colour.</p>
 
 <div class="stage">
   <div class="phone"><div class="screen">
-    <div class="status"><span>18:41</span><span>EF30</span></div>
+    <div class="status"><span id="clockLabel">18:41</span><span>EF30 &middot; day 2</span></div>
 
     <div class="top">
-      <div><div class="t" id="title">Catch 'Em All</div><div class="sub" id="subtitle">Eurofurence 30</div></div>
+      <div style="min-width:0"><div class="t" id="title">Catch 'Em All</div><div class="sub" id="subtitle">Eurofurence 30</div></div>
       <span class="pill" id="headpill">6 caught</span>
     </div>
 
     <main>
+      <!-- INTRODUCTION -->
+      <section class="view" id="v-intro">
+        <div class="entry">
+          <div class="nm" style="font-size:22px">Collect the fursuiters you meet</div>
+          <p style="color:#c8d1e2;font-size:14px;margin:12px 0 0">
+            Every fursuit badge here carries a five-character code. Ask, type it in, and that suiter joins your book.
+          </p>
+          <p style="color:#c8d1e2;font-size:14px;margin:12px 0 0">
+            Ask before you photograph or approach anyone. A suiter with a handler and a closed pose is busy.
+          </p>
+          <p style="color:#c8d1e2;font-size:14px;margin:12px 0 0">
+            Codes also work from the QR on the badge, and staff hand out a few special ones.
+          </p>
+          <button class="btn" id="introDone">Start collecting</button>
+        </div>
+        <p class="hint">Shown once per event, matching <code>catch-introduction</code> middleware.</p>
+      </section>
+
       <!-- CATCH -->
       <section class="view on" id="v-catch">
-        <div class="entry">
+        <div id="gameState"></div>
+        <div class="entry" id="catchCard">
           <div class="label">Badge code</div>
           <input id="code" maxlength="5" placeholder="ABCDE" autocomplete="off" autocorrect="off"
                  autocapitalize="characters" spellcheck="false" inputmode="text">
           <button class="btn" id="catchBtn" disabled>Catch</button>
-          <div class="hint">Five characters, printed under the name on their badge.</div>
+          <div class="hint">Five characters, printed under the name on their badge. The QR opens this filled in.</div>
         </div>
-        <h3 class="sec">Latest</h3>
+        <h3 class="sec">Latest <span id="latestMeta"></span></h3>
         <div class="tiles" id="latest"></div>
+        <h3 class="sec">Today</h3>
+        <div id="timeline"></div>
       </section>
 
       <!-- COLLECTION -->
       <section class="view" id="v-collection">
-        <div class="tiles" id="grid"></div>
-        <p class="hint">Tap a sticker for who it was. Dashed slots are people still out there.</p>
+        <div class="toolbar">
+          <select id="colEvent">
+            <option value="30">EF30 (2026)</option>
+            <option value="29">EF29 (2025)</option>
+            <option value="global">All events</option>
+          </select>
+          <select id="colRarity">
+            <option value="all">All species</option>
+            <option value="one">Seen once</option>
+            <option value="many">Seen more than once</option>
+          </select>
+          <div class="seg">
+            <button data-view="grid" class="on">Grid</button>
+            <button data-view="list">List</button>
+          </div>
+          <div class="seg">
+            <button id="counterToggle" class="on">Counts</button>
+          </div>
+        </div>
+        <div id="colSummary"></div>
+        <div id="colBody"></div>
       </section>
 
-      <!-- RANKING -->
-      <section class="view" id="v-ranking"></section>
-
-      <!-- MARKS -->
-      <section class="view" id="v-marks"></section>
-
-      <!-- YOU: own profile, matching the shipped UserProfile page -->
-      <section class="view" id="v-you">
-        <div class="prof">
-          <div class="avatar" id="myAvatar"></div>
-          <div class="nm">Tin</div>
-          <div style="margin-top:9px"><span class="chip ok" id="myStatus">Approved &middot; public</span></div>
+      <!-- LEADERBOARD -->
+      <section class="view" id="v-ranking">
+        <div class="toolbar">
+          <select id="lbEvent">
+            <option value="30">EF30 (2026)</option>
+            <option value="29">EF29 (2025)</option>
+          </select>
+          <div class="seg">
+            <button data-lb="players" class="on">Players</button>
+            <button data-lb="suits">Fursuits</button>
+          </div>
         </div>
-        <div class="tiles" style="grid-template-columns:repeat(3,1fr);margin-top:16px">
-          <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit" id="s1">6</div><div class="hint" style="margin-top:6px">caught</div></div>
-          <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit" id="s2">6</div><div class="hint" style="margin-top:6px">species</div></div>
-          <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit" id="s3">4th</div><div class="hint" style="margin-top:6px">rank</div></div>
-        </div>
-
-        <h3 class="sec">About</h3>
-        <textarea class="bio" id="myBio" rows="3" maxlength="255">Rat person. Ask before photos, happy to pose.</textarea>
-        <div class="hint" style="text-align:right" id="bioCount">44 / 255</div>
-
-        <h3 class="sec">Links</h3>
-        <div class="links" id="myLinks"></div>
-        <button class="btn ghost" id="addLink" style="margin-top:12px">Add link</button>
-        <p class="hint">Up to ten. Editing anything here sends the profile back for review before other players see it.</p>
-        <button class="btn" id="saveProfile">Save profile</button>
-
-        <h3 class="sec">Your day</h3>
-        <div id="timeline"></div>
+        <div id="lbBody"></div>
       </section>
 
-      <!-- SOMEONE ELSE'S PROFILE -->
+      <!-- ACHIEVEMENTS -->
+      <section class="view" id="v-marks">
+        <div class="toolbar">
+          <div class="seg">
+            <button data-ach="all" class="on">All</button>
+            <button data-ach="earned">Earned</button>
+            <button data-ach="progress">In progress</button>
+          </div>
+        </div>
+        <div id="achBody"></div>
+      </section>
+
+      <!-- OWN PROFILE -->
+      <section class="view" id="v-you"></section>
+
+      <!-- SOMEONE ELSE -->
       <section class="view" id="v-profile"></section>
     </main>
 
     <nav>
-      <button data-v="ranking"><span class="box"><svg width="20" height="20"><use href="#i-trophy"/></svg></span>Ranking</button>
-      <button data-v="marks"><span class="box"><svg width="20" height="20"><use href="#i-medal"/></svg></span>Marks</button>
-      <button data-v="catch" class="on"><span class="box"><svg width="20" height="20"><use href="#i-target"/></svg></span>Catch</button>
-      <button data-v="collection"><span class="box"><svg width="20" height="20"><use href="#i-grid"/></svg></span>Collection</button>
-      <button data-v="you"><span class="box"><svg width="20" height="20"><use href="#i-user"/></svg></span>You</button>
+      <button data-v="ranking"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-trophy"/></svg></span>Ranking</button>
+      <button data-v="marks"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-medal"/></svg><span class="dot" id="achDot" hidden></span></span>Marks</button>
+      <button data-v="catch" class="on"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-target"/></svg></span>Catch</button>
+      <button data-v="collection"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-grid"/></svg></span>Collection</button>
+      <button data-v="you"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-user"/></svg></span>You</button>
     </nav>
 
     <div class="toast" id="toast"></div>
@@ -346,324 +435,530 @@ where the base green disappears. Code entry uses the con-badge framing as a sing
       <div class="sheet">
         <div class="grab"></div>
         <div class="big" id="sheetArt"></div>
-        <div class="nm" id="sheetName">Caspian</div>
-        <div class="mt" id="sheetMeta">Beagle &middot; badge by retrogradeprotogen</div>
-        <div class="stats">
-          <div><div id="sheetCaught">7</div><div>caught</div></div>
-          <div><div id="sheetSpecies">7</div><div>species</div></div>
-          <div><div id="sheetNth">1st</div><div id="sheetNthLabel">Beagle met</div></div>
+        <div class="nm" id="sheetName"></div>
+        <div class="mt" id="sheetMeta"></div>
+        <div id="sheetKind"></div>
+        <div class="statgrid">
+          <div class="stat"><b id="sheetCaught">0</b><small>caught</small></div>
+          <div class="stat"><b id="sheetSpecies">0</b><small>species</small></div>
+          <div class="stat"><b id="sheetNth">1st</b><small id="sheetNthLabel">met</small></div>
         </div>
         <button class="btn" id="sheetNext">Next code</button>
-        <button class="btn ghost" id="sheetSeen" style="margin-top:8px">See collection</button>
+        <button class="btn ghost sm" id="sheetProfile">Open profile</button>
       </div>
     </div>
   </div></div>
 
   <div class="notes">
-    <h2>Codes that work in the prototype</h2>
-    <div class="try"><b>XSEPE</b><b>UPXNE</b><b>YLSNB</b><b>KHXYZ</b><b>FBAWY</b><b>EHCVF</b><b>GAYLB</b><b>SWPBL</b></div>
-    <p class="hint" style="margin-top:-10px">Anything else gives the failure state. Re-entering a caught code gives the duplicate state.</p>
+    <h2>Try it</h2>
+    <div class="try">
+      <b>XSEPE</b><b>UPXNE</b><b>YLSNB</b><b>KHXYZ</b><b>FBAWY</b><b>EHCVF</b><b>GAYLB</b><b>SWPBL</b>
+      <b>MRTQZ</b><b>PLZKD</b><b>VNBHR</b><b>QWEDC</b>
+    </div>
+    <div class="try"><b class="gold">EFCEA</b><b class="gold">STAFF</b></div>
+    <p class="hint" style="margin-top:4px">Gold ones are special codes. Unknown codes fail, repeats say so, and
+      <code>?code=XSEPE&amp;auto=1</code> on the URL catches on load like the badge QR does.</p>
 
-    <h2 style="margin-top:24px">What the skin decides</h2>
+    <h2>Feature parity with what is live</h2>
+    <table>
+      <tr><th>Live today</th><th>In here</th></tr>
+      <tr><td>Introduction, once per event</td><td class="y">Intro screen, Start collecting</td></tr>
+      <tr><td>Code entry, 5 chars, rate limited</td><td class="y">One field, disabled until 5, throttle message</td></tr>
+      <tr><td>QR auto-catch (<code>?code=&amp;auto=</code>)</td><td class="y">Same query parameters</td></tr>
+      <tr><td>Special codes (staff, CEA team)</td><td class="y">Gold codes, own result state</td></tr>
+      <tr><td>Already caught / invalid / game closed</td><td class="y">All three states</td></tr>
+      <tr><td>Collection: event filter incl. global</td><td class="y">EF30 / EF29 / All events</td></tr>
+      <tr><td>Collection: rarity filter</td><td class="y">Replaced by seen-once / seen-often</td></tr>
+      <tr><td>Collection: grid-list and counter toggles</td><td class="y">Both kept</td></tr>
+      <tr><td>Leaderboard: event filter, top 50, own rank</td><td class="y">Plus a fursuits board</td></tr>
+      <tr><td>Achievements: progress, secret, locked</td><td class="y">Real set, progress, new marker</td></tr>
+      <tr><td>Profile: about, links, edit, status</td><td class="y">Own and other players</td></tr>
+      <tr><td>Rarity tiers on catches</td><td class="n">Dropped, see below</td></tr>
+    </table>
+
+    <h2>Where the colour comes from</h2>
     <ul>
-      <li><b>One accent.</b> <code>#005953</code> fills the primary button, the active nav slot, progress bars and the "you" row. Nothing else competes, no gradients.</li>
-      <li><b>Icons.</b> lucide <code>trophy</code>, <code>medal</code>, <code>target</code>, <code>layout-grid</code>, <code>user</code>, <code>check</code>, <code>lock</code>, <code>flag</code>. Drops the emoji in <code>Leaderboard.vue:73-75</code>, <code>Achievements.vue:503,777</code>, <code>Collection.vue:557</code> and <code>FursuitRarity::getIcon()</code>.</li>
-      <li><b>One field, not five boxes.</b> Single tap, paste works, no per-box focus jumping. <code>autocapitalize="characters"</code>, <code>autocorrect="off"</code>, submit on the fifth character.</li>
-      <li><b>Collection is the payoff.</b> One tile per fursuit using the synced avatar; dashed empty slots carry the pull. Species repeats stop reading as a bug.</li>
-      <li><b>Rarity tiers gone.</b> <code>UserCatch::getFursuitRarity()</code> ranks by how often a suit was caught, so popular reads as Legendary and day one is all Common. Counts and "least common species you have" replace it.</li>
-      <li><b>Feels native.</b> Content scrolls, header and nav stay put, the catch result is a bottom sheet you can dismiss, and feedback is a toast instead of a red panel pushing the layout down.</li>
+      <li><b>The fursuits.</b> Each species carries its own palette, so the collection is a wall of colour instead of grey pills. The chrome stays dark and quiet, like a Steam profile where the art is loud and the page is not.</li>
+      <li><b>Marks are tiered.</b> Bronze, silver, gold and a purple team tier, so the badge row reads at a glance instead of being sixteen identical ticks.</li>
+      <li><b>The showcase.</b> Profiles lead with the owner's fursuit as a wide banner, the way Steam leads with artwork.</li>
+      <li><b>One interface colour.</b> <code>#005953</code> for actions, active nav and progress. Content colour never leaks into buttons, so nothing competes with the primary action.</li>
     </ul>
 
-    <h2 style="margin-top:24px">Copy pass</h2>
-    <table>
-      <tr><th>Where</th><th>Now</th><th>Instead</th></tr>
-      <tr><td><code>Catch.vue:115</code></td><td class="old">Amazing Catch!</td><td class="new">(sheet header is the name)</td></tr>
-      <tr><td><code>Catch.vue:173</code></td><td class="old">Continue Hunting!</td><td class="new">Next code</td></tr>
-      <tr><td><code>Catch.vue:193-196</code></td><td class="old">Spot a Fursuiter? / Enter their 5-letter code!</td><td class="new">Badge code + hint under the button</td></tr>
-      <tr><td><code>Catch.vue:232</code></td><td class="old">Invalid code - try again!</td><td class="new">No badge with that code</td></tr>
-      <tr><td><code>Catch.vue:93</code></td><td class="old">Catch them all!</td><td class="new">Eurofurence 30</td></tr>
-      <tr><td><code>Profile.vue:16</code></td><td class="old">Saving space for something special next year at Eurofurence 30</td><td class="new">Your stats (the You tab here)</td></tr>
-    </table>
+    <h2>Still worth deciding</h2>
+    <ul>
+      <li><b>Rarity.</b> <code>UserCatch::getFursuitRarity()</code> ranks by how often a suit was caught, so popular reads as Legendary and day one is all Common. Here it is counts plus a seen-once filter.</li>
+      <li><b>Emoji.</b> The live achievement icons are emoji in PHP (<code>Furedex5.php</code> and friends). These become tier colour plus a lucide glyph.</li>
+      <li><b>Naming.</b> "Marks" or "Achievements", "furédex" kept or dropped.</li>
+    </ul>
   </div>
 </div>
 
 <script>
-const SUITS = {
-  XSEPE: { name: "Caspian",  species: "Beagle",           owner: "retrogradeprotogen", c: ["#22304f", "#41537f"],
-           bio: "First con in suit. Beagle noises only.", links: ["https://bsky.app/profile/caspian"] },
-  UPXNE: { name: "Nox",      species: "Kugsha Dog",       owner: "voltaic",            c: ["#2a2540", "#453e66"],
-           bio: "Dance comp regular. Say hi at the stage.", links: ["https://voltaic.example", "https://bsky.app/profile/voltaic"] },
-  YLSNB: { name: "Birch",    species: "Norsk Skogkatt",   owner: "pinefall",           c: ["#1a2b21", "#2c4a39"],
-           bio: null, links: [] },
-  KHXYZ: { name: "Juno",     species: "African Wild Dog", owner: "sunspot",            c: ["#3a2a1e", "#5f4633"],
-           bio: "Fursuit built 2024. Handler is the one with the water.", links: ["https://sunspot.example/juno"] },
-  FBAWY: { name: "Rye",      species: "Coffee fox",       owner: "brewclaw",           c: ["#33202c", "#59374b"],
-           bio: "Coffee fox. Yes, really.", links: ["https://brewclaw.example"] },
-  EHCVF: { name: "Sable",    species: "Red Deer",         owner: "hartline",           c: ["#3d1f2a", "#6a3648"],
-           bio: "Quiet suiter, loud antlers.", links: [] },
-  GAYLB: { name: "Marl",     species: "Beagle",           owner: "tuftear",            c: ["#1c3a45", "#2f5f6e"],
-           bio: null, links: [] },
-  SWPBL: { name: "Wisp",     species: "Rexouium",         owner: "glasswing",          c: ["#123028", "#1f5546"],
-           bio: "Ask before hugs, the tail is fragile.", links: ["https://glasswing.example", "https://bsky.app/profile/glasswing"] },
+// ---------- data ----------
+const SPECIES = {
+  "Beagle":            ["#2b4a86", "#5b86d6"],
+  "Kugsha Dog":        ["#3c2f6b", "#7a63c8"],
+  "Norsk Skogkatt":    ["#1f4436", "#3f9070"],
+  "African Wild Dog":  ["#6b3a12", "#d08a35"],
+  "Coffee fox":        ["#5a2a1c", "#c2653f"],
+  "Red Deer":          ["#63202c", "#c14a5e"],
+  "Rexouium":          ["#144a4a", "#2fae9f"],
+  "Husky":             ["#25405c", "#5f9ec9"],
+  "Fenfonex":          ["#5b2f5e", "#b45fb0"],
+  "Raptor":            ["#4a4a12", "#b0b03a"],
+  "Coyote":            ["#5c3a1b", "#c08a4a"],
+  "Dog-Shark":         ["#1b3a5c", "#3f7fc0"],
+  "Kangaroo":          ["#5c3324", "#c07048"],
+  "Snow Leopard":      ["#2f3f52", "#8fa9c4"],
 };
 
-const me = {
-  name: "Tin",
-  status: "approved",
-  bio: "Rat person. Ask before photos, happy to pose.",
-  links: ["https://tin.example", "https://bsky.app/profile/tin"],
-  c: ["#1f2c3d", "#37506e"],
+const SUITS = {
+  XSEPE: { name: "Caspian", species: "Beagle",           owner: "retrogradeprotogen", bio: "First con in suit. Beagle noises only.", links: ["https://bsky.app/profile/caspian"] },
+  UPXNE: { name: "Nox",     species: "Kugsha Dog",       owner: "voltaic",  bio: "Dance comp regular. Say hi at the stage.", links: ["https://voltaic.example", "https://bsky.app/profile/voltaic"] },
+  YLSNB: { name: "Birch",   species: "Norsk Skogkatt",   owner: "pinefall", bio: null, links: [] },
+  KHXYZ: { name: "Juno",    species: "African Wild Dog", owner: "sunspot",  bio: "Suit built 2024. The handler has the water.", links: ["https://sunspot.example/juno"] },
+  FBAWY: { name: "Rye",     species: "Coffee fox",       owner: "brewclaw", bio: "Coffee fox. Yes, really.", links: ["https://brewclaw.example"] },
+  EHCVF: { name: "Sable",   species: "Red Deer",         owner: "hartline", bio: "Quiet suiter, loud antlers.", links: [] },
+  GAYLB: { name: "Marl",    species: "Beagle",           owner: "tuftear",  bio: null, links: [] },
+  SWPBL: { name: "Wisp",    species: "Rexouium",         owner: "glasswing",bio: "Ask before hugs, the tail is fragile.", links: ["https://glasswing.example"] },
+  MRTQZ: { name: "Kettle",  species: "Husky",            owner: "northline",bio: "Photos welcome, ask first.", links: [] },
+  PLZKD: { name: "Vex",     species: "Fenfonex",         owner: "orchid",   bio: null, links: ["https://orchid.example"] },
+  VNBHR: { name: "Cobalt",  species: "Dog-Shark",        owner: "tidepool", bio: "Shark dog. Fins are foam, be gentle.", links: [] },
+  QWEDC: { name: "Pepper",  species: "Coyote",           owner: "dustdevil",bio: null, links: [] },
 };
+const SPECIAL = {
+  EFCEA: { label: "Catch-Em-All team", note: "You met the people who run this thing." },
+  STAFF: { label: "Staff code",        note: "Thank you for your service." },
+};
+
 const SEED = ["UPXNE", "YLSNB", "KHXYZ", "FBAWY", "EHCVF", "SWPBL"];
 const TIMES = ["13:08", "14:22", "15:51", "16:15", "17:02", "18:04"];
-
 const caught = SEED.map((code, i) => ({ code, ...SUITS[code], time: TIMES[i] }));
-const SLOTS = 16;
-let clock = 18;
+const specials = [];
+const SLOTS = 20;
+const TOTAL_BADGES = 2775;
+
+const me = {
+  name: "Tin", status: "approved",
+  bio: "Rat person. Ask before photos, happy to pose.",
+  links: ["https://tin.example", "https://bsky.app/profile/tin"],
+  species: "Husky",
+};
+
+let gameRunning = true;
 let viewing = null;
+let clock = 18 * 60 + 41;
+let colView = "grid", colCounters = true, colEvent = "30", colRarity = "all";
+let lbBoard = "players", lbEvent = "30", achFilter = "all";
+let recentMarks = [];
 
+// ---------- helpers ----------
 const $ = (id) => document.getElementById(id);
+const pal = (s) => SPECIES[s] || ["#243040", "#54687f"];
 
-// stand-in for the mirrored profile picture: a drawn fursuit head, stable per name
-function art(s) {
-  const seed = [...(s.name || "?")].reduce((a, ch) => a + ch.charCodeAt(0), 0);
-  const ear = seed % 3;            // 0 pointed, 1 round, 2 tall
-  const fur = s.c[1], back = s.c[0], light = "#f4f7fb";
+// stand-in for the mirrored profile picture
+function art(entity) {
+  const name = entity.name || "?";
+  const [back, fur] = pal(entity.species);
+  const seed = [...name].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const ear = seed % 3;
   const ears = ear === 0
     ? `<path d="M17 26 15 8l14 9z" fill="${fur}"/><path d="M47 26 49 8 35 17z" fill="${fur}"/>`
     : ear === 1
       ? `<circle cx="18" cy="19" r="7.5" fill="${fur}"/><circle cx="46" cy="19" r="7.5" fill="${fur}"/>`
       : `<path d="M19 28 16 4l10 12z" fill="${fur}"/><path d="M45 28 48 4 38 16z" fill="${fur}"/>`;
-  return `<svg viewBox="0 0 64 64" role="img" aria-label="${s.name || "profile"}">
+  return `<svg viewBox="0 0 64 64" role="img" aria-label="${name}">
     <rect width="64" height="64" fill="${back}"/>
+    <circle cx="${12 + seed % 8}" cy="${10 + seed % 6}" r="14" fill="${fur}" opacity=".22"/>
     ${ears}
     <ellipse cx="32" cy="36" rx="17" ry="16" fill="${fur}"/>
-    <ellipse cx="32" cy="44" rx="9" ry="7.5" fill="${light}" opacity=".92"/>
+    <ellipse cx="32" cy="44" rx="9" ry="7.5" fill="#f6f9fc" opacity=".93"/>
     <circle cx="25" cy="33" r="2.6" fill="#0b0f14"/><circle cx="39" cy="33" r="2.6" fill="#0b0f14"/>
     <path d="M32 41.5c-1.6 0-3 1-3 2.1 0 1.2 1.4 2 3 2s3-.8 3-2c0-1.1-1.4-2.1-3-2.1z" fill="#0b0f14"/>
   </svg>`;
 }
 
-const TITLES = {
-  catch:      ["Catch 'Em All", "Eurofurence 30"],
-  collection: ["Collection",    () => `${caught.length} of 2,775 badges at EF30`],
-  ranking:    ["Ranking",       "Eurofurence 30 &middot; live"],
-  marks:      ["Marks",         () => `${marks().filter(m => m.done).length} of 16 earned`],
-  you:        ["Your profile",  () => STATUS[me.status].sub],
-  profile:    [() => viewing ? viewing.owner : "Profile", "Player profile"],
-};
-
-const STATUS = {
-  approved: { chip: "ok",   label: "Approved &middot; public",  sub: "Visible to other players" },
-  pending:  { chip: "wait", label: "Waiting for review",        sub: "Hidden until a reviewer approves it" },
-  rejected: { chip: "no",   label: "Rejected",                  sub: "Hidden, see the reason below" },
-};
-
-function speciesCount() { return new Set(caught.map(c => c.species)).size; }
-function marks() {
-  const n = caught.length, s = speciesCount();
-  return [
-    { t: "First catch",    done: n >= 1,  sub: "Earned 12 Aug, 13:08" },
-    { t: "Ten in the book",done: n >= 10, sub: `${Math.min(n, 10)} of 10`, prog: Math.min(n / 10, 1) },
-    { t: "Five species",   done: s >= 5,  sub: `${Math.min(s, 5)} of 5`,   prog: Math.min(s / 5, 1) },
-    { t: "Twenty species", done: s >= 20, sub: `${s} of 20`,               prog: s / 20 },
-    { t: "Hidden",         done: false,   sub: "Unlocks when you find it", locked: true },
-  ];
+function showcase(entity) {
+  const [back, fur] = pal(entity.species);
+  return `<svg viewBox="0 0 390 132" preserveAspectRatio="none">
+    <rect width="390" height="132" fill="${back}"/>
+    <circle cx="60" cy="30" r="70" fill="${fur}" opacity=".3"/>
+    <circle cx="330" cy="120" r="90" fill="${fur}" opacity=".22"/>
+    <circle cx="215" cy="20" r="40" fill="#ffffff" opacity=".07"/>
+  </svg>`;
 }
+
+function speciesCount(list = caught) { return new Set(list.map(c => c.species)).size; }
+function timeNow() { clock += 7; return `${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`; }
+
+// ---------- achievements, the live set ----------
+function achievements() {
+  const n = caught.length, s = speciesCount(), sp = specials.length;
+  const def = [
+    { t: "First Catch",             d: "You have successfully made your first catch.", cur: Math.min(n, 1),  max: 1,   tier: "bronze" },
+    { t: "Fill the furédex I",      d: "You caught 5 species at least once.",          cur: Math.min(s, 5),  max: 5,   tier: "bronze" },
+    { t: "Collector",               d: "You are an aspiring collector.",               cur: Math.min(n, 10), max: 10,  tier: "bronze" },
+    { t: "Fill the furédex II",     d: "You caught 10 species at least once.",         cur: Math.min(s, 10), max: 10,  tier: "silver" },
+    { t: "Curator",                 d: "Your reputation as a collector is growing.",   cur: Math.min(n, 25), max: 25,  tier: "silver" },
+    { t: "Fill the furédex III",    d: "You caught 20 species at least once.",         cur: Math.min(s, 20), max: 20,  tier: "silver" },
+    { t: "Archivist",               d: "Your dedication is clear.",                    cur: Math.min(n, 50), max: 50,  tier: "gold" },
+    { t: "Nice",                    d: "Sixty nine of them. You know what you did.",   cur: Math.min(n, 69), max: 69,  tier: "gold" },
+    { t: "The Completionist",       d: "You are dedicated to the cause.",              cur: Math.min(n, 100), max: 100, tier: "gold" },
+    { t: "The Legendary 151",       d: "Just like a certain little mouse.",            cur: Math.min(n, 151), max: 151, tier: "gold" },
+    { t: "Night Owl",               d: "The hunt never sleeps, and neither do you.",   cur: clock > 24 * 60 ? 1 : 0, max: 1, tier: "silver" },
+    { t: "Catch-Em-All team",       d: "You met the people who run this thing.",       cur: Math.min(sp, 1), max: 1,  tier: "team" },
+    { t: "Your Furédex is complete!", d: "Every species at the event, at least once.", cur: s, max: 42, tier: "gold", locked: true },
+  ];
+  return def.map(a => ({ ...a, done: a.cur >= a.max, pct: Math.round(a.cur / a.max * 100) }));
+}
+const TIER = { bronze: "var(--bronze)", silver: "var(--silver)", gold: "var(--gold)", team: "var(--team)" };
+
+// ---------- header ----------
+const TITLES = {
+  intro:      () => ["Welcome", "Eurofurence 30"],
+  catch:      () => ["Catch 'Em All", gameRunning ? "Eurofurence 30" : "Game closed"],
+  collection: () => ["Collection", colEvent === "global"
+                      ? `${caught.length} across all events`
+                      : `${caught.length} of ${TOTAL_BADGES.toLocaleString("en")} badges at EF${colEvent}`],
+  ranking:    () => ["Leaderboard", `EF${lbEvent} · ${lbBoard === "players" ? "players" : "most caught fursuits"}`],
+  marks:      () => ["Marks", `${achievements().filter(a => a.done).length} of ${achievements().length} earned`],
+  you:        () => ["Your profile", STATUS[me.status].sub],
+  profile:    () => [viewing ? viewing.owner : "Profile", "Player profile"],
+};
+const STATUS = {
+  approved: { chip: "ok",   label: "Approved · public", sub: "Visible to other players" },
+  pending:  { chip: "wait", label: "Waiting for review", sub: "Hidden until a reviewer approves it" },
+  rejected: { chip: "no",   label: "Rejected",           sub: "Hidden, reason below" },
+};
 
 function renderHead(view) {
-  const [t, s] = TITLES[view];
-  $("title").innerHTML = typeof t === "function" ? t() : t;
-  $("subtitle").innerHTML = typeof s === "function" ? s() : s;
+  const [t, s] = TITLES[view]();
+  $("title").textContent = t;
+  $("subtitle").textContent = s;
   $("headpill").textContent = `${caught.length} caught`;
+  $("clockLabel").textContent = `${String(Math.floor(clock / 60) % 24).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`;
 }
 
-function renderTiles(el, list, limit) {
-  const items = list.slice(0, limit || list.length);
-  el.innerHTML = items.map((c, i) =>
-    `<div class="tile ${c.fresh ? "fresh" : ""}" data-i="${caught.indexOf(c)}">${art(c)}</div>`).join("");
+// ---------- catch screen ----------
+function renderCatch() {
+  $("gameState").innerHTML = gameRunning ? "" :
+    `<div class="banner warn">The game is closed. It runs from Wednesday 12:00 until Saturday 22:00.</div>`;
+  $("catchCard").style.display = gameRunning ? "" : "none";
+  $("latestMeta").textContent = `${caught.length} of ${TOTAL_BADGES.toLocaleString("en")}`;
+  $("latest").innerHTML = [...caught].reverse().slice(0, 8).map(tile).join("");
+  $("timeline").innerHTML = [...caught].reverse().slice(0, 6).map(c => `
+    <div class="listrow" data-i="${caught.indexOf(c)}">
+      <div class="th">${art(c)}</div>
+      <div class="who"><b>${c.name}</b><small>${c.species} · ${c.owner}</small></div>
+      <div style="color:var(--muted);font-size:13px">${c.time}</div>
+    </div>`).join("") || `<p class="hint" style="margin:0">Nothing yet today.</p>`;
 }
+const tile = (c) => `<div class="tile ${c.fresh ? "fresh" : ""}" data-i="${caught.indexOf(c)}">${art(c)}${
+  colCounters && speciesTally(c.species) > 1 ? `<span class="cnt">${speciesTally(c.species)}</span>` : ""}</div>`;
+function speciesTally(sp) { return caught.filter(c => c.species === sp).length; }
 
+// ---------- collection ----------
 function renderCollection() {
-  const blanks = Math.max(SLOTS - caught.length, 4);
-  $("grid").innerHTML =
-    caught.map(c => `<div class="tile ${c.fresh ? "fresh" : ""}" data-i="${caught.indexOf(c)}">${art(c)}</div>`).join("") +
-    Array.from({ length: blanks }, () => `<div class="tile blank"></div>`).join("");
+  const list = caught.filter(c => colRarity === "all"
+    || (colRarity === "one" && speciesTally(c.species) === 1)
+    || (colRarity === "many" && speciesTally(c.species) > 1));
+
+  $("colSummary").innerHTML = `
+    <div class="statgrid" style="margin:0 0 14px">
+      <div class="stat"><b>${caught.length}</b><small>caught</small></div>
+      <div class="stat"><b>${speciesCount()}</b><small>species</small></div>
+      <div class="stat"><b>${Math.round(caught.length / TOTAL_BADGES * 1000) / 10}%</b><small>of the event</small></div>
+    </div>`;
+
+  if (colView === "grid") {
+    const blanks = Math.max(SLOTS - list.length, 4);
+    $("colBody").innerHTML = `<div class="tiles">${list.map(tile).join("")}${
+      Array.from({ length: blanks }, () => `<div class="tile blank"></div>`).join("")}</div>
+      <p class="hint">Tap a sticker for the player behind it. Dashed slots are people still out there.</p>`;
+  } else {
+    const bySpecies = {};
+    list.forEach(c => (bySpecies[c.species] ||= []).push(c));
+    $("colBody").innerHTML = Object.entries(bySpecies).sort((a, b) => b[1].length - a[1].length).map(([sp, cs]) => `
+      <h3 class="sec">${sp}${colCounters ? `<span>${cs.length} met</span>` : ""}</h3>
+      ${cs.map(c => `
+        <div class="listrow" data-i="${caught.indexOf(c)}">
+          <div class="th">${art(c)}</div>
+          <div class="who"><b>${c.name}</b><small>${c.owner} · ${c.time}</small></div>
+        </div>`).join("")}`).join("")
+      || `<p class="hint" style="margin:0">Nothing matches that filter.</p>`;
+  }
 }
 
+// ---------- leaderboard ----------
+const PLAYERS = [
+  { n: "Rye", sp: 41, c: 63 }, { n: "Nox", sp: 38, c: 57 }, { n: "Birch", sp: 35, c: 49 },
+  { n: "Juno", sp: 14, c: 15 }, { n: "Sable", sp: 13, c: 14 }, { n: "Marl", sp: 12, c: 12 },
+  { n: "Wisp", sp: 11, c: 11 }, { n: "Kettle", sp: 9, c: 9 }, { n: "Vex", sp: 8, c: 8 },
+];
 function renderRanking() {
-  const others = [
-    { n: "Rye",   sp: 41, c: 63 }, { n: "Nox",   sp: 38, c: 57 }, { n: "Birch", sp: 35, c: 49 },
-    { n: "Juno",  sp: 14, c: 15 }, { n: "Sable", sp: 13, c: 14 }, { n: "Marl",  sp: 12, c: 12 },
-  ];
-  const me = { n: "Tin", sp: speciesCount(), c: caught.length, me: true };
-  const all = [...others, me].sort((a, b) => b.c - a.c);
-  const myRank = all.indexOf(me) + 1;
-  const suffix = myRank + (["st", "nd", "rd"][myRank - 1] || "th");
-  if ($("s3")) $("s3").textContent = suffix;
-  $("v-ranking").innerHTML = all.map((r, i) => `
+  if (lbBoard === "suits") {
+    const suits = Object.values(SUITS)
+      .map((s, i) => ({ ...s, times: 90 - i * 7 }))
+      .sort((a, b) => b.times - a.times).slice(0, 8);
+    $("lbBody").innerHTML = suits.map((s, i) => `
+      <div class="row">
+        <div class="rank">${medal(i)}</div>
+        <div class="th" style="width:38px;height:38px;border-radius:9px;overflow:hidden;flex:0 0 auto">${art(s)}</div>
+        <div class="who"><b>${s.name}</b><small>${s.species} · ${s.owner}</small></div>
+        <div class="n">${s.times}</div>
+      </div>`).join("") + `<p class="hint">How often each fursuit was caught by anyone. Not a rarity score.</p>`;
+    return;
+  }
+  const mine = { n: me.name, sp: speciesCount(), c: caught.length, me: true };
+  const all = [...PLAYERS, mine].sort((a, b) => b.c - a.c);
+  const myRank = all.indexOf(mine) + 1;
+  $("lbBody").innerHTML = all.map((r, i) => `
     <div class="row ${r.me ? "me" : ""}">
-      <div class="rank ${i === 0 ? "accent" : ""}">${i === 0
-        ? '<svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-medal"/></svg>' : i + 1}</div>
-      <div class="who"><b>${r.n}</b><small>${r.sp} species${r.me ? " &middot; you" : ""}</small></div>
+      <div class="rank">${medal(i)}</div>
+      <div class="who"><b>${r.n}</b><small>${r.sp} species${r.me ? " · you" : ""}</small></div>
       <div class="n">${r.c}</div>
     </div>`).join("") +
-    `<p class="hint">Ranked by fursuits caught. Ties break by who got there first.</p>`;
+    `<p class="hint">Top 50 shown, your row is pinned wherever you land. You are ${ordinal(myRank)}.</p>`;
+}
+const medal = (i) => i < 3
+  ? `<span class="medal ${["g", "s", "b"][i]}"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-medal"/></svg></span>`
+  : i + 1;
+const ordinal = (n) => n + (["st", "nd", "rd"][n - 1] || "th");
+function myRank() {
+  const mine = { c: caught.length, me: true };
+  return [...PLAYERS, mine].sort((a, b) => b.c - a.c).findIndex(p => p.me) + 1;
 }
 
+// ---------- marks ----------
 function renderMarks() {
-  $("v-marks").innerHTML = marks().map(m => `
-    <div class="ach">
-      <div class="b ${m.done ? "done" : ""}">
-        <svg width="18" height="18" viewBox="0 0 24 24"><use href="#i-${m.done ? "check" : m.locked ? "lock" : "flag"}"/></svg>
+  const list = achievements().filter(a =>
+    achFilter === "all" || (achFilter === "earned" && a.done) || (achFilter === "progress" && !a.done));
+  $("achBody").innerHTML = list.map(a => `
+    <div class="ach" data-ach="${a.t}">
+      <div class="b ${a.done ? "" : "locked"}" ${a.done ? `style="background:${TIER[a.tier]}"` : ""}>
+        <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-${a.done ? "check" : a.locked ? "lock" : "flag"}"/></svg>
       </div>
-      <div class="x"><b>${m.t}</b><small>${m.sub}</small>
-        ${!m.done && m.prog !== undefined ? `<div class="bar"><i style="width:${Math.round(m.prog * 100)}%"></i></div>` : ""}
+      <div class="x">
+        <b>${a.t}</b>${recentMarks.includes(a.t) ? ' <span class="new">new</span>' : ""}
+        <small>${a.done ? `Earned · ${a.max}/${a.max}` : a.locked ? "Locked until the event ends" : `${a.cur} of ${a.max}`}</small>
+        ${a.done || a.locked ? "" : `<div class="bar"><i style="width:${a.pct}%;background:${TIER[a.tier]}"></i></div>`}
+        <div class="desc">${a.d}</div>
       </div>
-    </div>`).join("") +
-    `<p class="hint">Earned first, then what is close, then locked.</p>`;
+    </div>`).join("");
+  $("achDot").hidden = recentMarks.length === 0;
 }
 
+// ---------- profiles ----------
 function renderYou() {
-  $("s1").textContent = caught.length;
-  $("s2").textContent = speciesCount();
-  $("myAvatar").innerHTML = art(me);
   const st = STATUS[me.status];
-  $("myStatus").className = "chip " + st.chip;
-  $("myStatus").innerHTML = st.label;
-  $("myBio").value = me.bio ?? "";
-  $("bioCount").textContent = `${(me.bio ?? "").length} / 255`;
-  renderMyLinks();
-  $("timeline").innerHTML = [...caught].reverse().map(c => `
-    <div class="row"><div class="who"><b>${c.name}</b><small>${c.species}</small></div>
-    <div class="n" style="font-size:14px;color:var(--muted)">${c.time}</div></div>`).join("");
+  const marks = achievements().filter(a => a.done);
+  $("v-you").innerHTML = `
+    <div class="showcase">${showcase(me)}</div>
+    <div class="profhead">
+      <div class="avatar">${art(me)}</div>
+      <div class="nm">${me.name}</div>
+      <div style="margin-top:9px"><span class="chip ${st.chip}">${st.label}</span></div>
+    </div>
+    <div class="statgrid">
+      <div class="stat"><b>${caught.length}</b><small>caught</small></div>
+      <div class="stat"><b>${speciesCount()}</b><small>species</small></div>
+      <div class="stat"><b>${ordinal(myRank())}</b><small>rank</small></div>
+    </div>
+    <h3 class="sec">Marks <span>${marks.length} earned</span></h3>
+    <div class="badgerow">${marks.map(a => `
+      <span class="mini" style="background:${TIER[a.tier]}" title="${a.t}">
+        <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-star"/></svg></span>`).join("")
+      || `<p class="hint" style="margin:0">None yet.</p>`}</div>
+    <h3 class="sec">About</h3>
+    <textarea class="bio" id="myBio" rows="3" maxlength="255">${me.bio ?? ""}</textarea>
+    <div class="hint" style="text-align:right" id="bioCount">${(me.bio ?? "").length} / 255</div>
+    <h3 class="sec">Links <span>${me.links.length} of 10</span></h3>
+    <div id="myLinks">${me.links.map((u, i) => `
+      <div class="link">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--muted)"><use href="#i-link"/></svg>
+        <span>${u}</span><button data-rm="${i}">Remove</button>
+      </div>`).join("") || `<p class="hint" style="margin:0">No links yet.</p>`}</div>
+    <button class="btn ghost sm" id="addLink" ${me.links.length >= 10 ? "disabled" : ""}>Add link</button>
+    <div class="banner" style="margin-top:14px">Your picture comes from your Eurofurence identity account. Change it there.</div>
+    <p class="hint" style="margin-top:0">Editing the text, the links or the picture sends the profile back for review before other players see it.</p>
+    <button class="btn" id="saveProfile">Save profile</button>`;
+
+  $("myBio").addEventListener("input", e => {
+    me.bio = e.target.value;
+    $("bioCount").textContent = `${e.target.value.length} / 255`;
+    dirty();
+  });
+  $("addLink").onclick = () => {
+    const url = prompt("Link URL", "https://");
+    if (!url || !/^https?:\/\/\S+$/i.test(url)) return toast("Needs an http or https URL", "bad");
+    if (me.links.includes(url.toLowerCase())) return toast("That link is already there", "bad");
+    me.links.push(url.toLowerCase()); dirty(); renderYou();
+  };
+  $("saveProfile").onclick = () => toast(me.status === "pending"
+    ? "Saved. A reviewer sees it next." : "Saved.", "good");
 }
 
-function renderMyLinks() {
-  $("myLinks").innerHTML = me.links.length
-    ? me.links.map((url, i) => `
-        <div class="link"><span>${url}</span><button data-rm="${i}">Remove</button></div>`).join("")
-    : `<p class="hint" style="margin:0">No links yet.</p>`;
-  $("addLink").disabled = me.links.length >= 10;
-}
-
-// public profile of another player, mirroring CatchEmAll/UserProfile
 function openProfile(entry) {
   viewing = entry;
-  const owner = { name: entry.owner, c: entry.c };
-  const theirSuits = Object.values(SUITS).filter(s => s.owner === entry.owner);
+  const owner = { name: entry.owner, species: entry.species };
+  const theirs = Object.values(SUITS).filter(s => s.owner === entry.owner);
   $("v-profile").innerHTML = `
-    <div class="prof">
+    <div class="showcase">${showcase(entry)}</div>
+    <div class="profhead">
       <div class="avatar">${art(owner)}</div>
       <div class="nm">${entry.owner}</div>
       <div class="sp">Player at Eurofurence 30</div>
     </div>
-    <div class="tiles" style="grid-template-columns:repeat(2,1fr);margin-top:16px">
-      <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit">${theirSuits.length}</div><div class="hint" style="margin-top:6px">fursuit${theirSuits.length === 1 ? "" : "s"} here</div></div>
-      <div class="entry" style="padding:14px;text-align:center"><div style="font:800 22px/1 inherit">${12 + theirSuits.length * 7}</div><div class="hint" style="margin-top:6px">times caught</div></div>
+    <div class="statgrid">
+      <div class="stat"><b>${theirs.length}</b><small>fursuit${theirs.length === 1 ? "" : "s"}</small></div>
+      <div class="stat"><b>${18 + theirs.length * 9}</b><small>times caught</small></div>
+      <div class="stat"><b>${theirs.filter(t => caught.some(c => c.name === t.name)).length}/${theirs.length}</b><small>you have</small></div>
     </div>
-    ${entry.bio ? `<h3 class="sec">About</h3><p class="bio" style="margin:0">${entry.bio}</p>` : ""}
+    ${entry.bio ? `<h3 class="sec">About</h3><p style="margin:0;font-size:14px;color:#d5dced">${entry.bio}</p>` : ""}
     <h3 class="sec">Fursuits</h3>
-    ${theirSuits.map(s => `
-      <div class="row">
-        <div class="tile" style="width:44px;height:44px;flex:0 0 auto;border-radius:10px;cursor:default">${art(s)}</div>
+    ${theirs.map(s => {
+      const got = caught.some(c => c.name === s.name);
+      return `<div class="listrow">
+        <div class="th">${art(s)}</div>
         <div class="who"><b>${s.name}</b><small>${s.species}</small></div>
-        <div class="n" style="font-size:13px;color:${caught.some(c => c.name === s.name) ? "var(--accent-hi)" : "var(--muted)"}">
-          ${caught.some(c => c.name === s.name) ? "caught" : "not yet"}</div>
-      </div>`).join("")}
+        <div style="font-size:12.5px;color:${got ? "var(--accent-hi)" : "var(--muted)"}">${got ? "caught" : "not yet"}</div>
+      </div>`;
+    }).join("")}
+    <h3 class="sec">Links</h3>
     ${entry.links && entry.links.length ? `
-      <h3 class="sec">Links</h3>
-      <div class="banner">Links are written by the attendee and lead off Eurofurence sites.</div>
-      <div class="links">${entry.links.map(u => `<div class="link"><span>${u}</span><small>open</small></div>`).join("")}</div>`
-      : `<h3 class="sec">Links</h3><p class="hint" style="margin:0">None shared.</p>`}
-    <button class="btn ghost" id="profBack" style="margin-top:18px">Back to collection</button>
-    <p class="hint">A profile only shows here once a reviewer approved it. Pending and rejected ones are hidden from other players.</p>`;
+      <div class="banner">Written by the attendee. These lead off Eurofurence sites.</div>
+      ${entry.links.map(u => `<div class="link">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--muted)"><use href="#i-link"/></svg>
+        <span>${u}</span></div>`).join("")}` : `<p class="hint" style="margin:0">None shared.</p>`}
+    <button class="btn ghost" id="profBack" style="margin-top:18px">Back</button>
+    <p class="hint">Profiles appear here only after a reviewer approved them. Pending and rejected ones stay hidden.</p>`;
   show("profile");
   $("profBack").onclick = () => show("collection");
 }
 
+function dirty() {
+  if (me.status === "pending") return;
+  me.status = "pending";
+  renderHead("you");
+  document.querySelector("#v-you .chip").className = "chip wait";
+  document.querySelector("#v-you .chip").textContent = STATUS.pending.label;
+  toast("Changed. Back in the review queue until approved.");
+}
+
+// ---------- shell ----------
 function renderAll() {
-  renderTiles($("latest"), [...caught].reverse(), 8);
-  renderCollection(); renderRanking(); renderMarks(); renderYou();
+  renderCatch(); renderCollection(); renderRanking(); renderMarks(); renderYou();
   const open = document.querySelector(".view.on");
   renderHead(open ? open.id.replace("v-", "") : "catch");
 }
-
-let toastTimer;
-function toast(msg, bad) {
-  const t = $("toast");
-  t.textContent = msg;
-  t.classList.toggle("bad", !!bad);
-  t.classList.add("on");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("on"), 2200);
-}
-
 function show(view) {
-  const tab = view === "profile" ? "collection" : view;   // a player profile sits under Collection
+  const tab = view === "profile" ? "collection" : view === "intro" ? "catch" : view;
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + view));
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === tab));
   document.querySelector("main").scrollTop = 0;
+  if (view === "marks") { recentMarks = []; renderMarks(); }
   renderHead(view);
 }
-
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
 
+let toastTimer;
+function toast(msg, kind) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast on" + (kind ? " " + kind : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("on"), 2400);
+}
+
+// ---------- catching ----------
+let attempts = [];
 $("code").addEventListener("input", e => {
   e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  $("catchBtn").disabled = e.target.value.length !== 5;
+  $("catchBtn").disabled = e.target.value.length < 5;
 });
 $("code").addEventListener("keydown", e => { if (e.key === "Enter" && !$("catchBtn").disabled) submit(); });
-$("catchBtn").onclick = submit;
+$("catchBtn").onclick = () => submit();
+$("introDone").onclick = () => { show("catch"); toast("Have a good hunt.", "good"); };
 
-function submit() {
-  const code = $("code").value;
-  const suit = SUITS[code];
-  if (!suit) { toast("No badge with that code", true); return; }
-  if (caught.some(c => c.code === code)) { toast(`${suit.name} is already in your book`); return; }
-
-  clock += 1;
-  caught.forEach(c => c.fresh = false);
-  const entry = { code, ...suit, time: `${18 + Math.floor(clock / 60)}:${String(clock % 60).padStart(2, "0")}`, fresh: true };
-  caught.push(entry);
+function submit(codeIn) {
+  const code = (codeIn || $("code").value).toUpperCase();
   $("code").value = ""; $("catchBtn").disabled = true;
 
-  const nth = caught.filter(c => c.species === entry.species).length;
-  $("sheetArt").innerHTML = art(entry);
-  $("sheetName").textContent = entry.name;
-  $("sheetMeta").innerHTML = `${entry.species} &middot; badge by ${entry.owner}`;
+  if (!gameRunning) return toast("The game is closed right now", "bad");
+
+  // rate limit, mirroring fursuit_catch_attempts_per_minute
+  attempts = attempts.filter(t => performance.now() - t < 60000);
+  if (attempts.length >= 20) return toast("Too many tries. Wait a minute.", "bad");
+  attempts.push(performance.now());
+
+  const special = SPECIAL[code];
+  if (special) {
+    if (specials.includes(code)) return toast("Special code already claimed", "bad");
+    specials.push(code);
+    openSheet({ special, code });
+    return;
+  }
+  const suit = SUITS[code];
+  if (!suit) return toast("No badge with that code", "bad");
+  if (caught.some(c => c.code === code)) return toast(`${suit.name} is already in your book`, "bad");
+
+  const before = achievements().filter(a => a.done).map(a => a.t);
+  caught.forEach(c => (c.fresh = false));
+  const entry = { code, ...suit, time: timeNow(), fresh: true };
+  caught.push(entry);
+  const earned = achievements().filter(a => a.done && !before.includes(a.t)).map(a => a.t);
+  recentMarks.push(...earned);
+
+  openSheet({ entry, earned });
+}
+
+function openSheet({ entry, special, earned = [] }) {
+  if (special) {
+    $("sheetArt").innerHTML = showcase({ species: "Rexouium" });
+    $("sheetName").textContent = special.label;
+    $("sheetMeta").textContent = special.note;
+    $("sheetKind").innerHTML = `<span class="kind" style="background:var(--gold)">Special code</span>`;
+    $("sheetProfile").style.display = "none";
+  } else {
+    const nth = caught.filter(c => c.species === entry.species).length;
+    $("sheetArt").innerHTML = art(entry);
+    $("sheetName").textContent = entry.name;
+    $("sheetMeta").textContent = `${entry.species} · badge by ${entry.owner}`;
+    $("sheetKind").innerHTML = earned.length
+      ? `<span class="kind" style="background:var(--gold)">Mark earned: ${earned[0]}</span>` : "";
+    $("sheetNth").textContent = ordinal(nth);
+    $("sheetNthLabel").textContent = `${entry.species} met`;
+    $("sheetProfile").style.display = "";
+    $("sheetProfile").onclick = () => { closeSheet(); openProfile(entry); };
+  }
   $("sheetCaught").textContent = caught.length;
   $("sheetSpecies").textContent = speciesCount();
-  $("sheetNth").textContent = nth + (["st", "nd", "rd"][nth - 1] || "th");
-  $("sheetNthLabel").textContent = `${entry.species} met`;
   $("scrim").classList.add("on");
   renderAll();
   $("headpill").classList.add("bump");
   setTimeout(() => $("headpill").classList.remove("bump"), 360);
+  if (earned.length) setTimeout(() => toast(`Mark earned: ${earned[0]}`, "good"), 900);
 }
 
+// ---------- sheet gestures ----------
 const sheet = document.querySelector(".sheet");
 function closeSheet() {
   sheet.classList.remove("dragging");
   sheet.style.transform = "";
+  $("scrim").style.opacity = "";
   $("scrim").classList.remove("on");
 }
 $("sheetNext").onclick = () => { closeSheet(); show("catch"); $("code").focus(); };
-$("sheetSeen").onclick = () => { closeSheet(); show("collection"); };
 $("scrim").onclick = e => { if (e.target === $("scrim")) closeSheet(); };
-
-// drag the sheet down to dismiss, like a native bottom sheet
 let dragY = null, lastY = 0, lastT = 0, velocity = 0;
 sheet.addEventListener("pointerdown", e => {
   if (e.target.closest("button")) return;
   dragY = e.clientY; lastY = e.clientY; lastT = performance.now(); velocity = 0;
-  sheet.classList.add("dragging");
-  sheet.setPointerCapture(e.pointerId);
+  sheet.classList.add("dragging"); sheet.setPointerCapture(e.pointerId);
 });
 sheet.addEventListener("pointermove", e => {
   if (dragY === null) return;
-  const dy = Math.max(0, e.clientY - dragY);
-  const now = performance.now();
+  const dy = Math.max(0, e.clientY - dragY), now = performance.now();
   if (now > lastT) { velocity = (e.clientY - lastY) / (now - lastT); lastT = now; lastY = e.clientY; }
   sheet.style.transform = `translateY(${dy}px)`;
   $("scrim").style.opacity = String(Math.max(0, 1 - dy / 320));
@@ -671,55 +966,57 @@ sheet.addEventListener("pointermove", e => {
 function endDrag(e) {
   if (dragY === null) return;
   const dy = Math.max(0, e.clientY - dragY);
-  dragY = null;
-  sheet.classList.remove("dragging");
-  $("scrim").style.opacity = "";
-  if (dy > 110 || velocity > 0.65) closeSheet();
-  else sheet.style.transform = "";
+  dragY = null; sheet.classList.remove("dragging"); $("scrim").style.opacity = "";
+  if (dy > 110 || velocity > 0.65) closeSheet(); else sheet.style.transform = "";
 }
 sheet.addEventListener("pointerup", endDrag);
 sheet.addEventListener("pointercancel", endDrag);
-// a downward flick on the sheet body dismisses it too
 sheet.addEventListener("wheel", e => { if (e.deltaY > 24) closeSheet(); }, { passive: true });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
-document.addEventListener("click", e => {
-  const tile = e.target.closest(".tile[data-i]");
-  if (tile) {
-    const c = caught[+tile.dataset.i];
-    if (c) openProfile(c);
-    return;
-  }
-  const rm = e.target.closest("[data-rm]");
-  if (rm) { me.links.splice(+rm.dataset.rm, 1); dirty(); renderMyLinks(); }
+// ---------- controls ----------
+$("colEvent").onchange = e => { colEvent = e.target.value; renderCollection(); renderHead("collection"); };
+$("colRarity").onchange = e => { colRarity = e.target.value; renderCollection(); };
+$("lbEvent").onchange = e => { lbEvent = e.target.value; renderRanking(); renderHead("ranking"); };
+document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => {
+  colView = b.dataset.view;
+  document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x === b));
+  renderCollection();
 });
-
-// any edit sends the profile back to the queue (UserProfile::requiresReapproval)
-function dirty() {
-  if (me.status !== "pending") {
-    me.status = "pending";
-    const st = STATUS.pending;
-    $("myStatus").className = "chip " + st.chip;
-    $("myStatus").innerHTML = st.label;
-    renderHead("you");
-    toast("Changed. Back in the review queue until approved.");
-  }
-}
-
-$("myBio").addEventListener("input", e => {
-  me.bio = e.target.value;
-  $("bioCount").textContent = `${e.target.value.length} / 255`;
-  dirty();
-});
-$("addLink").onclick = () => {
-  const url = prompt("Link URL", "https://");
-  if (!url || !/^https?:\/\/\S+$/i.test(url)) { toast("Needs a http or https URL", true); return; }
-  if (me.links.includes(url.toLowerCase())) { toast("That link is already there", true); return; }
-  me.links.push(url.toLowerCase());
-  dirty(); renderMyLinks();
+$("counterToggle").onclick = () => {
+  colCounters = !colCounters;
+  $("counterToggle").classList.toggle("on", colCounters);
+  renderCollection(); renderCatch();
 };
-$("saveProfile").onclick = () => toast(
-  me.status === "pending" ? "Saved. A reviewer sees it next." : "Saved.");
+document.querySelectorAll("[data-lb]").forEach(b => b.onclick = () => {
+  lbBoard = b.dataset.lb;
+  document.querySelectorAll("[data-lb]").forEach(x => x.classList.toggle("on", x === b));
+  renderRanking(); renderHead("ranking");
+});
+document.querySelectorAll("[data-ach]").forEach(b => b.onclick = () => {
+  achFilter = b.dataset.ach;
+  document.querySelectorAll("[data-ach]").forEach(x => x.classList.toggle("on", x === b));
+  renderMarks();
+});
 
+// tiles, rows and achievement expanding
+document.addEventListener("click", e => {
+  const hit = e.target.closest("[data-i]");
+  if (hit) { const c = caught[+hit.dataset.i]; if (c) openProfile(c); return; }
+  const ach = e.target.closest(".ach");
+  if (ach) { ach.classList.toggle("open"); return; }
+  const rm = e.target.closest("[data-rm]");
+  if (rm) { me.links.splice(+rm.dataset.rm, 1); dirty(); renderYou(); }
+});
+
+// ---------- boot: QR auto-catch, first-run intro ----------
 renderAll();
+const params = new URLSearchParams(location.search);
+if (params.get("intro") === "1") show("intro");
+if (params.get("code")) {
+  $("code").value = params.get("code").toUpperCase().slice(0, 5);
+  $("catchBtn").disabled = $("code").value.length < 5;
+  if (params.get("auto")) setTimeout(() => submit(), 400);
+}
+if (params.get("closed") === "1") { gameRunning = false; renderCatch(); renderHead("catch"); }
 </script>
