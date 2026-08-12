@@ -328,19 +328,21 @@
 
   /* ---- big badge photo, and the lightbox behind it ---- */
   .hero.current { box-shadow: 0 0 0 2px var(--accent-bright); }
-  .listrow.current {
-    border-color: var(--accent-bright);
-    box-shadow: inset 0 0 0 1px var(--accent-bright);
-    animation: flag .9s ease 1;
+  .tile.current { border-color: var(--accent-bright); box-shadow: 0 0 0 2px var(--accent-bright); animation: flag .9s ease 1; }
+  .tile.missing { opacity: .42; filter: saturate(.5); }
+  .tile .tname {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 7px 8px; background: rgba(7,11,16,.8);
+    font: 700 11px/1.2 inherit; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .here {
-    align-self: center; flex: 0 0 auto; background: var(--accent); color: #fff; border-radius: 999px;
-    padding: 5px 10px; font: 700 10.5px/1 inherit; letter-spacing: .06em; text-transform: uppercase;
+  .tile .herepin {
+    position: absolute; top: 6px; left: 6px; right: 6px; background: var(--accent); color: #fff;
+    border-radius: 999px; padding: 4px 6px; font: 700 9.5px/1 inherit; letter-spacing: .06em;
+    text-transform: uppercase; text-align: center;
   }
   @keyframes flag {
-    0% { box-shadow: inset 0 0 0 1px var(--accent-bright); }
-    35% { box-shadow: inset 0 0 0 3px var(--accent-bright); }
-    100% { box-shadow: inset 0 0 0 1px var(--accent-bright); }
+    0% { box-shadow: 0 0 0 2px var(--accent-bright); }
+    35% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-bright) 55%, transparent); }
+    100% { box-shadow: 0 0 0 2px var(--accent-bright); }
   }
   .hero {
     position: relative; width: 62%; max-width: 230px; margin: 0 auto; aspect-ratio: 3 / 4;
@@ -653,7 +655,7 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
     <h2>Try it</h2>
     <div class="try">
       <b>XSEPE</b><b>UPXNE</b><b>YLSNB</b><b>KHXYZ</b><b>FBAWY</b><b>EHCVF</b><b>GAYLB</b><b>SWPBL</b>
-      <b>MRTQZ</b><b>PLZKD</b><b>VNBHR</b><b>QWEDC</b>
+      <b>MRTQZ</b><b>PLZKD</b><b>VNBHR</b><b>QWEDC</b><b>ZQMPT</b><b>TRWNE</b>
     </div>
     <div class="try"><b class="gold">EFCEA</b><b class="gold">STAFF</b></div>
     <p class="hint" style="margin-top:4px">Gold ones are special codes. Unknown codes fail, repeats say so, and
@@ -730,6 +732,8 @@ const SUITS = {
   PLZKD: { name: "Vex",     species: "Fenfonex",         owner: "orchid",   bio: null, links: ["https://orchid.example"] },
   VNBHR: { name: "Cobalt",  species: "Dog-Shark",        owner: "tidepool", bio: "Shark dog. Fins are foam, be gentle.", links: [] },
   QWEDC: { name: "Pepper",  species: "Coyote",           owner: "dustdevil",bio: null, links: [] },
+  ZQMPT: { name: "Ember",   species: "Red Deer",         owner: "voltaic",  bio: null, links: [] },
+  TRWNE: { name: "Puddle",  species: "Dog-Shark",        owner: "glasswing",bio: null, links: [] },
 };
 const SPECIAL = {
   EFCEA: { label: "Catch-Em-All team", note: "You met the people who run this thing." },
@@ -1256,8 +1260,6 @@ function openProfile(entry) {
       <div class="stat" style="--tone:var(--gold)"><b>${18 + theirs.length * 9}</b><small>times caught</small></div>
       <div class="stat" style="--tone:var(--accent-bright)"><b>${theirs.filter(t => caught.some(c => c.name === t.name)).length}/${theirs.length}</b><small>you have</small></div>
     </div>
-    <h3 class="sec"><span><b class="tick" style="background:${rarityColour(entry.species)}"></b>The one you tapped</span>
-      <span>${RARITY[rarityOf(entry.species)].label}</span></h3>
     <div class="hero current" data-zoom="${entry.name}" style="--tone:${rarityColour(entry.species)}">
       ${art(entry)}
       <div class="cap"><b>${entry.name}</b><small>${entry.species}</small></div>
@@ -1265,22 +1267,18 @@ function openProfile(entry) {
     ${entry.bio ? `<h3 class="sec">About</h3><p style="margin:0;font-size:14px;color:#d5dced">${entry.bio}</p>` : ""}
     <h3 class="sec"><span><b class="tick"></b>Achievements</span><span>${theirMarks.length} of ${achievements().length}</span></h3>
     <div class="badgecase">${theirMarks.map(a => bcard(a)).join("")}</div>
-    <h3 class="sec">Fursuits</h3>
-    ${theirs.map(s => {
+    <h3 class="sec"><span><b class="tick"></b>Fursuits</span>
+      <span>${theirs.filter(t => caught.some(c => c.name === t.name)).length} of ${theirs.length} caught</span></h3>
+    <div class="tiles">${theirs.map(s => {
       const got = caught.some(c => c.name === s.name);
       const here = s.name === entry.name;
-      return `<div class="listrow ${here ? "current" : ""}" style="--tone:${pal(s.species)[1]}"
-        data-suit="${s.name}" data-zoom="${s.name}">
-        <div class="th">${art(s)}</div>
-        <div class="who">
-          <b>${s.name}</b>
-          <small>${s.species}${here ? " · shown above" : ""}</small>
-        </div>
-        ${here
-          ? `<span class="here">This one</span>`
-          : `<div style="font-size:12.5px;color:${got ? "var(--accent-hi)" : "var(--muted)"}">${got ? "caught" : "not yet"}</div>`}
+      return `<div class="tile ${here ? "current" : ""} ${got ? "" : "missing"}"
+        style="--rare:${rarityColour(s.species)}" data-zoom="${s.name}" title="${s.name} · ${s.species}">
+        ${art(s)}
+        <span class="tname">${s.name}</span>
+        ${here ? `<span class="herepin">This one</span>` : ""}
       </div>`;
-    }).join("")}
+    }).join("")}</div>
     <h3 class="sec">Links</h3>
     ${entry.links && entry.links.length ? `
       <div class="banner">Written by the attendee. These lead off Eurofurence sites.</div>
