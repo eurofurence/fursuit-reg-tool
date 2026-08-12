@@ -139,7 +139,10 @@ function openProfile(entry: Catch) {
                 <span class="thumb"><FursuitPhoto :src="entry.image" :name="entry.name" :tone="entry.rarity.color" /></span>
                 <span class="who">
                     <b>{{ entry.name }}</b>
-                    <small>{{ entry.species }}<template v-if="entry.owner"> · {{ entry.owner }}</template></small>
+                    <small>
+                        <span class="cea-rlabel" :style="{ color: entry.rarity.color }">{{ entry.rarity.label }}</span>
+                        · {{ entry.species }}<template v-if="entry.owner"> · {{ entry.owner }}</template>
+                    </small>
                 </span>
                 <span class="cea-hint">{{ entry.caughtAt }}</span>
             </button>
