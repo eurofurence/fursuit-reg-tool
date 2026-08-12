@@ -159,6 +159,19 @@
   .stat.rarity.on small { color: var(--ink); }
   .rlabel { font: 700 10.5px/1 inherit; letter-spacing: .08em; text-transform: uppercase; }
 
+  .specrow {
+    border-radius: 14px; margin-bottom: 8px; overflow: hidden; cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--tone) 38%, transparent);
+    background: color-mix(in srgb, var(--tone) 17%, var(--panel));
+  }
+  .specrow .subrows { display: none; padding: 0 12px 10px; }
+  .specrow.open .subrows { display: block; }
+  .subrow {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 9px 10px; border-radius: 10px; background: rgba(6,10,14,.32); margin-top: 6px; font-size: 13.5px;
+  }
+  .subrow small { color: var(--muted); font-size: 12px; }
+
   /* ---- ranking ---- */
   .row {
     display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 8px; border-radius: 14px;
@@ -935,17 +948,27 @@ function renderCollection() {
       Array.from({ length: blanks }, () => `<div class="tile blank"></div>`).join("")}</div>
       <p class="hint">Tap a sticker for the player behind it. Dashed slots are people still out there.</p>`;
   } else {
+    // one row per species, not a heading per species: with mostly one catch each,
+    // headings outnumbered their own contents. Tap a row to see who they were.
     const bySpecies = {};
     list.forEach(c => (bySpecies[c.species] ||= []).push(c));
-    $("colBody").innerHTML = Object.entries(bySpecies).sort((a, b) => b[1].length - a[1].length).map(([sp, cs]) => `
-      <h3 class="sec" style="color:${rarityColour(sp)}"><span><b class="tick" style="background:${rarityColour(sp)}"></b>${sp}</span><span>${cs.length} met · ${POPULATION[sp] ?? 1} at EF30</span></h3>
-      ${cs.map(c => `
-        <div class="listrow keep-tone" data-i="${caught.indexOf(c)}" style="--tone:${rarityColour(c.species)}">
-          <div class="th">${art(c)}</div>
-          <div class="who"><b>${c.name}</b><small>${c.owner} · ${c.time}</small></div>
-          <span class="rlabel" style="color:${rarityColour(c.species)}">${RARITY[rarityOf(c.species)].label}</span>
-        </div>`).join("")}`).join("")
-      || `<p class="hint" style="margin:0">Nothing matches that filter.</p>`;
+    const rows = Object.entries(bySpecies).sort((a, b) => b[1].length - a[1].length);
+    $("colBody").innerHTML = rows.map(([sp, cs]) => `
+      <div class="specrow" data-species="${sp}" style="--tone:${rarityColour(sp)}">
+        <div class="listrow" style="--tone:${rarityColour(sp)};margin:0;border:0;border-radius:0;background:none">
+          <div class="th">${art(cs[0])}</div>
+          <div class="who">
+            <b>${sp}</b>
+            <small>${cs.length} caught · ${POPULATION[sp] ?? 1} at EF30</small>
+          </div>
+          <span class="rlabel" style="color:${rarityColour(sp)}">${RARITY[rarityOf(sp)].label}</span>
+        </div>
+        <div class="subrows">${cs.map(c => `
+          <div class="subrow" data-i="${caught.indexOf(c)}">
+            <span>${c.name}</span><small>${c.owner} · ${c.time}</small>
+          </div>`).join("")}</div>
+      </div>`).join("")
+      || `<p class="hint" style="margin:0">Nothing at that rarity yet.</p>`;
   }
 }
 
@@ -1275,6 +1298,8 @@ document.querySelectorAll("[data-ach]").forEach(b => b.onclick = () => {
 
 // tiles, rows and achievement expanding
 document.addEventListener("click", e => {
+  const spec = e.target.closest(".specrow");
+  if (spec && !e.target.closest(".subrow")) { spec.classList.toggle("open"); return; }
   const hit = e.target.closest("[data-i]");
   if (hit) { const c = caught[+hit.dataset.i]; if (c) openProfile(c); return; }
   const rm = e.target.closest("[data-rm]");
