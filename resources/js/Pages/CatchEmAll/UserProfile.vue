@@ -101,10 +101,10 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
             </svg>
         </div>
 
-        <div class="cea-profhead">
-            <div class="cea-avatar">
-                <img v-if="profile.avatar" :src="profile.avatar" :alt="profile.name" />
-                <span v-else class="cea-noavatar" />
+        <!-- no picture, no empty box: the banner runs straight into the name -->
+        <div class="cea-profhead" :class="{ 'no-avatar': !profile.avatar }">
+            <div v-if="profile.avatar" class="cea-avatar">
+                <img :src="profile.avatar" :alt="profile.name" />
             </div>
             <div class="cea-name">{{ profile.name }}</div>
             <div class="cea-sub">{{ canEdit ? STATUS[profile.status ?? 'approved'] : 'Player at Eurofurence 30' }}</div>
@@ -292,7 +292,6 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
 </template>
 
 <style scoped>
-.cea-noavatar { display: block; width: 100%; height: 100%; background: var(--cea-panel-2); }
 .cea-linkinput {
     flex: 1;
     min-width: 0;

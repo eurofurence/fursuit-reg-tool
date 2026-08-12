@@ -462,6 +462,8 @@
 }
 .cea-showcase svg, .cea-showcase img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cea-profhead { position: relative; z-index: 1; text-align: center; padding: 0 4px 2px; }
+/* without an avatar to overlap the banner, the name needs the space back */
+.cea-profhead.no-avatar { padding-top: 16px; }
 .cea-avatar {
     width: 92px; height: 92px; border-radius: 22px; overflow: hidden;
     margin: -54px auto 11px;
