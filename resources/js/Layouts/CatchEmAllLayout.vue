@@ -15,7 +15,7 @@ import { computed } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import AppHeader from '@/Components/CatchEmAll/AppHeader.vue'
 import BottomNavigation from '@/Components/CatchEmAll/BottomNavigation.vue'
-import FlashMessages from '@/Components/FlashMessages.vue'
+import CatchToasts from '@/Components/CatchEmAll/CatchToasts.vue'
 import '../../css/cea.css'
 
 const props = withDefaults(defineProps<{
@@ -50,9 +50,10 @@ const hue = computed(() => props.hue || 'var(--cea-accent-bright)')
         <AppHeader :title="title" :subtitle="subtitle" :count="count" />
 
         <main class="cea-main">
-            <FlashMessages :flash="flash" />
             <slot />
         </main>
+
+        <CatchToasts :flash="flash" />
 
         <BottomNavigation />
     </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
 import { Medal } from 'lucide-vue-next'
@@ -16,22 +16,11 @@ type Row = {
 const props = defineProps<{
     user: { id: number; name: string }
     leaderboard: Row[]
-    eventsWithEntries: Array<{ id: number; name: string }>
-    selectedEvent: number | null
     flash?: any
 }>()
 
-const event = ref<number | null>(props.selectedEvent)
-
 const mine = computed(() => props.leaderboard.find(row => row.user_id === props.user.id) ?? null)
 const total = computed(() => mine.value?.catches ?? 0)
-
-function changeEvent() {
-    router.get(route('catch-em-all.leaderboard'), { event: event.value }, {
-        preserveState: true,
-        preserveScroll: true,
-    })
-}
 
 function openProfile(row: Row) {
     if (!row.profile_uuid) return
@@ -50,18 +39,6 @@ const MEDALS = ['g', 's', 'b']
         hue="var(--cea-gold)"
         :flash="flash"
     >
-        <select
-            v-if="eventsWithEntries?.length > 1"
-            v-model="event"
-            class="cea-select"
-            style="margin-bottom: 14px"
-            @change="changeEvent"
-        >
-            <option v-for="entry in eventsWithEntries" :key="entry.id" :value="entry.id">
-                {{ entry.name }}
-            </option>
-        </select>
-
         <button
             v-for="row in leaderboard"
             :key="row.event_user_id"
@@ -91,16 +68,3 @@ const MEDALS = ['g', 's', 'b']
         </p>
     </CatchEmAllLayout>
 </template>
-
-<style scoped>
-.cea-select {
-    background: var(--cea-panel-2);
-    border: 1px solid var(--cea-line-soft);
-    color: var(--cea-ink);
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 13px;
-    padding: 9px 10px;
-    outline: none;
-}
-</style>

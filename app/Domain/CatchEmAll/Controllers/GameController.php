@@ -65,16 +65,16 @@ class GameController extends Controller
     {
         $event = $this->getCurrentEvent();
         if (! $event) {
-            return to_route('catch-em-all.catch')->with('error', 'No Event Available for Catch Em All');
+            return to_route('catch-em-all.catch')->with('error', 'No event is running right now');
         }
 
         // Rate limiting
         if ($seconds = $this->isRateLimited(Auth::id())) {
-            return to_route('catch-em-all.catch')->with('error', "You may try again in {$seconds} seconds.");
+            return to_route('catch-em-all.catch')->with('error', "Too many tries. Wait {$seconds} seconds.");
         }
 
         if (! $event->isCatchEmAllActive()) {
-            return to_route('catch-em-all.catch')->with('error', 'The Catch Em All game is not currently active.');
+            return to_route('catch-em-all.catch')->with('error', 'The game is closed right now');
         }
 
         $catchCode = strtoupper($request->validated('catch_code'));
@@ -104,7 +104,7 @@ class GameController extends Controller
         if (! $specialCode && ! $fursuit) {
             $logEntry->save();
 
-            return to_route('catch-em-all.catch')->with('error', 'Invalid Code - Try Again!');
+            return to_route('catch-em-all.catch')->with('error', 'No badge with that code');
         }
 
         $errors = [];
@@ -123,7 +123,7 @@ class GameController extends Controller
                 ->where('is_successful', true)
                 ->exists();
             if ($alreadyClaimed) {
-                $errors[] = 'Special code already claimed!';
+                $errors[] = 'You already claimed that special code';
                 $wasSuccessful = false;
             } else {
                 try {
@@ -145,7 +145,7 @@ class GameController extends Controller
         if ($fursuit) {
             if ($user->id === $fursuit->user_id) {
                 if (! $specialCode) {
-                    $errors[] = "You can't catch yourself!";
+                    $errors[] = 'That badge is your own';
                     $wasSuccessful = false;
                 }
             } else {
@@ -158,7 +158,7 @@ class GameController extends Controller
 
                 if ($alreadyCaught) {
                     if (! $specialCode) {
-                        $errors[] = 'Already caught this fursuiter!';
+                        $errors[] = 'You already caught them';
                         $wasSuccessful = false;
                     }
                 } else {
@@ -199,33 +199,24 @@ class GameController extends Controller
             // Both were successful
             return to_route('catch-em-all.catch')
                 ->with('caught_fursuit', $fursuit->id)
-                ->with('success', 'Special code redeemed and fursuiter caught!');
+                ->with('success', 'Special code redeemed, and you caught them');
         } elseif ($specialCode) {
             // Only special code was successful
-            return to_route('catch-em-all.catch')->with('success', 'Special code redeemed successfully!');
+            return to_route('catch-em-all.catch')->with('success', 'Special code redeemed');
         } elseif ($fursuit) {
             // Only fursuit catch was successful
             return to_route('catch-em-all.catch')->with('caught_fursuit', $fursuit->id);
         }
 
         // This shouldn't happen, but just in case
-        return to_route('catch-em-all.catch')->with('error', 'Unexpected error occurred.');
+        return to_route('catch-em-all.catch')->with('error', 'Something went wrong');
     }
 
-    public function leaderboard(Request $request)
+    public function leaderboard()
     {
-        $selectedEventId = $request->get('event', $this->getCurrentEvent()->id);
-        $rankCutoff = 10;
-
-        // $selectedEvent = $this->getCurrentEvent(); // TODO: Add fetch method for Selected Event based on filter
-        $selectedEvent = Event::find($selectedEventId) ?? $this->getCurrentEvent(); // Fallback to current event if not found
-
-        // Get leaderboard data
-        $leaderboard = $this->gameStatsService->getLeaderboard($selectedEvent, 50, $rankCutoff); // Show more players
-
-        // Get events for filter dropdown
-        $eventsWithEntries = $this->getEventsWithEntries();
-
+        // The board is always the current event: an attendee comparing themselves
+        // against a convention they did not attend was a filter nobody asked for.
+        $event = $this->getCurrentEvent();
         $user = Auth::user();
 
         return Inertia::render('CatchEmAll/Leaderboard', [
@@ -233,9 +224,7 @@ class GameController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
             ],
-            'leaderboard' => $leaderboard,
-            'eventsWithEntries' => $eventsWithEntries,
-            'selectedEvent' => $selectedEvent?->id,
+            'leaderboard' => $event ? $this->gameStatsService->getLeaderboard($event, 50, 10) : [],
         ]);
     }
 
@@ -314,7 +303,7 @@ class GameController extends Controller
             'introduced' => $eventUser->fresh()->catch_em_all_introduced,
         ]);
 
-        return redirect()->route('catch-em-all.catch')->with('success', 'Welcome to Fursuit Catch em All! Happy hunting!');
+        return redirect()->route('catch-em-all.catch')->with('success', 'Have a good hunt');
     }
 
     private function getCurrentEvent(): ?Event
