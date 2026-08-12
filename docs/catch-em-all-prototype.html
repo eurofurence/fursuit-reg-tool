@@ -145,15 +145,18 @@
   .listrow .who b { font-weight: 700; }
   .listrow .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 
-  .raritybar { display: flex; gap: 6px; margin-bottom: 14px; }
-  .rchip {
-    flex: 1; background: color-mix(in srgb, var(--rare) 12%, var(--panel)); cursor: pointer;
-    border: 1px solid color-mix(in srgb, var(--rare) 38%, transparent); border-radius: 11px;
-    padding: 9px 4px; font: 600 10px/1 inherit; color: var(--muted); text-align: center;
+  .raritygrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 14px; }
+  .stat.rarity {
+    padding: 9px 2px; cursor: pointer; font-family: inherit;
   }
-  .rchip svg { color: var(--rare); display: block; margin: 0 auto 6px; }
-  .rchip b { display: block; font: 800 15px/1 inherit; color: var(--rare); margin-bottom: 5px; }
-  .rchip.on { background: color-mix(in srgb, var(--rare) 26%, var(--panel)); color: var(--ink); }
+  .stat.rarity svg { color: var(--tone); display: block; margin: 0 auto 6px; }
+  .stat.rarity b { font-size: 16px; }
+  .stat.rarity small {
+    font-size: 9px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding: 0 1px; letter-spacing: -.01em;
+  }
+  .stat.rarity.on { background: color-mix(in srgb, var(--tone) 30%, var(--panel)); }
+  .stat.rarity.on small { color: var(--ink); }
   .rlabel { font: 700 10.5px/1 inherit; letter-spacing: .08em; text-transform: uppercase; }
 
   /* ---- ranking ---- */
@@ -384,6 +387,9 @@
   <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
   </symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/>
+  </symbol>
   <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.8 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/>
   </symbol>
@@ -450,12 +456,13 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
             <option value="uncommon">Uncommon</option>
             <option value="common">Common</option>
           </select>
-          <div class="seg">
-            <button data-view="grid" class="on">Grid</button>
-            <button data-view="list">List</button>
-          </div>
-          <div class="seg">
-            <button id="counterToggle" class="on">Counts</button>
+          <div class="seg icons">
+            <button data-view="grid" class="on" title="Grid" aria-label="Grid">
+              <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-grid"/></svg>
+            </button>
+            <button data-view="list" title="List" aria-label="List">
+              <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-list"/></svg>
+            </button>
           </div>
         </div>
         <div id="colSummary"></div>
@@ -544,7 +551,7 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
       <tr><td>Already caught / invalid / game closed</td><td class="y">All three states</td></tr>
       <tr><td>Collection: event filter incl. global</td><td class="n">Dropped, the collection is this event</td></tr>
       <tr><td>Collection: rarity filter</td><td class="y">Five tiers, cards double as the filter</td></tr>
-      <tr><td>Collection: grid-list and counter toggles</td><td class="y">Both kept</td></tr>
+      <tr><td>Collection: grid-list and counter toggles</td><td class="y">Grid-list as icons, counts always shown</td></tr>
       <tr><td>Leaderboard: event filter, top 50, own rank</td><td class="y">Plus a fursuits board</td></tr>
       <tr><td>Achievements: progress, secret, locked</td><td class="y">Real set, progress, new marker</td></tr>
       <tr><td>Profile: about, links, edit, status</td><td class="y">Own and other players</td></tr>
@@ -628,7 +635,7 @@ const me = {
 let gameRunning = true;
 let viewing = null;
 let clock = 18 * 60 + 41;
-let colView = "grid", colCounters = true, colRarity = "all";
+let colView = "grid", colRarity = "all";
 let lbBoard = "players", lbEvent = "30", achFilter = "all";
 let recentMarks = [];
 
@@ -900,7 +907,7 @@ function renderCatch() {
 const tile = (c, i = 0) => `<div class="tile ${c.fresh ? "fresh" : ""}" data-i="${caught.indexOf(c)}"
   style="animation-delay:${Math.min(i, 12) * 22}ms;--rare:${rarityColour(c.species)}"
   title="${RARITY[rarityOf(c.species)].label}">${art(c)}${
-  colCounters && speciesTally(c.species) > 1 ? `<span class="cnt">${speciesTally(c.species)}</span>` : ""}</div>`;
+  speciesTally(c.species) > 1 ? `<span class="cnt">${speciesTally(c.species)}</span>` : ""}</div>`;
 function speciesTally(sp) { return caught.filter(c => c.species === sp).length; }
 
 // ---------- collection ----------
@@ -911,15 +918,15 @@ function renderCollection() {
     key, ...RARITY[key], n: caught.filter(c => rarityOf(c.species) === key).length,
   }));
   $("colSummary").innerHTML = `
-    <div class="statgrid" style="margin:0 0 12px">
+    <div class="statgrid" style="margin:0 0 8px">
       <div class="stat" style="--tone:var(--accent-bright)"><b>${caught.length}</b><small>caught</small></div>
       <div class="stat" style="--tone:#7b9cf5"><b>${speciesCount()}</b><small>species</small></div>
-      <div class="stat" style="--tone:var(--gold)"><b>${Math.round(caught.length / TOTAL_BADGES * 1000) / 10}%</b><small>of the event</small></div>
+      <div class="stat" style="--tone:var(--gold)"><b>${Math.round(caught.length / TOTAL_BADGES * 1000) / 10}%</b><small>of event</small></div>
     </div>
-    <div class="raritybar">${tally.map(t => `
-      <button class="rchip ${colRarity === t.key ? "on" : ""}" data-rarity="${t.key}" style="--rare:${t.colour}">
-        <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-${t.icon}"/></svg>
-        <b>${t.n}</b>${t.label}
+    <div class="raritygrid">${tally.map(t => `
+      <button class="stat rarity ${colRarity === t.key ? "on" : ""}" data-rarity="${t.key}" style="--tone:${t.colour}">
+        <svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-${t.icon}"/></svg>
+        <b>${t.n}</b><small>${t.label}</small>
       </button>`).join("")}</div>`;
 
   if (colView === "grid") {
@@ -931,8 +938,7 @@ function renderCollection() {
     const bySpecies = {};
     list.forEach(c => (bySpecies[c.species] ||= []).push(c));
     $("colBody").innerHTML = Object.entries(bySpecies).sort((a, b) => b[1].length - a[1].length).map(([sp, cs]) => `
-      <h3 class="sec" style="color:${rarityColour(sp)}"><span><b class="tick" style="background:${rarityColour(sp)}"></b>${sp}</span>${
-        colCounters ? `<span>${cs.length} met · ${POPULATION[sp] ?? 1} at EF30</span>` : ""}</h3>
+      <h3 class="sec" style="color:${rarityColour(sp)}"><span><b class="tick" style="background:${rarityColour(sp)}"></b>${sp}</span><span>${cs.length} met · ${POPULATION[sp] ?? 1} at EF30</span></h3>
       ${cs.map(c => `
         <div class="listrow keep-tone" data-i="${caught.indexOf(c)}" style="--tone:${rarityColour(c.species)}">
           <div class="th">${art(c)}</div>
@@ -1256,11 +1262,6 @@ document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => {
   document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x === b));
   renderCollection();
 });
-$("counterToggle").onclick = () => {
-  colCounters = !colCounters;
-  $("counterToggle").classList.toggle("on", colCounters);
-  renderCollection(); renderCatch();
-};
 document.querySelectorAll("[data-lb]").forEach(b => b.onclick = () => {
   lbBoard = b.dataset.lb;
   document.querySelectorAll("[data-lb]").forEach(x => x.classList.toggle("on", x === b));
