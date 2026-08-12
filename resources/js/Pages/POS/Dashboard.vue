@@ -477,7 +477,7 @@ function notificationSub(notification) {
                         </button>
                         <button
                             type="button"
-                            class="pos-row px-4 shrink-0"
+                            class="pos-row pos-row--tail px-4"
                             title="Dismiss"
                             aria-label="Dismiss notification"
                             @click="dismissNotification(notification)"

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { LogOut, ShieldCheck, User } from 'lucide-vue-next';
 
@@ -21,6 +21,15 @@ const initials = computed(() => {
         .map((part) => part[0])
         .join('')
         .toUpperCase();
+});
+
+// The identity provider hands us an avatar URL on every login, but an account can have
+// none and the S3 object can 404. Either way the initials circle stays the fallback.
+const avatarFailed = ref(false);
+const avatarUrl = computed(() => (avatarFailed.value ? null : user.value?.avatar || null));
+
+watch(() => user.value?.avatar, () => {
+    avatarFailed.value = false;
 });
 
 const open = ref(false);
@@ -70,7 +79,14 @@ onBeforeUnmount(() => {
                     aria-haspopup="menu"
                     @click="open = !open"
                 >
-                    <span class="grid place-items-center h-7 w-7 rounded-full bg-white text-primary-500 text-xs">
+                    <img
+                        v-if="avatarUrl"
+                        :src="avatarUrl"
+                        alt=""
+                        class="h-7 w-7 rounded-full object-cover bg-white"
+                        @error="avatarFailed = true"
+                    >
+                    <span v-else class="grid place-items-center h-7 w-7 rounded-full bg-white text-primary-500 text-xs">
                         {{ initials || '?' }}
                     </span>
                     <span class="hidden sm:inline max-w-[12ch] truncate">{{ user.name }}</span>
