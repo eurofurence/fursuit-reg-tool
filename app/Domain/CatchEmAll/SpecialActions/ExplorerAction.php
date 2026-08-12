@@ -37,7 +37,7 @@ class ExplorerAction extends AbstractSpecialCodeAction implements ConfigurableSp
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public static function constructorFields(): array
     {

@@ -2,8 +2,8 @@
 
 namespace App\Domain\CatchEmAll\Controllers;
 
-use App\Domain\CatchEmAll\Enums\FursuitRarity;
 use App\Domain\CatchEmAll\Services\GameStatsService;
+use App\Domain\CatchEmAll\Services\SpeciesRarityService;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\FCEA\UserCatchRanking;
@@ -20,7 +20,10 @@ use Inertia\Response;
 
 class UserProfileController extends Controller
 {
-    public function __construct(private GameStatsService $gameStatsService) {}
+    public function __construct(
+        private GameStatsService $gameStatsService,
+        private SpeciesRarityService $speciesRarity,
+    ) {}
 
     /**
      * Public profile page
@@ -100,8 +103,8 @@ class UserProfileController extends Controller
             ->whereNotNull('fursuit_id')
             ->pluck('rank', 'fursuit_id');
 
-        return $fursuits->map(function (Fursuit $fursuit) use ($ranks) {
-            $rarity = FursuitRarity::fromCatchCount($fursuit->catched_by_users_count);
+        return $fursuits->map(function (Fursuit $fursuit) use ($ranks, $event) {
+            $rarity = $this->speciesRarity->forFursuit($event, $fursuit);
 
             return [
                 'id' => $fursuit->id,

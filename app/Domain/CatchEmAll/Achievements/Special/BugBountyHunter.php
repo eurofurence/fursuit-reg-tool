@@ -9,7 +9,6 @@ use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
 class BugBountyHunter extends SimpleAchievement implements SpecialAchievement
 {
-
     public function __construct()
     {
         parent::__construct(
@@ -28,7 +27,6 @@ class BugBountyHunter extends SimpleAchievement implements SpecialAchievement
     {
         return 1;
     }
-
 
     public function updateAchievementProgress(AchievementUpdateContext $context): int
     {

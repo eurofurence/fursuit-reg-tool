@@ -10,6 +10,7 @@ use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Domain\CatchEmAll\Models\UserSpecialCatch;
 use App\Domain\CatchEmAll\Services\AchievementService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
+use App\Domain\CatchEmAll\Services\SpeciesRarityService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserCatchRequest;
 use App\Models\Event;
@@ -27,7 +28,8 @@ class GameController extends Controller
 {
     public function __construct(
         private AchievementService $achievementService,
-        private GameStatsService $gameStatsService
+        private GameStatsService $gameStatsService,
+        private SpeciesRarityService $speciesRarity,
     ) {}
 
     public function index(Request $request)
@@ -324,13 +326,12 @@ class GameController extends Controller
 
     private function getRecentCatchData($fursuitId)
     {
-        $fursuit = Fursuit::with(['species', 'user'])->find($fursuitId);
+        $fursuit = Fursuit::with(['species', 'user', 'event'])->find($fursuitId);
         if (! $fursuit) {
             return null;
         }
 
-        $userCatch = new UserCatch(['fursuit_id' => $fursuitId]);
-        $rarity = $userCatch->getFursuitRarity();
+        $rarity = $this->speciesRarity->forFursuit($fursuit->event, $fursuit);
 
         return [
             'id' => $fursuit->id,
@@ -342,9 +343,9 @@ class GameController extends Controller
                 'level' => $rarity->value,
                 'label' => $rarity->getLabel(),
                 'color' => $rarity->getColor(),
-                'gradient' => $rarity->getGradient(),
                 'icon' => $rarity->getIcon(),
             ],
+            'speciesCount' => $this->speciesRarity->population($fursuit->event, $fursuit->species_id),
         ];
     }
 

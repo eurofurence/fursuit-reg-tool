@@ -5,7 +5,7 @@ namespace App\Domain\CatchEmAll\Achievements\Special;
 use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
 use App\Domain\CatchEmAll\Interface\LockedBy;
 
-class CEATeamThree extends ACEATeam implements LockedBy, HiddenIfLocked
+class CEATeamThree extends ACEATeam implements HiddenIfLocked, LockedBy
 {
     public function __construct()
     {

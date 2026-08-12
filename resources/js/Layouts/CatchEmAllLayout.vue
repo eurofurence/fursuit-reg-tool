@@ -1,34 +1,58 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3'
+/**
+ * Shell for the Catch-Em-All game.
+ *
+ * The document scrolls and the nav is fixed. The previous layout scrolled an
+ * inner box (`overflow-y-auto` on a fixed-height div), which cost momentum
+ * scrolling, pull to refresh and the collapsing address bar on phones.
+ *
+ * `hue` is the screen's content colour: a rarity, a player's chosen profile
+ * colour, or the colour sampled from a badge photo. It tints the ambient wash,
+ * the rule under the header and the section headings. Tokens live on :root in
+ * cea.css, not under .cea, because the sheet and lightbox teleport to body.
+ */
+import { computed } from 'vue'
+import { Head } from '@inertiajs/vue3'
 import AppHeader from '@/Components/CatchEmAll/AppHeader.vue'
 import BottomNavigation from '@/Components/CatchEmAll/BottomNavigation.vue'
 import FlashMessages from '@/Components/FlashMessages.vue'
+import '../../css/cea.css'
 
-defineProps<{
+const props = withDefaults(defineProps<{
     title?: string
     subtitle?: string
-    icon?: string
+    /** shown in the header pill, tiers by size */
+    count?: number | null
+    hue?: string | null
     flash?: any
-}>()
+}>(), {
+    count: null,
+    hue: null,
+})
+
+const hue = computed(() => props.hue || 'var(--cea-accent-bright)')
 </script>
 
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 pb-20 dark">
+    <!-- `dark` stays on the root: PrimeVue's theme keys off it, and the selects
+         and dialogs these pages still use would otherwise render light -->
+    <div class="cea dark" :style="{ '--cea-hue': hue }">
         <Head :title="title || 'Fursuit Catch em all'" />
 
-        <AppHeader :title="title" :subtitle="subtitle" :icon="icon" />
-
-        <!-- Content Area with bottom padding for navigation -->
-        <div
-            class="px-4 pt-4 pb-4 space-y-4 overflow-y-auto"
-            style="padding-top: 100px; height: calc(100vh - 80px);"
-        >
-            <!-- Flash Messages -->
-            <FlashMessages :flash="flash" />
-
-            <!-- Page Content -->
-            <slot />
+        <div class="cea-ambient" aria-hidden="true">
+            <svg viewBox="0 0 390 800" preserveAspectRatio="none">
+                <circle cx="330" cy="-30" r="150" :fill="hue" opacity=".17" />
+                <circle cx="20" cy="330" r="120" :fill="hue" opacity=".08" />
+                <circle cx="360" cy="720" r="130" :fill="hue" opacity=".1" />
+            </svg>
         </div>
+
+        <AppHeader :title="title" :subtitle="subtitle" :count="count" />
+
+        <main class="cea-main">
+            <FlashMessages :flash="flash" />
+            <slot />
+        </main>
 
         <BottomNavigation />
     </div>

@@ -7,7 +7,7 @@ use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
 use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class Curator extends SimpleAchievement implements LockedBy, HiddenIfLocked
+class Curator extends SimpleAchievement implements HiddenIfLocked, LockedBy
 {
     public function __construct()
     {

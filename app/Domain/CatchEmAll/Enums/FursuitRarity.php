@@ -10,13 +10,20 @@ enum FursuitRarity: string
     case EPIC = 'epic';
     case LEGENDARY = 'legendary';
 
-    public static function fromCatchCount(int $count): self
+    /**
+     * Rarity from how many fursuits of that species are at the event.
+     *
+     * Fewer of a species means rarer, which is the opposite direction to the old
+     * rule: that one counted how often a fursuit had been caught, so it measured
+     * fame and read as all-Common on the first morning. See SpeciesRarityService.
+     */
+    public static function fromSpeciesPopulation(int $population): self
     {
         return match (true) {
-            $count >= config('fcea.species_rarity_threshold_legendary') => self::LEGENDARY,
-            $count >= config('fcea.species_rarity_threshold_epic') => self::EPIC,
-            $count >= config('fcea.species_rarity_threshold_rare') => self::RARE,
-            $count >= config('fcea.species_rarity_threshold_uncommon') => self::UNCOMMON,
+            $population <= config('fcea.rarity_population_legendary') => self::LEGENDARY,
+            $population <= config('fcea.rarity_population_epic') => self::EPIC,
+            $population <= config('fcea.rarity_population_rare') => self::RARE,
+            $population <= config('fcea.rarity_population_uncommon') => self::UNCOMMON,
             default => self::COMMON,
         };
     }
@@ -32,47 +39,33 @@ enum FursuitRarity: string
         };
     }
 
+    /** Hex, not a Tailwind class: the frontend paints borders, washes and bars with it. */
     public function getColor(): string
     {
         return match ($this) {
-            self::COMMON => 'text-gray-600',
-            self::UNCOMMON => 'text-green-600',
-            self::RARE => 'text-blue-600',
-            self::EPIC => 'text-purple-600',
-            self::LEGENDARY => 'text-orange-600',
+            self::COMMON => '#7d90a6',
+            self::UNCOMMON => '#46b06a',
+            self::RARE => '#3f8fe0',
+            self::EPIC => '#a35fd6',
+            self::LEGENDARY => '#e0a020',
         };
     }
 
-    public function getBgColor(): string
-    {
-        return match ($this) {
-            self::COMMON => 'bg-gray-100',
-            self::UNCOMMON => 'bg-green-100',
-            self::RARE => 'bg-blue-100',
-            self::EPIC => 'bg-purple-100',
-            self::LEGENDARY => 'bg-orange-100',
-        };
-    }
-
-    public function getGradient(): string
-    {
-        return match ($this) {
-            self::COMMON => 'from-gray-400 to-gray-600',
-            self::UNCOMMON => 'from-green-400 to-green-600',
-            self::RARE => 'from-blue-400 to-blue-600',
-            self::EPIC => 'from-purple-400 to-purple-600',
-            self::LEGENDARY => 'from-orange-400 to-yellow-500',
-        };
-    }
-
+    /** lucide icon name; the emoji these used to be rendered differently on every device. */
     public function getIcon(): string
     {
         return match ($this) {
-            self::COMMON => '⚪',
-            self::UNCOMMON => '🟢',
-            self::RARE => '🔵',
-            self::EPIC => '🟣',
-            self::LEGENDARY => '🟡',
+            self::COMMON => 'book-open',
+            self::UNCOMMON => 'star',
+            self::RARE => 'sparkles',
+            self::EPIC => 'gem',
+            self::LEGENDARY => 'crown',
         };
+    }
+
+    /** Ordered rarest first, for the filter row. */
+    public static function ranked(): array
+    {
+        return [self::LEGENDARY, self::EPIC, self::RARE, self::UNCOMMON, self::COMMON];
     }
 }

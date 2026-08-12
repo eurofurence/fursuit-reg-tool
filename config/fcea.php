@@ -40,17 +40,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Fursuit Species Rarity Threshold
+    | Species Rarity Thresholds
     |--------------------------------------------------------------------------
     |
-    | Fursuit Species is given a rarity based on the amount it appears among all fursuiter
-    | If a species appear more often than the threshold, it is considered this rarity
+    | Rarity is how many fursuits of a species are registered for the event:
+    | fewer means rarer. A species at or below a threshold gets that rarity, and
+    | anything above the uncommon threshold is common.
+    |
+    | These are counts, not percentages, because the distribution is a long tail.
+    | Measured against EF30 (2,748 catchable fursuits across 738 species, 538 of
+    | them one-of-a-kind) these defaults land at roughly:
+    |
+    |   legendary  538 species,  19% of the fursuits at the event
+    |   epic       129 species,  13%
+    |   rare        46 species,  17%
+    |   uncommon    18 species,  19%
+    |   common       7 species,  33%
+    |
+    | Raise the legendary threshold and Legendary swallows the tail; lower the
+    | common one and Fox, Wolf and Dragon stop being common, which they plainly
+    | are. Recheck these against the event before an event opens.
     |
     */
 
-    'species_rarity_threshold_uncommon' => env('SPECIES_RARITY_THRESHOLD_UNCOMMON', 5),
-    'species_rarity_threshold_rare' => env('SPECIES_RARITY_THRESHOLD_RARE', 10),
-    'species_rarity_threshold_epic' => env('SPECIES_RARITY_THRESHOLD_EPIC', 20),
-    'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 50),
-    // If none of this applies, the species is considered common
+    'rarity_population_legendary' => env('RARITY_POPULATION_LEGENDARY', 1),
+    'rarity_population_epic' => env('RARITY_POPULATION_EPIC', 5),
+    'rarity_population_rare' => env('RARITY_POPULATION_RARE', 19),
+    'rarity_population_uncommon' => env('RARITY_POPULATION_UNCOMMON', 49),
 ];
