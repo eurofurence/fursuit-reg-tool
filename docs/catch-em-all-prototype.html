@@ -119,7 +119,7 @@
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .tile {
     aspect-ratio: 1; border-radius: 13px; overflow: hidden; position: relative; cursor: pointer;
-    border: 1px solid rgba(255,255,255,.09);
+    border: 2px solid var(--rare, rgba(255,255,255,.09));
   }
   .tile.blank { background: #0e151d; border: 1px dashed #1c2836; cursor: default; }
   .tile.fresh { animation: tilein .34s cubic-bezier(.2,1.25,.4,1) both; }
@@ -147,6 +147,17 @@
   .listrow .who { flex: 1; min-width: 0; }
   .listrow .who b { font-weight: 700; }
   .listrow .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .raritybar { display: flex; gap: 6px; margin-bottom: 14px; }
+  .rchip {
+    flex: 1; background: color-mix(in srgb, var(--rare) 12%, var(--panel)); cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--rare) 38%, transparent); border-radius: 11px;
+    padding: 9px 4px; font: 600 10px/1 inherit; color: var(--muted); text-align: center;
+  }
+  .rchip svg { color: var(--rare); display: block; margin: 0 auto 6px; }
+  .rchip b { display: block; font: 800 15px/1 inherit; color: var(--rare); margin-bottom: 5px; }
+  .rchip.on { background: color-mix(in srgb, var(--rare) 26%, var(--panel)); color: var(--ink); }
+  .rlabel { font: 700 10.5px/1 inherit; letter-spacing: .08em; text-transform: uppercase; }
 
   /* ---- ranking ---- */
   .row {
@@ -212,7 +223,6 @@
     border: 1px solid color-mix(in srgb, var(--tone, #2b3d4f) 40%, transparent);
     border-radius: 13px; padding: 14px 8px; text-align: center;
   }
-  .stat { position: relative; overflow: hidden; }
   .stat b { display: block; font: 800 21px/1 inherit; font-variant-numeric: tabular-nums; color: var(--tone, var(--ink)); }
   .stat small { color: var(--muted); font-size: 11.5px; display: block; margin-top: 6px; }
   .chip {
@@ -365,6 +375,19 @@
   <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M11.5 2.6a.6.6 0 0 1 1 0l2.4 5 5.4.8c.5.1.7.7.3 1l-3.9 3.8.9 5.4c.1.5-.4.9-.9.6L12 16.7l-4.8 2.5c-.5.3-1-.1-.9-.6l.9-5.4-3.9-3.8c-.4-.3-.2-.9.3-1l5.4-.8z"/>
   </symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.52l4.276 3.664a1 1 0 0 0 1.516-.294z"/>
+    <path d="M5 21h14"/>
+  </symbol>
+  <symbol id="i-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>
+  </symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+  </symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
+  </symbol>
   <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.8 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/>
   </symbol>
@@ -423,15 +446,13 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
       <!-- COLLECTION -->
       <section class="view" id="v-collection">
         <div class="toolbar">
-          <select id="colEvent">
-            <option value="30">EF30 (2026)</option>
-            <option value="29">EF29 (2025)</option>
-            <option value="global">All events</option>
-          </select>
           <select id="colRarity">
-            <option value="all">All species</option>
-            <option value="one">Seen once</option>
-            <option value="many">Seen more than once</option>
+            <option value="all">All rarities</option>
+            <option value="legendary">Legendary</option>
+            <option value="epic">Epic</option>
+            <option value="rare">Rare</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="common">Common</option>
           </select>
           <div class="seg">
             <button data-view="grid" class="on">Grid</button>
@@ -525,13 +546,13 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
       <tr><td>QR auto-catch (<code>?code=&amp;auto=</code>)</td><td class="y">Same query parameters</td></tr>
       <tr><td>Special codes (staff, CEA team)</td><td class="y">Gold codes, own result state</td></tr>
       <tr><td>Already caught / invalid / game closed</td><td class="y">All three states</td></tr>
-      <tr><td>Collection: event filter incl. global</td><td class="y">EF30 / EF29 / All events</td></tr>
-      <tr><td>Collection: rarity filter</td><td class="y">Replaced by seen-once / seen-often</td></tr>
+      <tr><td>Collection: event filter incl. global</td><td class="n">Dropped, the collection is this event</td></tr>
+      <tr><td>Collection: rarity filter</td><td class="y">Five tiers, cards double as the filter</td></tr>
       <tr><td>Collection: grid-list and counter toggles</td><td class="y">Both kept</td></tr>
       <tr><td>Leaderboard: event filter, top 50, own rank</td><td class="y">Plus a fursuits board</td></tr>
       <tr><td>Achievements: progress, secret, locked</td><td class="y">Real set, progress, new marker</td></tr>
       <tr><td>Profile: about, links, edit, status</td><td class="y">Own and other players</td></tr>
-      <tr><td>Rarity tiers on catches</td><td class="n">Dropped, see below</td></tr>
+      <tr><td>Rarity tiers on catches</td><td class="y">Kept, recomputed from species frequency</td></tr>
     </table>
 
     <h2>Where the colour comes from</h2>
@@ -546,7 +567,10 @@ Steam profile gets its colour from the art, not from the chrome. <code>#005953</
 
     <h2>Still worth deciding</h2>
     <ul>
-      <li><b>Rarity.</b> <code>UserCatch::getFursuitRarity()</code> ranks by how often a suit was caught, so popular reads as Legendary and day one is all Common. Here it is counts plus a seen-once filter.</li>
+      <li><b>Rarity is recomputed.</b> <code>UserCatch::getFursuitRarity()</code> ranks by how often a suit was already
+      caught, so popular reads as Legendary and day one is all Common. Here a species' share of the event population
+      decides the tier, so a Fenfonex among three is Legendary from the first minute. Thresholds are 0.2 / 0.5 / 1.2 /
+      2.5 percent of the badges at the event. The colour then drives the tile ring, the row tint and the species heading.</li>
       <li><b>Emoji.</b> The live achievement icons are emoji in PHP (<code>Furedex5.php</code> and friends). These become tier colour plus a lucide glyph.</li>
       <li><b>Naming.</b> "furédex" kept or dropped.</li>
     </ul>
@@ -608,7 +632,7 @@ const me = {
 let gameRunning = true;
 let viewing = null;
 let clock = 18 * 60 + 41;
-let colView = "grid", colCounters = true, colEvent = "30", colRarity = "all";
+let colView = "grid", colCounters = true, colRarity = "all";
 let lbBoard = "players", lbEvent = "30", achFilter = "all";
 let recentMarks = [];
 
@@ -714,6 +738,31 @@ function swatchFor(entity) {
   return dominantColour(art(entity), entity.name || "?").then(readable);
 }
 
+// how many of each species are registered at the event. Rarity is share of the
+// event population, so a species nobody else brought is Legendary on day one,
+// unlike the live rule which ranks by how often a suit was already caught.
+const POPULATION = {
+  "Husky": 214, "Beagle": 96, "Coyote": 88, "Red Deer": 61, "Kangaroo": 44,
+  "Norsk Skogkatt": 38, "African Wild Dog": 27, "Coffee fox": 19, "Raptor": 15,
+  "Rexouium": 11, "Kugsha Dog": 7, "Dog-Shark": 5, "Fenfonex": 3, "Snow Leopard": 2,
+};
+const RARITY = {
+  legendary: { label: "Legendary", colour: "#e0a020", icon: "crown" },
+  epic:      { label: "Epic",      colour: "#a35fd6", icon: "gem" },
+  rare:      { label: "Rare",      colour: "#3f8fe0", icon: "sparkles" },
+  uncommon:  { label: "Uncommon",  colour: "#46b06a", icon: "star" },
+  common:    { label: "Common",    colour: "#7d90a6", icon: "book" },
+};
+function rarityOf(species) {
+  const share = (POPULATION[species] ?? 1) / TOTAL_BADGES * 100;
+  return share < 0.2 ? "legendary"
+    : share < 0.5 ? "epic"
+    : share < 1.2 ? "rare"
+    : share < 2.5 ? "uncommon"
+    : "common";
+}
+const rarityColour = (species) => RARITY[rarityOf(species)].colour;
+
 function speciesCount(list = caught) { return new Set(list.map(c => c.species)).size; }
 function timeNow() { clock += 7; return `${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`; }
 
@@ -744,9 +793,7 @@ const TIER = { bronze: "var(--tier-1)", silver: "var(--tier-2)", gold: "var(--ti
 const TITLES = {
   intro:      () => ["Welcome", "Eurofurence 30"],
   catch:      () => ["Catch 'Em All", gameRunning ? "Eurofurence 30" : "Game closed"],
-  collection: () => ["Collection", colEvent === "global"
-                      ? `${caught.length} across all events`
-                      : `${caught.length} of ${TOTAL_BADGES.toLocaleString("en")} badges at EF${colEvent}`],
+  collection: () => ["Collection", `${caught.length} of ${TOTAL_BADGES.toLocaleString("en")} badges at EF30`],
   ranking:    () => ["Leaderboard", `EF${lbEvent} · ${lbBoard === "players" ? "players" : "most caught fursuits"}`],
   marks:      () => ["Achievements", `${achievements().filter(a => a.done).length} of ${achievements().length} earned`],
   you:        () => ["Your profile", STATUS[me.status].sub],
@@ -845,38 +892,46 @@ function renderCatch() {
     </div>`).join("") || `<p class="hint" style="margin:0">Nothing yet today.</p>`;
 }
 const tile = (c, i = 0) => `<div class="tile ${c.fresh ? "fresh" : ""}" data-i="${caught.indexOf(c)}"
-  style="animation-delay:${Math.min(i, 12) * 22}ms">${art(c)}${
+  style="animation-delay:${Math.min(i, 12) * 22}ms;--rare:${rarityColour(c.species)}"
+  title="${RARITY[rarityOf(c.species)].label}">${art(c)}${
   colCounters && speciesTally(c.species) > 1 ? `<span class="cnt">${speciesTally(c.species)}</span>` : ""}</div>`;
 function speciesTally(sp) { return caught.filter(c => c.species === sp).length; }
 
 // ---------- collection ----------
 function renderCollection() {
-  const list = caught.filter(c => colRarity === "all"
-    || (colRarity === "one" && speciesTally(c.species) === 1)
-    || (colRarity === "many" && speciesTally(c.species) > 1));
+  const list = caught.filter(c => colRarity === "all" || rarityOf(c.species) === colRarity);
 
+  const tally = Object.keys(RARITY).map(key => ({
+    key, ...RARITY[key], n: caught.filter(c => rarityOf(c.species) === key).length,
+  }));
   $("colSummary").innerHTML = `
-    <div class="statgrid" style="margin:0 0 14px">
+    <div class="statgrid" style="margin:0 0 12px">
       <div class="stat" style="--tone:var(--accent-bright)"><b>${caught.length}</b><small>caught</small></div>
       <div class="stat" style="--tone:#7b9cf5"><b>${speciesCount()}</b><small>species</small></div>
       <div class="stat" style="--tone:var(--gold)"><b>${Math.round(caught.length / TOTAL_BADGES * 1000) / 10}%</b><small>of the event</small></div>
-    </div>`;
+    </div>
+    <div class="raritybar">${tally.map(t => `
+      <button class="rchip ${colRarity === t.key ? "on" : ""}" data-rarity="${t.key}" style="--rare:${t.colour}">
+        <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-${t.icon}"/></svg>
+        <b>${t.n}</b>${t.label}
+      </button>`).join("")}</div>`;
 
   if (colView === "grid") {
     const blanks = Math.max(SLOTS - list.length, 4);
-    $("colBody").innerHTML = `<div class="tiles">${list.map(tile).join("")}${
+    $("colBody").innerHTML = `<div class="tiles rarity">${list.map(tile).join("")}${
       Array.from({ length: blanks }, () => `<div class="tile blank"></div>`).join("")}</div>
       <p class="hint">Tap a sticker for the player behind it. Dashed slots are people still out there.</p>`;
   } else {
     const bySpecies = {};
     list.forEach(c => (bySpecies[c.species] ||= []).push(c));
     $("colBody").innerHTML = Object.entries(bySpecies).sort((a, b) => b[1].length - a[1].length).map(([sp, cs]) => `
-      <h3 class="sec"><span><b class="tick" style="background:${pal(sp)[1]}"></b>${sp}</span>${
-        colCounters ? `<span>${cs.length} met</span>` : ""}</h3>
+      <h3 class="sec" style="color:${rarityColour(sp)}"><span><b class="tick" style="background:${rarityColour(sp)}"></b>${sp}</span>${
+        colCounters ? `<span>${cs.length} met · ${POPULATION[sp] ?? 1} at EF30</span>` : ""}</h3>
       ${cs.map(c => `
-        <div class="listrow" data-i="${caught.indexOf(c)}" style="--tone:${pal(c.species)[1]}">
+        <div class="listrow keep-tone" data-i="${caught.indexOf(c)}" style="--tone:${rarityColour(c.species)}">
           <div class="th">${art(c)}</div>
           <div class="who"><b>${c.name}</b><small>${c.owner} · ${c.time}</small></div>
+          <span class="rlabel" style="color:${rarityColour(c.species)}">${RARITY[rarityOf(c.species)].label}</span>
         </div>`).join("")}`).join("")
       || `<p class="hint" style="margin:0">Nothing matches that filter.</p>`;
   }
@@ -1045,7 +1100,7 @@ function dirty() {
 // ---------- shell ----------
 // rows start on the species fallback, then settle onto the sampled colour
 function paintRowTones() {
-  document.querySelectorAll(".listrow[data-i]").forEach(row => {
+  document.querySelectorAll(".listrow[data-i]:not(.keep-tone)").forEach(row => {
     const c = caught[+row.dataset.i];
     if (c) swatchFor(c).then(hex => row.style.setProperty("--tone", hex));
   });
@@ -1181,8 +1236,14 @@ sheet.addEventListener("wheel", e => { if (e.deltaY > 24) closeSheet(); }, { pas
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
 // ---------- controls ----------
-$("colEvent").onchange = e => { colEvent = e.target.value; renderCollection(); renderHead("collection"); };
 $("colRarity").onchange = e => { colRarity = e.target.value; renderCollection(); };
+document.addEventListener("click", e => {
+  const chip = e.target.closest("[data-rarity]");
+  if (!chip) return;
+  colRarity = colRarity === chip.dataset.rarity ? "all" : chip.dataset.rarity;
+  $("colRarity").value = colRarity;
+  renderCollection();
+});
 $("lbEvent").onchange = e => { lbEvent = e.target.value; renderRanking(); renderHead("ranking"); };
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => {
   colView = b.dataset.view;
