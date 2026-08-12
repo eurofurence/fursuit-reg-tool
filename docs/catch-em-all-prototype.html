@@ -116,9 +116,9 @@
     width: 8px; height: 8px; border-radius: 2px; background: var(--screen-hue, var(--accent-bright));
     display: inline-block; margin-right: 8px; vertical-align: 1px;
   }
-  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .tile {
-    aspect-ratio: 1; border-radius: 13px; overflow: hidden; position: relative; cursor: pointer;
+    aspect-ratio: 3 / 4; border-radius: 13px; overflow: hidden; position: relative; cursor: pointer;
     border: 2px solid var(--rare, rgba(255,255,255,.09));
   }
   .tile.blank { background: #0e151d; border: 1px dashed #1c2836; cursor: default; }
@@ -132,19 +132,16 @@
     border-radius: 6px; padding: 2px 5px; font: 700 10.5px/1.3 inherit;
   }
   .listrow {
-    display: flex; align-items: stretch; gap: 12px; padding: 0 12px 0 0; margin-bottom: 8px; min-height: 68px;
+    display: flex; align-items: stretch; gap: 12px; padding: 0 12px 0 0; margin-bottom: 8px; min-height: 76px;
     border-radius: 14px; border: 1px solid color-mix(in srgb, var(--tone, #2b3d4f) 38%, transparent);
     background: color-mix(in srgb, var(--tone, #22303f) 17%, var(--panel));
     transition: background .35s ease, border-color .35s ease; overflow: hidden;
   }
-  /* portrait is flush to the card: no padding, left corners follow the card, hard edge on the right */
-  .listrow .th { width: 68px; height: auto; border-radius: 0; flex: 0 0 auto; }
-  .listrow .th svg { width: 100%; height: 100%; object-fit: cover; }
-  .listrow .who { align-self: center; }
+  /* badge photo is 3:4 and flush: no padding, left corners follow the card, hard edge on the right */
+  .listrow .th { width: 57px; height: auto; border-radius: 0; flex: 0 0 auto; align-self: stretch; }
+  .listrow .th svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .listrow .who { flex: 1; min-width: 0; align-self: center; }
   .listrow > :last-child { align-self: center; }
-  .listrow .th { width: 42px; height: 42px; border-radius: 10px; overflow: hidden; flex: 0 0 auto; }
-  .listrow .th svg { width: 100%; height: 100%; display: block; }
-  .listrow .who { flex: 1; min-width: 0; }
   .listrow .who b { font-weight: 700; }
   .listrow .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 
@@ -179,7 +176,7 @@
 
   /* ---- achievements ---- */
   .ach {
-    display: flex; gap: 12px; padding: 12px; cursor: pointer; margin-bottom: 8px; border-radius: 14px;
+    display: flex; gap: 12px; padding: 12px; margin-bottom: 8px; border-radius: 14px;
     border: 1px solid var(--line); background: var(--panel);
     transition: background .3s ease, border-color .3s ease;
   }
@@ -195,8 +192,7 @@
   .ach .x { flex: 1; min-width: 0; }
   .ach .x b { font-weight: 700; }
   .ach .x small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
-  .ach .x .desc { font-size: 12.5px; color: #a9b8cb; margin-top: 6px; display: none; }
-  .ach.open .x .desc { display: block; }
+  .ach .x .desc { font-size: 12.5px; color: #a9b8cb; margin-top: 6px; }
   .ach .new { color: var(--accent-hi); font: 700 11px/1 inherit; letter-spacing: .1em; text-transform: uppercase; }
   .bar { height: 6px; border-radius: 3px; background: #0c131b; margin-top: 9px; overflow: hidden; }
   .bar i { display: block; height: 100%; border-radius: 3px; transition: width .4s ease; }
@@ -289,7 +285,7 @@
   .scrim.on .sheet { transform: translateY(0); }
   .sheet.dragging { transition: none; }
   .grab { width: 40px; height: 4px; border-radius: 2px; background: #2a3a4c; margin: 8px auto 14px; }
-  .sheet .big { width: 136px; height: 136px; border-radius: 20px; overflow: hidden; margin: 0 auto 14px; border: 2px solid #fff2; }
+  .sheet .big { width: 138px; height: 184px; border-radius: 20px; overflow: hidden; margin: 0 auto 14px; border: 2px solid #fff2; }
   .sheet .big svg { width: 100%; height: 100%; display: block; }
   .scrim.on .sheet .big { animation: pop .5s cubic-bezier(.2,1.3,.4,1) both .06s; }
   .scrim.on .sheet .nm, .scrim.on .sheet .mt, .scrim.on .sheet .statgrid, .scrim.on .sheet .btn { animation: rise .38s ease both; }
@@ -640,27 +636,37 @@ let recentMarks = [];
 const $ = (id) => document.getElementById(id);
 const pal = (s) => SPECIES[s] || ["#243040", "#54687f"];
 
-// stand-in for the mirrored profile picture
-function art(entity) {
+// Stand-in for the badge photo. Badge images are always 3:4 portrait, locked by
+// the crop stencil (FursuitImageService::ASPECT_WIDTH / ASPECT_HEIGHT), so the
+// placeholder is drawn at 3:4 and everything that shows one reserves that box.
+function art(entity, square = false) {
   const name = entity.name || "?";
   const [back, fur] = pal(entity.species);
   const seed = [...name].reduce((a, ch) => a + ch.charCodeAt(0), 0);
   const ear = seed % 3;
+  const W = square ? 64 : 48, H = 64;
+  const cx = W / 2, shift = square ? 0 : -8;
   const ears = ear === 0
-    ? `<path d="M17 26 15 8l14 9z" fill="${fur}"/><path d="M47 26 49 8 35 17z" fill="${fur}"/>`
+    ? `<path d="M${cx - 15} ${30 + shift} ${cx - 17} ${12 + shift}l14 9z" fill="${fur}"/>
+       <path d="M${cx + 15} ${30 + shift} ${cx + 17} ${12 + shift} ${cx + 3} ${21 + shift}z" fill="${fur}"/>`
     : ear === 1
-      ? `<circle cx="18" cy="19" r="7.5" fill="${fur}"/><circle cx="46" cy="19" r="7.5" fill="${fur}"/>`
-      : `<path d="M19 28 16 4l10 12z" fill="${fur}"/><path d="M45 28 48 4 38 16z" fill="${fur}"/>`;
-  return `<svg viewBox="0 0 64 64" role="img" aria-label="${name}">
-    <rect width="64" height="64" fill="${back}"/>
-    <circle cx="${12 + seed % 8}" cy="${10 + seed % 6}" r="14" fill="${fur}" opacity=".22"/>
+      ? `<circle cx="${cx - 14}" cy="${23 + shift}" r="7.5" fill="${fur}"/>
+         <circle cx="${cx + 14}" cy="${23 + shift}" r="7.5" fill="${fur}"/>`
+      : `<path d="M${cx - 13} ${32 + shift} ${cx - 16} ${8 + shift}l10 12z" fill="${fur}"/>
+         <path d="M${cx + 13} ${32 + shift} ${cx + 16} ${8 + shift} ${cx + 6} ${20 + shift}z" fill="${fur}"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${name}">
+    <rect width="${W}" height="${H}" fill="${back}"/>
+    <circle cx="${8 + seed % 8}" cy="${10 + seed % 6}" r="14" fill="${fur}" opacity=".22"/>
     ${ears}
-    <ellipse cx="32" cy="36" rx="17" ry="16" fill="${fur}"/>
-    <ellipse cx="32" cy="44" rx="9" ry="7.5" fill="#f6f9fc" opacity=".93"/>
-    <circle cx="25" cy="33" r="2.6" fill="#0b0f14"/><circle cx="39" cy="33" r="2.6" fill="#0b0f14"/>
-    <path d="M32 41.5c-1.6 0-3 1-3 2.1 0 1.2 1.4 2 3 2s3-.8 3-2c0-1.1-1.4-2.1-3-2.1z" fill="#0b0f14"/>
+    <ellipse cx="${cx}" cy="${40 + shift}" rx="16" ry="15" fill="${fur}"/>
+    <ellipse cx="${cx}" cy="${47 + shift}" rx="8.5" ry="7" fill="#f6f9fc" opacity=".93"/>
+    <circle cx="${cx - 6.5}" cy="${37 + shift}" r="2.5" fill="#0b0f14"/>
+    <circle cx="${cx + 6.5}" cy="${37 + shift}" r="2.5" fill="#0b0f14"/>
+    <path d="M${cx} ${44.5 + shift}c-1.6 0-3 1-3 2.1 0 1.2 1.4 2 3 2s3-.8 3-2c0-1.1-1.4-2.1-3-2.1z" fill="#0b0f14"/>
   </svg>`;
 }
+// people, not fursuits: the identity mirror stores a square 512x512 webp
+const avatar = (person) => art(person, true);
 
 function showcase(entity) {
   const [back, fur] = pal(entity.species);
@@ -1003,7 +1009,7 @@ function renderYou() {
   $("v-you").innerHTML = `
     <div class="showcase">${showcase(me)}</div>
     <div class="profhead">
-      <div class="avatar">${art(me)}</div>
+      <div class="avatar">${avatar(me)}</div>
       <div class="nm">${me.name}</div>
       <div style="margin-top:9px"><span class="chip ${st.chip}">${st.label}</span></div>
     </div>
@@ -1053,7 +1059,7 @@ function openProfile(entry) {
   $("v-profile").innerHTML = `
     <div class="showcase">${showcase(entry)}</div>
     <div class="profhead">
-      <div class="avatar">${art(owner)}</div>
+      <div class="avatar">${avatar(owner)}</div>
       <div class="nm">${entry.owner}</div>
       <div class="sp">Player at Eurofurence 30</div>
     </div>
@@ -1270,8 +1276,6 @@ document.querySelectorAll("[data-ach]").forEach(b => b.onclick = () => {
 document.addEventListener("click", e => {
   const hit = e.target.closest("[data-i]");
   if (hit) { const c = caught[+hit.dataset.i]; if (c) openProfile(c); return; }
-  const ach = e.target.closest(".ach");
-  if (ach) { ach.classList.toggle("open"); return; }
   const rm = e.target.closest("[data-rm]");
   if (rm) { me.links.splice(+rm.dataset.rm, 1); dirty(); renderYou(); }
 });
