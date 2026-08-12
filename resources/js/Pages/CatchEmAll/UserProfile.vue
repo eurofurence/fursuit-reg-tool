@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
 import FursuitPhoto from '@/Components/CatchEmAll/FursuitPhoto.vue'
-import { Link as LinkIcon, Sparkles, Star, Trash2, X } from 'lucide-vue-next'
+import { Link as LinkIcon, Star, Trash2, X } from 'lucide-vue-next'
 
 type Fursuit = {
     id: number
@@ -30,7 +30,7 @@ const props = defineProps<{
         avatar: string | null
         description: string | null
         colour: string | null
-        colourHex: string | null
+        colourHex: string
         links: string[]
         status: string | null
         rejection_reason: string | null
@@ -53,12 +53,8 @@ const form = useForm({
     links: [...props.profile.links],
 })
 
-/* the profile's own colour wins; otherwise the page follows their rarest fursuit */
-const hue = computed(() => {
-    if (form.colour && props.palette[form.colour]) return props.palette[form.colour]
-    /* a player with no fursuit of their own still gets a colour, not a grey slab */
-    return props.fursuits[0]?.rarity?.color ?? 'var(--cea-accent-bright)'
-})
+/* every profile carries its own colour, picked at random when it is created */
+const hue = computed(() => props.palette[form.colour ?? ''] ?? props.profile.colourHex)
 
 const STATUS: Record<string, string> = {
     approved: 'Visible to other players',
@@ -176,18 +172,9 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
         <template v-if="canEdit">
             <h3 class="cea-sec">
                 <span><b class="cea-tick" />Profile colour</span>
-                <span class="meta">{{ form.colour ?? 'From your fursuit' }}</span>
+                <span class="meta">{{ form.colour }}</span>
             </h3>
             <div class="cea-swatches">
-                <button
-                    class="cea-swatch auto"
-                    :class="{ on: !form.colour }"
-                    title="Follow your fursuit"
-                    aria-label="Follow your fursuit"
-                    @click="form.colour = null; save()"
-                >
-                    <Sparkles :size="15" />
-                </button>
                 <button
                     v-for="(hexValue, key) in palette"
                     :key="key"
@@ -199,10 +186,6 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
                     @click="form.colour = key; save()"
                 />
             </div>
-            <p class="cea-hint" style="margin-top: 10px">
-                A colour is a preset, so it goes live straight away. Changing your text or links sends the
-                profile back for review first.
-            </p>
 
             <h3 class="cea-sec"><span><b class="cea-tick" />About</span></h3>
             <template v-if="editing">
@@ -280,7 +263,7 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
         <Teleport to="body">
             <Transition name="cea-fade">
                 <div v-if="lightbox" class="cea-lightbox" @click.self="lightbox = null">
-                    <div style="width: 100%">
+                    <div>
                         <div class="art">
                             <FursuitPhoto
                                 :src="lightbox.image"
@@ -299,7 +282,7 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
                             </div>
                         </div>
                         <button class="cea-btn ghost sm" style="margin-top: 16px" @click="lightbox = null">
-                            <X :size="16" style="margin-right: 6px" /> Close
+                            <X :size="16" /> Close
                         </button>
                     </div>
                 </div>

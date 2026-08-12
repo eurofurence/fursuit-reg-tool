@@ -195,6 +195,10 @@
     font-weight: 700;
     font-size: 16px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 .cea-btn:disabled { background: var(--cea-panel-2); color: #46586d; cursor: default; }
 .cea-btn:active:not(:disabled) { transform: scale(.985); }
@@ -562,6 +566,11 @@
     background: rgba(4,7,11,.94);
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
+    overflow-y: auto;
+}
+/* the panel is the lightbox's only child; keeps photo, caption and button one column */
+.cea-lightbox > * {
+    width: 100%; max-width: 300px; margin: auto;
 }
 .cea-lightbox .art {
     width: 100%; max-width: 300px; margin: 0 auto;

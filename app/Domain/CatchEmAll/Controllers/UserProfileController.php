@@ -52,7 +52,7 @@ class UserProfileController extends Controller
                 'name' => $userProfile->user->name,
                 'avatar' => $userProfile->user->avatar_url,
                 'description' => $userProfile->description,
-                'colour' => $userProfile->colour,
+                'colour' => $userProfile->colourKey(),
                 'colourHex' => $userProfile->colourHex(),
                 'links' => $userProfile->links->pluck('url')->values(),
                 'status' => $isOwner ? $userProfile->status::$name : null,
@@ -172,14 +172,16 @@ class UserProfileController extends Controller
 
         $validated = $request->validate([
             'description' => ['nullable', 'string', 'max:255'],
-            'colour' => ['nullable', 'string', Rule::in(array_keys(UserProfile::PALETTE))],
+            // optional: a profile is given a colour when it is created, so an
+            // update that only touches the text or the links need not send one
+            'colour' => ['sometimes', 'string', Rule::in(array_keys(UserProfile::PALETTE))],
             'links' => ['array', 'max:10'],
             'links.*' => ['required', 'string', 'url:http,https', 'max:255', 'distinct'],
         ]);
 
         $userProfile->update([
             'description' => $validated['description'] ?? null,
-            'colour' => $validated['colour'] ?? null,
+            'colour' => $validated['colour'] ?? $userProfile->colourKey(),
         ]);
 
         // Sync links by URL

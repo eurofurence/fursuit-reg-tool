@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -42,10 +43,39 @@ class UserProfile extends Model
         'slate' => '#8496ad',
     ];
 
-    /** Hex for the chosen colour, or null when it follows the fursuit. */
-    public function colourHex(): ?string
+    private static ?bool $hasColourColumn = null;
+
+    private static function hasColourColumn(): bool
     {
-        return self::PALETTE[$this->colour] ?? null;
+        return self::$hasColourColumn ??= Schema::hasColumn((new self)->getTable(), 'colour');
+    }
+
+    public static function randomColour(): string
+    {
+        return array_rand(self::PALETTE);
+    }
+
+    /**
+     * Hex for this profile's colour.
+     *
+     * Rows written before the colour column existed have none, so they fall back
+     * to a colour picked from the uuid: stable per profile, and never grey.
+     */
+    public function colourHex(): string
+    {
+        if (isset(self::PALETTE[$this->colour])) {
+            return self::PALETTE[$this->colour];
+        }
+
+        $keys = array_keys(self::PALETTE);
+
+        return self::PALETTE[$keys[crc32((string) $this->uuid) % count($keys)]];
+    }
+
+    /** The palette key actually in use, including the uuid fallback. */
+    public function colourKey(): string
+    {
+        return array_search($this->colourHex(), self::PALETTE, true) ?: 'teal';
     }
 
     protected $casts = [
@@ -58,6 +88,14 @@ class UserProfile extends Model
         static::creating(function (UserProfile $profile) {
             $profile->uuid ??= (string) Str::uuid();
             $profile->approved_at ??= now();
+            // Everyone starts with a colour of their own. Deriving it from a
+            // fursuit does not work: a profile can own several, or none at all.
+            //
+            // Guarded because an earlier migration backfills profiles through
+            // this model, and it runs before the colour column exists.
+            if (self::hasColourColumn()) {
+                $profile->colour ??= self::randomColour();
+            }
         });
 
         static::updating(function (UserProfile $profile) {
