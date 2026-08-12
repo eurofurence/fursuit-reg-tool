@@ -327,6 +327,21 @@
   .bcard.more b { min-height: 0; color: var(--accent-bright); font-size: 13px; }
 
   /* ---- big badge photo, and the lightbox behind it ---- */
+  .hero.current { box-shadow: 0 0 0 2px var(--accent-bright); }
+  .listrow.current {
+    border-color: var(--accent-bright);
+    box-shadow: inset 0 0 0 1px var(--accent-bright);
+    animation: flag .9s ease 1;
+  }
+  .here {
+    align-self: center; flex: 0 0 auto; background: var(--accent); color: #fff; border-radius: 999px;
+    padding: 5px 10px; font: 700 10.5px/1 inherit; letter-spacing: .06em; text-transform: uppercase;
+  }
+  @keyframes flag {
+    0% { box-shadow: inset 0 0 0 1px var(--accent-bright); }
+    35% { box-shadow: inset 0 0 0 3px var(--accent-bright); }
+    100% { box-shadow: inset 0 0 0 1px var(--accent-bright); }
+  }
   .hero {
     position: relative; width: 62%; max-width: 230px; margin: 0 auto; aspect-ratio: 3 / 4;
     border-radius: 16px; overflow: hidden;
@@ -1241,9 +1256,9 @@ function openProfile(entry) {
       <div class="stat" style="--tone:var(--gold)"><b>${18 + theirs.length * 9}</b><small>times caught</small></div>
       <div class="stat" style="--tone:var(--accent-bright)"><b>${theirs.filter(t => caught.some(c => c.name === t.name)).length}/${theirs.length}</b><small>you have</small></div>
     </div>
-    <h3 class="sec"><span><b class="tick" style="background:${rarityColour(entry.species)}"></b>${entry.name}</span>
+    <h3 class="sec"><span><b class="tick" style="background:${rarityColour(entry.species)}"></b>The one you tapped</span>
       <span>${RARITY[rarityOf(entry.species)].label}</span></h3>
-    <div class="hero" data-zoom="${entry.name}" style="--tone:${rarityColour(entry.species)}">
+    <div class="hero current" data-zoom="${entry.name}" style="--tone:${rarityColour(entry.species)}">
       ${art(entry)}
       <div class="cap"><b>${entry.name}</b><small>${entry.species}</small></div>
     </div>
@@ -1253,10 +1268,17 @@ function openProfile(entry) {
     <h3 class="sec">Fursuits</h3>
     ${theirs.map(s => {
       const got = caught.some(c => c.name === s.name);
-      return `<div class="listrow" style="--tone:${pal(s.species)[1]}" data-suit="${s.name}" data-zoom="${s.name}">
+      const here = s.name === entry.name;
+      return `<div class="listrow ${here ? "current" : ""}" style="--tone:${pal(s.species)[1]}"
+        data-suit="${s.name}" data-zoom="${s.name}">
         <div class="th">${art(s)}</div>
-        <div class="who"><b>${s.name}</b><small>${s.species}</small></div>
-        <div style="font-size:12.5px;color:${got ? "var(--accent-hi)" : "var(--muted)"}">${got ? "caught" : "not yet"}</div>
+        <div class="who">
+          <b>${s.name}</b>
+          <small>${s.species}${here ? " · shown above" : ""}</small>
+        </div>
+        ${here
+          ? `<span class="here">This one</span>`
+          : `<div style="font-size:12.5px;color:${got ? "var(--accent-hi)" : "var(--muted)"}">${got ? "caught" : "not yet"}</div>`}
       </div>`;
     }).join("")}
     <h3 class="sec">Links</h3>
