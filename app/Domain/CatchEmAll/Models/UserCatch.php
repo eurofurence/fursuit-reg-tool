@@ -2,7 +2,6 @@
 
 namespace App\Domain\CatchEmAll\Models;
 
-use App\Domain\CatchEmAll\Enums\FursuitRarity;
 use App\Models\EventUser;
 use App\Models\Fursuit\Fursuit;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -33,23 +32,21 @@ class UserCatch extends Model
         return $this->belongsTo(Fursuit::class);
     }
 
-    public function getFursuitRarity(): FursuitRarity
-    {
-        // Calculate rarity based on global frequency of fursuits
-        return FursuitRarity::fromCatchCount($this->getCatches());
-    }
-
     public function getFursuitSpecies(): string
     {
         return $this->fursuit?->species?->name ?? 'Unknown';
     }
 
+    /**
+     * How many players have caught this fursuit.
+     *
+     * This used to decide rarity, which made rarity a measure of fame and cost a
+     * query per catch. Rarity now comes from SpeciesRarityService; this is only
+     * the "caught N times" figure on a profile.
+     */
     public function getCatches(): int
     {
-        // Calculate rarity based on global frequency of fursuits
-        $count = UserCatch::where('fursuit_id', $this->fursuit_id)->count();
-
-        return $count;
+        return UserCatch::where('fursuit_id', $this->fursuit_id)->count();
     }
 
     public function getActivitylogOptions(): LogOptions
