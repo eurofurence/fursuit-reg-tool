@@ -531,6 +531,10 @@
 
 /* ------------------------------------------------------ sheet, lightbox */
 
+/* These roots are teleported to <body>, so they sit outside `.cea` and would inherit the
+   body's colour - near-black text on the dark panel. The tokens live on :root for this. */
+.cea-scrim, .cea-sheet, .cea-lightbox, .cea-toasts, .cea-toast { color: var(--cea-ink); }
+
 .cea-scrim {
     position: fixed; inset: 0; z-index: 40;
     background: rgba(3,6,10,.74);

@@ -144,7 +144,10 @@ class UserProfileController extends Controller
                 'id' => $fursuit->id,
                 'name' => $fursuit->name,
                 'species' => $fursuit->species?->name,
-                'image' => $fursuit->image_webp_url,
+                // the derived webp is missing for most fursuits, so fall back to the
+                // master rather than show an empty tile. The gallery deliberately does
+                // not do this: see GalleryWebpTest.
+                'image' => $fursuit->image_webp_url ?? $fursuit->image_url,
                 'caught' => $fursuit->catched_by_users_count,
                 'rank' => $ranks->get($fursuit->id),
                 'rarity' => [

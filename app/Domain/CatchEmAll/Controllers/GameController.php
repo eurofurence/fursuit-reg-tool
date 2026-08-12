@@ -346,7 +346,7 @@ class GameController extends Controller
                     'name' => $fursuit->name,
                     'species' => $fursuit->species?->name,
                     'owner' => $fursuit->user?->name,
-                    'image' => $fursuit->image_webp_url,
+                    'image' => $fursuit->image_webp_url ?? $fursuit->image_url,
                     'caughtAt' => $catch->created_at?->format('H:i'),
                     'profileUuid' => $profile?->approved_at !== null ? $profile->uuid : null,
                     'rarity' => [
@@ -359,6 +359,11 @@ class GameController extends Controller
             ->all();
     }
 
+    /**
+     * The catch sheet's picture falls back to the master photo: most fursuits at the event
+     * never got a webp rendered, and the game screen must show the suit that was caught
+     * rather than an empty box. The gallery keeps refusing the master on purpose.
+     */
     private function getRecentCatchData($fursuitId)
     {
         $fursuit = Fursuit::with(['species', 'user', 'event'])->find($fursuitId);
@@ -373,7 +378,7 @@ class GameController extends Controller
             'name' => $fursuit->name,
             'species' => $fursuit->species->name ?? 'Unknown',
             'user' => $fursuit->user->name ?? 'Anonymous',
-            'image' => $fursuit->image_webp_url,
+            'image' => $fursuit->image_webp_url ?? $fursuit->image_url,
             'rarity' => [
                 'level' => $rarity->value,
                 'label' => $rarity->getLabel(),
