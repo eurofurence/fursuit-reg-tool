@@ -304,6 +304,15 @@
     background: var(--gold); border: 2px solid var(--page);
   }
 
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--sw); cursor: pointer;
+    border: 1px solid rgba(255,255,255,.14); font-weight: 800; font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .swatch.on { box-shadow: 0 0 0 2px var(--page), 0 0 0 4px var(--accent-bright); }
+  .swatch[data-colour=""] { border-style: dashed; }
+
   .badgecase { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .bcard {
     background: color-mix(in srgb, var(--tone) 15%, var(--panel)); border-radius: 13px; padding: 10px 7px;
@@ -727,11 +736,35 @@ const specials = [];
 const SLOTS = 20;
 const TOTAL_BADGES = 2775;
 
+// A fixed palette, not a colour wheel: every swatch is checked against the dark
+// surface, and a preset choice needs no re-review the way free text does.
+const PALETTE = [
+  { key: "auto",   label: "Auto",     hex: null },
+  { key: "teal",   label: "Teal",     hex: "#19b3a2" },
+  { key: "green",  label: "Green",    hex: "#4bb161" },
+  { key: "lime",   label: "Lime",     hex: "#9db83c" },
+  { key: "gold",   label: "Gold",     hex: "#d9a520" },
+  { key: "orange", label: "Orange",   hex: "#e0762a" },
+  { key: "red",    label: "Red",      hex: "#d9534f" },
+  { key: "pink",   label: "Pink",     hex: "#d95d8f" },
+  { key: "purple", label: "Purple",   hex: "#9b6ae0" },
+  { key: "blue",   label: "Blue",     hex: "#4a8fe0" },
+  { key: "ice",    label: "Ice",      hex: "#5fc3d9" },
+  { key: "slate",  label: "Slate",    hex: "#8496ad" },
+];
+
 const me = {
   name: "Tin", status: "approved",
   bio: "Rat person. Ask before photos, happy to pose.",
   links: ["https://tin.example", "https://bsky.app/profile/tin"],
   species: "Husky",
+  colour: null,          // null means: take it from the profile picture
+};
+// stand-in for other players having picked one
+const ownerColour = (owner) => {
+  const seed = [...owner].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const picks = PALETTE.filter(p => p.hex);
+  return seed % 3 === 0 ? picks[seed % picks.length].hex : null;
 };
 
 let gameRunning = true;
@@ -777,8 +810,10 @@ function art(entity, square = false) {
 // people, not fursuits: the identity mirror stores a square 512x512 webp
 const avatar = (person) => art(person, true);
 
-function showcase(entity) {
-  const [back, fur] = pal(entity.species);
+function showcase(entity, override) {
+  const [back, fur] = override
+    ? [`color-mix(in srgb, ${override} 32%, #0a1017)`, override]
+    : pal(entity.species);
   return `<svg viewBox="0 0 390 196" preserveAspectRatio="none">
     <rect width="390" height="196" fill="${back}"/>
     <circle cx="52" cy="34" r="92" fill="${fur}" opacity=".34"/>
@@ -926,12 +961,16 @@ const HUES = {
   collection: () => pal(caught[caught.length - 1]?.species)[1],
   ranking:    () => "#d9a520",
   marks:      () => "#b9c4cf",
-  you:        () => pal(me.species)[1],
-  profile:    () => pal(viewing?.species)[1],
+  you:        () => me.colour || pal(me.species)[1],
+  profile:    () => viewing ? (ownerColour(viewing.owner) || pal(viewing.species)[1]) : "#19b3a2",
 };
 function setHue(view) {
   const hue = (HUES[view] || HUES.catch)();
-  const subject = view === "you" ? me
+  const chosen = view === "you" ? me.colour
+    : view === "profile" ? ownerColour(viewing?.owner || "")
+    : null;
+  const subject = chosen ? null
+    : view === "you" ? me
     : view === "profile" ? viewing
     : view === "collection" || view === "catch" ? caught[caught.length - 1]
     : null;
@@ -1154,11 +1193,11 @@ function renderYou() {
   const st = STATUS[me.status];
   const marks = achievements().filter(a => a.done);
   $("v-you").innerHTML = `
-    <div class="showcase">${showcase(me)}</div>
+    <div class="showcase">${showcase(me, me.colour)}</div>
     <div class="profhead">
       <div class="avatar">${avatar(me)}</div>
       <div class="nm">${me.name}</div>
-      <div style="margin-top:9px"><span class="chip ${st.chip}">${st.label}</span></div>
+      <div class="sp">${st.sub}</div>
     </div>
     <div class="statgrid">
       <div class="stat" style="--tone:var(--accent-bright)"><b>${caught.length}</b><small>caught</small></div>
@@ -1170,6 +1209,13 @@ function renderYou() {
       ${marks.length > 5 || true ? `<div class="bcard more" style="--tone:var(--accent)" data-go="marks">
         <b>${marks.length > 5 ? `+${marks.length - 5}` : "See all"}</b><small>achievements</small></div>` : ""}
       </div>` : `<p class="hint" style="margin:0">None yet. Catch someone.</p>`}
+    <h3 class="sec"><span><b class="tick"></b>Profile colour</span>
+      <span class="meta">${me.colour ? PALETTE.find(p => p.hex === me.colour)?.label ?? "Custom" : "From your picture"}</span></h3>
+    <div class="swatches">${PALETTE.map(p => `
+      <button class="swatch ${(!me.colour && !p.hex) || me.colour === p.hex ? "on" : ""}"
+        data-colour="${p.hex ?? ""}" title="${p.label}" aria-label="${p.label}"
+        style="--sw:${p.hex ?? "transparent"}">${p.hex ? "" : "A"}</button>`).join("")}</div>
+
     <h3 class="sec"><span><b class="tick"></b>About</span></h3>
     <textarea class="bio" id="myBio" rows="3" maxlength="255">${me.bio ?? ""}</textarea>
     <div class="hint" style="text-align:right" id="bioCount">${(me.bio ?? "").length} / 255</div>
@@ -1184,7 +1230,15 @@ function renderYou() {
     <p class="hint" style="margin-top:0">Editing the text, the links or the picture sends the profile back for review before other players see it.</p>
     <button class="btn" id="saveProfile">Save profile</button>`;
 
-  $("myBio").addEventListener("input", e => {
+    document.querySelectorAll("[data-colour]").forEach(b => b.onclick = () => {
+    me.colour = b.dataset.colour || null;
+    renderYou();
+    setHue("you");
+    renderHead("you");
+    toast(me.colour ? "Colour updated" : "Colour follows your picture", "good");
+  });
+
+$("myBio").addEventListener("input", e => {
     me.bio = e.target.value;
     $("bioCount").textContent = `${e.target.value.length} / 255`;
     dirty();
@@ -1208,7 +1262,7 @@ function openProfile(entry) {
   const theirMarks = achievements().filter((_, i) => (seed + i * 7) % 4 === 0).slice(0, 6)
     .map(a => ({ ...a, done: true }));
   $("v-profile").innerHTML = `
-    <div class="showcase">${showcase(entry)}</div>
+    <div class="showcase">${showcase(entry, ownerColour(entry.owner))}</div>
     <div class="profhead">
       <div class="avatar">${avatar(owner)}</div>
       <div class="nm">${entry.owner}</div>
@@ -1255,8 +1309,8 @@ function dirty() {
   if (me.status === "pending") return;
   me.status = "pending";
   renderHead("you");
-  document.querySelector("#v-you .chip").className = "chip wait";
-  document.querySelector("#v-you .chip").textContent = STATUS.pending.label;
+  const sub = document.querySelector("#v-you .sp");
+  if (sub) sub.textContent = STATUS.pending.sub;
   toast("Changed. Back in the review queue until approved.");
 }
 
