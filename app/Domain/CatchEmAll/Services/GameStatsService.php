@@ -111,7 +111,7 @@ class GameStatsService
 
         $result = Cache::remember($cacheKey, 600, function () use ($eventUser) {
             $catches = UserCatch::where('event_user_id', $eventUser->id)
-                ->with(['fursuit.species', 'fursuit.event'])
+                ->with(['fursuit.species', 'fursuit.event', 'fursuit.user.userProfile'])
                 ->get()
                 ->unique('fursuit_id');
 
@@ -122,9 +122,11 @@ class GameStatsService
                 $rarity = $this->rarity->forFursuit($catch->fursuit->event, $catch->fursuit);
                 $specie = $catch->getFursuitSpecies();
                 $catch_count = $this->rarity->population($catch->fursuit->event, $catch->fursuit->species_id);
+                $ownerProfile = $catch->fursuit->user?->userProfile;
                 $fursuits[] = [
                     'species' => $specie,
                     'count' => $catch_count,
+                    'profileUuid' => $ownerProfile?->approved_at !== null ? $ownerProfile->uuid : null,
                     'rarity' => [
                         'level' => $rarity->value,
                         'label' => $rarity->getLabel(),
@@ -137,6 +139,8 @@ class GameStatsService
                         'species' => $catch->fursuit->species->name,
                         'image' => $catch->fursuit->image_webp_url,
                         'scoring' => $catch_count,
+                        'owner' => $catch->fursuit->user?->name,
+                        'profileUuid' => $ownerProfile?->approved_at !== null ? $ownerProfile->uuid : null,
                     ],
                 ];
                 $speciesIndex[$specie] = ($speciesIndex[$specie] ?? 0) + 1;

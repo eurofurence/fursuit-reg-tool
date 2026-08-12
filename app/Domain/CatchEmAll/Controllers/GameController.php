@@ -271,6 +271,9 @@ class GameController extends Controller
             'eventsWithEntries' => $eventsWithEntries,
             'selectedEvent' => $selectedEvent?->id,
             'isGlobal' => $selectedEventId === 'global',
+            'eventTotal' => $selectedEvent
+                ? Fursuit::where('event_id', $selectedEvent->id)->where('catch_em_all', true)->count()
+                : 0,
         ]);
     }
 
