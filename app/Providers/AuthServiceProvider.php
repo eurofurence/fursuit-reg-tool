@@ -15,6 +15,7 @@ use App\Models\RfidTag;
 use App\Models\Staff;
 use App\Models\SumUpReader;
 use App\Models\User;
+use App\Models\UserProfile\UserProfile;
 use App\Policies\ActivityPolicy;
 use App\Policies\CheckoutPolicy;
 use App\Policies\EventPolicy;
@@ -29,6 +30,7 @@ use App\Policies\StaffPolicy;
 use App\Policies\SumUpReaderPolicy;
 use App\Policies\TseClientPolicy;
 use App\Policies\UserPolicy;
+use App\Policies\UserProfilePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Activitylog\Models\Activity;
@@ -88,6 +90,13 @@ class AuthServiceProvider extends ServiceProvider
         // Auto-discovery already found this one; named here because plan 2.2 wants every
         // policy the manage panel relies on visible in one list.
         User::class => UserPolicy::class,
+        /*
+         * Registered explicitly because auto-discovery would look for the policy under
+         * App\Models\UserProfile\Policies, a directory that does not exist: the model sits in
+         * a namespace of its own rather than beside the other models. Without this line every
+         * ability on a Catch-Em-All profile falls open.
+         */
+        UserProfile::class => UserProfilePolicy::class,
     ];
 
     /**

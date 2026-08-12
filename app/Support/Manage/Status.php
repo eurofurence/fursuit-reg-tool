@@ -119,6 +119,25 @@ final class Status
     }
 
     /**
+     * Catch-Em-All profile review, from App\Models\UserProfile\States.
+     *
+     * Same three words and the same tones as fursuit(), because it is the same judgement
+     * on a different record: a reviewer switching between the two queues should not have
+     * to learn a second vocabulary for "waiting", "published" and "hidden".
+     *
+     * @return array{label: string, tone: string, icon: string|null}
+     */
+    public static function userProfile(State|string|null $status): array
+    {
+        return match (self::value($status)) {
+            'pending' => self::make('Pending', self::WARN, 'clock'),
+            'approved' => self::make('Approved', self::OK, 'circle-check'),
+            'rejected' => self::make('Rejected', self::DANGER, 'circle-x'),
+            default => self::unknown($status),
+        };
+    }
+
+    /**
      * Checkout, from App\Domain\Checkout\Models\Checkout\States.
      *
      * The stored values are the states' own uppercase $name strings. the old checkout list's

@@ -10,6 +10,17 @@ enum FursuitRarity: string
     case EPIC = 'epic';
     case LEGENDARY = 'legendary';
 
+    public static function fromCatchCount(int $count): self
+    {
+        return match (true) {
+            $count >= config('fcea.species_rarity_threshold_legendary') => self::LEGENDARY,
+            $count >= config('fcea.species_rarity_threshold_epic') => self::EPIC,
+            $count >= config('fcea.species_rarity_threshold_rare') => self::RARE,
+            $count >= config('fcea.species_rarity_threshold_uncommon') => self::UNCOMMON,
+            default => self::COMMON,
+        };
+    }
+
     public function getLabel(): string
     {
         return match ($this) {

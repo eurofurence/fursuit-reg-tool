@@ -217,6 +217,7 @@ Read the file for the area you are changing; each records decisions that were re
 | [`docs/site-navigation.md`](docs/site-navigation.md) | the public header, pill rail, bottom tab bar, footer or `SiteNav/navItems.js` |
 | [`docs/gallery.md`](docs/gallery.md) | `/gallery` routes, folder caching, or the derived webp variants |
 | [`docs/fursuit-review.md`](docs/fursuit-review.md) | the approval queue, review reasons, publication blocks, undo |
+| [`docs/catch-em-all-profiles.md`](docs/catch-em-all-profiles.md) | Catch-Em-All profiles: the public profile page, the links, the avatar mirror, the profile review queue |
 | [`docs/desk-corrections.md`](docs/desk-corrections.md) | POS badge edits, the manager gate, or repricing an open checkout |
 | [`docs/prepaid-badges.md`](docs/prepaid-badges.md) | `BadgePolicy::create()`, `getPrepaidBadgesLeft()`, badge pricing |
 | [`docs/badge-generation.md`](docs/badge-generation.md) | badge artwork classes in `app/Badges/` |
@@ -233,8 +234,8 @@ tracked the Filament-to-Inertia migration: each described a retired system, a fi
 a compliance gap that has since been closed. `git log` has them. Do not reintroduce subsystem notes
 at the root; add or extend a file in `docs/` and list it in the table above.
 
-Catch-Em-All has no doc: `routes/catch-em-all.php`, `app/Domain/CatchEmAll/` and `config/fcea.php`
-are the source of truth. One trap worth knowing without reading for it - the unrouted
+Catch-Em-All has no doc beyond the profiles one: `routes/catch-em-all.php`,
+`app/Domain/CatchEmAll/` and `config/fcea.php` are the source of truth for the rest of it. One trap worth knowing without reading for it - the unrouted
 `App\Http\Controllers\FCEA\DashboardController` still owns the ranking-refresh statics that
 `fcea:refresh-rankings` and `UpdateRankingsJob` call, so deleting it as dead code takes the
 leaderboard with it.

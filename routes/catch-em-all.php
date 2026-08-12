@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\CatchEmAll\Controllers\GameController;
+use App\Domain\CatchEmAll\Controllers\UserProfileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PWAController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,8 @@ Route::prefix('/auth')->name('auth.')->group(function () {
 Route::middleware('catch-auth:web')->group(function () {
     Route::get('/introduction', [GameController::class, 'introduction'])->name('introduction');
     Route::post('/introduction/complete', [GameController::class, 'completeIntroduction'])->name('introduction.complete');
+    Route::get('/profiles/{userProfile:uuid}', [UserProfileController::class, 'show'])->name('profiles.show');
+    Route::put('/profiles/{userProfile:uuid}', [UserProfileController::class, 'update'])->name('profiles.update');
 });
 
 // Main game routes (auth + introduction middleware)
