@@ -145,12 +145,13 @@
   .listrow .who b { font-weight: 700; }
   .listrow .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 
-  .raritygrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 14px; }
-  .stat.rarity {
-    padding: 9px 2px; cursor: pointer; font-family: inherit;
+  .raritygrid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;
+    margin: 0 -12px 14px; padding: 0 2px;      /* borrow the screen gutter, five across needs it */
   }
-  .stat.rarity svg { color: var(--tone); display: block; margin: 0 auto 6px; }
-  .stat.rarity b { font-size: 16px; }
+  .stat.rarity { padding: 10px 1px; cursor: pointer; font-family: inherit; border-radius: 12px; }
+  .stat.rarity svg { color: var(--tone); display: block; margin: 0 auto 7px; }
+  .stat.rarity b { font-size: 17px; }
   .stat.rarity small {
     font-size: 9px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     padding: 0 1px; letter-spacing: -.01em;
@@ -230,6 +231,7 @@
   .nm { font: 800 20px/1.2 inherit; }
   .sp { color: var(--muted); font-size: 13px; margin-top: 5px; }
   .statgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+  .statgrid.two { grid-template-columns: repeat(2, 1fr); }
   .stat {
     background: color-mix(in srgb, var(--tone, #22303f) 14%, var(--panel));
     border: 1px solid color-mix(in srgb, var(--tone, #2b3d4f) 40%, transparent);
@@ -931,10 +933,9 @@ function renderCollection() {
     key, ...RARITY[key], n: caught.filter(c => rarityOf(c.species) === key).length,
   }));
   $("colSummary").innerHTML = `
-    <div class="statgrid" style="margin:0 0 8px">
+    <div class="statgrid two" style="margin:0 0 8px">
       <div class="stat" style="--tone:var(--accent-bright)"><b>${caught.length}</b><small>caught</small></div>
       <div class="stat" style="--tone:#7b9cf5"><b>${speciesCount()}</b><small>species</small></div>
-      <div class="stat" style="--tone:var(--gold)"><b>${Math.round(caught.length / TOTAL_BADGES * 1000) / 10}%</b><small>of event</small></div>
     </div>
     <div class="raritygrid">${tally.map(t => `
       <button class="stat rarity ${colRarity === t.key ? "on" : ""}" data-rarity="${t.key}" style="--tone:${t.colour}">
