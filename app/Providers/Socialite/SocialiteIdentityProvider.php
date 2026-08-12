@@ -88,6 +88,8 @@ class SocialiteIdentityProvider extends AbstractProvider
             'email' => $user['email'],
             'email_verified' => $user['email_verified'],
             'name' => $user['name'],
+            // The identity provider sends the picture as an `avatar` URL claim, not `picture`.
+            'avatar' => $user['avatar'] ?? null,
             'groups' => $user['groups'],
         ]);
     }
