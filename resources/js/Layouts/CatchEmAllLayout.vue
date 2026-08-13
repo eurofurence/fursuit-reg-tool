@@ -32,16 +32,36 @@ const props = withDefaults(defineProps<{
 
 const hue = computed(() => props.hue || 'var(--cea-accent-bright)')
 
-/* Paint the document itself while the game is open: an overscroll bounce shows
-   what is behind the app, and that was the browser's white. Removed again on
-   leave so the rest of the site keeps its own background. */
+/*
+ * Paint the document itself while the game is open.
+ *
+ * An overscroll bounce shows what is behind the app, and that was white in three
+ * separate places on iOS: the document (html and body had no background at all),
+ * the browser chrome tint, which Safari also uses for the rubber-band area, and
+ * the PWA splash. The first two are handled here, the third in PWAController.
+ * theme-color is shared with the rest of the site, so it is swapped on the way
+ * in and restored on the way out rather than changed in the blade layout.
+ */
+const PAGE = '#0a1017'
+let previousTheme: string | null = null
+
 onMounted(() => {
     document.documentElement.classList.add('cea-page')
     document.body.classList.add('cea-page')
+
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) {
+        previousTheme = meta.getAttribute('content')
+        meta.setAttribute('content', PAGE)
+    }
 })
+
 onBeforeUnmount(() => {
     document.documentElement.classList.remove('cea-page')
     document.body.classList.remove('cea-page')
+
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta && previousTheme !== null) meta.setAttribute('content', previousTheme)
 })
 </script>
 

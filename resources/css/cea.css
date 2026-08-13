@@ -48,8 +48,17 @@
 
 /* The game paints the document, not just its own wrapper: rubber-band scrolling
    on iOS and macOS reveals whatever is behind the app, which was white. Scoped
-   to the game so the POS, admin and public site keep their own backgrounds. */
-html.cea-page, body.cea-page { background: var(--cea-page); }
+   to the game so the POS, admin and public site keep their own backgrounds.
+   min-height matters on iOS: a body shorter than the viewport leaves the canvas
+   under it unpainted, and that strip is what the bounce exposes. */
+html.cea-page, body.cea-page {
+    background-color: var(--cea-page);
+    min-height: 100%;
+}
+/* Keep the bounce, which is native and expected, but stop it chaining out of a
+   sheet or the lightbox into the page behind them. */
+body.cea-page { overscroll-behavior-y: contain; }
+.cea-scrim, .cea-lightbox { overscroll-behavior: contain; }
 
 .cea {
     min-height: 100dvh;
@@ -75,7 +84,9 @@ html.cea-page, body.cea-page { background: var(--cea-page); }
     z-index: 20;
     background: var(--cea-page);
     border-bottom: 1px solid var(--cea-line);
-    padding: 16px 0 13px;
+    /* installed on iOS the status bar is translucent and content starts behind
+       it, so the title needs the notch inset on top of its own padding */
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 0 13px;
 }
 /* the bar spans the window; only its contents sit in the page column */
 .cea-head-inner {
