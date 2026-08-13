@@ -119,6 +119,14 @@ function earnedOn(a: Achievement) {
     return `Earned ${new Date(a.earnedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
 }
 
+/** Every named sub-goal, found ones first, each alphabetical within its half. */
+function subgoals(a: Achievement) {
+    const found = a.progressDetail?.currentProgress ?? []
+    return [...(a.progressDetail?.totalProgress ?? [])]
+        .map(name => ({ name, found: found.includes(name) }))
+        .sort((x, y) => Number(y.found) - Number(x.found) || x.name.localeCompare(y.name))
+}
+
 function width(a: Achievement) {
     const held = barWidth.value[a.id]
     return `${held === undefined || held === -1 ? a.progressPercentage : held}%`
@@ -189,11 +197,27 @@ function width(a: Achievement) {
                     <template v-if="open.includes(item.id) && !masked(item)">
                         <p class="desc">{{ item.description }}</p>
                         <p v-if="item.task" class="desc task">{{ item.task }}</p>
-                        <p v-if="item.progressDetail?.totalProgress?.length" class="desc">
-                            Found {{ item.progressDetail.currentProgress.length }} of
-                            {{ item.progressDetail.totalProgress.length }}:
-                            {{ item.progressDetail.currentProgress.join(', ') || 'nothing yet' }}
-                        </p>
+                        <!-- named sub-goals: the team members, the poster locations.
+                             One tag each, filled once you have found it, so the list
+                             doubles as the checklist of what is left. -->
+                        <template v-if="item.progressDetail?.totalProgress?.length">
+                            <div class="subgoals-head">
+                                Found {{ item.progressDetail.currentProgress.length }} of
+                                {{ item.progressDetail.totalProgress.length }}
+                            </div>
+                            <div class="subgoals">
+                                <span
+                                    v-for="goal in subgoals(item)"
+                                    :key="goal.name"
+                                    class="subgoal"
+                                    :class="{ found: goal.found }"
+                                    :style="goal.found ? { '--cea-tone': tier(item) } : undefined"
+                                >
+                                    <Check v-if="goal.found" :size="12" />
+                                    {{ goal.name }}
+                                </span>
+                            </div>
+                        </template>
                     </template>
                 </div>
             </div>
@@ -233,6 +257,33 @@ function width(a: Achievement) {
 .cea-ach .chev { color: var(--cea-muted); transition: transform .2s ease; flex: 0 0 auto; }
 .cea-ach.open .chev { transform: rotate(180deg); }
 .cea-ach .task { color: var(--cea-muted); }
+
+.subgoals-head {
+    margin-top: 10px;
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--cea-muted);
+}
+.subgoals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.subgoal {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-weight: 600;
+    font-size: 11.5px;
+    /* not yet found: present but quiet, so the gaps are countable at a glance */
+    border: 1px dashed var(--cea-line-soft);
+    color: var(--cea-muted);
+}
+.subgoal.found {
+    border: 1px solid color-mix(in srgb, var(--cea-tone) 55%, transparent);
+    background: color-mix(in srgb, var(--cea-tone) 18%, var(--cea-panel));
+    color: var(--cea-ink);
+}
 
 /* just earned: the row announces itself once */
 .cea-ach.fresh { animation: cea-earned .9s ease 1; }
