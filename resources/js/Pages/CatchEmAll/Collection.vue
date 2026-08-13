@@ -3,13 +3,14 @@ import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
 import FursuitPhoto from '@/Components/CatchEmAll/FursuitPhoto.vue'
-import { BookOpen, Crown, Gem, LayoutGrid, List, Sparkles, Star } from 'lucide-vue-next'
+import { Circle, Gem, LayoutGrid, List, Medal, Sparkles, Star } from 'lucide-vue-next'
 
 type Suit = {
     species: string
     count: number
+    caught: number
     profileUuid: string | null
-    rarity: { level: string; label: string; color: string; icon: string }
+    ranking: { level: string; label: string; color: string; icon: string }
     gallery: {
         id: number
         name: string
@@ -29,17 +30,17 @@ const props = defineProps<{
     flash?: any
 }>()
 
-/* rarest first, matching FursuitRarity::ranked() */
-const RARITIES = [
-    { key: 'legendary', label: 'Legendary', icon: Crown },
-    { key: 'epic', label: 'Epic', icon: Gem },
-    { key: 'rare', label: 'Rare', icon: Sparkles },
-    { key: 'uncommon', label: 'Uncommon', icon: Star },
-    { key: 'common', label: 'Common', icon: BookOpen },
+/* highest first, matching FursuitRanking::ranked() */
+const RANKINGS = [
+    { key: 'diamond', label: 'Diamond', icon: Gem },
+    { key: 'platinum', label: 'Platinum', icon: Sparkles },
+    { key: 'gold', label: 'Gold', icon: Medal },
+    { key: 'silver', label: 'Silver', icon: Star },
+    { key: 'bronze', label: 'Bronze', icon: Circle },
 ]
 
 const view = ref<'grid' | 'list'>('grid')
-const rarity = ref<string>('all')
+const ranking = ref<string>('all')
 const openSpecies = ref<string | null>(null)
 
 const suits = computed(() => props.collection?.suits ?? [])
@@ -48,22 +49,22 @@ const total = computed(() => props.eventTotal ?? 0)
 const percent = computed(() =>
     total.value ? Math.round((suits.value.length / total.value) * 1000) / 10 : 0)
 
-const tally = computed(() => RARITIES.map(entry => ({
+const tally = computed(() => RANKINGS.map(entry => ({
     ...entry,
-    colour: suits.value.find(s => s.rarity.level === entry.key)?.rarity.color ?? colourFor(entry.key),
-    n: suits.value.filter(s => s.rarity.level === entry.key).length,
+    colour: suits.value.find(s => s.ranking.level === entry.key)?.ranking.color ?? colourFor(entry.key),
+    n: suits.value.filter(s => s.ranking.level === entry.key).length,
 })))
 
 /* fallbacks so an empty tier still shows its own colour */
 function colourFor(level: string) {
     return {
-        legendary: '#e0a020', epic: '#a35fd6', rare: '#3f8fe0',
-        uncommon: '#46b06a', common: '#7d90a6',
-    }[level] ?? '#7d90a6'
+        diamond: '#5fd0e0', platinum: '#6f9fd8', gold: '#d9a520',
+        silver: '#b9c4cf', bronze: '#cf8b52',
+    }[level] ?? '#cf8b52'
 }
 
 const shown = computed(() =>
-    rarity.value === 'all' ? suits.value : suits.value.filter(s => s.rarity.level === rarity.value))
+    ranking.value === 'all' ? suits.value : suits.value.filter(s => s.ranking.level === ranking.value))
 
 /* list view is a species view: one row per species with how many you met,
    because a heading per species with one row under it is twice the rows */
@@ -72,8 +73,8 @@ const bySpecies = computed(() => {
     for (const suit of shown.value) {
         groups[suit.species] ??= {
             species: suit.species,
-            colour: suit.rarity.color,
-            label: suit.rarity.label,
+            colour: suit.ranking.color,
+            label: suit.ranking.label,
             population: suit.count,
             suits: [],
         }
@@ -84,10 +85,10 @@ const bySpecies = computed(() => {
 
 const blanks = computed(() => Math.max(12 - shown.value.length, 3))
 const hue = computed(() =>
-    rarity.value === 'all' ? (suits.value[0]?.rarity.color ?? null) : colourFor(rarity.value))
+    ranking.value === 'all' ? (suits.value[0]?.ranking.color ?? null) : colourFor(ranking.value))
 
-function toggleRarity(key: string) {
-    rarity.value = rarity.value === key ? 'all' : key
+function toggleRanking(key: string) {
+    ranking.value = ranking.value === key ? 'all' : key
 }
 
 function openProfile(suit: Suit) {
@@ -106,9 +107,9 @@ function openProfile(suit: Suit) {
         :flash="flash"
     >
         <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 14px">
-            <select v-model="rarity" class="cea-select">
-                <option value="all">All rarities</option>
-                <option v-for="entry in RARITIES" :key="entry.key" :value="entry.key">{{ entry.label }}</option>
+            <select v-model="ranking" class="cea-select">
+                <option value="all">All rankings</option>
+                <option v-for="entry in RANKINGS" :key="entry.key" :value="entry.key">{{ entry.label }}</option>
             </select>
             <div class="cea-seg">
                 <button :class="{ on: view === 'grid' }" title="Grid" aria-label="Grid" @click="view = 'grid'">
@@ -128,14 +129,14 @@ function openProfile(suit: Suit) {
             </div>
         </div>
 
-        <div class="cea-rarity">
+        <div class="cea-ranking">
             <button
                 v-for="entry in tally"
                 :key="entry.key"
                 class="cea-stat"
-                :class="{ on: rarity === entry.key }"
+                :class="{ on: ranking === entry.key }"
                 :style="{ '--cea-tone': entry.colour }"
-                @click="toggleRarity(entry.key)"
+                @click="toggleRanking(entry.key)"
             >
                 <component :is="entry.icon" :size="16" />
                 <b>{{ entry.n }}</b>
@@ -149,11 +150,11 @@ function openProfile(suit: Suit) {
                     v-for="suit in shown"
                     :key="suit.gallery.id"
                     class="cea-tile"
-                    :style="{ '--cea-tone': suit.rarity.color }"
-                    :title="`${suit.gallery.name} · ${suit.rarity.label}`"
+                    :style="{ '--cea-tone': suit.ranking.color }"
+                    :title="`${suit.gallery.name} · ${suit.ranking.label}`"
                     @click="openProfile(suit)"
                 >
-                    <FursuitPhoto :src="suit.gallery.image" :name="suit.gallery.name" :tone="suit.rarity.color" />
+                    <FursuitPhoto :src="suit.gallery.image" :name="suit.gallery.name" :tone="suit.ranking.color" />
                     <span v-if="(collection.species[suit.species] ?? 0) > 1" class="count">
                         {{ collection.species[suit.species] }}
                     </span>
@@ -201,7 +202,7 @@ function openProfile(suit: Suit) {
                 </div>
             </div>
             </div>
-            <p v-if="!bySpecies.length" class="cea-hint">Nothing at that rarity yet.</p>
+            <p v-if="!bySpecies.length" class="cea-hint">Nothing at that ranking yet.</p>
         </template>
     </CatchEmAllLayout>
 </template>

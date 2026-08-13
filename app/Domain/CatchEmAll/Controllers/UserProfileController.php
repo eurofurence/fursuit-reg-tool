@@ -3,8 +3,9 @@
 namespace App\Domain\CatchEmAll\Controllers;
 
 use App\Domain\CatchEmAll\Achievements\Utils\AchievementFactory;
+use App\Domain\CatchEmAll\Services\FursuitRankingService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
-use App\Domain\CatchEmAll\Services\SpeciesRarityService;
+use App\Domain\CatchEmAll\Services\SpeciesPopulationService;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\FCEA\UserCatchRanking;
@@ -24,7 +25,8 @@ class UserProfileController extends Controller
 {
     public function __construct(
         private GameStatsService $gameStatsService,
-        private SpeciesRarityService $speciesRarity,
+        private SpeciesPopulationService $speciesPopulation,
+        private FursuitRankingService $fursuitRanking,
     ) {}
 
     /**
@@ -138,23 +140,20 @@ class UserProfileController extends Controller
             ->pluck('rank', 'fursuit_id');
 
         return $fursuits->map(function (Fursuit $fursuit) use ($ranks, $event) {
-            $rarity = $this->speciesRarity->forFursuit($event, $fursuit);
+            $ranking = $this->fursuitRanking->forFursuit($event, $fursuit);
 
             return [
                 'id' => $fursuit->id,
                 'name' => $fursuit->name,
                 'species' => $fursuit->species?->name,
-                // the derived webp is missing for most fursuits, so fall back to the
-                // master rather than show an empty tile. The gallery deliberately does
-                // not do this: see GalleryWebpTest.
-                'image' => $fursuit->image_webp_url ?? $fursuit->image_url,
+                'image' => $fursuit->image_webp_url,
                 'caught' => $fursuit->catched_by_users_count,
                 'rank' => $ranks->get($fursuit->id),
-                'rarity' => [
-                    'level' => $rarity->value,
-                    'label' => $rarity->getLabel(),
-                    'color' => $rarity->getColor(),
-                    'icon' => $rarity->getIcon(),
+                'ranking' => [
+                    'level' => $ranking->value,
+                    'label' => $ranking->getLabel(),
+                    'color' => $ranking->getColor(),
+                    'icon' => $ranking->getIcon(),
                 ],
             ];
         })->values();

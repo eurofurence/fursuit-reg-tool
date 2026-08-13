@@ -12,7 +12,7 @@ type Fursuit = {
     image: string | null
     caught: number
     rank: number | null
-    rarity: { level: string; label: string; color: string; icon: string }
+    ranking: { level: string; label: string; color: string; icon: string }
 }
 
 type Achievement = {
@@ -158,11 +158,11 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
                     :key="fursuit.id"
                     class="cea-tile"
                     :class="{ current: fromFursuit === fursuit.id }"
-                    :style="{ '--cea-tone': fursuit.rarity.color }"
-                    :title="`${fursuit.name} · ${fursuit.rarity.label}`"
+                    :style="{ '--cea-tone': fursuit.ranking.color }"
+                    :title="`${fursuit.name} · ${fursuit.ranking.label}`"
                     @click="lightbox = fursuit"
                 >
-                    <FursuitPhoto :src="fursuit.image" :name="fursuit.name" :tone="fursuit.rarity.color" />
+                    <FursuitPhoto :src="fursuit.image" :name="fursuit.name" :tone="fursuit.ranking.color" />
                     <span class="name">{{ fursuit.name }}</span>
                 </button>
             </div>
@@ -268,14 +268,14 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
                             <FursuitPhoto
                                 :src="lightbox.image"
                                 :name="lightbox.name"
-                                :tone="lightbox.rarity.color"
+                                :tone="lightbox.ranking.color"
                             />
                         </div>
                         <div style="text-align: center; margin-top: 14px">
                             <div class="cea-name">{{ lightbox.name }}</div>
                             <div class="cea-sub">
                                 {{ lightbox.species }} ·
-                                <span :style="{ color: lightbox.rarity.color }">{{ lightbox.rarity.label }}</span>
+                                <span :style="{ color: lightbox.ranking.color }">{{ lightbox.ranking.label }}</span>
                                 <template v-if="lightbox.caught">
                                     · caught {{ lightbox.caught }} time{{ lightbox.caught === 1 ? '' : 's' }}
                                 </template>

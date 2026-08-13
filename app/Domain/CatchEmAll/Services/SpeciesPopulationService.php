@@ -2,31 +2,24 @@
 
 namespace App\Domain\CatchEmAll\Services;
 
-use App\Domain\CatchEmAll\Enums\FursuitRarity;
 use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Rarity of a species at an event.
+ * How many fursuits of a species are registered for an event.
  *
- * The old rule ranked a catch by how often that fursuit had already been caught
- * (`UserCatch::getCatches()`), so rarity measured fame, not rarity: the most
- * photographed suiter at the con came out Legendary, and on the first morning,
- * when nobody had caught anything, every catch was Common. It also cost one
- * query per catch.
+ * This used to drive a Common-to-Legendary rarity tier. Tiers now come from
+ * FursuitRanking, which counts catches and calls the result what it is: how
+ * sought after a suiter is. The population survived that change because it is
+ * still the interesting fact about a species, and it is the honest one: at EF30,
+ * 738 species are registered and 538 of them are one-of-a-kind, so telling
+ * somebody their catch is the only Kugsha Dog at the convention says more than
+ * any tier could.
  *
- * Rarity is now how many fursuits of that species are registered for the event,
- * loaded once and cached. A species nobody else brought is Legendary from the
- * first minute, and a Fox among two hundred is Common no matter who photographs
- * it.
- *
- * Thresholds are counts rather than percentages because the distribution has a
- * very long tail: at EF30, 738 species are registered and 538 of them are
- * one-of-a-kind, so a share-of-population rule collapses into "almost
- * everything is Legendary".
+ * Loaded once per event and cached, rather than counted per catch.
  */
-class SpeciesRarityService
+class SpeciesPopulationService
 {
     private const CACHE_TTL = 900;
 
@@ -62,16 +55,6 @@ class SpeciesRarityService
     public function population(?Event $event, ?int $speciesId): int
     {
         return $this->populations($event)[$speciesId] ?? 1;
-    }
-
-    public function forSpecies(?Event $event, ?int $speciesId): FursuitRarity
-    {
-        return FursuitRarity::fromSpeciesPopulation($this->population($event, $speciesId));
-    }
-
-    public function forFursuit(?Event $event, Fursuit $fursuit): FursuitRarity
-    {
-        return $this->forSpecies($event, $fursuit->species_id);
     }
 
     public function forget(?Event $event): void

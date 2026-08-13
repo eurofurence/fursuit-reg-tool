@@ -14,7 +14,7 @@ type Catch = {
     image: string | null
     caughtAt: string | null
     profileUuid: string | null
-    rarity: { level: string; label: string; color: string }
+    ranking: { level: string; label: string; color: string }
 }
 
 const props = defineProps<{
@@ -59,7 +59,7 @@ function submit() {
 }
 
 /* The colour of the screen follows the last thing you caught. */
-const hue = computed(() => props.recent[0]?.rarity?.color ?? null)
+const hue = computed(() => props.recent[0]?.ranking?.color ?? null)
 
 function openProfile(entry: Catch) {
     if (!entry.profileUuid) return
@@ -120,11 +120,11 @@ function openProfile(entry: Catch) {
                     v-for="entry in recent.slice(0, 6)"
                     :key="entry.id"
                     class="cea-tile"
-                    :style="{ '--cea-tone': entry.rarity.color }"
-                    :title="`${entry.name} · ${entry.rarity.label}`"
+                    :style="{ '--cea-tone': entry.ranking.color }"
+                    :title="`${entry.name} · ${entry.ranking.label}`"
                     @click="openProfile(entry)"
                 >
-                    <FursuitPhoto :src="entry.image" :name="entry.name" :tone="entry.rarity.color" />
+                    <FursuitPhoto :src="entry.image" :name="entry.name" :tone="entry.ranking.color" />
                 </button>
             </div>
 
@@ -134,14 +134,14 @@ function openProfile(entry: Catch) {
                 v-for="entry in recent.slice(0, 6)"
                 :key="`row-${entry.id}`"
                 class="cea-catchrow"
-                :style="{ '--cea-tone': entry.rarity.color }"
+                :style="{ '--cea-tone': entry.ranking.color }"
                 @click="openProfile(entry)"
             >
-                <span class="thumb"><FursuitPhoto :src="entry.image" :name="entry.name" :tone="entry.rarity.color" /></span>
+                <span class="thumb"><FursuitPhoto :src="entry.image" :name="entry.name" :tone="entry.ranking.color" /></span>
                 <span class="who">
                     <b>{{ entry.name }}</b>
                     <small>
-                        <span class="cea-rlabel" :style="{ color: entry.rarity.color }">{{ entry.rarity.label }}</span>
+                        <span class="cea-rlabel" :style="{ color: entry.ranking.color }">{{ entry.ranking.label }}</span>
                         · {{ entry.species }}<template v-if="entry.owner"> · {{ entry.owner }}</template>
                     </small>
                 </span>
@@ -160,7 +160,7 @@ function openProfile(entry: Catch) {
                     <FursuitPhoto
                         :src="recentCatch.image"
                         :name="recentCatch.name"
-                        :tone="recentCatch.rarity?.color"
+                        :tone="recentCatch.ranking?.color"
                     />
                 </div>
                 <div class="nm">{{ recentCatch.name }}</div>
@@ -168,16 +168,16 @@ function openProfile(entry: Catch) {
                     {{ recentCatch.species }}<template v-if="recentCatch.user"> · badge by {{ recentCatch.user }}</template>
                 </div>
                 <div>
-                    <span class="cea-kind" :style="{ background: recentCatch.rarity?.color }">
-                        {{ recentCatch.rarity?.label }}
+                    <span class="cea-kind" :style="{ background: recentCatch.ranking?.color }">
+                        {{ recentCatch.ranking?.label }}
                     </span>
                 </div>
                 <div class="cea-stats" style="margin-top: 18px">
                     <div class="cea-stat" style="--cea-tone: var(--cea-accent-bright)">
                         <b>{{ caughtTotal }}</b><small>caught</small>
                     </div>
-                    <div class="cea-stat" :style="{ '--cea-tone': recentCatch.rarity?.color }">
-                        <b>{{ recentCatch.speciesCount ?? 1 }}</b><small>at the event</small>
+                    <div class="cea-stat" :style="{ '--cea-tone': recentCatch.ranking?.color }">
+                        <b>{{ recentCatch.caught ?? 1 }}</b><small>times caught</small>
                     </div>
                     <div class="cea-stat" style="--cea-tone: var(--cea-gold)">
                         <b>{{ Math.round((caughtTotal / Math.max(eventTotal, 1)) * 1000) / 10 }}%</b><small>of event</small>

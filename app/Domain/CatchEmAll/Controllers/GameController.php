@@ -9,8 +9,9 @@ use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Domain\CatchEmAll\Models\UserSpecialCatch;
 use App\Domain\CatchEmAll\Services\AchievementService;
+use App\Domain\CatchEmAll\Services\FursuitRankingService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
-use App\Domain\CatchEmAll\Services\SpeciesRarityService;
+use App\Domain\CatchEmAll\Services\SpeciesPopulationService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserCatchRequest;
 use App\Models\Event;
@@ -29,7 +30,8 @@ class GameController extends Controller
     public function __construct(
         private AchievementService $achievementService,
         private GameStatsService $gameStatsService,
-        private SpeciesRarityService $speciesRarity,
+        private SpeciesPopulationService $speciesPopulation,
+        private FursuitRankingService $fursuitRanking,
     ) {}
 
     public function index(Request $request)
@@ -337,7 +339,7 @@ class GameController extends Controller
             ->get()
             ->map(function (UserCatch $catch) {
                 $fursuit = $catch->fursuit;
-                $rarity = $this->speciesRarity->forFursuit($fursuit->event, $fursuit);
+                $ranking = $this->fursuitRanking->forFursuit($fursuit->event, $fursuit);
                 $profile = $fursuit->user?->userProfile;
 
                 return [
@@ -346,13 +348,14 @@ class GameController extends Controller
                     'name' => $fursuit->name,
                     'species' => $fursuit->species?->name,
                     'owner' => $fursuit->user?->name,
-                    'image' => $fursuit->image_webp_url ?? $fursuit->image_url,
+                    // a 3-across grid gets the thumbnail, not the gallery variant
+                    'image' => $fursuit->image_thumb_url,
                     'caughtAt' => $catch->created_at?->format('H:i'),
                     'profileUuid' => $profile?->approved_at !== null ? $profile->uuid : null,
-                    'rarity' => [
-                        'level' => $rarity->value,
-                        'label' => $rarity->getLabel(),
-                        'color' => $rarity->getColor(),
+                    'ranking' => [
+                        'level' => $ranking->value,
+                        'label' => $ranking->getLabel(),
+                        'color' => $ranking->getColor(),
                     ],
                 ];
             })
@@ -371,21 +374,22 @@ class GameController extends Controller
             return null;
         }
 
-        $rarity = $this->speciesRarity->forFursuit($fursuit->event, $fursuit);
+        $ranking = $this->fursuitRanking->forFursuit($fursuit->event, $fursuit);
 
         return [
             'id' => $fursuit->id,
             'name' => $fursuit->name,
             'species' => $fursuit->species->name ?? 'Unknown',
             'user' => $fursuit->user->name ?? 'Anonymous',
-            'image' => $fursuit->image_webp_url ?? $fursuit->image_url,
-            'rarity' => [
-                'level' => $rarity->value,
-                'label' => $rarity->getLabel(),
-                'color' => $rarity->getColor(),
-                'icon' => $rarity->getIcon(),
+            'image' => $fursuit->image_webp_url,
+            'ranking' => [
+                'level' => $ranking->value,
+                'label' => $ranking->getLabel(),
+                'color' => $ranking->getColor(),
+                'icon' => $ranking->getIcon(),
             ],
-            'speciesCount' => $this->speciesRarity->population($fursuit->event, $fursuit->species_id),
+            'caught' => $this->fursuitRanking->catches($fursuit->event, $fursuit->id),
+            'speciesCount' => $this->speciesPopulation->population($fursuit->event, $fursuit->species_id),
         ];
     }
 

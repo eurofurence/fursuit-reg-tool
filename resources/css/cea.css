@@ -406,18 +406,18 @@ body.cea-page { overscroll-behavior-y: contain; }
 .cea-bar { height: 6px; border-radius: 3px; background: #0c131b; overflow: hidden; }
 .cea-bar i { display: block; height: 100%; border-radius: 3px; background: var(--cea-accent-bright); transition: width .4s ease; }
 
-/* --------------------------------------------------------------- rarity */
+/* -------------------------------------------------------------- ranking */
 
-.cea-rarity { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 14px; }
-.cea-rarity .cea-stat { padding: 11px 4px; cursor: pointer; border-radius: 12px; }
-.cea-rarity .cea-stat svg { color: var(--cea-tone); display: block; margin: 0 auto 7px; }
-.cea-rarity .cea-stat b { font-size: 17px; }
-.cea-rarity .cea-stat small {
+.cea-ranking { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 14px; }
+.cea-ranking .cea-stat { padding: 11px 4px; cursor: pointer; border-radius: 12px; }
+.cea-ranking .cea-stat svg { color: var(--cea-tone); display: block; margin: 0 auto 7px; }
+.cea-ranking .cea-stat b { font-size: 17px; }
+.cea-ranking .cea-stat small {
     font-size: 8.5px; margin-top: 5px; letter-spacing: -.02em;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
-.cea-rarity .cea-stat.on { background: color-mix(in srgb, var(--cea-tone) 30%, var(--cea-panel)); }
-.cea-rarity .cea-stat.on small { color: var(--cea-ink); }
+.cea-ranking .cea-stat.on { background: color-mix(in srgb, var(--cea-tone) 30%, var(--cea-panel)); }
+.cea-ranking .cea-stat.on small { color: var(--cea-ink); }
 
 /* --------------------------------------------------------- achievements */
 

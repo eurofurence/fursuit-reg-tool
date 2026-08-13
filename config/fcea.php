@@ -40,31 +40,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Species Rarity Thresholds
+    | Fursuit Ranking Thresholds
     |--------------------------------------------------------------------------
     |
-    | Rarity is how many fursuits of a species are registered for the event:
-    | fewer means rarer. A species at or below a threshold gets that rarity, and
-    | anything above the uncommon threshold is common.
+    | A fursuit's ranking comes from how many people have caught it: caught more
+    | means a higher ranking, Bronze through Diamond. It is a measure of how
+    | sought after a suiter is, not of how rare their species is, which is why
+    | the tiers are metals rather than Common-to-Legendary.
     |
-    | These are counts, not percentages, because the distribution is a long tail.
-    | Measured against EF30 (2,748 catchable fursuits across 738 species, 538 of
-    | them one-of-a-kind) these defaults land at roughly:
-    |
-    |   legendary  538 species,  19% of the fursuits at the event
-    |   epic       129 species,  13%
-    |   rare        46 species,  17%
-    |   uncommon    18 species,  19%
-    |   common       7 species,  33%
-    |
-    | Raise the legendary threshold and Legendary swallows the tail; lower the
-    | common one and Fox, Wolf and Dragon stop being common, which they plainly
-    | are. Recheck these against the event before an event opens.
+    | Everyone starts at Bronze on the first morning and climbs from there.
     |
     */
 
-    'rarity_population_legendary' => env('RARITY_POPULATION_LEGENDARY', 1),
-    'rarity_population_epic' => env('RARITY_POPULATION_EPIC', 5),
-    'rarity_population_rare' => env('RARITY_POPULATION_RARE', 19),
-    'rarity_population_uncommon' => env('RARITY_POPULATION_UNCOMMON', 49),
+    'fursuit_ranking_threshold_silver' => env('FURSUIT_RANKING_THRESHOLD_SILVER', 5),
+    'fursuit_ranking_threshold_gold' => env('FURSUIT_RANKING_THRESHOLD_GOLD', 10),
+    'fursuit_ranking_threshold_platinum' => env('FURSUIT_RANKING_THRESHOLD_PLATINUM', 20),
+    'fursuit_ranking_threshold_diamond' => env('FURSUIT_RANKING_THRESHOLD_DIAMOND', 50),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Species Population
+    |--------------------------------------------------------------------------
+    |
+    | Not a tier any more, but still worth showing: how many fursuits of a
+    | species are registered for the event. SpeciesRarityService reads this to
+    | tell an attendee that the Kugsha Dog they just caught is the only one at
+    | the convention.
+    |
+    */
+
 ];

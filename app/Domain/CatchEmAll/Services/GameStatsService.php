@@ -2,7 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Services;
 
-use App\Domain\CatchEmAll\Enums\FursuitRarity;
+use App\Domain\CatchEmAll\Enums\FursuitRanking;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Event;
 use App\Models\EventUser;
@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\Cache;
 
 class GameStatsService
 {
-    public function __construct(private SpeciesRarityService $rarity) {}
+    public function __construct(
+        private SpeciesPopulationService $species,
+        private FursuitRankingService $ranking,
+    ) {}
 
     public function getUserStats(EventUser $eventUser): array
     {
@@ -28,8 +31,8 @@ class GameStatsService
             // Calculate rank
             $rank = $this->calculateUserRank($totalCatches, $eventUser->event_id);
 
-            // Calculate rarity distribution
-            $rarityStats = $this->calculateRarityDistribution($catches);
+            // Calculate ranking distribution
+            $rankingStats = $this->calculateRankingDistribution($catches);
 
             // Get available fursuiters count
             $totalAvailable = $this->getTotalAvailableFursuiters($eventUser->event);
@@ -40,7 +43,7 @@ class GameStatsService
                 'uniqueSpecies' => $uniqueSpecies,
                 'totalAvailable' => $totalAvailable,
                 'completionPercentage' => $totalAvailable > 0 ? round(($totalCatches / $totalAvailable) * 100, 1) : 0,
-                'rarityStats' => $rarityStats,
+                'rankingStats' => $rankingStats,
             ];
         });
     }
@@ -119,26 +122,30 @@ class GameStatsService
             $speciesIndex = [];
 
             foreach ($catches as $catch) {
-                $rarity = $this->rarity->forFursuit($catch->fursuit->event, $catch->fursuit);
+                $event = $catch->fursuit->event;
+                $ranking = $this->ranking->forFursuit($event, $catch->fursuit);
                 $specie = $catch->getFursuitSpecies();
-                $catch_count = $this->rarity->population($catch->fursuit->event, $catch->fursuit->species_id);
+                $population = $this->species->population($event, $catch->fursuit->species_id);
                 $ownerProfile = $catch->fursuit->user?->userProfile;
                 $fursuits[] = [
                     'species' => $specie,
-                    'count' => $catch_count,
+                    // how many of this species are registered for the event, which is
+                    // a fact about the species rather than a tier
+                    'count' => $population,
+                    'caught' => $this->ranking->catches($event, $catch->fursuit->id),
                     'profileUuid' => $ownerProfile?->approved_at !== null ? $ownerProfile->uuid : null,
-                    'rarity' => [
-                        'level' => $rarity->value,
-                        'label' => $rarity->getLabel(),
-                        'color' => $rarity->getColor(),
-                        'icon' => $rarity->getIcon(),
+                    'ranking' => [
+                        'level' => $ranking->value,
+                        'label' => $ranking->getLabel(),
+                        'color' => $ranking->getColor(),
+                        'icon' => $ranking->getIcon(),
                     ],
                     'gallery' => [
                         'id' => $catch->fursuit->id,
                         'name' => $catch->fursuit->name,
                         'species' => $catch->fursuit->species->name,
-                        'image' => $catch->fursuit->image_webp_url ?? $catch->fursuit->image_url,
-                        'scoring' => $catch_count,
+                        'image' => $catch->fursuit->image_thumb_url,
+                        'scoring' => $population,
                         'owner' => $catch->fursuit->user?->name,
                         'profileUuid' => $ownerProfile?->approved_at !== null ? $ownerProfile->uuid : null,
                     ],
@@ -207,26 +214,30 @@ class GameStatsService
             $speciesIndex = [];
 
             foreach ($catches as $catch) {
-                $rarity = $this->rarity->forFursuit($catch->fursuit->event, $catch->fursuit);
+                $event = $catch->fursuit->event;
+                $ranking = $this->ranking->forFursuit($event, $catch->fursuit);
                 $specie = $catch->getFursuitSpecies();
-                $catch_count = $this->rarity->population($catch->fursuit->event, $catch->fursuit->species_id);
+                $population = $this->species->population($event, $catch->fursuit->species_id);
                 $ownerProfile = $catch->fursuit->user?->userProfile;
                 $fursuits[] = [
                     'species' => $specie,
-                    'count' => $catch_count,
+                    // how many of this species are registered for the event, which is
+                    // a fact about the species rather than a tier
+                    'count' => $population,
+                    'caught' => $this->ranking->catches($event, $catch->fursuit->id),
                     'profileUuid' => $ownerProfile?->approved_at !== null ? $ownerProfile->uuid : null,
-                    'rarity' => [
-                        'level' => $rarity->value,
-                        'label' => $rarity->getLabel(),
-                        'color' => $rarity->getColor(),
-                        'icon' => $rarity->getIcon(),
+                    'ranking' => [
+                        'level' => $ranking->value,
+                        'label' => $ranking->getLabel(),
+                        'color' => $ranking->getColor(),
+                        'icon' => $ranking->getIcon(),
                     ],
                     'gallery' => [
                         'id' => $catch->fursuit->id,
                         'name' => $catch->fursuit->name,
                         'species' => $catch->fursuit->species->name,
-                        'image' => $catch->fursuit->image_webp_url ?? $catch->fursuit->image_url,
-                        'scoring' => $catch_count,
+                        'image' => $catch->fursuit->image_thumb_url,
+                        'scoring' => $population,
                         'owner' => $catch->fursuit->user?->name,
                         'profileUuid' => $ownerProfile?->approved_at !== null ? $ownerProfile->uuid : null,
                     ],
@@ -264,27 +275,27 @@ class GameStatsService
     }
 
     /**
-     * Summary of calculateRarityDistribution
+     * Summary of calculateRankingDistribution
      *
      * @param  UserCatch[]  $catches
      * @return array<array{color: string, count: int, icon: string, label: string|int[]>}
      */
-    private function calculateRarityDistribution(Collection $catches): array
+    private function calculateRankingDistribution(Collection $catches): array
     {
         $distribution = [];
 
-        foreach (FursuitRarity::cases() as $rarity) {
-            $distribution[$rarity->value] = [
+        foreach (FursuitRanking::cases() as $ranking) {
+            $distribution[$ranking->value] = [
                 'count' => 0,
-                'label' => $rarity->getLabel(),
-                'color' => $rarity->getColor(),
-                'icon' => $rarity->getIcon(),
+                'label' => $ranking->getLabel(),
+                'color' => $ranking->getColor(),
+                'icon' => $ranking->getIcon(),
             ];
         }
 
         foreach ($catches as $catch) {
-            $rarity = $this->rarity->forFursuit($catch->fursuit->event, $catch->fursuit);
-            $distribution[$rarity->value]['count']++;
+            $ranking = $this->ranking->forFursuit($catch->fursuit->event, $catch->fursuit);
+            $distribution[$ranking->value]['count']++;
         }
 
         return $distribution;

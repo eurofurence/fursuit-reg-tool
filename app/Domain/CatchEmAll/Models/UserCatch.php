@@ -41,7 +41,7 @@ class UserCatch extends Model
      * How many players have caught this fursuit.
      *
      * This used to decide rarity, which made rarity a measure of fame and cost a
-     * query per catch. Rarity now comes from SpeciesRarityService; this is only
+     * query per catch. Ranking now comes from FursuitRankingService; this is only
      * the "caught N times" figure on a profile.
      */
     public function getCatches(): int
