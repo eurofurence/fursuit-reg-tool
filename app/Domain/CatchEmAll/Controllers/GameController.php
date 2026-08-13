@@ -46,9 +46,7 @@ class GameController extends Controller
             $recentCatch = $this->getRecentCatchData(session()->get('caught_fursuit'));
         }
 
-        $eventUser = $selectedEvent
-            ? Auth::user()->eventUsers()->where('event_id', $selectedEvent->id)->first()
-            : null;
+        $eventUser = $selectedEvent ? $this->getEventUser(Auth::user(), $selectedEvent) : null;
 
         return Inertia::render('CatchEmAll/Catch', [
             'recentCatch' => $recentCatch,
