@@ -48,12 +48,15 @@ watch(() => props.count, (to, from) => {
 
 <template>
     <header class="cea-head">
-        <div style="min-width: 0">
-            <h1>{{ title || "Catch 'Em All" }}</h1>
-            <p v-if="subtitle">{{ subtitle }}</p>
+        <!-- the bar spans the window, its contents sit in the same column as the page -->
+        <div class="cea-head-inner">
+            <div style="min-width: 0">
+                <h1>{{ title || "Catch 'Em All" }}</h1>
+                <p v-if="subtitle">{{ subtitle }}</p>
+            </div>
+            <span v-if="count !== null" class="cea-pill" :class="[tier.cls, { bump: bumping }]">
+                {{ shown }} caught<span v-if="tier.word" class="tier">{{ tier.word }}</span>
+            </span>
         </div>
-        <span v-if="count !== null" class="cea-pill" :class="[tier.cls, { bump: bumping }]">
-            {{ shown }} caught<span v-if="tier.word" class="tier">{{ tier.word }}</span>
-        </span>
     </header>
 </template>

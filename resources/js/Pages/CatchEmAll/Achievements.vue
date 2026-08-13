@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
-import { Check, Flag, Lock } from 'lucide-vue-next'
+import { Check, ChevronDown, Flag, Lock } from 'lucide-vue-next'
 
 type Achievement = {
     id: number
-    title: string
-    description: string
+    /** null while the achievement is hidden: the server does not send it */
+    title: string | null
+    description: string | null
     task: string | null
     completed: boolean
     progress: number
@@ -21,20 +22,45 @@ type Achievement = {
 
 const props = defineProps<{ achievements: Achievement[]; flash?: any }>()
 
-const SEEN_KEY = 'cea:achievements:earned:v2'
+const SNAPSHOT_KEY = 'cea:achievements:snapshot:v3'
 
-const filter = ref<'all' | 'earned' | 'progress'>('all')
-const fresh = ref<number[]>([])
+const filter = ref<'all' | 'earned' | 'progress' | 'locked'>('all')
+const open = ref<number[]>([])
+/** earned since the last visit */
+const freshlyEarned = ref<number[]>([])
+/** progressed since the last visit, id => where the bar was */
+const moved = ref<Record<number, number>>({})
+/** bars start at last visit's value so the growth is visible, then fill */
+const barWidth = ref<Record<number, number>>({})
 
-/* what was already earned last visit, so a new one can be marked */
 onMounted(() => {
-    const earned = props.achievements.filter(a => a.completed).map(a => a.id)
+    let before: Record<number, { done: boolean; pct: number }> = {}
     try {
-        const before: number[] = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]')
-        fresh.value = earned.filter(id => !before.includes(id))
-        localStorage.setItem(SEEN_KEY, JSON.stringify(earned))
+        before = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) ?? '{}')
     } catch {
-        // private mode, or a corrupt value: the marker is a nicety, not a feature
+        before = {}
+    }
+
+    for (const item of props.achievements) {
+        const was = before[item.id]
+        if (item.completed && was && !was.done) freshlyEarned.value.push(item.id)
+        if (!item.completed && was && item.progressPercentage > was.pct) {
+            moved.value[item.id] = was.pct
+            barWidth.value[item.id] = was.pct
+        }
+    }
+
+    /* let the old width paint first, then animate to the new one */
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        for (const id of Object.keys(moved.value)) barWidth.value[+id] = -1
+    }))
+
+    try {
+        localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(Object.fromEntries(
+            props.achievements.map(a => [a.id, { done: a.completed, pct: a.progressPercentage }]),
+        )))
+    } catch {
+        // private mode: the markers are a nicety, not a feature
     }
 })
 
@@ -49,61 +75,127 @@ function tier(a: Achievement) {
     return 'var(--cea-tier-1)'
 }
 
-const earnedCount = computed(() => props.achievements.filter(a => a.completed).length)
-const shown = computed(() => props.achievements.filter(a =>
-    filter.value === 'all'
-    || (filter.value === 'earned' && a.completed)
-    || (filter.value === 'progress' && !a.completed)))
+/** A locked achievement is not "in progress": you cannot work on it yet. */
+const state = (a: Achievement) => (a.completed ? 'earned' : a.isLocked ? 'locked' : 'progress')
+
+/* Earned first, newest at the top. Then what you are closest to finishing,
+   which is the only ordering that answers "what should I do next". Locked ones
+   last, because nothing you do moves them yet. */
+const sorted = computed(() => [...props.achievements].sort((a, b) => {
+    const rank = { earned: 0, progress: 1, locked: 2 }
+    const byState = rank[state(a)] - rank[state(b)]
+    if (byState !== 0) return byState
+
+    if (state(a) === 'earned') {
+        return new Date(b.earnedAt ?? 0).getTime() - new Date(a.earnedAt ?? 0).getTime()
+    }
+    if (state(a) === 'progress') {
+        return b.progressPercentage - a.progressPercentage
+    }
+    return (a.title ?? 'zz').localeCompare(b.title ?? 'zz')
+}))
+
+const counts = computed(() => ({
+    earned: props.achievements.filter(a => state(a) === 'earned').length,
+    progress: props.achievements.filter(a => state(a) === 'progress').length,
+    locked: props.achievements.filter(a => state(a) === 'locked').length,
+}))
+
+const shown = computed(() =>
+    sorted.value.filter(a => filter.value === 'all' || state(a) === filter.value))
+
+/** A hidden achievement gives nothing away until it is earned. */
+const masked = (a: Achievement) => a.hiddenByLock && !a.completed
+
+function toggle(a: Achievement) {
+    if (masked(a)) return
+    open.value = open.value.includes(a.id)
+        ? open.value.filter(id => id !== a.id)
+        : [...open.value, a.id]
+}
 
 function earnedOn(a: Achievement) {
     if (!a.earnedAt) return 'Earned'
     return `Earned ${new Date(a.earnedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
+}
+
+function width(a: Achievement) {
+    const held = barWidth.value[a.id]
+    return `${held === undefined || held === -1 ? a.progressPercentage : held}%`
 }
 </script>
 
 <template>
     <CatchEmAllLayout
         title="Achievements"
-        :subtitle="`${earnedCount} of ${achievements.length} earned`"
+        :subtitle="`${counts.earned} of ${achievements.length} earned`"
         :count="null"
         hue="var(--cea-tier-2)"
         :flash="flash"
     >
         <div class="cea-seg" style="margin-bottom: 14px">
-            <button :class="{ on: filter === 'all' }" @click="filter = 'all'">All</button>
-            <button :class="{ on: filter === 'earned' }" @click="filter = 'earned'">Earned</button>
-            <button :class="{ on: filter === 'progress' }" @click="filter = 'progress'">In progress</button>
+            <button :class="{ on: filter === 'all' }" @click="filter = 'all'">
+                All <span>{{ achievements.length }}</span>
+            </button>
+            <button :class="{ on: filter === 'earned' }" @click="filter = 'earned'">
+                Earned <span>{{ counts.earned }}</span>
+            </button>
+            <button :class="{ on: filter === 'progress' }" @click="filter = 'progress'">
+                In progress <span>{{ counts.progress }}</span>
+            </button>
+            <button :class="{ on: filter === 'locked' }" @click="filter = 'locked'">
+                Locked <span>{{ counts.locked }}</span>
+            </button>
         </div>
 
-        <div
-            v-for="item in shown"
-            :key="item.id"
-            class="cea-ach"
-            :class="{ earned: item.completed }"
-            :style="{ '--cea-tone': tier(item) }"
-        >
-            <span class="disc" :class="{ locked: !item.completed }">
-                <Check v-if="item.completed" :size="20" />
-                <Lock v-else-if="item.isLocked" :size="20" />
-                <Flag v-else :size="20" />
-            </span>
-            <div class="body">
-                <b>{{ item.hiddenByLock ? 'Hidden' : item.title }}</b>
-                <span v-if="fresh.includes(item.id)" class="cea-new" style="margin-left: 8px">new</span>
-                <small v-if="item.completed">{{ earnedOn(item) }}</small>
-                <small v-else-if="item.isLocked">Locked until you finish the one before it</small>
-                <small v-else>{{ item.progress }} of {{ item.maxProgress }}</small>
+        <div class="cea-two">
+            <div
+                v-for="item in shown"
+                :key="item.id"
+                class="cea-ach"
+                :class="{
+                    earned: item.completed,
+                    fresh: freshlyEarned.includes(item.id),
+                    open: open.includes(item.id),
+                    masked: masked(item),
+                }"
+                :style="{ '--cea-tone': tier(item) }"
+                @click="toggle(item)"
+            >
+                <span class="disc" :class="{ locked: !item.completed }">
+                    <Check v-if="item.completed" :size="20" />
+                    <Lock v-else-if="item.isLocked" :size="20" />
+                    <Flag v-else :size="20" />
+                </span>
+                <div class="body">
+                    <div class="line">
+                        <b>{{ masked(item) ? 'Hidden achievement' : item.title }}</b>
+                        <span v-if="freshlyEarned.includes(item.id)" class="cea-new">new</span>
+                        <span v-else-if="moved[item.id] !== undefined" class="cea-new moved">
+                            +{{ Math.round(item.progressPercentage - moved[item.id]) }}%
+                        </span>
+                        <ChevronDown v-if="!masked(item)" class="chev" :size="16" />
+                    </div>
 
-                <div v-if="!item.completed && !item.isLocked" class="cea-bar" style="margin-top: 9px">
-                    <i :style="{ width: `${item.progressPercentage}%`, background: tier(item) }" />
+                    <small v-if="masked(item)">Find it to see what it was</small>
+                    <small v-else-if="item.completed">{{ earnedOn(item) }}</small>
+                    <small v-else-if="item.isLocked">Locked until you finish the one before it</small>
+                    <small v-else>{{ item.progress }} of {{ item.maxProgress }}</small>
+
+                    <div v-if="!item.completed && !item.isLocked" class="cea-bar" style="margin-top: 9px">
+                        <i :style="{ width: width(item), background: tier(item) }" />
+                    </div>
+
+                    <template v-if="open.includes(item.id) && !masked(item)">
+                        <p class="desc">{{ item.description }}</p>
+                        <p v-if="item.task" class="desc task">{{ item.task }}</p>
+                        <p v-if="item.progressDetail?.totalProgress?.length" class="desc">
+                            Found {{ item.progressDetail.currentProgress.length }} of
+                            {{ item.progressDetail.totalProgress.length }}:
+                            {{ item.progressDetail.currentProgress.join(', ') || 'nothing yet' }}
+                        </p>
+                    </template>
                 </div>
-
-                <p v-if="!item.hiddenByLock" class="desc">{{ item.description }}</p>
-                <p v-if="item.progressDetail?.totalProgress?.length" class="desc" style="opacity: .8">
-                    {{ item.progressDetail.currentProgress.length }} of
-                    {{ item.progressDetail.totalProgress.length }}:
-                    {{ item.progressDetail.currentProgress.join(', ') || 'nothing yet' }}
-                </p>
             </div>
         </div>
 
@@ -113,7 +205,8 @@ function earnedOn(a: Achievement) {
 
 <style scoped>
 .cea-seg {
-    display: inline-flex;
+    display: flex;
+    flex-wrap: wrap;
     gap: 3px;
     padding: 3px;
     background: var(--cea-panel-2);
@@ -130,5 +223,23 @@ function earnedOn(a: Achievement) {
     border-radius: 8px;
     cursor: pointer;
 }
+.cea-seg button span { opacity: .6; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .cea-seg button.on { background: var(--cea-accent); color: #fff; }
+
+.cea-ach { cursor: pointer; }
+.cea-ach.masked { cursor: default; opacity: .75; }
+.cea-ach .line { display: flex; align-items: center; gap: 8px; }
+.cea-ach .line b { flex: 1; min-width: 0; }
+.cea-ach .chev { color: var(--cea-muted); transition: transform .2s ease; flex: 0 0 auto; }
+.cea-ach.open .chev { transform: rotate(180deg); }
+.cea-ach .task { color: var(--cea-muted); }
+
+/* just earned: the row announces itself once */
+.cea-ach.fresh { animation: cea-earned .9s ease 1; }
+.cea-new.moved { color: var(--cea-tier-2); }
+@keyframes cea-earned {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cea-tone) 70%, transparent); }
+    40% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--cea-tone) 30%, transparent); }
+    100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cea-tone) 0%, transparent); }
+}
 </style>

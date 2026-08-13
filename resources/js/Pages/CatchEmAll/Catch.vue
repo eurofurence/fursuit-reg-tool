@@ -129,6 +129,7 @@ function openProfile(entry: Catch) {
             </div>
 
             <h3 class="cea-sec"><span><b class="cea-tick" />Today</span></h3>
+            <div class="cea-two">
             <button
                 v-for="entry in recent.slice(0, 6)"
                 :key="`row-${entry.id}`"
@@ -146,6 +147,7 @@ function openProfile(entry: Catch) {
                 </span>
                 <span class="cea-hint">{{ entry.caughtAt }}</span>
             </button>
+            </div>
         </template>
 
         <p v-else-if="isGameRunning" class="cea-hint" style="margin-top: 22px">

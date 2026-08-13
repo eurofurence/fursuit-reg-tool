@@ -46,6 +46,11 @@
 
 /* ---------------------------------------------------------------- shell */
 
+/* The game paints the document, not just its own wrapper: rubber-band scrolling
+   on iOS and macOS reveals whatever is behind the app, which was white. Scoped
+   to the game so the POS, admin and public site keep their own backgrounds. */
+html.cea-page, body.cea-page { background: var(--cea-page); }
+
 .cea {
     min-height: 100dvh;
     background: var(--cea-page);
@@ -70,7 +75,11 @@
     z-index: 20;
     background: var(--cea-page);
     border-bottom: 1px solid var(--cea-line);
-    padding: 16px 18px 13px;
+    padding: 16px 0 13px;
+}
+/* the bar spans the window; only its contents sit in the page column */
+.cea-head-inner {
+    padding: 0 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -427,7 +436,7 @@
 .cea-new { color: var(--cea-accent-bright); font-weight: 700; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
 
 /* profile badge case */
-.cea-case { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cea-case { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
 .cea-bcard {
     aspect-ratio: 1;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -605,4 +614,25 @@
 
 @media (prefers-reduced-motion: reduce) {
     .cea *, .cea-scrim *, .cea-lightbox * { animation: none !important; transition: none !important; }
+}
+
+/* ------------------------------------------------- wider than a phone */
+
+/* Wider screens: the layout was a phone column stretched across a desktop, so
+   rows ran metres wide and the grid stayed three across. Cap the column, then
+   spend the extra width on more tiles per row rather than wider ones. */
+@media (min-width: 700px) {
+    .cea-head-inner, .cea-main { max-width: 900px; margin-left: auto; margin-right: auto; }
+    /* the accent rule under the title follows the column, not the window edge */
+    .cea-head::after { left: max(18px, calc((100% - 900px) / 2 + 18px)); }
+    .cea-tiles { grid-template-columns: repeat(6, 1fr); }
+    .cea-nav { padding-bottom: 10px; }
+    .cea-nav a { flex: 0 1 150px; }
+    .cea-nav { justify-content: center; }
+    .cea-showcase { margin-left: -18px; margin-right: -18px; }
+}
+@media (min-width: 1100px) {
+    .cea-tiles { grid-template-columns: repeat(8, 1fr); }
+    /* two columns of achievements and catches, so a wide window is not one long ribbon */
+    .cea-two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; align-items: start; }
 }

@@ -131,22 +131,27 @@ class AchievementFactory
                 ];
             }
 
+            // A hidden achievement must not ship its title and task in the page
+            // payload: the frontend can mask them, but anyone reading the JSON
+            // would still see what is left to find.
+            $isMasked = $achievement instanceof HiddenIfLocked && $isLocked && ! $isCompleted;
+
             $result[] = [
                 'id' => $achievement->getId(),
                 'achievement' => $achievement->getId(), // Using ID as achievement identifier
-                'title' => $achievement->getTitle(),
-                'description' => $achievement->getDescription(),
-                'task' => $achievement->getTask(),
+                'title' => $isMasked ? null : $achievement->getTitle(),
+                'description' => $isMasked ? null : $achievement->getDescription(),
+                'task' => $isMasked ? null : $achievement->getTask(),
                 'icon' => $achievement->getIcon(),
                 'completed' => $isCompleted,
-                'progress' => $currentProgress,
-                'maxProgress' => $maxProgress,
-                'progressPercentage' => $progressPercentage,
+                'progress' => $isMasked ? 0 : $currentProgress,
+                'maxProgress' => $isMasked ? 0 : $maxProgress,
+                'progressPercentage' => $isMasked ? 0 : $progressPercentage,
                 'earnedAt' => $earnedAt,
                 'isSecret' => $achievement->isSecret(),
                 'isOptional' => $achievement->isOptional(),
                 'isLocked' => $isLocked,
-                'hiddenByLock' => $achievement instanceof HiddenIfLocked && $isLocked,
+                'hiddenByLock' => $isMasked,
                 'expandable' => $achievement instanceof Expandable,
                 'progressDetail' => $additionalInfo,
             ];

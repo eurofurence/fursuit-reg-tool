@@ -166,6 +166,7 @@ function openProfile(suit: Suit) {
         </template>
 
         <template v-else>
+            <div class="cea-two">
             <div
                 v-for="group in bySpecies"
                 :key="group.species"
@@ -198,6 +199,7 @@ function openProfile(suit: Suit) {
                         <small>{{ suit.gallery.owner ?? 'unknown owner' }}</small>
                     </button>
                 </div>
+            </div>
             </div>
             <p v-if="!bySpecies.length" class="cea-hint">Nothing at that rarity yet.</p>
         </template>

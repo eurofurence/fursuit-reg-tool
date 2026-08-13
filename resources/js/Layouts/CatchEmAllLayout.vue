@@ -11,7 +11,7 @@
  * the rule under the header and the section headings. Tokens live on :root in
  * cea.css, not under .cea, because the sheet and lightbox teleport to body.
  */
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import AppHeader from '@/Components/CatchEmAll/AppHeader.vue'
 import BottomNavigation from '@/Components/CatchEmAll/BottomNavigation.vue'
@@ -31,6 +31,18 @@ const props = withDefaults(defineProps<{
 })
 
 const hue = computed(() => props.hue || 'var(--cea-accent-bright)')
+
+/* Paint the document itself while the game is open: an overscroll bounce shows
+   what is behind the app, and that was the browser's white. Removed again on
+   leave so the rest of the site keeps its own background. */
+onMounted(() => {
+    document.documentElement.classList.add('cea-page')
+    document.body.classList.add('cea-page')
+})
+onBeforeUnmount(() => {
+    document.documentElement.classList.remove('cea-page')
+    document.body.classList.remove('cea-page')
+})
 </script>
 
 <template>

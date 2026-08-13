@@ -170,11 +170,11 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
 
         <!-- own profile: colour, about and links -->
         <template v-if="canEdit">
-            <h3 class="cea-sec">
+            <h3 v-if="editing" class="cea-sec">
                 <span><b class="cea-tick" />Profile colour</span>
                 <span class="meta">{{ form.colour }}</span>
             </h3>
-            <div class="cea-swatches">
+            <div v-if="editing" class="cea-swatches">
                 <button
                     v-for="(hexValue, key) in palette"
                     :key="key"
@@ -183,7 +183,7 @@ const caughtHere = computed(() => props.fursuits.filter(f => f.caught > 0).lengt
                     :style="{ '--cea-sw': hexValue }"
                     :title="key"
                     :aria-label="key"
-                    @click="form.colour = key; save()"
+                    @click="form.colour = key"
                 />
             </div>
 
