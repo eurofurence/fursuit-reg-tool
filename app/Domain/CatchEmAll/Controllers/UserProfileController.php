@@ -7,10 +7,11 @@ use App\Domain\CatchEmAll\Services\FursuitRankingService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
 use App\Domain\CatchEmAll\Services\SpeciesPopulationService;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Manage\SpecialCodeController;
 use App\Models\Event;
+use App\Models\EventUser;
 use App\Models\FCEA\UserCatchRanking;
 use App\Models\Fursuit\Fursuit;
-use App\Models\User;
 use App\Models\UserProfile\States\Approved;
 use App\Models\UserProfile\States\Rejected;
 use App\Models\UserProfile\UserProfile;
@@ -47,6 +48,9 @@ class UserProfileController extends Controller
 
         $userProfile->load(['user', 'links']);
         $event = Event::getActiveEvent();
+        $eventUser = $event
+            ? $userProfile->user->eventUsers()->where('event_id', $event->id)->first()
+            : null;
 
         return Inertia::render('CatchEmAll/UserProfile', [
             'profile' => [
@@ -61,10 +65,11 @@ class UserProfileController extends Controller
                 'rejection_reason' => $isOwner && $userProfile->status instanceof Rejected
                     ? $userProfile->rejection_reason
                     : null,
+                'specialCodes' => $isOwner ? $this->specialCodes($eventUser) : [],
             ],
             'fursuits' => $this->fursuits($userProfile, $event),
-            'stats' => $this->stats($userProfile->user, $event),
-            'achievements' => $this->achievements($userProfile->user, $event),
+            'stats' => $this->stats($eventUser),
+            'achievements' => $this->achievements($eventUser),
             'palette' => UserProfile::PALETTE,
             'fromFursuit' => (int) $request->query('from') ?: null,
             'canEdit' => $isOwner,
@@ -74,10 +79,8 @@ class UserProfileController extends Controller
     /**
      * The user's catcher stats
      */
-    private function stats(User $user, ?Event $event): ?array
+    private function stats(?EventUser $eventUser): ?array
     {
-        $eventUser = $event ? $user->eventUsers()->where('event_id', $event->id)->first() : null;
-
         if (! $eventUser) {
             return null;
         }
@@ -96,10 +99,8 @@ class UserProfileController extends Controller
      * Only completed ones, and never the secret or hidden entries: a profile is
      * a public page, so it must not leak what somebody has left to find.
      */
-    private function achievements(User $user, ?Event $event): array
+    private function achievements(?EventUser $eventUser): array
     {
-        $eventUser = $event ? $user->eventUsers()->where('event_id', $event->id)->first() : null;
-
         if (! $eventUser) {
             return [];
         }
@@ -112,6 +113,27 @@ class UserProfileController extends Controller
                 'maxProgress' => $achievement['maxProgress'],
                 'isOptional' => $achievement['isOptional'],
                 'earnedAt' => $achievement['earnedAt'],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{typeName: string|null, code: string, url: string}>
+     */
+    private function specialCodes(?EventUser $eventUser): array
+    {
+        if (! $eventUser) {
+            return [];
+        }
+
+        return $eventUser->specialCodes()
+            ->orderByDesc('special_code_connection.created_at')
+            ->get(['special_codes.code', 'special_codes.type'])
+            ->map(fn ($specialCode) => [
+                'typeName' => SpecialCodeController::typeLabel($specialCode->type),
+                'code' => $specialCode->code,
+                'url' => SpecialCodeController::catchUrl($specialCode->code),
             ])
             ->values()
             ->all();

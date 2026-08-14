@@ -28,6 +28,7 @@
         "pica": "^9.0.1",
         "primeicons": "^7.0.0",
         "primevue": "^3.52.0",
+        "qr-code-styling": "^1.9.2",
         "simple-keyboard": "^3.7.83",
         "sjcl": "^1.0.8",
         "vue-advanced-cropper": "^2.8.8"

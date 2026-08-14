@@ -32,6 +32,7 @@ const props = defineProps({
     /** null on create. */
     specialCode: { type: Object, default: null },
     events: { type: Array, required: true },
+    eventUsers: { type: Array, required: true },
     manageEventId: { type: Number, default: null },
     typeOptions: { type: Array, required: true },
     /** type value => { label, description, fields[] }, including '' for no type. */
@@ -58,6 +59,7 @@ const form = useForm({
     event_id: props.specialCode?.event_id ?? props.manageEventId ?? "",
     type: props.specialCode?.type ?? "",
     code: props.specialCode?.code ?? "",
+    event_user_ids: [...(props.specialCode?.event_user_ids ?? [])],
 });
 
 const schema = computed(() => schemaForType(form.type));
@@ -102,6 +104,71 @@ const typeSelectOptions = computed(() => [
 ]);
 
 const showStoredData = ref(false);
+const userSearch = ref("");
+
+const filteredEventUsers = computed(() => {
+    const eventId = Number(form.event_id);
+    const needle = userSearch.value.trim().toLowerCase();
+    const selectedIds = new Set(form.event_user_ids.map((id) => Number(id)));
+
+    return props.eventUsers
+        .filter((option) => Number(option.event_id) === eventId)
+        .filter((option) =>
+            needle === ""
+                ? true
+                : String(option.label).toLowerCase().includes(needle),
+        )
+        .sort((a, b) => {
+            const aSelected = selectedIds.has(Number(a.value));
+            const bSelected = selectedIds.has(Number(b.value));
+
+            if (aSelected !== bSelected) {
+                return aSelected ? -1 : 1;
+            }
+
+            const aAdmin = Boolean(a.is_admin);
+            const bAdmin = Boolean(b.is_admin);
+
+            if (aAdmin !== bAdmin) {
+                return aAdmin ? -1 : 1;
+            }
+
+            return String(a.label).localeCompare(String(b.label), undefined, {
+                sensitivity: "base",
+            });
+        });
+});
+
+watch(
+    () => form.event_id,
+    (eventId) => {
+        const selectedEventId = Number(eventId);
+
+        form.event_user_ids = form.event_user_ids.filter((id) => {
+            const option = props.eventUsers.find(
+                (candidate) => Number(candidate.value) === Number(id),
+            );
+
+            return option && Number(option.event_id) === selectedEventId;
+        });
+    },
+);
+
+const toggleEventUser = (id, checked) => {
+    const numericId = Number(id);
+
+    if (checked) {
+        if (!form.event_user_ids.includes(numericId)) {
+            form.event_user_ids.push(numericId);
+        }
+
+        return;
+    }
+
+    form.event_user_ids = form.event_user_ids.filter(
+        (value) => Number(value) !== numericId,
+    );
+};
 
 const catchUrl = computed(
     () =>
@@ -237,6 +304,57 @@ const submit = () => {
                         class="overflow-x-auto rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 font-mono text-[12px] text-fg-2"
                         >{{ specialCode.storedData }}</pre
                     >
+                </FormField>
+            </FormSection>
+
+            <FormSection
+                title="Connected users"
+                description="Assign one or more event users to this special code."
+            >
+                <FormField
+                    v-model="userSearch"
+                    label="Search users"
+                    helper="Search by users.name"
+                    placeholder="Start typing a name"
+                />
+
+                <FormField
+                    label="Users"
+                    :helper="`${form.event_user_ids.length} selected`"
+                    :error="form.errors.event_user_ids"
+                >
+                    <div
+                        class="max-h-64 overflow-y-auto rounded border border-hairline bg-mg-surface-2"
+                    >
+                        <label
+                            v-for="option in filteredEventUsers"
+                            :key="option.value"
+                            class="flex cursor-pointer items-center gap-2 border-b border-hairline px-2 py-1.5 text-[13px] text-fg-1 last:border-b-0"
+                        >
+                            <input
+                                type="checkbox"
+                                :checked="
+                                    form.event_user_ids.includes(
+                                        Number(option.value),
+                                    )
+                                "
+                                @change="
+                                    toggleEventUser(
+                                        option.value,
+                                        $event.target.checked,
+                                    )
+                                "
+                            />
+                            <span>{{ option.label }}</span>
+                        </label>
+
+                        <p
+                            v-if="!filteredEventUsers.length"
+                            class="px-2 py-2 text-[12px] text-fg-3"
+                        >
+                            No users found for this event.
+                        </p>
+                    </div>
                 </FormField>
             </FormSection>
 

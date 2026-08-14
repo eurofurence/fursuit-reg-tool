@@ -7,6 +7,7 @@ use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\SpecialActions\ActionField;
 use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Domain\CatchEmAll\SpecialActions\SpecialCodeActionRegistry;
+use App\Models\EventUser;
 use App\Models\Fursuit\Fursuit;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
@@ -51,6 +52,14 @@ class SpecialCodeRequest extends FormRequest
         $rules = [
             'event_id' => ['required', 'integer', 'exists:events,id'],
             'type' => ['required', 'integer', Rule::in(array_map(fn (SpecialCodeType $type) => $type->value, SpecialCodeType::cases()))],
+            'event_user_ids' => ['nullable', 'array'],
+            'event_user_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('event_users', 'id')->where(
+                    fn ($query) => $query->where('event_id', (int) $this->input('event_id'))
+                ),
+            ],
             'data' => ['nullable', 'array'],
             'code' => [
                 'required',
@@ -89,6 +98,7 @@ class SpecialCodeRequest extends FormRequest
         $attributes = [
             'event_id' => 'Event',
             'type' => 'Type',
+            'event_user_ids' => 'Users',
             'data' => 'Action data',
             'code' => 'Code',
         ];
@@ -124,6 +134,16 @@ class SpecialCodeRequest extends FormRequest
             'constructor_data' => $this->constructorData($validated['data'] ?? []),
             'code' => $validated['code'],
         ];
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function eventUserIds(): array
+    {
+        $ids = $this->validated('event_user_ids') ?? [];
+
+        return array_values(array_map(fn (mixed $id) => (int) $id, $ids));
     }
 
     /**

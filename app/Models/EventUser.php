@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\Models\UserAchievement;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Domain\CatchEmAll\Models\UserSpecialCatch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EventUser extends Model
@@ -44,6 +46,12 @@ class EventUser extends Model
     public function specialCatches(): HasMany
     {
         return $this->hasMany(UserSpecialCatch::class);
+    }
+
+    public function specialCodes(): BelongsToMany
+    {
+        return $this->belongsToMany(SpecialCode::class, 'special_code_connection', 'event_users_id', 'special_code_id')
+            ->withTimestamps();
     }
 
     public function hasFreeBadge(): bool
