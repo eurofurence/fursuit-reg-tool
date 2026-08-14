@@ -609,98 +609,138 @@ const caughtHere = computed(
                 >
                     <div class="cea-sc-modal">
                         <div class="cea-sc-head">
-                            <div class="cea-name" style="font-size: 20px">
+                            <div class="cea-sc-titlewrap">
                                 <QrCode :size="18" />
-                                <span>Special codes</span>
+                                <div>
+                                    <div class="cea-sc-title">
+                                        Special codes
+                                    </div>
+                                </div>
                             </div>
                             <button
-                                class="cea-btn ghost sm"
+                                class="cea-btn ghost sm cea-sc-close"
                                 @click="closeSpecialCodes"
                             >
-                                <X :size="16" /> Close
+                                <X :size="12" /> Close
                             </button>
                         </div>
 
-                        <template v-if="!activeSpecialCode">
-                            <p class="cea-note" style="margin-bottom: 12px">
-                                Choose a code to open its QR.
-                            </p>
-
+                        <div class="cea-sc-layout">
                             <div
-                                v-for="group in groupedSpecialCodes"
-                                :key="group.typeName"
-                                class="cea-sc-group"
+                                class="cea-sc-browser"
+                                :class="{
+                                    'cea-sc-mobile-hidden': activeSpecialCode,
+                                }"
                             >
-                                <h4 class="cea-sec" style="margin-top: 10px">
-                                    <span
-                                        ><b class="cea-tick" />{{
-                                            group.typeName
-                                        }}</span
+                                <div
+                                    v-for="group in groupedSpecialCodes"
+                                    :key="group.typeName"
+                                    class="cea-sc-group"
+                                >
+                                    <h4
+                                        class="cea-sec"
+                                        style="margin-top: 10px"
                                     >
-                                    <span class="meta">{{
-                                        group.codes.length
-                                    }}</span>
-                                </h4>
+                                        <span
+                                            ><b class="cea-tick" />{{
+                                                group.typeName
+                                            }}</span
+                                        >
+                                        <span class="meta">{{
+                                            group.codes.length
+                                        }}</span>
+                                    </h4>
 
-                                <div class="cea-sc-grid">
-                                    <button
-                                        v-for="specialCode in group.codes"
-                                        :key="specialCode.url"
-                                        class="cea-sc-tile"
-                                        @click="showQrForCode(specialCode)"
-                                    >
-                                        <strong>{{ specialCode.code }}</strong>
-                                        <small>{{ specialCode.url }}</small>
-                                    </button>
+                                    <div class="cea-sc-grid">
+                                        <button
+                                            v-for="specialCode in group.codes"
+                                            :key="specialCode.url"
+                                            class="cea-sc-tile"
+                                            :class="{
+                                                active:
+                                                    activeSpecialCode?.url ===
+                                                    specialCode.url,
+                                            }"
+                                            @click="showQrForCode(specialCode)"
+                                        >
+                                            <strong>{{
+                                                specialCode.code
+                                            }}</strong>
+                                            <small>{{
+                                                specialCode.typeName ??
+                                                "Unknown type"
+                                            }}</small>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </template>
-
-                        <template v-else>
-                            <div
-                                style="
-                                    display: flex;
-                                    gap: 8px;
-                                    margin-bottom: 12px;
-                                "
-                            >
-                                <button
-                                    class="cea-btn ghost sm"
-                                    @click="backToSpecialCodeList"
-                                >
-                                    <ArrowLeft :size="16" /> Back
-                                </button>
-                            </div>
-
-                            <div class="cea-note" style="margin-bottom: 12px">
-                                <strong>{{
-                                    activeSpecialCode.typeName ?? "Unknown type"
-                                }}</strong>
-                                <span> · {{ activeSpecialCode.code }}</span>
-                            </div>
-
-                            <div class="cea-sc-qrwrap">
-                                <div ref="qrMount" class="cea-sc-qr" />
-                            </div>
 
                             <div
-                                v-if="qrError"
-                                class="cea-note warn"
-                                style="margin-top: 10px"
+                                class="cea-sc-preview"
+                                :class="{
+                                    'cea-sc-mobile-hidden': !activeSpecialCode,
+                                }"
                             >
-                                QR could not be rendered: {{ qrError }}
-                            </div>
+                                <template v-if="activeSpecialCode">
+                                    <div class="cea-sc-previewhead">
+                                        <div class="cea-sc-previewtitle">
+                                            <QrCode :size="16" />
+                                            <div>
+                                                <strong>{{
+                                                    activeSpecialCode.typeName ??
+                                                    "Unknown type"
+                                                }}</strong>
+                                                <div class="cea-sc-previewcode">
+                                                    {{ activeSpecialCode.code }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            class="cea-btn ghost sm cea-sc-back"
+                                            @click="backToSpecialCodeList"
+                                        >
+                                            <ArrowLeft :size="16" /> Back
+                                        </button>
+                                    </div>
 
-                            <div class="cea-note" style="margin-top: 10px">
-                                <a
-                                    :href="activeSpecialCode.url"
-                                    target="_blank"
-                                    rel="noopener nofollow"
-                                >
-                                    {{ activeSpecialCode.url }}
-                                </a>
+                                    <div class="cea-sc-qrwrap">
+                                        <div ref="qrMount" class="cea-sc-qr" />
+                                    </div>
+
+                                    <div
+                                        v-if="qrError"
+                                        class="cea-note warn"
+                                        style="margin-top: 10px"
+                                    >
+                                        QR could not be rendered: {{ qrError }}
+                                    </div>
+
+                                    <div
+                                        class="cea-note"
+                                        style="margin-top: 10px"
+                                    >
+                                        <a
+                                            :href="activeSpecialCode.url"
+                                            target="_blank"
+                                            rel="noopener nofollow"
+                                        >
+                                            {{ activeSpecialCode.url }}
+                                        </a>
+                                    </div>
+                                </template>
+
+                                <template v-else>
+                                    <div class="cea-sc-empty">
+                                        <QrCode :size="22" />
+                                        <strong>No code selected</strong>
+                                        <span>
+                                            Pick a tile on the left to render
+                                            its QR code here.
+                                        </span>
+                                    </div>
+                                </template>
                             </div>
-                        </template>
+                        </div>
                     </div>
                 </div>
             </Transition>
@@ -710,33 +750,81 @@ const caughtHere = computed(
 
 <style scoped>
 .cea-sc-modal {
-    width: min(920px, 94vw);
-    max-height: 90vh;
+    width: min(1240px, 96vw);
+    max-width: min(1240px, 96vw);
+    max-height: 92vh;
     overflow: auto;
-    border-radius: 16px;
+    border-radius: 20px;
     background: #0f1724;
     border: 1px solid var(--cea-line-soft);
-    padding: 14px;
+    padding: 18px;
+}
+.cea-lightbox > .cea-sc-modal {
+    width: min(1240px, 96vw);
+    max-width: min(1240px, 96vw);
 }
 .cea-sc-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
+    margin-bottom: 2rem;
+    position: relative;
+    padding-right: 70px;
+}
+.cea-sc-titlewrap {
+    display: flex;
+    align-items: center;
     gap: 10px;
-    margin-bottom: 10px;
+    min-width: 0;
+}
+.cea-sc-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cea-ink);
+}
+.cea-sc-close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 0;
+    padding: 5px 8px;
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+}
+.cea-sc-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 1.1fr) minmax(360px, 0.9fr);
+    gap: 16px;
+    align-items: start;
+}
+.cea-sc-browser,
+.cea-sc-preview {
+    min-height: 100%;
+}
+.cea-sc-browser {
+    padding-right: 4px;
 }
 .cea-sc-group {
     margin-bottom: 10px;
 }
 .cea-sc-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 8px;
 }
 .cea-sc-tile {
     text-align: left;
     border: 1px solid var(--cea-line-soft);
-    background: var(--cea-page);
+    background: rgba(15, 23, 36, 0.8);
     color: var(--cea-ink);
     border-radius: 12px;
     padding: 10px;
@@ -744,9 +832,18 @@ const caughtHere = computed(
     flex-direction: column;
     gap: 4px;
     cursor: pointer;
+    transition:
+        border-color 0.18s ease,
+        background-color 0.18s ease,
+        transform 0.18s ease;
 }
 .cea-sc-tile:hover {
     border-color: var(--cea-accent-hi);
+    transform: translateY(-1px);
+}
+.cea-sc-tile.active {
+    border-color: var(--cea-accent-hi);
+    background: rgba(255, 255, 255, 0.08);
 }
 .cea-sc-tile small {
     color: var(--cea-muted);
@@ -754,11 +851,47 @@ const caughtHere = computed(
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.cea-sc-preview {
+    border: 1px solid var(--cea-line-soft);
+    border-radius: 16px;
+    padding: 14px;
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(255, 255, 255, 0.06),
+            transparent 35%
+        ),
+        rgba(255, 255, 255, 0.02);
+    position: sticky;
+    top: 0;
+}
+.cea-sc-previewhead {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.cea-sc-previewtitle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--cea-ink);
+}
+.cea-sc-previewcode {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--cea-muted);
+}
+.cea-sc-back {
+    display: none;
+}
 .cea-sc-qrwrap {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 12px;
+    min-height: 420px;
+    padding: 16px;
     border: 1px solid var(--cea-line-soft);
     border-radius: 14px;
     overflow: hidden;
@@ -770,11 +903,24 @@ const caughtHere = computed(
         var(--cea-page);
 }
 .cea-sc-qr {
-    width: min(300px, 72vw);
+    width: min(360px, 72vw);
     aspect-ratio: 1 / 1;
     display: flex;
     justify-content: center;
     align-items: center;
+}
+.cea-sc-empty {
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    color: var(--cea-muted);
+    border: 1px dashed var(--cea-line-soft);
+    border-radius: 14px;
+    padding: 20px;
 }
 .cea-sc-qr :deep(canvas),
 .cea-sc-qr :deep(svg) {
@@ -811,5 +957,52 @@ const caughtHere = computed(
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+@media (max-width: 899px) {
+    .cea-sc-modal {
+        width: min(760px, 96vw);
+        max-width: min(760px, 96vw);
+        padding: 14px;
+    }
+    .cea-sc-head {
+        align-items: center;
+    }
+    .cea-sc-layout {
+        display: block;
+    }
+    .cea-sc-mobile-hidden {
+        display: none;
+    }
+    .cea-sc-browser,
+    .cea-sc-preview {
+        min-height: 0;
+        width: 100%;
+    }
+    .cea-sc-preview {
+        position: static;
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+    .cea-sc-browser {
+        display: block;
+    }
+    .cea-sc-previewhead {
+        align-items: center;
+    }
+    .cea-sc-back {
+        display: inline-flex;
+    }
+    .cea-sc-grid {
+        grid-template-columns: 1fr;
+    }
+    .cea-sc-qrwrap,
+    .cea-sc-empty {
+        min-height: 0;
+    }
+    .cea-sc-qr {
+        width: min(300px, 72vw);
+    }
 }
 </style>
