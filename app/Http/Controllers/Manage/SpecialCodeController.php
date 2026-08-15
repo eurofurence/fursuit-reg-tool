@@ -156,7 +156,7 @@ class SpecialCodeController extends Controller
      */
     public static function classLabel(?string $className): ?string
     {
-        return SpecialCodeActionRegistry::labelFor($className);
+        return SpecialActionsRegister::getDisplayNameForClass($className);
     }
 
     public static function typeLabel(?SpecialCodeType $type): ?string
@@ -355,7 +355,7 @@ class SpecialCodeController extends Controller
             $className = SpecialActionsRegister::getClassForSpecialCodeType($type) ?? '';
 
             $schemas[$type->value] = [
-                'label' => $className !== '' ? SpecialCodeActionRegistry::labelFor($className) : null,
+                'label' => $className !== '' ? SpecialActionsRegister::getDisplayNameForClass($className) : null,
                 'description' => $className !== '' ? SpecialCodeActionRegistry::descriptionFor($className) : null,
                 'fields' => array_map(
                     fn ($field) => $field->toArray(),

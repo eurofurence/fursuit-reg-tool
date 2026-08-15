@@ -51,6 +51,7 @@ final class SpecialCodeActionRegistry
         BugBountyAction::class => 'Bug Bounty',
         CatchEmAllTeamAction::class => 'Catch \'Em All Team',
         ExplorerAction::class => 'Explorer',
+        FursuitBadgeTeamAction::class => 'Fursuit Badge Team',
     ];
 
     /**
