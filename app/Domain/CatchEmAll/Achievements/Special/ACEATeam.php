@@ -11,6 +11,7 @@ use App\Domain\CatchEmAll\Interface\SpecialAchievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\Models\UserSpecialCatch;
+use App\Models\EventUser;
 use Cache;
 
 abstract class ACEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, SpecialAchievement //
@@ -35,7 +36,7 @@ abstract class ACEATeam extends SimpleAchievement implements HasGlobalCache, Has
     /**
      * Get the info cache key for a specific event user.
      */
-    protected function getInfoCacheKey(\App\Models\EventUser $eventUser): string
+    protected function getInfoCacheKey(EventUser $eventUser): string
     {
         return self::INFO_CACHE_KEY.'_'.$eventUser->id;
     }
@@ -79,7 +80,7 @@ abstract class ACEATeam extends SimpleAchievement implements HasGlobalCache, Has
     /**
      * {@inheritDoc}
      */
-    public function getCurrentProgress(\App\Models\EventUser $eventUser): array
+    public function getCurrentProgress(EventUser $eventUser): array
     {
         $currentProgress = Cache::remember($this->getInfoCacheKey($eventUser), now()->addYear(), function () use ($eventUser) {
             $caughtCodes = UserSpecialCatch::query()
@@ -121,7 +122,7 @@ abstract class ACEATeam extends SimpleAchievement implements HasGlobalCache, Has
     /**
      * {@inheritDoc}
      */
-    public function getUserCacheKeys(\App\Models\EventUser $eventUser): array
+    public function getUserCacheKeys(EventUser $eventUser): array
     {
         return [$this->getInfoCacheKey($eventUser)];
     }

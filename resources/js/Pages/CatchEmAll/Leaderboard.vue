@@ -1,347 +1,70 @@
 <script setup lang="ts">
-import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import { Link, router } from "@inertiajs/vue3";
-import { Award, Crown, Star, TrendingUp, Trophy } from "lucide-vue-next";
-import Card from "primevue/card";
-import Dropdown from "primevue/dropdown";
-import { computed, ref } from "vue";
+import { computed } from 'vue'
+import { router } from '@inertiajs/vue3'
+import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
+import { Medal } from 'lucide-vue-next'
+
+type Row = {
+    event_user_id: number
+    user_id: number
+    name: string
+    rank: number
+    catches: number
+    profile_uuid: string | null
+}
 
 const props = defineProps<{
-    user: {
-        id: number;
-        name: string;
-    };
-    leaderboard: Array<{
-        event_user_id : number;
-        user_id : number;
-        name : string;
-        rank : number;
-        catches : number;
-        profile_uuid?: string | null;
-    }>;
-    eventsWithEntries: Array<any>;
-    selectedEvent?: number | null;
-    flash?: any;
-}>();
+    user: { id: number; name: string }
+    leaderboard: Row[]
+    flash?: any
+}>()
 
-// Event selection
-const eventOptions = computed(() => [
-    ...props.eventsWithEntries.map((event) => ({
-        label: `${event.name} (${new Date(event.starts_at).getFullYear()})`,
-        value: event.id.toString(),
-    })),
-]);
+const mine = computed(() => props.leaderboard.find(row => row.user_id === props.user.id) ?? null)
+const total = computed(() => mine.value?.catches ?? 0)
 
-const selectedEventValue = ref(
-    props.selectedEvent != null
-        ? String(props.selectedEvent)
-        : props.eventsWithEntries[0].id.toString(),
-);
-console.log(selectedEventValue);
+function openProfile(row: Row) {
+    if (!row.profile_uuid) return
+    router.visit(route('catch-em-all.profiles.show', row.profile_uuid))
+}
 
-const isGlobalView = computed(() => selectedEventValue.value === "global");
-
-const onEventChange = () => {
-    router.get(
-        route("catch-em-all.leaderboard"),
-        {
-            event: selectedEventValue.value,
-        },
-        {
-            preserveState: false,
-            replace: true,
-        },
-    );
-};
-
-const getRankIcon = (rank: number) => {
-    if (rank === 1) return Crown;
-    if (rank === 2) return Trophy;
-    if (rank === 3) return Award;
-    if (rank <= 10) return Star;
-    return TrendingUp;
-};
-
-const getRankColor = (rank: number) => {
-    if (rank === 1) return "text-yellow-500";
-    if (rank === 2) return "text-gray-400";
-    if (rank === 3) return "text-amber-600";
-    if (rank <= 10) return "text-blue-500";
-    return "text-gray-500";
-};
-
-// Different crown/medal icons for podium positions
-const getPodiumIcon = (rank: number) => {
-    if (rank === 1) return "👑"; // Crown for first place
-    if (rank === 2) return "🥈"; // Silver medal
-    if (rank === 3) return "🥉"; // Bronze medal
-    return null;
-};
-
-const getProperCatch = (catchCount: number) => {
-    return catchCount === 1 || catchCount === -1 ? "catch" : "catches";
-};
+/* gold, silver, copper for the first three; everyone else keeps their number */
+const MEDALS = ['g', 's', 'b']
 </script>
 
 <template>
     <CatchEmAllLayout
         title="Leaderboard"
-        subtitle="Top Fursuit Catch em Alls"
+        subtitle="Most fursuits caught"
+        :count="total"
+        hue="var(--cea-gold)"
         :flash="flash"
-        icon="medal"
     >
-        <!-- Event Filter -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
-            <template #content>
-                <div class="space-y-3">
-                    <label class="block text-sm font-medium text-gray-300"
-                        >Event Filter:</label
-                    >
-                    <Dropdown
-                        v-model="selectedEventValue"
-                        :options="eventOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                        @change="onEventChange"
-                        fluid
-                    />
-                </div>
-            </template>
-        </Card>
+        <button
+            v-for="row in leaderboard"
+            :key="row.event_user_id"
+            class="cea-row"
+            :class="{ me: row.user_id === user.id }"
+            :style="{ width: '100%', textAlign: 'left', cursor: row.profile_uuid ? 'pointer' : 'default' }"
+            @click="openProfile(row)"
+        >
+            <span class="rank">
+                <span v-if="row.rank <= 3" class="cea-medal" :class="MEDALS[row.rank - 1]">
+                    <Medal :size="15" />
+                </span>
+                <template v-else>{{ row.rank }}</template>
+            </span>
+            <span class="who">
+                <b>{{ row.name }}</b>
+                <small v-if="row.user_id === user.id">you</small>
+                <small v-else-if="!row.profile_uuid">no public profile</small>
+                <small v-else>view profile</small>
+            </span>
+            <span class="n">{{ row.catches }}</span>
+        </button>
 
-        <!-- Leaderboard -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
-            <template #content>
-                <div class="text-center justify-center mb-6">
-                    <div
-                        class="w-20 h-20 m-auto rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mb-2 border-4 border-yellow-200 shadow-lg"
-                    >
-                        <Crown class="w-10 h-10 text-white" />
-                    </div>
-                    <p class="text-sm text-gray-300">
-                        {{
-                            isGlobalView
-                                ? "All-time champions"
-                                : "Event champions"
-                        }}
-                        • {{ props.leaderboard.length }} top hunters
-                    </p>
-                </div>
-
-                <div class="space-y-3">
-                    <!-- Top 3 Podium -->
-                    <div hidden v-if="leaderboard.length >= 3" class="mb-6">
-                        <div
-                            class="flex items-end justify-center space-x-4 mb-4"
-                        >
-                            <!-- 2nd Place -->
-                            <div class="flex flex-col items-center">
-                                <div
-                                    class="w-16 h-16 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center mb-2 border-4 border-gray-200"
-                                >
-                                    <Crown class="w-8 h-8 text-white" />
-                                </div>
-                                <div class="text-center">
-                                    <div
-                                        class="text-sm font-bold text-gray-100"
-                                    >
-                                        {{ leaderboard[1]?.name }}
-                                    </div>
-                                    <div class="text-xs text-gray-300">
-                                        {{ leaderboard[1]?.catches }}
-                                        {{
-                                            getProperCatch(
-                                                leaderboard[1]?.catches,
-                                            )
-                                        }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 1st Place -->
-                            <div class="flex flex-col items-center -mt-4">
-                                <div
-                                    class="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mb-2 border-4 border-yellow-200 shadow-lg"
-                                >
-                                    <Crown class="w-10 h-10 text-white" />
-                                </div>
-                                <div class="text-center">
-                                    <div
-                                        class="text-base font-bold text-yellow-400"
-                                    >
-                                        {{ leaderboard[0]?.name }}
-                                    </div>
-                                    <div class="text-sm text-yellow-300">
-                                        {{ leaderboard[0]?.catches }}
-                                        {{
-                                            getProperCatch(
-                                                leaderboard[0]?.catches,
-                                            )
-                                        }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 3rd Place -->
-                            <div class="flex flex-col items-center">
-                                <div
-                                    class="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center mb-2 border-4 border-amber-200"
-                                >
-                                    <Crown class="w-8 h-8 text-white" />
-                                </div>
-                                <div class="text-center">
-                                    <div
-                                        class="text-sm font-bold text-gray-100"
-                                    >
-                                        {{ leaderboard[2]?.name }}
-                                    </div>
-                                    <div class="text-xs text-gray-300">
-                                        {{ leaderboard[2]?.catches }}
-                                        {{
-                                            getProperCatch(
-                                                leaderboard[2]?.catches,
-                                            )
-                                        }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Partial Leaderboard List -->
-                    <div class="space-y-2">
-                        <component
-                            :is="player.profile_uuid ? Link : 'div'"
-                            v-for="(player) in leaderboard"
-                            :key="player.event_user_id"
-                            :href="player.profile_uuid ? route('catch-em-all.profiles.show', player.profile_uuid) : undefined"
-                            class="flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md relative overflow-hidden"
-                            :class="[
-                                player.rank === 1
-                                    ? 'ring-2 ring-yellow-300 bg-gradient-to-r from-yellow-900/50 to-yellow-900/40 border-yellow-700'
-                                    : player.rank === 2
-                                      ? 'bg-gradient-to-r from-gray-700/30 to-gray-900/30'
-                                      : player.rank === 3
-                                        ? 'bg-gradient-to-r from-orange-900/30 to-orange-900/20'
-                                        : ' bg-gray-700/50 border-gray-600',
-                            ]"
-                        >
-                            <div v-if="player.user_id === user.id" class="player-shine absolute inset-0 pointer-events-none"></div>
-                            <div class="flex items-center space-x-4">
-                                <!-- Rank Badge -->
-                                <div
-                                    class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg"
-                                    :class="[
-                                        player.rank === 1
-                                            ? 'bg-yellow-900/30 text-yellow-400'
-                                            : player.rank === 2
-                                              ? 'bg-gray-700 text-gray-300'
-                                              : player.rank === 3
-                                                ? 'bg-amber-900/30 text-amber-400'
-                                                : 'bg-blue-900/30 text-blue-400',
-                                    ]"
-                                >
-                                    <component
-                                        :is="getRankIcon(player.rank)"
-                                        class="w-6 h-6"
-                                        :class="getRankColor(player.rank)"
-                                    />
-                                </div>
-
-                                <!-- Player Info -->
-                                <div>
-                                    <div class="flex items-center space-x-2">
-                                        <div
-                                            class="font-semibold"
-                                            :class="player.user_id === user.id ? 'text-purple-400' : 'text-gray-100'"
-                                        >
-                                            {{ player.name }}
-                                        </div>
-                                        <div class="text-lg">
-                                            {{ getPodiumIcon(player.rank) }}
-                                        </div>
-                                    </div>
-                                    <div class="text-sm text-gray-300">
-                                        Rank #{{ player.rank }} •
-                                        {{ player.catches }}
-                                        {{ getProperCatch(player.catches) }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Points -->
-                            <div class="text-right">
-                                <div
-                                    class="font-bold text-xl"
-                                    :class="
-                                        player.rank <= 3
-                                            ? 'text-blue-400'
-                                            : 'text-gray-100'
-                                    "
-                                >
-                                    {{ player.catches }}
-                                </div>
-                                <div class="text-xs text-gray-300">
-                                    {{ getProperCatch(player.catches) }}
-                                </div>
-                            </div>
-                        </component>
-                        <!-- Empty State -->
-                        <div
-                            v-if="leaderboard.length === 0"
-                            class="text-center py-8"
-                        >
-                            <Trophy
-                                class="w-16 h-16 mx-auto mb-4 text-gray-300"
-                            />
-                            <h3 class="text-lg font-medium text-gray-300 mb-2">
-                                No hunters yet!
-                            </h3>
-                            <p class="text-gray-400">
-                                Be the first to catch some fursuiters and claim
-                                the top spot.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </template>
-        </Card>
+        <p v-if="!leaderboard.length" class="cea-hint">Nobody has caught anything yet.</p>
+        <p v-else class="cea-hint" style="margin-top: 14px">
+            Ranked by fursuits caught. Players on the same score share a rank.
+        </p>
     </CatchEmAllLayout>
 </template>
-
-<style scoped>
-/* Podium animation */
-@keyframes crown-glow {
-    0%,
-    100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
-}
-
-.player-shine {
-    background: linear-gradient(
-        105deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.08) 35%,
-        rgba(255, 255, 255, 0.18) 50%,
-        rgba(255, 255, 255, 0.08) 65%,
-        transparent 100%
-    );
-    width: 150%;
-    left: -50%;
-    animation: shine 2.5s linear infinite;
-}
-
-@keyframes shine {
-    0% {
-        transform: translateX(-100%);
-    }
-    100% {
-        transform: translateX(100%);
-    }
-}
-</style>

@@ -1,125 +1,42 @@
 <script setup lang="ts">
+/**
+ * Fixed bottom nav. The active tab is an accent indicator plus a brighter icon,
+ * not a filled slab, and there is no oversized centre button: Catch is a tab
+ * like the others.
+ */
 import { computed } from 'vue'
-import { usePage, Link } from '@inertiajs/vue3'
-import {
-    Trophy,
-    Award,
-    BookOpen,
-    Target,
-    User,
-    Medal,
-    Gem,
-    Library
-} from 'lucide-vue-next'
+import { Link } from '@inertiajs/vue3'
+import { Trophy, Medal, Target, LayoutGrid, User } from 'lucide-vue-next'
 
-const page = usePage()
-
-// Get current route name to determine active tab
-const currentRoute = computed(() => {
-    const routeName = route().current() ?? ''
-    if (routeName.includes('leaderboard')) return 'leaderboard'
-    if (routeName.includes('achievements')) return 'achievements'
-    if (routeName.includes('collection')) return 'collection'
-    if (routeName.includes('profile')) return 'profile'
-    if (routeName.includes('catch')) return 'catch'
-    return 'catch' // default
-})
-
-const navItems = [
-    {
-        key: 'leaderboard',
-        label: 'Leaderboard',
-        icon: Medal,
-        route: 'catch-em-all.leaderboard',
-        color: 'text-white'
-    },
-    {
-        key: 'achievements',
-        label: 'Achievements',
-        icon: Gem,
-        route: 'catch-em-all.achievements',
-        color: 'text-white'
-    },
-    {
-        key: 'catch',
-        label: 'Catch!',
-        icon: Target,
-        route: 'catch-em-all.catch',
-        color: 'text-white bg-blue-600 scale-110 shadow-lg',
-        isCenter: true
-    },
-    {
-        key: 'collection',
-        label: 'Collection',
-        icon: Library,
-        route: 'catch-em-all.collection',
-        color: 'text-white'
-    },
-    {
-        key: 'profile',
-        label: 'Profile',
-        icon: User,
-        route: 'catch-em-all.profile',
-        color: 'text-white'
-    }
+const items = [
+    { key: 'leaderboard', label: 'Ranking', icon: Trophy, route: 'catch-em-all.leaderboard' },
+    { key: 'achievements', label: 'Achievements', icon: Medal, route: 'catch-em-all.achievements' },
+    { key: 'catch', label: 'Catch', icon: Target, route: 'catch-em-all.catch' },
+    { key: 'collection', label: 'Collection', icon: LayoutGrid, route: 'catch-em-all.collection' },
+    { key: 'profile', label: 'You', icon: User, route: 'catch-em-all.profile' },
 ]
+
+const current = computed(() => {
+    const name = route().current() ?? ''
+    if (name.includes('leaderboard')) return 'leaderboard'
+    if (name.includes('achievements')) return 'achievements'
+    if (name.includes('collection')) return 'collection'
+    if (name.includes('profile')) return 'profile'
+    return 'catch'
+})
 </script>
 
 <template>
-    <!-- Bottom Navigation - Mobile App Style -->
-    <div class="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 shadow-lg safe-area-bottom">
-        <div class="grid grid-cols-5 items-center py-2">
-            <template v-for="item in navItems" :key="item.key">
-                <!-- Regular Navigation Item -->
-                <Link
-                    :href="item.route ? route(item.route) + '/' : null"
-                    :disabled="item.disabled"
-                    :preserve-scroll="true"
-                    :preserve-state="true"
-                    replace
-                    class="flex flex-col items-center justify-center rounded-lg transition-all transform mx-auto"
-                    :class="[
-                        item.isCenter ? 'p-3 rounded-xl -mt-2' : 'p-2',
-                        currentRoute === item.key ? item.color : (item.disabled ? 'text-gray-500' : 'text-gray-400'),
-                        item.disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:scale-105',
-                        item.isCenter && currentRoute !== item.key ? 'bg-gray-700' : ''
-                    ]"
-                >
-                    <component
-                        :is="item.icon"
-                        :class="[
-                            item.isCenter ? 'w-8 h-8 mb-1' : 'w-6 h-6 mb-1'
-                        ]"
-                    />
-                    <span :class="[
-                        'font-medium',
-                        currentRoute === item.key ? 'nav-text font-bold' : 'nav-text'
-                    ]">
-                        {{ item.label }}
-                    </span>
-                </Link>
-            </template>
-        </div>
-    </div>
+    <nav class="cea-nav">
+        <Link
+            v-for="item in items"
+            :key="item.key"
+            :href="route(item.route)"
+            :class="{ 'is-on': current === item.key }"
+            preserve-scroll
+        >
+            <span class="cea-nav-icon"><component :is="item.icon" :size="20" /></span>
+            {{ item.label }}
+        </Link>
+    </nav>
 </template>
-
-<style scoped>
-/* Mobile app navigation transitions */
-button, a {
-    transition: all 0.2s ease;
-}
-
-button:active, a:active {
-    transform: scale(0.95);
-}
-
-.nav-text {
-    font-size: 0.65rem;
-    line-height: .75rem;
-}
-
-/* Safe area handling for devices with notches */
-.safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0);
-}
-</style>

@@ -40,17 +40,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Fursuit Species Rarity Threshold
+    | Fursuit Ranking Thresholds
     |--------------------------------------------------------------------------
     |
-    | Fursuit Species is given a rarity based on the amount it appears among all fursuiter
-    | If a species appear more often than the threshold, it is considered this rarity
+    | A fursuit's ranking comes from how many people have caught it: caught more
+    | means a higher ranking, Bronze through Diamond. It is a measure of how
+    | sought after a suiter is, not of how rare their species is, which is why
+    | the tiers are metals rather than Common-to-Legendary.
+    |
+    | Everyone starts at Bronze on the first morning and climbs from there.
     |
     */
 
-    'species_rarity_threshold_uncommon' => env('SPECIES_RARITY_THRESHOLD_UNCOMMON', 5),
-    'species_rarity_threshold_rare' => env('SPECIES_RARITY_THRESHOLD_RARE', 10),
-    'species_rarity_threshold_epic' => env('SPECIES_RARITY_THRESHOLD_EPIC', 20),
-    'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 50),
-    // If none of this applies, the species is considered common
+    'fursuit_ranking_threshold_silver' => env('FURSUIT_RANKING_THRESHOLD_SILVER', 5),
+    'fursuit_ranking_threshold_gold' => env('FURSUIT_RANKING_THRESHOLD_GOLD', 10),
+    'fursuit_ranking_threshold_platinum' => env('FURSUIT_RANKING_THRESHOLD_PLATINUM', 20),
+    'fursuit_ranking_threshold_diamond' => env('FURSUIT_RANKING_THRESHOLD_DIAMOND', 50),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Species Population
+    |--------------------------------------------------------------------------
+    |
+    | Not a tier any more, but still worth showing: how many fursuits of a
+    | species are registered for the event. SpeciesRarityService reads this to
+    | tell an attendee that the Kugsha Dog they just caught is the only one at
+    | the convention.
+    |
+    */
+
 ];

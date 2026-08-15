@@ -1,0 +1,649 @@
+/*
+ * Catch-Em-All skin.
+ *
+ * Tokens live on :root rather than under .cea, for the reason manage.css already
+ * records: the sheet, the lightbox and PrimeVue overlays are teleported to body,
+ * so anything scoped to the layout class renders against undefined properties.
+ *
+ * One interface colour (--cea-accent, the EF green) carries every action, the
+ * active tab and progress. Everything else that is coloured takes its colour
+ * from content: a fursuit's rarity, a player's chosen profile colour, or the
+ * colour sampled from a badge photo. No gradients, and no single-edge borders -
+ * colour lives in the border and the surface wash, never in a left stripe.
+ */
+:root {
+    --cea-accent: #005953;
+    --cea-accent-hi: #0a7a71;
+    /* only for 1px strokes and text on the dark surface, where the base green disappears */
+    --cea-accent-bright: #19b3a2;
+
+    --cea-page: #0a1017;
+    --cea-panel: #121c27;
+    --cea-panel-2: #1a2634;
+    --cea-line: #22303f;
+    --cea-line-soft: #2b3d4f;
+    --cea-ink: #f2f6fb;
+    --cea-muted: #7d90a6;
+
+    /* leaderboard medals, independent of the achievement tiers */
+    --cea-gold: #d9a520;
+    --cea-silver: #b9c4cf;
+    --cea-copper: #cf8b52;
+
+    /* achievement tiers */
+    --cea-tier-1: #17a08f;
+    --cea-tier-2: #6f9fd8;
+    --cea-tier-3: #d9a520;
+    --cea-tier-team: #7b5cd6;
+
+    /* rarity, five steps */
+    --cea-legendary: #e0a020;
+    --cea-epic: #a35fd6;
+    --cea-rare: #3f8fe0;
+    --cea-uncommon: #46b06a;
+    --cea-common: #7d90a6;
+}
+
+/* ---------------------------------------------------------------- shell */
+
+/* The game paints the document, not just its own wrapper: rubber-band scrolling
+   on iOS and macOS reveals whatever is behind the app, which was white. Scoped
+   to the game so the POS, admin and public site keep their own backgrounds.
+   min-height matters on iOS: a body shorter than the viewport leaves the canvas
+   under it unpainted, and that strip is what the bounce exposes. */
+html.cea-page, body.cea-page {
+    background-color: var(--cea-page);
+    min-height: 100%;
+}
+/* Keep the bounce, which is native and expected, but stop it chaining out of a
+   sheet or the lightbox into the page behind them. */
+body.cea-page { overscroll-behavior-y: contain; }
+.cea-scrim, .cea-lightbox { overscroll-behavior: contain; }
+
+.cea {
+    min-height: 100dvh;
+    background: var(--cea-page);
+    color: var(--cea-ink);
+    /* the document scrolls, not an inner box: the old inner overflow-y-auto cost
+       momentum scrolling, pull to refresh and the collapsing address bar */
+    padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+}
+
+.cea-ambient {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: .5;
+    z-index: 0;
+}
+.cea-ambient svg { width: 100%; height: 100%; display: block; }
+
+.cea-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--cea-page);
+    border-bottom: 1px solid var(--cea-line);
+    /* installed on iOS the status bar is translucent and content starts behind
+       it, so the title needs the notch inset on top of its own padding */
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 0 13px;
+}
+/* the bar spans the window; only its contents sit in the page column */
+.cea-head-inner {
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.cea-head::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    bottom: -1px;
+    width: 46px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--cea-hue, var(--cea-accent-bright));
+    transition: background .3s ease;
+}
+.cea-head h1 { font-weight: 800; font-size: 20px; line-height: 1.15; letter-spacing: -.02em; }
+.cea-head p { font-size: 12px; color: var(--cea-muted); margin-top: 5px; }
+
+.cea-main { position: relative; z-index: 1; padding: 14px 18px 26px; }
+
+/* ------------------------------------------------------------ bottom nav */
+
+.cea-nav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 30;
+    display: flex;
+    background: var(--cea-page);
+    border-top: 1px solid var(--cea-line);
+    padding: 6px 4px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+.cea-nav a {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 0;
+    text-decoration: none;
+    color: var(--cea-muted);
+    font-weight: 600;
+    font-size: 10.5px;
+    line-height: 1;
+}
+.cea-nav a::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    width: 22px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: transparent;
+    transition: background .18s ease;
+}
+.cea-nav a.is-on { color: var(--cea-ink); }
+.cea-nav a.is-on::before { background: var(--cea-accent-bright); }
+.cea-nav a.is-on .cea-nav-icon { color: var(--cea-accent-bright); transform: translateY(-1px); }
+.cea-nav-icon {
+    width: 44px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    transition: color .16s ease, transform .16s ease;
+}
+.cea-nav a:active .cea-nav-icon { transform: scale(.92); }
+
+/* ------------------------------------------------------------ head pill */
+
+.cea-pill {
+    background: var(--cea-panel-2);
+    border: 1px solid var(--cea-line-soft);
+    border-radius: 999px;
+    padding: 7px 13px;
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+/* the count tiers as it grows, so the header says something at a glance */
+.cea-pill.t1 { color: #e0a35f; border-color: rgba(192,122,67,.55); background: rgba(192,122,67,.14); }
+.cea-pill.t2 { color: #cfd8e2; border-color: rgba(185,196,207,.5); background: rgba(185,196,207,.12); }
+.cea-pill.t3 { color: #f0c86b; border-color: rgba(217,165,32,.6); background: rgba(217,165,32,.15); }
+.cea-pill.t4 { color: #c3aef5; border-color: rgba(123,92,214,.6); background: rgba(123,92,214,.18); }
+.cea-pill .tier { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; opacity: .8; margin-left: 6px; }
+.cea-pill.bump { animation: cea-bump .34s ease; }
+
+/* --------------------------------------------------------------- pieces */
+
+.cea-card {
+    background: var(--cea-panel);
+    border: 1px solid var(--cea-line);
+    border-radius: 16px;
+    padding: 18px;
+}
+
+.cea-sec {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 20px 0 10px;
+    font-weight: 700;
+    font-size: 12.5px;
+    line-height: 1;
+    color: var(--cea-hue, var(--cea-muted));
+}
+.cea-sec .meta { color: #7286a0; font-weight: 600; font-size: 11.5px; }
+.cea-tick {
+    width: 8px; height: 8px; border-radius: 2px;
+    background: var(--cea-tone, var(--cea-hue, var(--cea-accent-bright)));
+    display: inline-block; margin-right: 8px; vertical-align: 1px;
+}
+
+.cea-btn {
+    width: 100%;
+    height: 52px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--cea-accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.cea-btn:disabled { background: var(--cea-panel-2); color: #46586d; cursor: default; }
+.cea-btn:active:not(:disabled) { transform: scale(.985); }
+.cea-btn.ghost { background: transparent; border: 1px solid var(--cea-line-soft); color: var(--cea-ink); }
+.cea-btn.sm { height: 42px; font-size: 14px; }
+
+.cea-hint { color: var(--cea-muted); font-size: 12.5px; }
+
+.cea-field {
+    width: 100%;
+    background: var(--cea-page);
+    border: 1px solid var(--cea-line-soft);
+    border-radius: 12px;
+    color: var(--cea-ink);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 800;
+    font-size: 30px;
+    line-height: 1.2;
+    letter-spacing: .4em;
+    text-indent: .4em;
+    text-align: center;
+    padding: 15px 10px;
+    outline: none;
+    text-transform: uppercase;
+}
+.cea-field::placeholder { color: #223142; font-weight: 500; }
+.cea-field:focus { border-color: var(--cea-accent-hi); box-shadow: inset 0 0 0 1px var(--cea-accent-hi); }
+
+/* ---------------------------------------------------------------- tiles */
+
+.cea-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cea-tile {
+    position: relative;
+    /* badge photos are always 3:4, locked by the crop stencil in FursuitImageService */
+    aspect-ratio: 3 / 4;
+    border-radius: 13px;
+    overflow: hidden;
+    border: 2px solid var(--cea-tone, rgba(255,255,255,.09));
+    background: var(--cea-panel-2);
+    cursor: pointer;
+    display: block;
+    padding: 0;
+}
+.cea-tile img, .cea-tile svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cea-tile.blank { background: #0e151d; border: 1px dashed #1c2836; cursor: default; }
+.cea-tile.missing { opacity: .42; filter: saturate(.5); }
+.cea-tile.current { border-color: var(--cea-accent-bright); box-shadow: 0 0 0 2px var(--cea-accent-bright); animation: cea-flag .9s ease 1; }
+.cea-tile .count {
+    position: absolute; right: 4px; bottom: 4px;
+    background: rgba(6,10,14,.78); color: #fff;
+    border-radius: 6px; padding: 2px 5px;
+    font-weight: 700; font-size: 10.5px; line-height: 1.3;
+}
+.cea-tile .name {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 7px 8px;
+    background: rgba(7,11,16,.8);
+    font-weight: 700; font-size: 11px; line-height: 1.2;
+    text-align: center;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cea-tile.fresh { animation: cea-tilein .34s cubic-bezier(.2,1.25,.4,1) both; }
+
+/* ----------------------------------------------------------------- rows */
+
+.cea-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+    background: var(--cea-panel);
+    border: 1px solid var(--cea-line);
+}
+.cea-row.tone {
+    background: color-mix(in srgb, var(--cea-tone) 13%, var(--cea-panel));
+    border-color: color-mix(in srgb, var(--cea-tone) 34%, transparent);
+}
+.cea-row.me {
+    background: color-mix(in srgb, var(--cea-accent) 30%, var(--cea-panel));
+    border-color: var(--cea-accent);
+}
+.cea-row .who { flex: 1; min-width: 0; }
+.cea-row .who b { font-weight: 700; }
+.cea-row .who small { display: block; color: var(--cea-muted); font-size: 12px; margin-top: 3px; }
+.cea-row .n { font-weight: 800; font-size: 17px; line-height: 1; font-variant-numeric: tabular-nums; }
+.cea-row .rank {
+    width: 30px; flex: 0 0 auto; text-align: center;
+    font-weight: 800; font-size: 15px; line-height: 1;
+    color: var(--cea-muted); font-variant-numeric: tabular-nums;
+}
+
+.cea-medal {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #10161e;
+}
+.cea-medal.g { background: var(--cea-gold); }
+.cea-medal.s { background: var(--cea-silver); }
+.cea-medal.b { background: var(--cea-copper); }
+
+/* a catch row: the badge photo is flush left, full height, hard edge on the right */
+.cea-catchrow {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0 12px 0 0;
+    margin-bottom: 8px;
+    min-height: 76px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--cea-tone, #22303f) 17%, var(--cea-panel));
+    border: 1px solid color-mix(in srgb, var(--cea-tone, #2b3d4f) 38%, transparent);
+    transition: background .35s ease, border-color .35s ease;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+}
+.cea-catchrow .thumb { width: 57px; flex: 0 0 auto; align-self: stretch; }
+.cea-catchrow .thumb img, .cea-catchrow .thumb svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cea-catchrow .who { flex: 1; min-width: 0; align-self: center; }
+.cea-catchrow .who b { font-weight: 700; }
+.cea-catchrow .who small { display: block; color: var(--cea-muted); font-size: 12px; margin-top: 2px; }
+.cea-catchrow > :last-child { align-self: center; }
+.cea-rlabel { font-weight: 700; font-size: 10.5px; line-height: 1; letter-spacing: .08em; text-transform: uppercase; }
+
+/* species row, expanding to the individual catches */
+.cea-species {
+    border-radius: 14px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--cea-tone) 38%, transparent);
+    background: color-mix(in srgb, var(--cea-tone) 17%, var(--cea-panel));
+}
+.cea-species .subrows { padding: 0 12px 10px; }
+.cea-subrow {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 9px 10px; border-radius: 10px;
+    background: rgba(6,10,14,.32);
+    margin-top: 6px;
+    font-size: 13.5px;
+    width: 100%; border: 0; color: inherit; text-align: left; cursor: pointer;
+}
+.cea-subrow small { color: var(--cea-muted); font-size: 12px; }
+
+/* ---------------------------------------------------------------- stats */
+
+.cea-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cea-stats.two { grid-template-columns: repeat(2, 1fr); }
+.cea-stat {
+    background: color-mix(in srgb, var(--cea-tone, #22303f) 14%, var(--cea-panel));
+    border: 1px solid color-mix(in srgb, var(--cea-tone, #2b3d4f) 40%, transparent);
+    border-radius: 13px;
+    padding: 14px 8px;
+    text-align: center;
+}
+.cea-stat b {
+    display: block;
+    font-weight: 800; font-size: 19px; line-height: 1;
+    color: var(--cea-tone, var(--cea-ink));
+    font-variant-numeric: tabular-nums;
+}
+.cea-stat small { display: block; color: var(--cea-muted); font-size: 10.5px; margin-top: 6px; }
+
+/* headline summary: one number, the rest as supporting text */
+.cea-headline {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--cea-panel);
+    border: 1px solid var(--cea-line);
+    border-radius: 13px;
+    padding: 14px;
+    margin-bottom: 8px;
+}
+.cea-headline .num { text-align: center; flex: 0 0 auto; }
+.cea-headline .num b {
+    display: block; font-weight: 800; font-size: 34px; line-height: 1;
+    color: var(--cea-accent-bright); font-variant-numeric: tabular-nums;
+}
+.cea-headline .num span { display: block; font-size: 11px; color: var(--cea-muted); margin-top: 5px; }
+.cea-headline .meta { flex: 1; min-width: 0; }
+.cea-headline .meta small { display: block; color: var(--cea-muted); font-size: 11.5px; margin-top: 8px; }
+
+.cea-bar { height: 6px; border-radius: 3px; background: #0c131b; overflow: hidden; }
+.cea-bar i { display: block; height: 100%; border-radius: 3px; background: var(--cea-accent-bright); transition: width .4s ease; }
+
+/* -------------------------------------------------------------- ranking */
+
+.cea-ranking { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 14px; }
+.cea-ranking .cea-stat { padding: 11px 4px; cursor: pointer; border-radius: 12px; }
+.cea-ranking .cea-stat svg { color: var(--cea-tone); display: block; margin: 0 auto 7px; }
+.cea-ranking .cea-stat b { font-size: 17px; }
+.cea-ranking .cea-stat small {
+    font-size: 8.5px; margin-top: 5px; letter-spacing: -.02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.cea-ranking .cea-stat.on { background: color-mix(in srgb, var(--cea-tone) 30%, var(--cea-panel)); }
+.cea-ranking .cea-stat.on small { color: var(--cea-ink); }
+
+/* --------------------------------------------------------- achievements */
+
+.cea-ach {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+    background: var(--cea-panel);
+    border: 1px solid var(--cea-line);
+}
+.cea-ach.earned {
+    background: color-mix(in srgb, var(--cea-tone, #2b3d4f) 16%, var(--cea-panel));
+    border-color: color-mix(in srgb, var(--cea-tone, #2b3d4f) 42%, transparent);
+}
+.cea-ach .disc {
+    width: 44px; height: 44px; border-radius: 12px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--cea-tone); color: #0b0f14;
+}
+.cea-ach .disc.locked { background: var(--cea-panel-2); border: 1px solid var(--cea-line-soft); color: #46586d; }
+.cea-ach .body { flex: 1; min-width: 0; }
+.cea-ach .body b { font-weight: 700; }
+.cea-ach .body small { display: block; color: var(--cea-muted); font-size: 12.5px; margin-top: 3px; }
+.cea-ach .body .desc { font-size: 12.5px; color: #a9b8cb; margin-top: 6px; }
+.cea-new { color: var(--cea-accent-bright); font-weight: 700; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+
+/* profile badge case */
+.cea-case { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.cea-bcard {
+    aspect-ratio: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 10px 7px;
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--cea-tone) 15%, var(--cea-panel));
+    border: 1px solid color-mix(in srgb, var(--cea-tone) 40%, transparent);
+}
+.cea-bcard .disc {
+    width: 32px; height: 32px; border-radius: 10px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--cea-tone); color: #0b0f14;
+    margin-bottom: 8px;
+}
+.cea-bcard b {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    font-weight: 700; font-size: 10.5px; line-height: 1.25;
+}
+.cea-bcard small { display: block; color: var(--cea-muted); font-size: 9.5px; margin-top: 4px; }
+.cea-bcard.more { cursor: pointer; }
+.cea-bcard.more b { color: var(--cea-accent-bright); font-size: 13px; }
+
+/* -------------------------------------------------------------- profile */
+
+.cea-showcase {
+    position: relative;
+    height: 196px;
+    overflow: hidden;
+    /* edge to edge, past the page padding */
+    margin: -14px -18px 0;
+}
+.cea-showcase svg, .cea-showcase img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cea-profhead { position: relative; z-index: 1; text-align: center; padding: 0 4px 2px; }
+/* without an avatar to overlap the banner, the name needs the space back */
+.cea-profhead.no-avatar { padding-top: 16px; }
+.cea-avatar {
+    width: 92px; height: 92px; border-radius: 22px; overflow: hidden;
+    margin: -54px auto 11px;
+    border: 4px solid var(--cea-page);
+    position: relative; z-index: 2;
+    box-shadow: 0 8px 22px rgba(0,0,0,.45);
+}
+.cea-avatar img, .cea-avatar svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cea-name { font-weight: 800; font-size: 18px; line-height: 1.2; }
+.cea-sub { color: var(--cea-muted); font-size: 12px; margin-top: 5px; }
+
+.cea-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.cea-swatch {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: var(--cea-sw, var(--cea-panel-2));
+    border: 1px solid rgba(255,255,255,.14);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--cea-accent-bright);
+}
+.cea-swatch.on { box-shadow: 0 0 0 2px var(--cea-page), 0 0 0 4px var(--cea-accent-bright); }
+.cea-swatch.auto { border-style: dashed; }
+
+.cea-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--cea-line);
+    font-size: 14px;
+}
+.cea-link span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.cea-note {
+    border: 1px solid var(--cea-line-soft);
+    background: var(--cea-panel-2);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #c8d1e2;
+}
+.cea-note.warn { border-color: #6a5a20; background: #1c1810; color: #e6d199; }
+
+.cea-bio {
+    width: 100%;
+    background: var(--cea-page);
+    border: 1px solid var(--cea-line-soft);
+    border-radius: 12px;
+    color: var(--cea-ink);
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 12px;
+    resize: none;
+    outline: none;
+}
+.cea-bio:focus { border-color: var(--cea-accent-hi); }
+
+.cea-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 999px; padding: 6px 12px;
+    font-weight: 700; font-size: 11.5px;
+    border: 1px solid var(--cea-line-soft);
+    background: var(--cea-panel-2);
+    color: var(--cea-muted);
+}
+.cea-chip.ok { background: var(--cea-accent); border-color: var(--cea-accent); color: #fff; }
+.cea-chip.wait { border-color: #6a5a20; color: #e3c661; background: #221d10; }
+.cea-chip.no { border-color: #6d3040; color: #eb9aa6; background: #221319; }
+
+/* ------------------------------------------------------ sheet, lightbox */
+
+/* These roots are teleported to <body>, so they sit outside `.cea` and would inherit the
+   body's colour - near-black text on the dark panel. The tokens live on :root for this. */
+.cea-scrim, .cea-sheet, .cea-lightbox, .cea-toasts, .cea-toast { color: var(--cea-ink); }
+
+.cea-scrim {
+    position: fixed; inset: 0; z-index: 40;
+    background: rgba(3,6,10,.74);
+    display: flex; align-items: flex-end;
+}
+.cea-sheet {
+    width: 100%;
+    background: var(--cea-panel);
+    border-top: 1px solid var(--cea-line-soft);
+    border-radius: 22px 22px 0 0;
+    padding: 6px 18px calc(22px + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+    touch-action: none;
+}
+.cea-grab { width: 40px; height: 4px; border-radius: 2px; background: #2a3a4c; margin: 8px auto 14px; }
+.cea-sheet .art {
+    width: 138px; height: 184px; border-radius: 20px; overflow: hidden;
+    margin: 0 auto 14px; border: 2px solid rgba(255,255,255,.13);
+}
+.cea-sheet .art img, .cea-sheet .art svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cea-sheet .nm { font-weight: 800; font-size: 22px; line-height: 1; }
+.cea-sheet .mt { color: var(--cea-muted); font-size: 13.5px; margin-top: 7px; }
+.cea-kind {
+    display: inline-block; margin-top: 12px;
+    border-radius: 999px; padding: 6px 13px;
+    font-weight: 800; font-size: 11.5px; line-height: 1;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: #0b0f14;
+}
+
+.cea-lightbox {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(4,7,11,.94);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+}
+/* the panel is the lightbox's only child; keeps photo, caption and button one column */
+.cea-lightbox > * {
+    width: 100%; max-width: 300px; margin: auto;
+}
+.cea-lightbox .art {
+    width: 100%; max-width: 300px; margin: 0 auto;
+    aspect-ratio: 3 / 4; border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--cea-line-soft);
+}
+.cea-lightbox .art img, .cea-lightbox .art svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ---------------------------------------------------------------- motion */
+
+@keyframes cea-tilein { from { opacity: 0; transform: scale(.6) } to { opacity: 1; transform: none } }
+@keyframes cea-bump { 50% { transform: scale(1.17) } }
+@keyframes cea-flag {
+    0% { box-shadow: 0 0 0 2px var(--cea-accent-bright); }
+    35% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--cea-accent-bright) 55%, transparent); }
+    100% { box-shadow: 0 0 0 2px var(--cea-accent-bright); }
+}
+@keyframes cea-rise { from { opacity: 0; transform: translateY(9px) } to { opacity: 1; transform: none } }
+@keyframes cea-slidein { from { opacity: 0; transform: translateX(-5px) } to { opacity: 1; transform: none } }
+
+.cea-sheet-enter-active { transition: transform .42s cubic-bezier(.16,1.02,.3,1); }
+.cea-sheet-leave-active { transition: transform .24s ease; }
+.cea-sheet-enter-from, .cea-sheet-leave-to { transform: translateY(102%); }
+.cea-fade-enter-active, .cea-fade-leave-active { transition: opacity .2s ease; }
+.cea-fade-enter-from, .cea-fade-leave-to { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .cea *, .cea-scrim *, .cea-lightbox * { animation: none !important; transition: none !important; }
+}
+
+/* ------------------------------------------------- wider than a phone */
+
+/* Wider screens: the layout was a phone column stretched across a desktop, so
+   rows ran metres wide and the grid stayed three across. Cap the column, then
+   spend the extra width on more tiles per row rather than wider ones. */
+@media (min-width: 700px) {
+    .cea-head-inner, .cea-main { max-width: 900px; margin-left: auto; margin-right: auto; }
+    /* the accent rule under the title follows the column, not the window edge */
+    .cea-head::after { left: max(18px, calc((100% - 900px) / 2 + 18px)); }
+    .cea-tiles { grid-template-columns: repeat(6, 1fr); }
+    .cea-nav { padding-bottom: 10px; }
+    .cea-nav a { flex: 0 1 150px; }
+    .cea-nav { justify-content: center; }
+    .cea-showcase { margin-left: -18px; margin-right: -18px; }
+}
+@media (min-width: 1100px) {
+    .cea-tiles { grid-template-columns: repeat(8, 1fr); }
+    /* two columns of achievements and catches, so a wide window is not one long ribbon */
+    .cea-two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; align-items: start; }
+}

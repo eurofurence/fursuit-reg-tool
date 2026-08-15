@@ -7,7 +7,7 @@ use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
 use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
-class GottaCatchEmAll extends SimpleAchievement implements LockedBy, HiddenIfLocked
+class GottaCatchEmAll extends SimpleAchievement implements HiddenIfLocked, LockedBy
 {
     public function __construct()
     {

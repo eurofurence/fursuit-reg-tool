@@ -6,10 +6,12 @@ use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\SpecialCodeAction;
 use App\Domain\CatchEmAll\SpecialActions\SpecialActionsRegister;
 use App\Models\Event;
+use App\Models\EventUser;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SpecialCode extends Model
@@ -57,6 +59,12 @@ class SpecialCode extends Model
     public function userSpecialCatches(): HasMany
     {
         return $this->hasMany(UserSpecialCatch::class);
+    }
+
+    public function eventUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(EventUser::class, 'special_code_connection', 'special_code_id', 'event_users_id')
+            ->withTimestamps();
     }
 
     /**

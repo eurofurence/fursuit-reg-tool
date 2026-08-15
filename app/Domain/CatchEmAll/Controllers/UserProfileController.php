@@ -2,25 +2,33 @@
 
 namespace App\Domain\CatchEmAll\Controllers;
 
-use App\Domain\CatchEmAll\Enums\FursuitRarity;
+use App\Domain\CatchEmAll\Achievements\Utils\AchievementFactory;
+use App\Domain\CatchEmAll\Services\FursuitRankingService;
 use App\Domain\CatchEmAll\Services\GameStatsService;
+use App\Domain\CatchEmAll\Services\SpeciesPopulationService;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Manage\SpecialCodeController;
 use App\Models\Event;
+use App\Models\EventUser;
 use App\Models\FCEA\UserCatchRanking;
 use App\Models\Fursuit\Fursuit;
-use App\Models\User;
 use App\Models\UserProfile\States\Approved;
 use App\Models\UserProfile\States\Rejected;
 use App\Models\UserProfile\UserProfile;
 use App\Models\UserProfile\UserProfileLink;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class UserProfileController extends Controller
 {
-    public function __construct(private GameStatsService $gameStatsService) {}
+    public function __construct(
+        private GameStatsService $gameStatsService,
+        private SpeciesPopulationService $speciesPopulation,
+        private FursuitRankingService $fursuitRanking,
+    ) {}
 
     /**
      * Public profile page
@@ -40,6 +48,9 @@ class UserProfileController extends Controller
 
         $userProfile->load(['user', 'links']);
         $event = Event::getActiveEvent();
+        $eventUser = $event
+            ? $userProfile->user->eventUsers()->where('event_id', $event->id)->first()
+            : null;
 
         return Inertia::render('CatchEmAll/UserProfile', [
             'profile' => [
@@ -47,14 +58,20 @@ class UserProfileController extends Controller
                 'name' => $userProfile->user->name,
                 'avatar' => $userProfile->user->avatar_url,
                 'description' => $userProfile->description,
+                'colour' => $userProfile->colourKey(),
+                'colourHex' => $userProfile->colourHex(),
                 'links' => $userProfile->links->pluck('url')->values(),
                 'status' => $isOwner ? $userProfile->status::$name : null,
                 'rejection_reason' => $isOwner && $userProfile->status instanceof Rejected
                     ? $userProfile->rejection_reason
                     : null,
+                'specialCodes' => $isOwner ? $this->specialCodes($eventUser) : [],
             ],
             'fursuits' => $this->fursuits($userProfile, $event),
-            'stats' => $this->stats($userProfile->user, $event),
+            'stats' => $this->stats($eventUser),
+            'achievements' => $this->achievements($eventUser),
+            'palette' => UserProfile::PALETTE,
+            'fromFursuit' => (int) $request->query('from') ?: null,
             'canEdit' => $isOwner,
         ]);
     }
@@ -62,10 +79,8 @@ class UserProfileController extends Controller
     /**
      * The user's catcher stats
      */
-    private function stats(User $user, ?Event $event): ?array
+    private function stats(?EventUser $eventUser): ?array
     {
-        $eventUser = $event ? $user->eventUsers()->where('event_id', $event->id)->first() : null;
-
         if (! $eventUser) {
             return null;
         }
@@ -76,6 +91,52 @@ class UserProfileController extends Controller
             'caught' => $stats['totalCatches'],
             'rank' => $stats['totalCatches'] > 0 ? $stats['rank'] : null,
         ];
+    }
+
+    /**
+     * Earned achievements, for the badge case on the profile.
+     *
+     * Only completed ones, and never the secret or hidden entries: a profile is
+     * a public page, so it must not leak what somebody has left to find.
+     */
+    private function achievements(?EventUser $eventUser): array
+    {
+        if (! $eventUser) {
+            return [];
+        }
+
+        return collect(AchievementFactory::getUserAchievementData($eventUser))
+            ->filter(fn ($achievement) => $achievement['completed'] && ! $achievement['hiddenByLock'])
+            ->map(fn ($achievement) => [
+                'id' => $achievement['id'],
+                'title' => $achievement['title'],
+                'maxProgress' => $achievement['maxProgress'],
+                'isOptional' => $achievement['isOptional'],
+                'earnedAt' => $achievement['earnedAt'],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{typeName: string|null, code: string, url: string}>
+     */
+    private function specialCodes(?EventUser $eventUser): array
+    {
+        if (! $eventUser) {
+            return [];
+        }
+
+        return $eventUser->specialCodes()
+            ->orderByDesc('special_code_connection.created_at')
+            ->get(['special_codes.code', 'special_codes.type'])
+            ->map(fn ($specialCode) => [
+                'typeName' => SpecialCodeController::typeLabel($specialCode->type),
+                'code' => $specialCode->code,
+                'url' => SpecialCodeController::catchUrl($specialCode->code),
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -100,8 +161,8 @@ class UserProfileController extends Controller
             ->whereNotNull('fursuit_id')
             ->pluck('rank', 'fursuit_id');
 
-        return $fursuits->map(function (Fursuit $fursuit) use ($ranks) {
-            $rarity = FursuitRarity::fromCatchCount($fursuit->catched_by_users_count);
+        return $fursuits->map(function (Fursuit $fursuit) use ($ranks, $event) {
+            $ranking = $this->fursuitRanking->forFursuit($event, $fursuit);
 
             return [
                 'id' => $fursuit->id,
@@ -110,11 +171,11 @@ class UserProfileController extends Controller
                 'image' => $fursuit->image_webp_url,
                 'caught' => $fursuit->catched_by_users_count,
                 'rank' => $ranks->get($fursuit->id),
-                'rarity' => [
-                    'level' => $rarity->value,
-                    'label' => $rarity->getLabel(),
-                    'color' => $rarity->getColor(),
-                    'icon' => $rarity->getIcon(),
+                'ranking' => [
+                    'level' => $ranking->value,
+                    'label' => $ranking->getLabel(),
+                    'color' => $ranking->getColor(),
+                    'icon' => $ranking->getIcon(),
                 ],
             ];
         })->values();
@@ -135,11 +196,17 @@ class UserProfileController extends Controller
 
         $validated = $request->validate([
             'description' => ['nullable', 'string', 'max:255'],
+            // optional: a profile is given a colour when it is created, so an
+            // update that only touches the text or the links need not send one
+            'colour' => ['sometimes', 'string', Rule::in(array_keys(UserProfile::PALETTE))],
             'links' => ['array', 'max:10'],
             'links.*' => ['required', 'string', 'url:http,https', 'max:255', 'distinct'],
         ]);
 
-        $userProfile->update(['description' => $validated['description'] ?? null]);
+        $userProfile->update([
+            'description' => $validated['description'] ?? null,
+            'colour' => $validated['colour'] ?? $userProfile->colourKey(),
+        ]);
 
         // Sync links by URL
         $urls = collect($validated['links'] ?? []);

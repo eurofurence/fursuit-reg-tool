@@ -1,669 +1,241 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
-import { Link, router } from "@inertiajs/vue3";
-import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import Card from "@/Components/UI/UiCard.vue";
-import Dropdown from "primevue/dropdown";
-import {
-    BookOpen,
-    Star,
-    Gem,
-    Sparkles,
-    Crown,
-    Filter,
-    Grid3X3,
-    List,
-    Info,
-} from "lucide-vue-next";
-import GalleryItem from "@/Components/Gallery/GalleryItem.vue";
+import { computed, ref } from 'vue'
+import { router } from '@inertiajs/vue3'
+import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
+import FursuitPhoto from '@/Components/CatchEmAll/FursuitPhoto.vue'
+import { Circle, Gem, LayoutGrid, List, Medal, Sparkles, Star } from 'lucide-vue-next'
+
+type Suit = {
+    species: string
+    count: number
+    caught: number
+    profileUuid: string | null
+    ranking: { level: string; label: string; color: string; icon: string }
+    gallery: {
+        id: number
+        name: string
+        species: string
+        image: string | null
+        owner?: string | null
+        profileUuid?: string | null
+    }
+}
 
 const props = defineProps<{
-    collection: {
-        suits: Array<{
-            species: string;
-            rarity: {
-                level: string;
-                label: string;
-                color: string;
-                icon: string;
-            };
-            count: number;
-            profileUuid?: string | null;
-            gallery: {
-                id: number;
-                name: string;
-                species: string;
-                image: string;
-                scoring: number;
-                owner?: string | null;
-                profileUuid?: string | null;
-            };
-        }>;
-        species: Record<string, number>;
-        totalCatches: number;
-    };
-    eventsWithEntries: Array<any>;
-    selectedEvent?: string | null;
-    isGlobal: boolean;
-    flash?: any;
-}>();
+    collection: { suits: Suit[]; species: Record<string, number>; totalCatches: number }
+    eventsWithEntries?: any[]
+    selectedEvent?: number | null
+    isGlobal?: boolean
+    eventTotal?: number
+    flash?: any
+}>()
 
+/* highest first, matching FursuitRanking::ranked() */
+const RANKINGS = [
+    { key: 'diamond', label: 'Diamond', icon: Gem },
+    { key: 'platinum', label: 'Platinum', icon: Sparkles },
+    { key: 'gold', label: 'Gold', icon: Medal },
+    { key: 'silver', label: 'Silver', icon: Star },
+    { key: 'bronze', label: 'Bronze', icon: Circle },
+]
 
-interface Fursuit {
-    id: number,
-    name: string,
-    species: string,
-    image: string,
-    scoring: number,
-    event?: string,
-    archival_notice?: string,
-    owner?: string | null,
-    profileUuid?: string | null,
+const view = ref<'grid' | 'list'>('grid')
+const ranking = ref<string>('all')
+const openSpecies = ref<string | null>(null)
+
+const suits = computed(() => props.collection?.suits ?? [])
+const speciesCount = computed(() => Object.keys(props.collection?.species ?? {}).length)
+const total = computed(() => props.eventTotal ?? 0)
+const percent = computed(() =>
+    total.value ? Math.round((suits.value.length / total.value) * 1000) / 10 : 0)
+
+const tally = computed(() => RANKINGS.map(entry => ({
+    ...entry,
+    colour: suits.value.find(s => s.ranking.level === entry.key)?.ranking.color ?? colourFor(entry.key),
+    n: suits.value.filter(s => s.ranking.level === entry.key).length,
+})))
+
+/* fallbacks so an empty tier still shows its own colour */
+function colourFor(level: string) {
+    return {
+        diamond: '#5fd0e0', platinum: '#6f9fd8', gold: '#d9a520',
+        silver: '#b9c4cf', bronze: '#cf8b52',
+    }[level] ?? '#cf8b52'
 }
 
-const viewFursuit = ref<Fursuit | null>(null);
-const imageViewIsOpen = ref<boolean>(false);
+const shown = computed(() =>
+    ranking.value === 'all' ? suits.value : suits.value.filter(s => s.ranking.level === ranking.value))
 
-
-function toggleImageView() {
-    imageViewIsOpen.value = !imageViewIsOpen.value;
-    if (!imageViewIsOpen.value) {
-        viewFursuit.value = null;
-    }
-}
-
-function setImageView(fursuit: Fursuit) {
-    viewFursuit.value = fursuit;
-    imageViewIsOpen.value = true;
-}
-
-// Event selection
-const eventOptions = computed(() => [
-    { label: "Global (All-Time)", value: "global" },
-    ...props.eventsWithEntries.map((event) => ({
-        label: `${event.name} (${new Date(event.starts_at).getFullYear()})`,
-        value: event.id.toString(),
-    })),
-]);
-
-const selectedEventValue = ref(currentPropValue());
-
-function currentPropValue() {
-  return props.selectedEvent != null ? String(props.selectedEvent) : "global";
-}
-
-const isGlobalView = computed(() => selectedEventValue.value === "global");
-
-// View mode toggle
-const viewMode = ref<"grid" | "list">("grid");
-// Counter visibility toggle
-const showCounters = ref(false);
-const showTooltip = ref(false);
-
-const onEventChange = () => {
-    // console.log("[Collection] Event changed to:", selectedEventValue.value);
-    router.get(
-        route("catch-em-all.collection"),
-        {
-            event: selectedEventValue.value,
-        },
-        {
-            preserveState: false,
-            replace: true,
+/* list view is a species view: one row per species with how many you met,
+   because a heading per species with one row under it is twice the rows */
+const bySpecies = computed(() => {
+    const groups: Record<string, { species: string; colour: string; label: string; population: number; suits: Suit[] }> = {}
+    for (const suit of shown.value) {
+        groups[suit.species] ??= {
+            species: suit.species,
+            colour: suit.ranking.color,
+            label: suit.ranking.label,
+            population: suit.count,
+            suits: [],
         }
-    );
-};
-
-
-
-onMounted(() => {
-    const savedViewMode = localStorage.getItem("catch-em-all-collection-view-mode");
-    if (savedViewMode && (savedViewMode === "grid" || savedViewMode === "list")) {
-        viewMode.value = savedViewMode;
+        groups[suit.species].suits.push(suit)
     }
-});
-watch(() => props.selectedEvent, () => {
-  selectedEventValue.value = currentPropValue();
-});
-watch(viewMode, (newMode) => {
-    localStorage.setItem("catch-em-all-collection-view-mode", newMode);
-});
+    return Object.values(groups).sort((a, b) => b.suits.length - a.suits.length)
+})
 
-// Rarity filter
-const selectedRarity = ref<string>("all");
-const rarityOptions = [
-    { label: "All Rarities", value: "all" },
-    { label: "Common", value: "common" },
-    { label: "Uncommon", value: "uncommon" },
-    { label: "Rare", value: "rare" },
-    { label: "Epic", value: "epic" },
-    { label: "Legendary", value: "legendary" },
-];
-const colorMap: Record<string, string> = {
-    "text-yellow-600": "bg-yellow-600",
-    "text-purple-600": "bg-purple-600",
-    "text-blue-600": "bg-blue-600",
-    "text-green-600": "bg-green-600",
-    "text-gray-600": "bg-gray-500"
-};
+const blanks = computed(() => Math.max(12 - shown.value.length, 3))
+const hue = computed(() =>
+    ranking.value === 'all' ? (suits.value[0]?.ranking.color ?? null) : colourFor(ranking.value))
 
-// Handle click outside to hide tooltip
-const handleClickOutside = (event: Event) => {
-    const target = event.target as HTMLElement;
-    const tooltipContainer = target.closest('.tooltip-container');
-    if (!tooltipContainer && showTooltip.value) {
-        showTooltip.value = false;
-    }
-};
+function toggleRanking(key: string) {
+    ranking.value = ranking.value === key ? 'all' : key
+}
 
-onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
-});
-
-onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
-});
-
-// Load counter preference from localStorage
-onMounted(() => {
-    const savedCounterPreference = localStorage.getItem("catch-em-all-show-counters");
-    if (savedCounterPreference !== null) {
-        showCounters.value = JSON.parse(savedCounterPreference);
-    }
-});
-
-watch(showCounters, (newValue) => {
-    localStorage.setItem("catch-em-all-show-counters", JSON.stringify(newValue));
-});
-
-// Filter collection by rarity
-const filteredCollection = computed(() => {
-    //TODO: figure out if having props.collection.species "isEmpty" check is necessary
-
-    // Return empty array if collection or species is not loaded yet
-    if (!props.collection?.suits) {
-        return [];
-    }
-    if (selectedRarity.value === "all") {
-        return props.collection.suits;
-    }
-    return props.collection.suits.filter(
-        (suit) => suit.rarity.level === selectedRarity.value
-    );
-});
-
-// Group species by rarity
-const collectionByRarity = computed(() => {
-    const grouped = {
-        legendary: [],
-        epic: [],
-        rare: [],
-        uncommon: [],
-        common: [],
-    };
-
-    props.collection.suits.forEach((suit) => {
-        const rarity = suit.rarity.level;
-        if (grouped[rarity]) {
-            grouped[rarity].push(suit);
-        }
-    });
-
-    return grouped;
-});
-
-
-// Get rarity icon
-const getRarityIcon = (rarity: string) => {
-    switch (rarity) {
-        case "legendary":
-            return Crown;
-        case "epic":
-            return Gem;
-        case "rare":
-            return Sparkles;
-        case "uncommon":
-            return Star;
-        case "common":
-            return BookOpen;
-        default:
-            return Star;
-    }
-};
-
-// Get rarity stats
-const rarityStats = computed(() => {
-    const stats = {
-        legendary: 0,
-        epic: 0,
-        rare: 0,
-        uncommon: 0,
-        common: 0,
-    };
-
-    props.collection.suits.forEach((suit) => {
-        const rarity = suit.rarity.level;
-        if (stats[rarity] !== undefined) {
-            stats[rarity] += 1;
-        }
-    });
-
-    return stats;
-});
-
-const getRarityBgColor = (textColor: string) => {
-    return colorMap[textColor] || "bg-gray-500";
-};
-
+function openProfile(suit: Suit) {
+    const uuid = suit.profileUuid ?? suit.gallery.profileUuid
+    if (!uuid) return
+    router.visit(route('catch-em-all.profiles.show', uuid) + `?from=${suit.gallery.id}`)
+}
 </script>
 
 <template>
     <CatchEmAllLayout
         title="Collection"
-        subtitle="Your fursuiter collection"
+        :subtitle="`${suits.length} of ${total.toLocaleString('en')} badges at EF30`"
+        :count="collection?.totalCatches ?? 0"
+        :hue="hue"
         :flash="flash"
-        icon="library"
     >
-        <!-- Collection Stats -->
-        <Card class="bg-white shadow-sm border border-gray-700">
-            <template #content>
-                <div class="text-center mb-4">
-                    <h2 class="text-xl font-bold text-gray-200">
-                        Your Collection
-                    </h2>
-                    <p
-                        class="text-sm text-gray-300"
-                        v-if="collection?.species !== undefined"
-                    >
-                        {{
-                            Object.keys(props.collection.species).length
-                        }}
-                        unique species • {{ collection.totalCatches }} total
-                        catches
-                    </p>
-                    <p class="text-sm text-gray-300" v-else>
-                        Loading collection...
-                    </p>
-                </div>
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 14px">
+            <select v-model="ranking" class="cea-select">
+                <option value="all">All rankings</option>
+                <option v-for="entry in RANKINGS" :key="entry.key" :value="entry.key">{{ entry.label }}</option>
+            </select>
+            <div class="cea-seg">
+                <button :class="{ on: view === 'grid' }" title="Grid" aria-label="Grid" @click="view = 'grid'">
+                    <LayoutGrid :size="17" />
+                </button>
+                <button :class="{ on: view === 'list' }" title="List" aria-label="List" @click="view = 'list'">
+                    <List :size="17" />
+                </button>
+            </div>
+        </div>
 
-                <!-- Rarity Distribution -->
-                <div class="grid grid-cols-5 gap-2 mb-4">
-                    <div
-                        class="icon-box text-center bg-yellow-50 rounded-lg border border-yellow-200 rarity-tile"
-                    >
-                        <Crown class="w-5 h-5 mx-auto mb-1 text-yellow-800" />
-                        <div class="text-sm font-bold text-yellow-800">
-                            {{ rarityStats.legendary }}
-                        </div>
-                        <div class="icon-text text-yellow-800">Legendary</div>
-                    </div>
-                    <div
-                        class="icon-box text-center bg-purple-50 rounded-lg border border-purple-200 rarity-tile"
-                    >
-                        <Gem class="w-5 h-5 mx-auto mb-1 text-purple-800" />
-                        <div class="text-sm font-bold text-purple-800">
-                            {{ rarityStats.epic }}
-                        </div>
-                        <div class="icon-text text-purple-800">Epic</div>
-                    </div>
-                    <div
-                        class="icon-box text-center bg-blue-50 rounded-lg border border-blue-200 rarity-tile"
-                    >
-                        <Sparkles class="w-5 h-5 mx-auto mb-1 text-blue-800" />
-                        <div class="text-sm font-bold text-blue-800">
-                            {{ rarityStats.rare }}
-                        </div>
-                        <div class="icon-text text-blue-800">Rare</div>
-                    </div>
-                    <div
-                        class="icon-box text-center bg-green-50 rounded-lg border border-green-200 rarity-tile"
-                    >
-                        <Star class="w-5 h-5 mx-auto mb-1 text-green-800" />
-                        <div class="text-sm font-bold text-green-800">
-                            {{ rarityStats.uncommon }}
-                        </div>
-                        <div class="icon-text text-green-800">Uncommon</div>
-                    </div>
-                    <div
-                        class="icon-box text-center bg-gray-50 rounded-lg border border-gray-200 rarity-tile"
-                    >
-                        <BookOpen class="w-5 h-5 mx-auto mb-1 text-gray-800" />
-                        <div class="text-sm font-bold text-gray-800">
-                            {{ rarityStats.common }}
-                        </div>
-                        <div class="icon-text text-gray-800">Common</div>
-                    </div>
-                </div>
-            </template>
-        </Card>
+        <div class="cea-headline">
+            <div class="num"><b>{{ suits.length }}</b><span>caught</span></div>
+            <div class="meta">
+                <div class="cea-bar"><i :style="{ width: `${Math.max(percent, 1.5)}%` }" /></div>
+                <small>{{ percent }}% of {{ total.toLocaleString('en') }} badges · {{ speciesCount }} species</small>
+            </div>
+        </div>
 
-        <!-- Filters and Controls -->
-        <Card class="bg-white shadow-sm border border-gray-700">
-            <template #content>
-                <div
-                    class="flex flex-col flex-wrap gap-4 items-start sm:items-center justify-between"
-                    :class="
-                        eventOptions.length > 2 ? 'sm:flex-row' : 'xs:flex-row'
-                    "
+        <div class="cea-ranking">
+            <button
+                v-for="entry in tally"
+                :key="entry.key"
+                class="cea-stat"
+                :class="{ on: ranking === entry.key }"
+                :style="{ '--cea-tone': entry.colour }"
+                @click="toggleRanking(entry.key)"
+            >
+                <component :is="entry.icon" :size="16" />
+                <b>{{ entry.n }}</b>
+                <small>{{ entry.label }}</small>
+            </button>
+        </div>
+
+        <template v-if="view === 'grid'">
+            <div class="cea-tiles">
+                <button
+                    v-for="suit in shown"
+                    :key="suit.gallery.id"
+                    class="cea-tile"
+                    :style="{ '--cea-tone': suit.ranking.color }"
+                    :title="`${suit.gallery.name} · ${suit.ranking.label}`"
+                    @click="openProfile(suit)"
                 >
-                <div class="flex flex-row flex-wrap gap-5 w-full items-start sm:items-center justify-between align-middle">
-                    <!-- Event Filter -->
-                    <div v-if="eventOptions.length > 2" class="flex-1 min-w-40">
-                        <label
-                            class="block text-sm font-medium text-gray-300 mb-2"
-                            >Event:</label
-                        >
-                        <Dropdown
-                            v-model="selectedEventValue"
-                            :options="eventOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            class="w-full"
-                            @change="onEventChange"
-                            fluid
-                        />
-                    </div>
+                    <FursuitPhoto :src="suit.gallery.image" :name="suit.gallery.name" :tone="suit.ranking.color" />
+                    <span v-if="(collection.species[suit.species] ?? 0) > 1" class="count">
+                        {{ collection.species[suit.species] }}
+                    </span>
+                </button>
+                <span v-for="n in blanks" :key="`blank-${n}`" class="cea-tile blank" />
+            </div>
+            <p class="cea-hint" style="margin-top: 14px">
+                Tap a sticker for the player behind it. Dashed slots are people still out there.
+            </p>
+        </template>
 
-                    <!-- Rarity Filter -->
-                    <div class="flex-1 min-w-40">
-                        <label
-                            class="block text-sm font-medium text-gray-300 mb-2"
-                            >Rarity:</label
-                        >
-                        <Dropdown
-                            v-model="selectedRarity"
-                            :options="rarityOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            class="w-full"
-                            fluid
+        <template v-else>
+            <div class="cea-two">
+            <div
+                v-for="group in bySpecies"
+                :key="group.species"
+                class="cea-species"
+                :style="{ '--cea-tone': group.colour }"
+                @click="openSpecies = openSpecies === group.species ? null : group.species"
+            >
+                <div class="cea-catchrow" style="margin: 0; border: 0; border-radius: 0; background: none">
+                    <span class="thumb">
+                        <FursuitPhoto
+                            :src="group.suits[0].gallery.image"
+                            :name="group.suits[0].gallery.name"
+                            :tone="group.colour"
                         />
-                    </div>
+                    </span>
+                    <span class="who">
+                        <b>{{ group.species }}</b>
+                        <small>{{ group.suits.length }} caught · {{ group.population }} at EF30</small>
+                    </span>
+                    <span class="cea-rlabel" :style="{ color: group.colour }">{{ group.label }}</span>
                 </div>
-                <div class="flex flex-row flex-wrap gap-4 w-full items-start sm:items-center align-middle">
-                    <!-- View Mode Toggle -->
-                    <div class="flex-shrink-0">
-                        <label
-                            class="block text-sm font-medium text-gray-300 mb-2"
-                            >View:</label
-                        >
-                        <div
-                            class="flex rounded-lg border border-gray-300 overflow-hidden"
-                        >
-                            <button
-                                @click="viewMode = 'list'"
-                                class="px-3 py-2 h-9 transition-colors"
-                                :class="
-                                    viewMode === 'list'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                                "
-                            >
-                                <List class="w-5 h-5" />
-                            </button>
-                            <button
-                                @click="viewMode = 'grid'"
-                                class="px-3 py-2 h-9 transition-colors"
-                                :class="
-                                    viewMode === 'grid'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                                "
-                            >
-                                <Grid3X3 class="w-5 h-5" />
-                            </button>
-                        </div>
-                    </div>
-                    <!-- Counter Toggle -->
-                    <div class="flex-shrink-0 relative tooltip-container ">
-                        <label
-                            class="block text-sm font-medium text-gray-300 mb-2"
-                            >Counters:</label
-                        >
-                        <div class="relative">
-                            <button
-                                @click="showCounters = !showCounters"
-                                class="px-3 py-2 rounded-lg border border-gray-300 transition-colors h-10 w-16"
-                                :class="
-                                    showCounters
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                                "
-                                :title="showCounters 
-                                    ? 'Hide scoring numbers on fursuit cards' 
-                                    : 'Show scoring numbers on fursuit cards'"
-                            >
-                                <span class="text-sm font-medium">
-                                    {{ showCounters ? 'Hide' : 'Show' }}
-                                </span>
-                            </button>
-                            
-                            <!-- Mobile Tooltip Info Button -->
-                            <button
-                                @click="showTooltip = !showTooltip"
-                                class="absolute -top-1 -right-1 w-4 h-4 bg-gray-500 hover:bg-gray-600 text-white rounded-full flex items-center justify-center md:hidden"
-                                type="button"
-                            >
-                                <Info class="w-2.5 h-2.5" />
-                            </button>
-                        </div>
-                        
-                        <!-- Mobile Tooltip -->
-                        <div 
-                            v-show="showTooltip"
-                            class="absolute top-16 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap md:hidden"
-                        >
-                            Shows total catches made by all players
-                            <div class="absolute -top-1 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-gray-800"></div>
-                        </div>
-                    </div>
-                </div>
-                </div>
-            </template>
-        </Card>
-
-        <!-- Collection Display -->
-        <Card class="bg-white shadow-sm border border-gray-700">
-            <template #content>
-                <!-- Grid View -->
-                <div
-                    v-if="viewMode === 'grid'"
-                    class="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
-                >
-                    <div
-                        v-for="fursuit in filteredCollection"
-                        :key="fursuit.gallery.id"
-                        @click="setImageView(fursuit.gallery)"
-                        class="cursor-pointer transform transition-transform hover:scale-105"
+                <div v-if="openSpecies === group.species" class="subrows">
+                    <button
+                        v-for="suit in group.suits"
+                        :key="suit.gallery.id"
+                        class="cea-subrow"
+                        @click.stop="openProfile(suit)"
                     >
-                        <GalleryItem
-                            :fursuit="fursuit.gallery"
-                            :rarity="fursuit.rarity"
-                            :hideCount="!showCounters"
-                            :profileUrl="
-                                fursuit.profileUuid
-                                    ? route('catch-em-all.profiles.show', fursuit.profileUuid)
-                                    : undefined
-                            "
-                        />
-                    </div>
+                        <span>{{ suit.gallery.name }}</span>
+                        <small>{{ suit.gallery.owner ?? 'unknown owner' }}</small>
+                    </button>
                 </div>
-
-                <!-- List View -->
-                <div v-else class="space-y-2">
-                    <div
-                        v-for="fursuit in filteredCollection"
-                        :key="fursuit.gallery.id"
-                        class="flex items-center p-3 bg-gray-800 rounded-lg shadow-sm border border-gray-700"
-                    >
-                        <img
-                            :src="fursuit.gallery.image"
-                            :alt="fursuit.gallery.name"
-                            @click="setImageView(fursuit.gallery)"
-                            class="w-12 h-12 rounded-md object-cover mr-4 cursor-pointer"
-                        />
-                        <div class="flex-1">
-                            <h4 class="font-bold text-base text-gray-200">
-                                <Link
-                                    v-if="fursuit.profileUuid"
-                                    :href="route('catch-em-all.profiles.show', fursuit.profileUuid)"
-                                    class="hover:underline hover:text-blue-400"
-                                >{{ fursuit.gallery.name }}</Link>
-                                <template v-else>{{ fursuit.gallery.name }}</template>
-                            </h4>
-                            <p class="text-sm text-gray-400">
-                                {{ fursuit.species }}
-                            </p>
-                        </div>
-                        
-                        <!-- Combined Rarity and Counter Badge -->
-                        <div class="text-center mx-4">
-                            <span
-                                class="px-2 py-1 text-xs font-semibold text-white rounded-full whitespace-nowrap"
-                                :class="getRarityBgColor(fursuit.rarity.color)"
-                            >
-                                <template v-if="fursuit.gallery.scoring > 0 && showCounters">
-                                    {{ fursuit.gallery.scoring }} · {{ fursuit.rarity.label }}
-                                </template>
-                                <template v-else>
-                                    {{ fursuit.rarity.label }}
-                                </template>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                                    <!-- Image View Modal -->
-                    <div
-                        v-if="imageViewIsOpen"
-                        @click="toggleImageView"
-                        class="  fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-all"
-                    >
-                        <div @click.stop class="relative max-w-5xl max-h-[90vh] mx-4">
-
-                            <img
-                                v-if="viewFursuit"
-                                :src="viewFursuit.image"
-                                :alt="viewFursuit.name"
-                                class="max-w-[90%] m-auto max-h-[90vh] object-contain rounded-lg cursor-pointer"
-                            />
-
-                            <div v-if="viewFursuit" class="bg-black bg-opacity-50 rounded-lg mt-4 p-4 text-white">
-                                <component
-                                    :is="viewFursuit.profileUuid ? Link : 'div'"
-                                    :href="
-                                        viewFursuit.profileUuid
-                                            ? route('catch-em-all.profiles.show', viewFursuit.profileUuid)
-                                            : undefined
-                                    "
-                                    class="block mb-2"
-                                    :class="viewFursuit.profileUuid && 'hover:underline'"
-                                >
-                                    <h3 class="text-2xl font-bold">{{ viewFursuit.name }}</h3>
-                                    <p v-if="viewFursuit.owner" class="text-sm opacity-90">
-                                        by {{ viewFursuit.owner }}
-                                    </p>
-                                </component>
-                                <div class="flex flex-wrap gap-4 text-sm">
-                                    <div class="flex items-center gap-2">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                        </svg>
-                                        <span>{{ viewFursuit.species }}</span>
-                                    </div>
-                                    <div v-if="viewFursuit.scoring > 0" class="flex items-center gap-2">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                        </svg>
-                                        <span>{{ viewFursuit.scoring }} catches</span>
-                                    </div>
-                                    <div v-if="viewFursuit.event" class="flex items-center gap-2">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        <span>{{ viewFursuit.event }}</span>
-                                    </div>
-                                    <!-- <div v-if="selected_event?.archival_notice" class="flex items-center gap-2 text-amber-200">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span class="text-sm">📜 {{ selected_event.archival_notice }}</span>
-                                    </div> -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                <!-- Empty State -->
-                <div
-                    v-if="filteredCollection.length === 0"
-                    class="text-center py-12"
-                >
-                    <Filter
-                        v-if="selectedRarity !== 'all'"
-                        class="w-16 h-16 mx-auto mb-4 text-gray-300"
-                    />
-                    <h3 class="text-lg font-medium text-gray-200 mb-2">
-                        {{
-                            selectedRarity !== "all"
-                                ? "No species found"
-                                : "No collection yet"
-                        }}
-                    </h3>
-                    <p class="text-gray-300">
-                        {{
-                            selectedRarity !== "all"
-                                ? "Try a different rarity filter or start catching more fursuiters!"
-                                : "Start catching fursuiters to build your collection!"
-                        }}
-                    </p>
-                </div>
-            </template>
-        </Card>
+            </div>
+            </div>
+            <p v-if="!bySpecies.length" class="cea-hint">Nothing at that ranking yet.</p>
+        </template>
     </CatchEmAllLayout>
 </template>
 
 <style scoped>
-/* Enhanced card styling */
-:deep(.p-card) {
-    border-radius: 12px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+.cea-select {
+    background: var(--cea-panel-2);
+    border: 1px solid var(--cea-line-soft);
+    color: var(--cea-ink);
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 9px 10px;
+    outline: none;
 }
-
-/* Collection item hover effects */
-.collection-item {
-    transition: all 0.2s ease;
+.cea-select:focus { border-color: var(--cea-accent-hi); }
+.cea-seg {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    background: var(--cea-panel-2);
+    border: 1px solid var(--cea-line-soft);
+    border-radius: 10px;
 }
-
-.collection-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.cea-seg button {
+    border: 0;
+    background: none;
+    color: var(--cea-muted);
+    padding: 7px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
 }
-
-.icon-text {
-    font-size: 0.55rem;
-    line-height: 0.75rem;
-}
-
-.icon-box {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-}
-
-/* Grid view animations */
-@keyframes sparkle {
-    0%,
-    100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-        transform: scale(1.1);
-    }
-}
-
-.legendary-sparkle {
-    animation: sparkle 2s ease-in-out infinite;
-}
+.cea-seg button.on { background: var(--cea-accent); color: #fff; }
 </style>
