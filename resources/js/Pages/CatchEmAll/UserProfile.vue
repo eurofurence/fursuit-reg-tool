@@ -696,7 +696,7 @@ const caughtHere = computed(
                                             </div>
                                         </div>
                                         <button
-                                            class="cea-btn ghost sm cea-sc-back"
+                                            class="w-[25%] cea-btn ghost sm cea-sc-back"
                                             @click="backToSpecialCodeList"
                                         >
                                             <ArrowLeft :size="16" /> Back
@@ -793,12 +793,9 @@ const caughtHere = computed(
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: auto;
+    width: 8rem;
     min-width: 0;
     padding: 5px 8px;
-    font-size: 11px;
-    line-height: 1;
-    white-space: nowrap;
 }
 .cea-sc-layout {
     display: grid;
@@ -884,7 +881,12 @@ const caughtHere = computed(
     color: var(--cea-muted);
 }
 .cea-sc-back {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 8rem;
+    min-width: 0;
+    padding: 5px 8px;
 }
 .cea-sc-qrwrap {
     display: flex;
