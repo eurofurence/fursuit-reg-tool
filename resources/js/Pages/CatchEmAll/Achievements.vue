@@ -170,8 +170,11 @@ function width(a: Achievement) {
     return `${held === undefined || held === -1 ? a.progressPercentage : held}%`;
 }
 
-const statsPercent = computed(() =>
+const earnedPercent = computed(() =>
     props.stats.total ? (props.stats.earned / props.stats.total) * 100 : 0,
+);
+const inProgressPercent = computed(() =>
+    props.stats.total ? (counts.value.progress / props.stats.total) * 100 : 0,
 );
 </script>
 
@@ -187,8 +190,18 @@ const statsPercent = computed(() =>
             <div class="cea-bar">
                 <i
                     :style="{
-                        width: `${Math.max(statsPercent, 1.5)}%`,
+                        width: `${earnedPercent}%`,
+                        background: 'var(--cea-tier-1)',
+                        borderRadius: inProgressPercent > 0 ? '3px 0 0 3px' : '3px',
+                    }"
+                />
+                <i
+                    :style="{
+                        left: `${earnedPercent}%`,
+                        width: `${inProgressPercent}%`,
                         background: 'var(--cea-tier-2)',
+                        opacity: 0.5,
+                        borderRadius: earnedPercent > 0 ? '0 3px 3px 0' : '3px',
                     }"
                 />
             </div>
@@ -386,6 +399,13 @@ const statsPercent = computed(() =>
 }
 .cea-progress .cea-bar {
     flex: 1;
+    position: relative;
+}
+.cea-progress .cea-bar i {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
 }
 .cea-progress-meta {
     display: flex;

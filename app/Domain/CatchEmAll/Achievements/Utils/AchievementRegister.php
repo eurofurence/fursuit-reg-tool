@@ -295,9 +295,6 @@ class AchievementRegister
         foreach (self::$achievements as $achievement) {
             if ($achievement instanceof LockedBy) {
                 $lockedByIds = $achievement->lockedBy();
-
-                
-
                 foreach ($lockedByIds as $lockedById) {
                     if (! isset(self::$idIndex[$lockedById])) {
                         throw new \InvalidArgumentException(

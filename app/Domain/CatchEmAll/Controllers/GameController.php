@@ -435,6 +435,8 @@ class GameController extends Controller
             "collection_{$eventUser->id}",
             sprintf('collection_user_%d', $eventUser->user_id),
             "total_fursuiters_{$eventUser->event_id}", // TODO: Forget when new fursuit gets approved and not here
+            "user_achievement_stats_{$eventUser->id}",
+            "user_achievements_{$eventUser->id}",
         ];
 
         $achievementKeys = AchievementRegister::getAllUserCachedKeys($eventUser);
