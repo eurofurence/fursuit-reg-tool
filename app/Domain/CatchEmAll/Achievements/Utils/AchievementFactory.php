@@ -77,14 +77,44 @@ class AchievementFactory
         // Get all registered achievements
         $allAchievements = AchievementRegister::getAllAchievementInstances();
 
-        $result = [];
-
+        // ACHIEVEMENT SORTING
+        $achievementsToRemove = [];
+        $completedAchievements = [];
         foreach ($allAchievements as $achievement) {
             // Filter out hidden achievements
             if ($achievement->isHidden()) {
+                $achievementsToRemove[] = $achievement->getId();
+                continue;
+            }
+            $userAchievement = $userAchievements->firstWhere('achievement', $achievement->getId());
+
+            // Check if achievement is completed
+            $isCompleted = $userAchievement && $userAchievement->isCompleted();
+            if ($isCompleted) {
+                $completedAchievements[] = $achievement->getId();
                 continue;
             }
 
+            // Filter out secret achievements that haven't been earned yet
+            if ($achievement->isSecret() && ! $isCompleted) {
+                $achievementsToRemove[] = $achievement->getId();
+                continue;
+            }
+        }
+
+        foreach ($completedAchievements as $completedId) {
+            $stacksOnId = AchievementRegister::getStacksOnAchievementID($completedId);
+            if ($stacksOnId && \in_array($stacksOnId, $completedAchievements)) {
+                $achievementsToRemove[] = $completedId;
+            }
+        }
+
+        // Remove hidden and secret achievements from the list
+        $allAchievements = array_filter($allAchievements, fn(Achievement $achievement) => !\in_array($achievement->getId(), $achievementsToRemove));
+
+        $result = [];
+
+        foreach ($allAchievements as $achievement) {
             // Get user achievement record if it exists
             /**
              * @var UserAchievement|null $userAchievement
@@ -93,11 +123,6 @@ class AchievementFactory
 
             // Check if achievement is completed
             $isCompleted = $userAchievement && $userAchievement->isCompleted();
-
-            // Filter out secret achievements that haven't been earned yet
-            if ($achievement->isSecret() && ! $isCompleted) {
-                continue; // Skip this achievement instead of throwing an exception
-            }
 
             // Get current progress (0 if no record exists)
             $currentProgress = $userAchievement ? $userAchievement->progress : 0;
@@ -157,6 +182,8 @@ class AchievementFactory
             ];
         }
 
-        return $result;
+
+
+        return array_values($result);
     }
 }

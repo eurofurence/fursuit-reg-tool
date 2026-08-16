@@ -3,9 +3,13 @@
 namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Interface\AchievementSeries;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
 use App\Domain\CatchEmAll\Interface\HasUserCache;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Interface\ProgressInfo;
+use App\Domain\CatchEmAll\Interface\StacksOn;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Event;
@@ -13,11 +17,39 @@ use App\Models\EventUser;
 use App\Models\Fursuit\Fursuit;
 use Cache;
 
-abstract class AFuredex extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo
+class Furedex extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, LockedBy, AchievementSeries, HiddenIfLocked, StacksOn
 {
     protected const CACHE_KEY = 'furedex_complete';
 
     protected const INFO_CACHE_KEY = 'info_furedex_complete';
+
+    protected int $maxProgress;
+    protected array $lockedByIds;
+    protected string $stacksOnId;
+
+
+    public function __construct(string $id, string $title, string $description, string $task, int $maxProgress, array $lockedByIds = [], string $stacksOnId = '')
+    {
+        parent::__construct($id, $title, $description, $task);
+        $this->maxProgress = $maxProgress;
+        $this->lockedByIds = $lockedByIds;
+        $this->stacksOnId = $stacksOnId;
+    }
+
+    public function lockedBy(): array
+    {
+        return $this->lockedByIds;
+    }
+
+    public function getMaxProgress(): int
+    {
+        return $this->maxProgress ?: \count($this->getSpecies());
+    }
+
+    public function stacksOn(): string
+    {
+        return $this->stacksOnId;
+    }
 
     /**
      * Get the info cache key for a specific event user.
@@ -104,5 +136,25 @@ abstract class AFuredex extends SimpleAchievement implements HasGlobalCache, Has
     public function getUserCacheKeys(EventUser $eventUser): array
     {
         return [$this->getInfoCacheKey($eventUser)];
+    }
+
+    public static function getAchievements(): array
+    {
+        $definitions = [
+            ['furedex_5', 'Fill the furédex (1/4)', 5, [], ''],
+            ['furedex_10', 'Fill the furédex (2/4)', 10, ['furedex_5'], 'furedex_5'],
+            ['furedex_20', 'Fill the furédex (3/4)', 20, ['furedex_10'], 'furedex_10'],
+        ];
+
+        $achievements = array_map(
+            fn (array $d) => new self($d[0], $d[1], "You caught {$d[2]} species at least once. Congratulations!", "Catch {$d[2]} species at least once.", $d[2], $d[3], $d[4]),
+            $definitions
+        );
+
+        // Total species count is only known via the instance (cached lookup), not statically
+        $complete = new self('furedex_complete', 'Fill the furédex (4/4)', 'You caught every species. Congratulations!', 'Catch every species at least once.', 0, ['furedex_20'], 'furedex_20');
+        $achievements[] = $complete;
+
+        return $achievements;
     }
 }

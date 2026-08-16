@@ -6,26 +6,23 @@ use App\Domain\CatchEmAll\Achievements\Archivist;
 use App\Domain\CatchEmAll\Achievements\Collector;
 use App\Domain\CatchEmAll\Achievements\Curator;
 use App\Domain\CatchEmAll\Achievements\FirstCatch;
-use App\Domain\CatchEmAll\Achievements\Furedex10;
-use App\Domain\CatchEmAll\Achievements\Furedex20;
-use App\Domain\CatchEmAll\Achievements\Furedex5;
-use App\Domain\CatchEmAll\Achievements\FuredexComplete;
+use App\Domain\CatchEmAll\Achievements\Furedex;
 use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
 use App\Domain\CatchEmAll\Achievements\Nice;
 use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\Special\BugBountyHunter;
-use App\Domain\CatchEmAll\Achievements\Special\CEATeamAll;
-use App\Domain\CatchEmAll\Achievements\Special\CEATeamOne;
-use App\Domain\CatchEmAll\Achievements\Special\CEATeamThree;
+use App\Domain\CatchEmAll\Achievements\Special\CEATeam;
 use App\Domain\CatchEmAll\Achievements\Special\Explorer;
 use App\Domain\CatchEmAll\Achievements\TheCompletionist;
 use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
+use App\Domain\CatchEmAll\Interface\AchievementSeries;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
 use App\Domain\CatchEmAll\Interface\HasUserCache;
 use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
+use App\Domain\CatchEmAll\Interface\StacksOn;
 use App\Models\EventUser;
 use Illuminate\Support\Facades\Log;
 
@@ -46,19 +43,23 @@ class AchievementRegister
         Nice::class,
         NightOwl::class,
         TheLegendary151::class,
-        Furedex5::class,
-        Furedex10::class,
-        Furedex20::class,
-        FuredexComplete::class,
         TheCompletionist::class,
         // Special achievements
         BugBountyHunter::class,
-        CEATeamOne::class,
-        CEATeamThree::class,
-        CEATeamAll::class,
         Explorer::class,
         // Add new achievements here in the format:
         // AchievementClassName::class,
+    ];
+
+    /**
+     * Registry of all available achievement series classes.
+     * Add new achievement series classes here to register them.
+     *
+     * @var array<class-string<AchievementSeries>>
+     */
+    private static array $achievementSeries = [
+        Furedex::class,
+        CEATeam::class,
     ];
 
     /**
@@ -84,6 +85,14 @@ class AchievementRegister
      * @var array<string, array<SpecialAchievement>>
      */
     protected static array $specialCodeIndex = [];
+
+    /**
+     * Index: StacksOn Achievement ID => Achievement ID of StacksOn Achievement
+     * Built during initialization for fast lookups of achievements that stack on others.
+     *
+     * @var array<string, string>
+     */
+    protected static array $stacksOnIndex = [];
 
     /**
      * Index: Array of normal achievements (non-special)
@@ -177,6 +186,11 @@ class AchievementRegister
         foreach (self::$achievementClasses as $className) {
             self::$achievements[$className] = new $className;
         }
+        foreach (self::$achievementSeries as $seriesClass) {
+            foreach ($seriesClass::getAchievements() as $instance) {
+                self::$achievements[$instance->getId()] = $instance;
+            }
+        }
     }
 
     /**
@@ -189,6 +203,7 @@ class AchievementRegister
         self::buildSpecialCodeIndex();
         self::buildNormalAchievementsIndex();
         self::buildHasCacheAchievements();
+        self::buildStacksOnIndex();
     }
 
     /**
@@ -244,6 +259,25 @@ class AchievementRegister
             }
             if ($achievement instanceof HasGlobalCache) {
                 self::$hasGlobalCacheAchievements[] = $achievement;
+            }
+        }
+    }
+
+    /**
+     * Build the stacks-on index for achievements that implement the StacksOn interface.
+     */
+    protected static function buildStacksOnIndex(): void
+    {
+        foreach (self::$achievements as $achievement) {
+            if ($achievement instanceof StacksOn) {
+                $stacksOnId = $achievement->stacksOn();
+                if ($stacksOnId === '' || !self::hasAchievementId($stacksOnId)) {
+                    continue; // Skip if stacksOnId is empty
+                }
+                if(isset(self::$stacksOnIndex[$stacksOnId])) {
+                    throw new \InvalidArgumentException("Multiple achievements are trying to stack on the same achievement ID '{$stacksOnId}'.");
+                }
+                self::$stacksOnIndex[$stacksOnId] = $achievement->getId();
             }
         }
     }
@@ -464,10 +498,20 @@ class AchievementRegister
         $cacheKeys = [];
 
         foreach (self::$hasUserCacheAchievements as $achievement) {
-            $keys = $achievement->getCacheKeys($eventUser);
-            $cacheKeys = array_merge($cacheKeys, $keys);
+            $keys = $achievement->getUserCacheKeys($eventUser);
+            $cacheKeys = [...$cacheKeys, ...$keys];
         }
 
         return array_unique($cacheKeys);
+    }
+
+    public static function getStacksOnIndex(): array
+    {
+        return self::$stacksOnIndex;
+    }
+
+    public static function getStacksOnAchievementID(string $stacksOnId): ?string
+    {
+        return self::$stacksOnIndex[$stacksOnId] ?? null;
     }
 }

@@ -4,21 +4,54 @@ namespace App\Domain\CatchEmAll\Achievements\Special;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
+use App\Domain\CatchEmAll\Interface\AchievementSeries;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
 use App\Domain\CatchEmAll\Interface\HasUserCache;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Interface\ProgressInfo;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
+use App\Domain\CatchEmAll\Interface\StacksOn;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 use App\Domain\CatchEmAll\Models\SpecialCode;
 use App\Domain\CatchEmAll\Models\UserSpecialCatch;
 use App\Models\EventUser;
 use Cache;
 
-abstract class ACEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, SpecialAchievement //
+class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, SpecialAchievement, AchievementSeries, LockedBy, HiddenIfLocked, StacksOn //
 {
     protected const CACHE_KEY = 'cea_team';
 
     protected const INFO_CACHE_KEY = 'info_cea_team';
+
+    protected int $maxProgress;
+    protected array $lockedByIds;
+    protected string $stacksOnId;
+
+
+    public function __construct(string $id, string $title, string $description, string $task, int $maxProgress, array $lockedByIds = [], string $stacksOnId = '')
+    {
+        parent::__construct($id, $title, $description, $task);
+        $this->maxProgress = $maxProgress;
+        $this->lockedByIds = $lockedByIds;
+        $this->stacksOnId = $stacksOnId;
+    }
+
+    public function lockedBy(): array
+    {
+        return $this->lockedByIds;
+    }
+
+    public function getMaxProgress(): int
+    {
+        return $this->maxProgress ?: \count($this->getNames());
+    }
+
+    public function stacksOn(): string
+    {
+        return $this->stacksOnId;
+    }
+
 
     private function teamMemberName(mixed $constructorData): string
     {
@@ -91,7 +124,6 @@ abstract class ACEATeam extends SimpleAchievement implements HasGlobalCache, Has
                 ->map(function (UserSpecialCatch $catch): string {
                     return $this->teamMemberName($catch->specialCode?->constructor_data);
                 })
-                ->unique()
                 ->values()
                 ->toArray();
 
@@ -125,5 +157,20 @@ abstract class ACEATeam extends SimpleAchievement implements HasGlobalCache, Has
     public function getUserCacheKeys(EventUser $eventUser): array
     {
         return [$this->getInfoCacheKey($eventUser)];
+    }
+
+    public static function getAchievements(): array
+    {
+        $achievements = [];
+
+        $achievements[] = new self('cea_team', 'Catch \'Em All Team  (1/3)', 'You found someone that made this game!', 'Find a member of the Catch \'Em All development team.', 1, []);
+
+        $achievements[] = new self('cea_team_three', 'Catch \'Em All Team  (2/3)', 'You found three of us! Can you also find the remaining team?', 'You found one, but can you find two more of us?', 3, ['cea_team'], 'cea_team');
+
+        // Total species count is only known via the instance (cached lookup), not statically
+        $complete = new self('cea_team_all', 'Catch \'Em All Team  (3/3)', 'You found all of us! Congratulations!', 'Now find the rest of us!', 0, ['cea_team_three'], 'cea_team_three');
+        $achievements[] = $complete;
+
+        return $achievements;
     }
 }
