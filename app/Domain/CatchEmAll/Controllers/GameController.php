@@ -271,9 +271,11 @@ class GameController extends Controller
         $user = Auth::user();
         $eventUser = $this->getEventUser($user, $this->getCurrentEvent());
         $achievements = AchievementFactory::getUserAchievementData($eventUser);
+        $stats = AchievementFactory::getUserAchievementStats($eventUser);
 
         return Inertia::render('CatchEmAll/Achievements', [
             'achievements' => $achievements,
+            'stats' => $stats,
             'caughtTotal' => $eventUser ? $eventUser->fursuitsCatched()->count() : 0,
         ]);
     }

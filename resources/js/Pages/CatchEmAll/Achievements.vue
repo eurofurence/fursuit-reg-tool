@@ -23,7 +23,18 @@ type Achievement = {
     } | null;
 };
 
-const props = defineProps<{ achievements: Achievement[]; flash?: any; caughtTotal: number }>();
+type Stats = {
+    total: number;
+    earned: number;
+    earnedOptional: number;
+};
+
+const props = defineProps<{
+    achievements: Achievement[];
+    flash?: any;
+    caughtTotal: number;
+    stats: Stats;
+}>();
 
 const SNAPSHOT_KEY = "cea:achievements:snapshot:v3";
 
@@ -158,6 +169,10 @@ function width(a: Achievement) {
     const held = barWidth.value[a.id];
     return `${held === undefined || held === -1 ? a.progressPercentage : held}%`;
 }
+
+const statsPercent = computed(() =>
+    props.stats.total ? (props.stats.earned / props.stats.total) * 100 : 0,
+);
 </script>
 
 <template>
@@ -168,6 +183,23 @@ function width(a: Achievement) {
         hue="var(--cea-tier-2)"
         :flash="flash"
     >
+        <div class="cea-progress" style="margin-bottom: 14px">
+            <div class="cea-bar">
+                <i
+                    :style="{
+                        width: `${Math.max(statsPercent, 1.5)}%`,
+                        background: 'var(--cea-tier-2)',
+                    }"
+                />
+            </div>
+            <div class="cea-progress-meta">
+                <span class="frac">{{ stats.earned }}/{{ stats.total }}</span>
+                <span v-if="stats.earnedOptional" class="opt"
+                    >+{{ stats.earnedOptional }} optional</span
+                >
+            </div>
+        </div>
+
         <div class="cea-seg" style="margin-bottom: 14px">
             <button :class="{ on: filter === 'all' }" @click="filter = 'all'">
                 All <span>{{ achievements.length }}</span>
@@ -283,9 +315,7 @@ function width(a: Achievement) {
                         >
                             <div class="subgoals-head">
                                 Found
-                                {{
-                                    item.progressDetail.currentProgress.length
-                                }}
+                                {{ item.progressDetail.currentProgress.length }}
                                 of
                                 {{ item.progressDetail.totalProgress.length }}
                             </div>
@@ -343,6 +373,34 @@ function width(a: Achievement) {
 .cea-seg button.on {
     background: var(--cea-accent);
     color: #fff;
+}
+
+.cea-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--cea-panel-2);
+    border: 1px solid var(--cea-line-soft);
+    border-radius: 10px;
+}
+.cea-progress .cea-bar {
+    flex: 1;
+}
+.cea-progress-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    font-size: 11.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.cea-progress-meta .frac {
+    color: var(--cea-ink);
+}
+.cea-progress-meta .opt {
+    color: var(--cea-muted);
 }
 
 .cea-ach {

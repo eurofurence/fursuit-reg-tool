@@ -186,4 +186,44 @@ class AchievementFactory
 
         return array_values($result);
     }
+
+    public static function getUserAchievementStats(EventUser $eventUser): array
+    {
+        $userAchievements = UserAchievement::where('event_user_id', $eventUser->id)->get();
+        $allAchievements = AchievementRegister::getAllAchievementInstances();
+
+        $totalAchievements = $earnedAchievements = $earnedOptionalAchievements = 0;
+
+        foreach ($allAchievements as $achievement) {
+            // Filter out hidden achievements
+            if ($achievement->isHidden()) {
+                continue;
+            }
+
+            // Filter out secret achievements that haven't been earned yet
+            $userAchievement = $userAchievements->firstWhere('achievement', $achievement->getId());
+            $isCompleted = $userAchievement && $userAchievement->isCompleted();
+            if ($achievement->isSecret() && ! $isCompleted) {
+                continue;
+            }
+
+            // Count total achievements
+            $totalAchievements++;
+
+            // Count earned achievements
+            if ($isCompleted) {
+                if ($achievement->isOptional()) {
+                    $earnedOptionalAchievements++;
+                } else {
+                    $earnedAchievements++;
+                }
+            }
+        }
+
+        return [
+            'total' => $totalAchievements,
+            'earned' => $earnedAchievements,
+            'earnedOptional' => $earnedOptionalAchievements,
+        ];
+    }
 }
