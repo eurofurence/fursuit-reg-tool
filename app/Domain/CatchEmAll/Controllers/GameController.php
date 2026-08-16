@@ -274,6 +274,7 @@ class GameController extends Controller
 
         return Inertia::render('CatchEmAll/Achievements', [
             'achievements' => $achievements,
+            'caughtTotal' => $eventUser ? $eventUser->fursuitsCatched()->count() : 0,
         ]);
     }
 

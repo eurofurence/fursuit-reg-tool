@@ -171,10 +171,25 @@ body.cea-page { overscroll-behavior-y: contain; }
     font-variant-numeric: tabular-nums;
 }
 /* the count tiers as it grows, so the header says something at a glance */
-.cea-pill.t1 { color: #e0a35f; border-color: rgba(192,122,67,.55); background: rgba(192,122,67,.14); }
-.cea-pill.t2 { color: #cfd8e2; border-color: rgba(185,196,207,.5); background: rgba(185,196,207,.12); }
-.cea-pill.t3 { color: #f0c86b; border-color: rgba(217,165,32,.6); background: rgba(217,165,32,.15); }
-.cea-pill.t4 { color: #c3aef5; border-color: rgba(123,92,214,.6); background: rgba(123,92,214,.18); }
+.cea-pill.t0 {
+    color: #1e1e1e;
+    border-color: rgba(255, 232, 232, 0.5);
+    background: linear-gradient(135deg,
+        #ff7b7b 0%,
+        #ffb86b 18%,
+        #ffe66d 36%,
+        #7fe7bd 54%,
+        #6ab8ff 72%,
+        #b596ff 88%,
+        #ff8ec9 100%
+    );
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+.cea-pill.t1 { color: #7eb8ff; border-color: rgba(94, 149, 255, 0.55); background: rgba(94, 149, 255, 0.14); }
+.cea-pill.t2 { color: #ef9e5f; border-color: rgba(206, 125, 62, 0.55); background: rgba(206, 125, 62, 0.14); }
+.cea-pill.t3 { color: #cfd8e2; border-color: rgba(185,196,207,.5); background: rgba(185,196,207,.12); }
+.cea-pill.t4 { color: #f0c86b; border-color: rgba(217,165,32,.6); background: rgba(217,165,32,.15); }
+.cea-pill.t5 { color: #c3aef5; border-color: rgba(123,92,214,.6); background: rgba(123,92,214,.18); }
 .cea-pill .tier { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; opacity: .8; margin-left: 6px; }
 .cea-pill.bump { animation: cea-bump .34s ease; }
 

@@ -2,19 +2,13 @@
 
 namespace App\Domain\CatchEmAll\Achievements\Utils;
 
-use App\Domain\CatchEmAll\Achievements\Archivist;
 use App\Domain\CatchEmAll\Achievements\Collector;
-use App\Domain\CatchEmAll\Achievements\Curator;
-use App\Domain\CatchEmAll\Achievements\FirstCatch;
 use App\Domain\CatchEmAll\Achievements\Furedex;
-use App\Domain\CatchEmAll\Achievements\GottaCatchEmAll;
-use App\Domain\CatchEmAll\Achievements\Nice;
 use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\Special\BugBountyHunter;
 use App\Domain\CatchEmAll\Achievements\Special\CEATeam;
 use App\Domain\CatchEmAll\Achievements\Special\Explorer;
 use App\Domain\CatchEmAll\Achievements\TheCompletionist;
-use App\Domain\CatchEmAll\Achievements\TheLegendary151;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
 use App\Domain\CatchEmAll\Interface\AchievementSeries;
@@ -35,14 +29,7 @@ class AchievementRegister
      * @var array<class-string<Achievement>>
      */
     private static array $achievementClasses = [
-        FirstCatch::class,
-        Collector::class,
-        Curator::class,
-        Archivist::class,
-        GottaCatchEmAll::class,
-        Nice::class,
         NightOwl::class,
-        TheLegendary151::class,
         TheCompletionist::class,
         // Special achievements
         BugBountyHunter::class,
@@ -60,6 +47,7 @@ class AchievementRegister
     private static array $achievementSeries = [
         Furedex::class,
         CEATeam::class,
+        Collector::class,
     ];
 
     /**
@@ -307,6 +295,8 @@ class AchievementRegister
         foreach (self::$achievements as $achievement) {
             if ($achievement instanceof LockedBy) {
                 $lockedByIds = $achievement->lockedBy();
+
+                
 
                 foreach ($lockedByIds as $lockedById) {
                     if (! isset(self::$idIndex[$lockedById])) {

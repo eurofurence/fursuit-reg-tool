@@ -23,7 +23,7 @@ type Achievement = {
     } | null;
 };
 
-const props = defineProps<{ achievements: Achievement[]; flash?: any }>();
+const props = defineProps<{ achievements: Achievement[]; flash?: any; caughtTotal: number }>();
 
 const SNAPSHOT_KEY = "cea:achievements:snapshot:v3";
 
@@ -164,7 +164,7 @@ function width(a: Achievement) {
     <CatchEmAllLayout
         title="Achievements"
         :subtitle="`${counts.earned} of ${achievements.length} earned`"
-        :count="null"
+        :count="caughtTotal"
         hue="var(--cea-tier-2)"
         :flash="flash"
     >
