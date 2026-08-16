@@ -18,11 +18,11 @@ use App\Domain\CatchEmAll\Models\UserSpecialCatch;
 use App\Models\EventUser;
 use Cache;
 
-class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, SpecialAchievement, AchievementSeries, LockedBy, HiddenIfLocked, StacksOn //
+class FBTeam extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, SpecialAchievement, AchievementSeries, LockedBy, HiddenIfLocked, StacksOn //
 {
-    protected const CACHE_KEY = 'cea_team';
+    protected const CACHE_KEY = 'fb_team';
 
-    protected const INFO_CACHE_KEY = 'info_cea_team';
+    protected const INFO_CACHE_KEY = 'info_fb_team';
 
     protected int $maxProgress;
     protected array $lockedByIds;
@@ -82,9 +82,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
     protected function getNames(): array
     {
         return Cache::remember(self::CACHE_KEY, now()->addHours(1), function () {
-            $names = SpecialCode::where('type', SpecialCodeType::CATCH_EM_ALL_TEAM)->get()->map(function (SpecialCode $code) {
-                return $this->teamMemberName($code->constructor_data);
-            })->toArray();
+            $names = SpecialCode::whereIn('type', [SpecialCodeType::CATCH_EM_ALL_TEAM, SpecialCodeType::FURSUIT_BADGE_TEAM])->get()->map(fn(SpecialCode $code) => $this->teamMemberName($code->constructor_data))->toArray();
             sort($names);
 
             return $names;
@@ -94,7 +92,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
     public function updateAchievementProgress(AchievementUpdateContext $context): int
     {
         // This achievement can only be triggered by special code, not by catches
-        if (! $context->isSpecialCodeTrigger() || $context->specialCodeType !== SpecialCodeType::CATCH_EM_ALL_TEAM) {
+        if (! $context->isSpecialCodeTrigger() || ($context->specialCodeType !== SpecialCodeType::CATCH_EM_ALL_TEAM && $context->specialCodeType !== SpecialCodeType::FURSUIT_BADGE_TEAM)) {
             return -1; // Ignore this update
         }
 
@@ -107,7 +105,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
 
     public function getSpecialCode(): array
     {
-        return [SpecialCodeType::CATCH_EM_ALL_TEAM];
+        return [SpecialCodeType::CATCH_EM_ALL_TEAM, SpecialCodeType::FURSUIT_BADGE_TEAM];
     }
 
     /**
@@ -119,7 +117,7 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
             $caughtCodes = UserSpecialCatch::query()
                 ->with('specialCode')
                 ->where('event_user_id', $eventUser->id)
-                ->where('user_special_catches.type', SpecialCodeType::CATCH_EM_ALL_TEAM)
+                ->whereIn('user_special_catches.type', [SpecialCodeType::CATCH_EM_ALL_TEAM, SpecialCodeType::FURSUIT_BADGE_TEAM])
                 ->get()
                 ->map(function (UserSpecialCatch $catch): string {
                     return $this->teamMemberName($catch->specialCode?->constructor_data);
@@ -163,12 +161,12 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
     {
         $achievements = [];
 
-        $achievements[] = new self('cea_team', 'Catch \'Em All Team  (1/3)', 'You found someone that made this game!', 'Find a member of the Catch \'Em All development team.', 1, []);
+        $achievements[] = new self('fb_team', 'Fursuit Badge Team  (1/3)', 'You found someone that works on this application!', 'Find a member of the Fursuit Badge team.', 1, []);
 
-        $achievements[] = new self('cea_team_three', 'Catch \'Em All Team  (2/3)', 'You found three of us! Can you also find the remaining team?', 'You found one, but can you find two more of us?', 3, ['cea_team'], 'cea_team');
+        $achievements[] = new self('fb_team_five', 'Fursuit Badge Team  (2/3)', 'You found three of us! Can you also find the remaining team?', 'You found one, but can you find two more of us?', 5, ['fb_team'], 'fb_team');
 
         // Total species count is only known via the instance (cached lookup), not statically
-        $complete = new self('cea_team_all', 'Catch \'Em All Team  (3/3)', 'You found all of us! Congratulations!', 'Now find the rest of us!', 0, ['cea_team_three'], 'cea_team_three', isOptional: true);
+        $complete = new self('fb_team_all', 'Fursuit Badge Team  (3/3)', 'You found all of us! Congratulations!', 'Now find the rest of us!', 0, ['fb_team_five'], 'fb_team_five', isOptional: true);
         $achievements[] = $complete;
 
         return $achievements;

@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import { Check, ChevronDown, Flag, Lock } from "lucide-vue-next";
+import {
+    Check,
+    ChevronDown,
+    Flag,
+    Lock,
+    FlagTriangleRight,
+} from "lucide-vue-next";
 
 type Achievement = {
     id: number;
@@ -44,8 +50,6 @@ const open = ref<number[]>([]);
 const freshlyEarned = ref<number[]>([]);
 /** progressed since the last visit, id => where the bar was */
 const moved = ref<Record<number, number>>({});
-/** bars start at last visit's value so the growth is visible, then fill */
-const barWidth = ref<Record<number, number>>({});
 
 onMounted(() => {
     let before: Record<number, { done: boolean; pct: number }> = {};
@@ -61,27 +65,22 @@ onMounted(() => {
             freshlyEarned.value.push(item.id);
         if (!item.completed && was && item.progressPercentage > was.pct) {
             moved.value[item.id] = was.pct;
-            barWidth.value[item.id] = was.pct;
         }
     }
-
-    /* let the old width paint first, then animate to the new one */
-    requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
-            for (const id of Object.keys(moved.value)) barWidth.value[+id] = -1;
-        }),
-    );
 
     try {
         localStorage.setItem(
             SNAPSHOT_KEY,
             JSON.stringify(
-                Object.fromEntries(
-                    props.achievements.map((a) => [
-                        a.id,
-                        { done: a.completed, pct: a.progressPercentage },
-                    ]),
-                ),
+                props.achievements.reduce<
+                    Record<number, { done: boolean; pct: number }>
+                >((snapshot, achievement) => {
+                    snapshot[achievement.id] = {
+                        done: achievement.completed,
+                        pct: achievement.progressPercentage,
+                    };
+                    return snapshot;
+                }, {}),
             ),
         );
     } catch {
@@ -129,6 +128,9 @@ const sorted = computed(() =>
 const counts = computed(() => ({
     earned: props.achievements.filter((a) => state(a) === "earned").length,
     progress: props.achievements.filter((a) => state(a) === "progress").length,
+    progressNotOptional: props.achievements.filter(
+        (a) => state(a) === "progress" && !a.isOptional,
+    ).length,
     locked: props.achievements.filter((a) => state(a) === "locked").length,
 }));
 
@@ -166,22 +168,23 @@ function subgoals(a: Achievement) {
 }
 
 function width(a: Achievement) {
-    const held = barWidth.value[a.id];
-    return `${held === undefined || held === -1 ? a.progressPercentage : held}%`;
+    return `${a.progressPercentage}%`;
 }
 
 const earnedPercent = computed(() =>
     props.stats.total ? (props.stats.earned / props.stats.total) * 100 : 0,
 );
 const inProgressPercent = computed(() =>
-    props.stats.total ? (counts.value.progress / props.stats.total) * 100 : 0,
+    props.stats.total
+        ? (counts.value.progressNotOptional / props.stats.total) * 100
+        : 0,
 );
 </script>
 
 <template>
     <CatchEmAllLayout
         title="Achievements"
-        :subtitle="`${counts.earned} of ${achievements.length} earned`"
+        :subtitle="`${stats.earned} of ${stats.total} earned (+${stats.earnedOptional} optional)`"
         :count="caughtTotal"
         hue="var(--cea-tier-2)"
         :flash="flash"
@@ -192,7 +195,8 @@ const inProgressPercent = computed(() =>
                     :style="{
                         width: `${earnedPercent}%`,
                         background: 'var(--cea-tier-1)',
-                        borderRadius: inProgressPercent > 0 ? '3px 0 0 3px' : '3px',
+                        borderRadius:
+                            inProgressPercent > 0 ? '3px 0 0 3px' : '3px',
                     }"
                 />
                 <i
@@ -254,6 +258,7 @@ const inProgressPercent = computed(() =>
                 <span class="disc" :class="{ locked: !item.completed }">
                     <Check v-if="item.completed" :size="20" />
                     <Lock v-else-if="item.isLocked" :size="20" />
+                    <FlagTriangleRight v-else-if="item.isOptional" :size="20" />
                     <Flag v-else :size="20" />
                 </span>
                 <div class="body">
@@ -319,6 +324,10 @@ const inProgressPercent = computed(() =>
                             :class="{ task: item.completed }"
                         >
                             {{ item.task }}
+                        </p>
+                        <p v-if="item.isOptional" class="desc">
+                            This is an optional achievement, not required to
+                            complete the collection.
                         </p>
                         <!-- named sub-goals: the team members, the poster locations.
                              One tag each, filled once you have found it, so the list

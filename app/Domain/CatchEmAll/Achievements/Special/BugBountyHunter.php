@@ -39,8 +39,8 @@ class BugBountyHunter extends SimpleAchievement implements SpecialAchievement
         return $this->getMaxProgress(); // Return 1 (completed)
     }
 
-    public function getSpecialCode(): SpecialCodeType
+    public function getSpecialCode(): array
     {
-        return SpecialCodeType::BUG_BOUNTY;
+        return [SpecialCodeType::BUG_BOUNTY];
     }
 }

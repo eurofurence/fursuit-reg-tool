@@ -60,6 +60,11 @@ const props = defineProps<{
     flash?: any;
 }>();
 
+// TODO: add rarety tiers to achievements, and sort by tier first, then title
+props.achievements.sort((a, b) => {
+    return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+});
+
 const editing = ref(false);
 const lightbox = ref<Fursuit | null>(null);
 const specialCodesOpen = ref(false);

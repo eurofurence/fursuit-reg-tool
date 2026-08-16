@@ -93,9 +93,9 @@ class Explorer extends SimpleAchievement implements HasGlobalCache, HasUserCache
         return min($context->locationsExplored, $this->getMaxProgress());
     }
 
-    public function getSpecialCode(): SpecialCodeType
+    public function getSpecialCode(): array
     {
-        return SpecialCodeType::EXPLORER;
+        return [SpecialCodeType::EXPLORER];
     }
 
     /**

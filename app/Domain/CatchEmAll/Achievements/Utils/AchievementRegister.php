@@ -8,6 +8,7 @@ use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\Special\BugBountyHunter;
 use App\Domain\CatchEmAll\Achievements\Special\CEATeam;
 use App\Domain\CatchEmAll\Achievements\Special\Explorer;
+use App\Domain\CatchEmAll\Achievements\Special\FBTeam;
 use App\Domain\CatchEmAll\Achievements\TheCompletionist;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\Achievement;
@@ -48,6 +49,7 @@ class AchievementRegister
         Furedex::class,
         CEATeam::class,
         Collector::class,
+        FBTeam::class,
     ];
 
     /**
@@ -214,14 +216,14 @@ class AchievementRegister
     {
         foreach (self::$achievements as $achievement) {
             if ($achievement instanceof SpecialAchievement) {
-                $specialCode = $achievement->getSpecialCode();
-                $codeValue = $specialCode->value;
-
-                if (! isset(self::$specialCodeIndex[$codeValue])) {
-                    self::$specialCodeIndex[$codeValue] = [];
+                $specialCodes = $achievement->getSpecialCode();
+                foreach ($specialCodes as $specialCode) {
+                    $codeValue = $specialCode->value;
+                    if (! isset(self::$specialCodeIndex[$codeValue])) {
+                        self::$specialCodeIndex[$codeValue] = [];
+                    }
+                    self::$specialCodeIndex[$codeValue][] = $achievement;
                 }
-
-                self::$specialCodeIndex[$codeValue][] = $achievement;
             }
         }
     }
