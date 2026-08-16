@@ -162,6 +162,8 @@ class AchievementRegister
         self::$normalAchievements = [];
         self::$hasUserCacheAchievements = [];
         self::$hasGlobalCacheAchievements = [];
+        self::$stacksOnIndex = [];
+
         self::$requiredAchievementCount = 0;
         self::$optionalAchievementCount = 0;
     }
