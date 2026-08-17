@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Achievements\Special;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Enums\AchievementsTier;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\SpecialAchievement;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
@@ -19,7 +20,8 @@ class BugBountyHunter extends SimpleAchievement implements SpecialAchievement
             icon: '🐛',
             isSecret: true,
             isOptional: true,
-            isHidden: false
+            isHidden: false,
+            tier: AchievementsTier::TIER_0
         );
     }
 
@@ -39,8 +41,8 @@ class BugBountyHunter extends SimpleAchievement implements SpecialAchievement
         return $this->getMaxProgress(); // Return 1 (completed)
     }
 
-    public function getSpecialCode(): SpecialCodeType
+    public function getSpecialCode(): array
     {
-        return SpecialCodeType::BUG_BOUNTY;
+        return [SpecialCodeType::BUG_BOUNTY];
     }
 }

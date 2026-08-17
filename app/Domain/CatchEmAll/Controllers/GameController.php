@@ -271,9 +271,12 @@ class GameController extends Controller
         $user = Auth::user();
         $eventUser = $this->getEventUser($user, $this->getCurrentEvent());
         $achievements = AchievementFactory::getUserAchievementData($eventUser);
+        $stats = AchievementFactory::getUserAchievementStats($eventUser);
 
         return Inertia::render('CatchEmAll/Achievements', [
             'achievements' => $achievements,
+            'stats' => $stats,
+            'caughtTotal' => $eventUser ? $eventUser->fursuitsCatched()->count() : 0,
         ]);
     }
 
@@ -432,6 +435,8 @@ class GameController extends Controller
             "collection_{$eventUser->id}",
             sprintf('collection_user_%d', $eventUser->user_id),
             "total_fursuiters_{$eventUser->event_id}", // TODO: Forget when new fursuit gets approved and not here
+            "user_achievement_stats_{$eventUser->id}",
+            "user_achievements_{$eventUser->id}",
         ];
 
         $achievementKeys = AchievementRegister::getAllUserCachedKeys($eventUser);

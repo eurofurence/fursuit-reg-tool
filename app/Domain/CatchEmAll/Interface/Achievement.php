@@ -2,6 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Interface;
 
+use App\Domain\CatchEmAll\Enums\AchievementsTier;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 
 interface Achievement
@@ -63,4 +64,9 @@ interface Achievement
      * Check if achievement is hidden (does not get displayed at all).
      */
     public function isHidden(): bool;
+
+    /**
+     * Gets the Tier of the achievement.
+     */
+    public function getTier(): AchievementsTier;
 }

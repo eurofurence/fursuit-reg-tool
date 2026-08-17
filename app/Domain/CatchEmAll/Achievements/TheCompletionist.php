@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Enums\AchievementsTier;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 use App\Models\Event;
 
@@ -18,7 +19,8 @@ class TheCompletionist extends SimpleAchievement
             icon: '⚡',
             isSecret: false,
             isOptional: false,
-            isHidden: false
+            isHidden: false,
+            tier: AchievementsTier::TIER_5
         );
     }
 

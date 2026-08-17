@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Achievements\Special;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Enums\AchievementsTier;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
 use App\Domain\CatchEmAll\Interface\HasUserCache;
@@ -52,7 +53,8 @@ class Explorer extends SimpleAchievement implements HasGlobalCache, HasUserCache
             icon: '🧭',
             isSecret: false,
             isOptional: false,
-            isHidden: false
+            isHidden: false,
+            tier: AchievementsTier::TIER_5
         );
     }
 
@@ -93,9 +95,9 @@ class Explorer extends SimpleAchievement implements HasGlobalCache, HasUserCache
         return min($context->locationsExplored, $this->getMaxProgress());
     }
 
-    public function getSpecialCode(): SpecialCodeType
+    public function getSpecialCode(): array
     {
-        return SpecialCodeType::EXPLORER;
+        return [SpecialCodeType::EXPLORER];
     }
 
     /**

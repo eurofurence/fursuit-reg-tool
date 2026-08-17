@@ -2,6 +2,7 @@
 
 namespace App\Domain\CatchEmAll\Achievements\Abstract;
 
+use App\Domain\CatchEmAll\Enums\AchievementsTier;
 use App\Domain\CatchEmAll\Interface\Achievement;
 
 abstract class SimpleAchievement implements Achievement
@@ -11,7 +12,7 @@ abstract class SimpleAchievement implements Achievement
      *
      * @param  string|null  $task  Will be set to description if null
      */
-    public function __construct(string $id, string $title, string $description = '', ?string $task = null, string $icon = '', bool $isSecret = false, bool $isOptional = false, bool $isHidden = false)
+    public function __construct(string $id, string $title, string $description = '', ?string $task = null, string $icon = '', bool $isSecret = false, bool $isOptional = false, bool $isHidden = false, AchievementsTier $tier = AchievementsTier::TIER_1)
     {
         $this->id = $id;
         $this->title = $title;
@@ -21,6 +22,7 @@ abstract class SimpleAchievement implements Achievement
         $this->isSecret = $isSecret;
         $this->isOptional = $isOptional;
         $this->isHidden = $isHidden;
+        $this->tier = $tier;
     }
 
     protected string $id;
@@ -38,6 +40,8 @@ abstract class SimpleAchievement implements Achievement
     protected bool $isOptional;
 
     protected bool $isHidden;
+
+    protected AchievementsTier $tier;
 
     public function getId(): string
     {
@@ -77,5 +81,10 @@ abstract class SimpleAchievement implements Achievement
     public function isHidden(): bool
     {
         return $this->isHidden;
+    }
+
+    public function getTier(): AchievementsTier
+    {
+        return $this->tier;
     }
 }
