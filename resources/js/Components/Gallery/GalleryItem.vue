@@ -14,10 +14,10 @@ const props = defineProps({
 const thumbSrc = computed(() => props.fursuit.thumb || props.fursuit.image);
 
 const rankingConfig = computed(() => {
-    const level = props.ranking?.level || 'bronze';
-    
+    const level = props.ranking?.level || 'novice';
+
     const config = {
-        'bronze': {
+        'novice': {
             bgClass: 'bg-gray-100/95',
             titleClass: 'text-gray-900',
             speciesClass: 'text-gray-700',
@@ -26,16 +26,16 @@ const rankingConfig = computed(() => {
             cardRing: '',
             badgeClass: 'bg-slate-600 text-white border-white/20'
         },
-        'silver': {
+        'regular': {
             bgClass: 'bg-emerald-200/95',
-            titleClass: 'text-emerald-900 font-semibold', 
+            titleClass: 'text-emerald-900 font-semibold',
             speciesClass: 'text-emerald-800',
             shadowClass: 'shadow-emerald-200/50',
             cardGlow: 'shadow-emerald-400/20 hover:shadow-emerald-400/40',
             cardRing: '',
             badgeClass: 'bg-emerald-600 text-white border-emerald-400/30 shadow-emerald-200/50'
         },
-        'gold': {
+        'fluffy': {
             bgClass: 'bg-blue-200/95',
             titleClass: 'text-blue-900 font-bold',
             speciesClass: 'text-blue-800',
@@ -44,7 +44,7 @@ const rankingConfig = computed(() => {
             cardRing: '',
             badgeClass: 'bg-blue-600 text-white border-blue-400/30 shadow-blue-200/50'
         },
-        'platinum': {
+        'extraordinaire': {
             bgClass: 'bg-violet-300/95',
             titleClass: 'text-violet-900 font-bold',
             speciesClass: 'text-violet-800 font-medium',
@@ -53,7 +53,7 @@ const rankingConfig = computed(() => {
             cardRing: 'ring-1 ring-violet-400/30',
             badgeClass: 'bg-gradient-to-br from-violet-600 to-violet-700 text-white border-violet-400/40 shadow-violet-300/60'
         },
-        'diamond': {
+        'legend': {
             bgClass: 'bg-gradient-to-r from-amber-200/95 to-orange-200/95',
             titleClass: 'text-amber-900 font-bold',
             speciesClass: 'text-amber-800 font-medium',
@@ -64,7 +64,7 @@ const rankingConfig = computed(() => {
         }
     };
 
-    const result = config[level] || config.bronze;
+    const result = config[level] || config.novice;
     return { ...result, level };
 });
 
@@ -96,7 +96,7 @@ const rankingConfig = computed(() => {
         </div>
 
         <!-- Always visible info bar at bottom -->
-        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300" 
+        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300"
              :class="[rankingConfig.bgClass, rankingConfig.shadowClass]">
             <h4 class="text-sm truncate" :class="[rankingConfig.titleClass]">
                 <Link v-if="profileUrl" :href="profileUrl" @click.stop class="hover:underline">{{ fursuit.name }}</Link>
@@ -106,7 +106,7 @@ const rankingConfig = computed(() => {
         </div>
 
                 <!-- Catches count -->
-        <div v-show="fursuit.scoring > 0 && !hideCount" 
+        <div v-show="fursuit.scoring > 0 && !hideCount"
              class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full shadow-lg border"
              :class="[rankingConfig.badgeClass]">
             {{ fursuit.scoring }}
@@ -123,14 +123,14 @@ const rankingConfig = computed(() => {
 
 @keyframes epic-pulse {
     0%, 100% {
-        box-shadow: 
-            0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
             0 2px 4px -1px rgba(0, 0, 0, 0.06),
             0 0 0 rgba(139, 92, 246, 0);
     }
     50% {
-        box-shadow: 
-            0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
             0 2px 4px -1px rgba(0, 0, 0, 0.06),
             0 0 20px rgba(139, 92, 246, 0.3);
     }
@@ -142,14 +142,14 @@ const rankingConfig = computed(() => {
 
 @keyframes diamond-pulse {
     0%, 100% {
-        box-shadow: 
-            0 10px 15px -3px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 10px 15px -3px rgba(0, 0, 0, 0.1),
             0 4px 6px -2px rgba(0, 0, 0, 0.05),
             0 0 0 rgba(251, 191, 36, 0);
     }
     50% {
-        box-shadow: 
-            0 10px 15px -3px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 10px 15px -3px rgba(0, 0, 0, 0.1),
             0 4px 6px -2px rgba(0, 0, 0, 0.05),
             0 0 25px rgba(251, 191, 36, 0.4),
             0 0 40px rgba(251, 191, 36, 0.2);
