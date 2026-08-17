@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Enums\AchievementsTier;
 use App\Domain\CatchEmAll\Interface\AchievementSeries;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
 use App\Domain\CatchEmAll\Interface\HasUserCache;
@@ -28,9 +29,9 @@ class Furedex extends SimpleAchievement implements HasGlobalCache, HasUserCache,
     protected string $stacksOnId;
 
 
-    public function __construct(string $id, string $title, string $description, string $task, int $maxProgress, array $lockedByIds = [], string $stacksOnId = '')
+    public function __construct(string $id, string $title, string $description, string $task, int $maxProgress, array $lockedByIds = [], string $stacksOnId = '', AchievementsTier $tier = AchievementsTier::TIER_1, bool $isSecret = false, bool $isOptional = false, bool $isHidden = false)
     {
-        parent::__construct($id, $title, $description, $task);
+        parent::__construct($id, $title, $description, $task, '', $isSecret, $isOptional, $isHidden, $tier);
         $this->maxProgress = $maxProgress;
         $this->lockedByIds = $lockedByIds;
         $this->stacksOnId = $stacksOnId;
@@ -140,20 +141,39 @@ class Furedex extends SimpleAchievement implements HasGlobalCache, HasUserCache,
 
     public static function getAchievements(): array
     {
-        $definitions = [
-            ['furedex_5', 'Fill the furédex (1/4)', 5, [], ''],
-            ['furedex_10', 'Fill the furédex (2/4)', 10, ['furedex_5'], 'furedex_5'],
-            ['furedex_20', 'Fill the furédex (3/4)', 20, ['furedex_10'], 'furedex_10'],
+        $achievements = [
+            new self(
+                'furedex_5',
+                'Fill the furédex (1/4)',
+                'You caught 5 species at least once. Congratulations!',
+                'Catch 5 species at least once.',
+                5,
+                tier: AchievementsTier::TIER_1
+            ),
+            new self(
+                'furedex_10',
+                'Fill the furédex (2/4)',
+                'You caught 10 species at least once. Congratulations!',
+                'Catch 10 species at least once.',
+                10,
+                ['furedex_5'],
+                'furedex_5',
+                tier: AchievementsTier::TIER_3
+            ),
+            new self(
+                'furedex_20',
+                'Fill the furédex (3/4)',
+                'You caught 20 species at least once. Congratulations!',
+                'Catch 20 species at least once.',
+                20,
+                ['furedex_10'],
+                'furedex_10',
+                tier: AchievementsTier::TIER_4
+            ),
         ];
 
-        $achievements = array_map(
-            fn (array $d) => new self($d[0], $d[1], "You caught {$d[2]} species at least once. Congratulations!", "Catch {$d[2]} species at least once.", $d[2], $d[3], $d[4]),
-            $definitions
-        );
-
         // Total species count is only known via the instance (cached lookup), not statically
-        $complete = new self('furedex_complete', 'Fill the furédex (4/4)', 'You caught every species. Congratulations!', 'Catch every species at least once.', 0, ['furedex_20'], 'furedex_20');
-        $achievements[] = $complete;
+        $achievements[] = new self('furedex_complete', 'Fill the furédex (4/4)', 'You caught every species. Congratulations!', 'Catch every species at least once.', 0, ['furedex_20'], 'furedex_20', tier: AchievementsTier::TIER_5);
 
         return $achievements;
     }

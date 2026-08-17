@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Achievements\Special;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Enums\AchievementsTier;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\AchievementSeries;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
@@ -29,9 +30,9 @@ class FBTeam extends SimpleAchievement implements HasGlobalCache, HasUserCache, 
     protected string $stacksOnId;
 
 
-    public function __construct(string $id, string $title, string $description, string $task, int $maxProgress, array $lockedByIds = [], string $stacksOnId = '', bool $isOptional = false)
+    public function __construct(string $id, string $title, string $description, string $task, int $maxProgress, array $lockedByIds = [], string $stacksOnId = '', bool $isOptional = false, AchievementsTier $tier = AchievementsTier::TIER_1)
     {
-        parent::__construct($id, $title, $description, $task, isOptional: $isOptional);
+        parent::__construct($id, $title, $description, $task, isOptional: $isOptional, tier: $tier);
         $this->maxProgress = $maxProgress;
         $this->lockedByIds = $lockedByIds;
         $this->stacksOnId = $stacksOnId;
@@ -161,12 +162,12 @@ class FBTeam extends SimpleAchievement implements HasGlobalCache, HasUserCache, 
     {
         $achievements = [];
 
-        $achievements[] = new self('fb_team', 'Fursuit Badge Team  (1/3)', 'You found someone that works on this application!', 'Find a member of the Fursuit Badge team.', 1, []);
+        $achievements[] = new self('fb_team', 'Fursuit Badge Team  (1/3)', 'You found someone that works on this application!', 'Find a member of the Fursuit Badge team.', 1, [], tier: AchievementsTier::TIER_3);
 
-        $achievements[] = new self('fb_team_five', 'Fursuit Badge Team  (2/3)', 'You found three of us! Can you also find the remaining team?', 'You found one, but can you find two more of us?', 5, ['fb_team'], 'fb_team');
+        $achievements[] = new self('fb_team_five', 'Fursuit Badge Team  (2/3)', 'You found three of us! Can you also find the remaining team?', 'You found one, but can you find two more of us?', 5, ['fb_team'], 'fb_team', tier: AchievementsTier::TIER_4);
 
         // Total species count is only known via the instance (cached lookup), not statically
-        $complete = new self('fb_team_all', 'Fursuit Badge Team  (3/3)', 'You found all of us! Congratulations!', 'Now find the rest of us!', 0, ['fb_team_five'], 'fb_team_five', isOptional: true);
+        $complete = new self('fb_team_all', 'Fursuit Badge Team  (3/3)', 'You found all of us! Congratulations!', 'Now find the rest of us!', 0, ['fb_team_five'], 'fb_team_five', isOptional: true, tier: AchievementsTier::TIER_5);
         $achievements[] = $complete;
 
         return $achievements;

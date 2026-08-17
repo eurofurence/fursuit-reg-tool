@@ -31,10 +31,21 @@
     --cea-copper: #cf8b52;
 
     /* achievement tiers */
-    --cea-tier-1: #17a08f;
-    --cea-tier-2: #6f9fd8;
-    --cea-tier-3: #d9a520;
-    --cea-tier-team: #7b5cd6;
+    --cea-tier-1: #7eb8ff;
+    --cea-tier-2: #ef9e5f;
+    --cea-tier-3: #cfd8e2;
+    --cea-tier-4: #f0c86b;
+    --cea-tier-5: #c3aef5;
+    --cea-tier-69: linear-gradient(135deg,
+        #ff7b7b 0%,
+        #ffb86b 18%,
+        #ffe66d 36%,
+        #7fe7bd 54%,
+        #6ab8ff 72%,
+        #b596ff 88%,
+        #ff8ec9 100%
+    );
+    --cea-tier-0: rgb(255, 82, 82);
 
     /* rarity, five steps */
     --cea-legendary: #e0a020;
@@ -171,7 +182,7 @@ body.cea-page { overscroll-behavior-y: contain; }
     font-variant-numeric: tabular-nums;
 }
 /* the count tiers as it grows, so the header says something at a glance */
-.cea-pill.t0 {
+.cea-pill.t69 {
     color: #1e1e1e;
     border-color: rgba(255, 232, 232, 0.5);
     background: linear-gradient(135deg,
@@ -469,8 +480,8 @@ body.cea-page { overscroll-behavior-y: contain; }
     text-align: center;
     padding: 10px 7px;
     border-radius: 13px;
-    background: color-mix(in srgb, var(--cea-tone) 15%, var(--cea-panel));
-    border: 1px solid color-mix(in srgb, var(--cea-tone) 40%, transparent);
+    background: color-mix(in srgb, var(--cea-tone, #2b3d4f) 16%, var(--cea-panel));
+    border: 1px solid color-mix(in srgb, var(--cea-tone, #2b3d4f) 42%, transparent);
 }
 .cea-bcard .disc {
     width: 32px; height: 32px; border-radius: 10px; flex: 0 0 auto;

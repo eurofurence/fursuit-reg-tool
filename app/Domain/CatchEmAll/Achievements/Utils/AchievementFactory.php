@@ -179,8 +179,9 @@ class AchievementFactory
                     'isOptional' => $achievement->isOptional(),
                     'isLocked' => $isLocked,
                     'hiddenByLock' => $isMasked,
-                    'expandable' => $achievement instanceof Expandable,
+                    //'expandable' => $achievement instanceof Expandable, // Deprecated: frontend expends all achievements by default, no need to mark them as expandable
                     'progressDetail' => $additionalInfo,
+                    'tier' => $achievement->getTier()->value,
                 ];
             }
 
@@ -196,7 +197,7 @@ class AchievementFactory
             $userAchievements = UserAchievement::where('event_user_id', $eventUser->id)->get();
             $allAchievements = AchievementRegister::getAllAchievementInstances();
 
-            $totalAchievements = $earnedAchievements = $earnedOptionalAchievements = 0;
+            $totalAchievements = $totalAchievementsWithOptional = $earnedAchievements = $earnedOptionalAchievements = 0;
 
             foreach ($allAchievements as $achievement) {
                 // Filter out hidden achievements
@@ -212,7 +213,10 @@ class AchievementFactory
                 }
 
                 // Count total achievements
-                $totalAchievements++;
+                if (!$achievement->isOptional()) {
+                    $totalAchievements++;
+                }
+                $totalAchievementsWithOptional++;
 
                 // Count earned achievements
                 if ($isCompleted) {
@@ -228,6 +232,7 @@ class AchievementFactory
                 'total' => $totalAchievements,
                 'earned' => $earnedAchievements,
                 'earnedOptional' => $earnedOptionalAchievements,
+                'totalWithOptional' => $totalAchievementsWithOptional,
             ];
         });
     }

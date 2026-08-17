@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Achievements\Special;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Enums\AchievementsTier;
 use App\Domain\CatchEmAll\Enums\SpecialCodeType;
 use App\Domain\CatchEmAll\Interface\AchievementSeries;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
@@ -29,9 +30,9 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
     protected string $stacksOnId;
 
 
-    public function __construct(string $id, string $title, string $description, string $task, int $maxProgress, array $lockedByIds = [], string $stacksOnId = '', bool $isOptional = false)
+    public function __construct(string $id, string $title, string $description, string $task, int $maxProgress, array $lockedByIds = [], string $stacksOnId = '', bool $isOptional = false, AchievementsTier $tier = AchievementsTier::TIER_1)
     {
-        parent::__construct($id, $title, $description, $task, isOptional: $isOptional);
+        parent::__construct($id, $title, $description, $task, isOptional: $isOptional, tier: $tier);
         $this->maxProgress = $maxProgress;
         $this->lockedByIds = $lockedByIds;
         $this->stacksOnId = $stacksOnId;
@@ -163,12 +164,12 @@ class CEATeam extends SimpleAchievement implements HasGlobalCache, HasUserCache,
     {
         $achievements = [];
 
-        $achievements[] = new self('cea_team', 'Catch \'Em All Team  (1/3)', 'You found someone that made this game!', 'Find a member of the Catch \'Em All development team.', 1, []);
+        $achievements[] = new self('cea_team', 'Catch \'Em All Team  (1/3)', 'You found someone that made this game!', 'Find a member of the Catch \'Em All development team.', 1, [], tier: AchievementsTier::TIER_3);
 
-        $achievements[] = new self('cea_team_three', 'Catch \'Em All Team  (2/3)', 'You found three of us! Can you also find the remaining team?', 'You found one, but can you find two more of us?', 3, ['cea_team'], 'cea_team');
+        $achievements[] = new self('cea_team_three', 'Catch \'Em All Team  (2/3)', 'You found three of us! Can you also find the remaining team?', 'You found one, but can you find two more of us?', 3, ['cea_team'], 'cea_team', tier: AchievementsTier::TIER_4);
 
         // Total species count is only known via the instance (cached lookup), not statically
-        $complete = new self('cea_team_all', 'Catch \'Em All Team  (3/3)', 'You found all of us! Congratulations!', 'Now find the rest of us!', 0, ['cea_team_three'], 'cea_team_three', isOptional: true);
+        $complete = new self('cea_team_all', 'Catch \'Em All Team  (3/3)', 'You found all of us! Congratulations!', 'Now find the rest of us!', 0, ['cea_team_three'], 'cea_team_three', isOptional: true, tier: AchievementsTier::TIER_5);
         $achievements[] = $complete;
 
         return $achievements;

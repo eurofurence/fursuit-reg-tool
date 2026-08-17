@@ -10,7 +10,7 @@ import {
 } from "lucide-vue-next";
 
 type Achievement = {
-    id: number;
+    id: string;
     /** null while the achievement is hidden: the server does not send it */
     title: string | null;
     description: string | null;
@@ -27,6 +27,7 @@ type Achievement = {
         totalProgress: string[];
         currentProgress: string[];
     } | null;
+    tier: number;
 };
 
 type Stats = {
@@ -45,14 +46,14 @@ const props = defineProps<{
 const SNAPSHOT_KEY = "cea:achievements:snapshot:v3";
 
 const filter = ref<"all" | "earned" | "progress" | "locked">("all");
-const open = ref<number[]>([]);
+const open = ref<string[]>([]);
 /** earned since the last visit */
-const freshlyEarned = ref<number[]>([]);
+const freshlyEarned = ref<string[]>([]);
 /** progressed since the last visit, id => where the bar was */
-const moved = ref<Record<number, number>>({});
+const moved = ref<Record<string, number>>({});
 
 onMounted(() => {
-    let before: Record<number, { done: boolean; pct: number }> = {};
+    let before: Record<string, { done: boolean; pct: number }> = {};
     try {
         before = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) ?? "{}");
     } catch {
@@ -73,7 +74,7 @@ onMounted(() => {
             SNAPSHOT_KEY,
             JSON.stringify(
                 props.achievements.reduce<
-                    Record<number, { done: boolean; pct: number }>
+                    Record<string, { done: boolean; pct: number }>
                 >((snapshot, achievement) => {
                     snapshot[achievement.id] = {
                         done: achievement.completed,
@@ -93,10 +94,23 @@ onMounted(() => {
  * The optional ones are the staff and team codes, which get their own colour.
  */
 function tier(a: Achievement) {
-    if (a.isOptional) return "var(--cea-tier-team)";
-    if (a.maxProgress >= 50) return "var(--cea-tier-3)";
-    if (a.maxProgress >= 10) return "var(--cea-tier-2)";
-    return "var(--cea-tier-1)";
+    switch (a.tier) {
+        case 0:
+            return "var(--cea-tier-0)";
+        case 2:
+            return "var(--cea-tier-2)";
+        case 3:
+            return "var(--cea-tier-3)";
+        case 4:
+            return "var(--cea-tier-4)";
+        case 5:
+            return "var(--cea-tier-5)";
+        case 69:
+            return "var(--cea-tier-69)";
+        default:
+        case 1:
+            return "var(--cea-tier-1)";
+    }
 }
 
 /** A locked achievement is not "in progress": you cannot work on it yet. */
@@ -167,6 +181,10 @@ function subgoals(a: Achievement) {
         );
 }
 
+function hasAchievement(id: string) {
+    return props.achievements.some((a) => a.id === id);
+}
+
 function width(a: Achievement) {
     return `${a.progressPercentage}%`;
 }
@@ -195,7 +213,7 @@ const inProgressPercent = computed(() =>
                 <i
                     :style="{
                         width: `${earnedPercent}%`,
-                        background: 'var(--cea-tier-1)',
+                        background: hasAchievement('nice') ? 'var(--cea-tier-69)' : 'var(--cea-tier-5)',
                         borderRadius:
                             inProgressPercent > 0 ? '3px 0 0 3px' : '3px',
                     }"
@@ -204,7 +222,7 @@ const inProgressPercent = computed(() =>
                     :style="{
                         left: `${earnedPercent}%`,
                         width: `${inProgressPercent}%`,
-                        background: 'var(--cea-tier-2)',
+                        background: 'var(--cea-tier-1)',
                         opacity: 0.5,
                         borderRadius: earnedPercent > 0 ? '0 3px 3px 0' : '3px',
                     }"

@@ -70,6 +70,14 @@ class UserProfileController extends Controller
             'fursuits' => $this->fursuits($userProfile, $event),
             'stats' => $this->stats($eventUser),
             'achievements' => $this->achievements($eventUser),
+            'achievementStats' => $eventUser
+                ? AchievementFactory::getUserAchievementStats($eventUser)
+                : [
+                    'total' => 0,
+                    'earned' => 0,
+                    'earnedOptional' => 0,
+                    'totalWithOptional' => 0,
+                ],
             'palette' => UserProfile::PALETTE,
             'fromFursuit' => (int) $request->query('from') ?: null,
             'canEdit' => $isOwner,
@@ -113,6 +121,7 @@ class UserProfileController extends Controller
                 'maxProgress' => $achievement['maxProgress'],
                 'isOptional' => $achievement['isOptional'],
                 'earnedAt' => $achievement['earnedAt'],
+                'tier' => $achievement['tier'],
             ])
             ->values()
             ->all();

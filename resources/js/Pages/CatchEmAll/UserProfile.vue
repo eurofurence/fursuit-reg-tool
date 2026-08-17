@@ -6,6 +6,7 @@ import FursuitPhoto from "@/Components/CatchEmAll/FursuitPhoto.vue";
 import * as QrCodeStylingModule from "qr-code-styling/lib/qr-code-styling.common.js";
 import {
     ArrowLeft,
+    ChevronDown,
     Link as LinkIcon,
     QrCode,
     Star,
@@ -30,6 +31,7 @@ type Achievement = {
     maxProgress: number;
     isOptional: boolean;
     earnedAt: string | null;
+    tier: number;
 };
 
 type SpecialCodeLink = {
@@ -54,6 +56,12 @@ const props = defineProps<{
     fursuits: Fursuit[];
     stats: { caught: number; rank: number | null } | null;
     achievements: Achievement[];
+    achievementStats: {
+        total: number;
+        earned: number;
+        earnedOptional: number;
+        totalWithOptional: number;
+    };
     palette: Record<string, string>;
     fromFursuit: number | null;
     canEdit: boolean;
@@ -66,6 +74,7 @@ props.achievements.sort((a, b) => {
 });
 
 const editing = ref(false);
+const achievementsExpanded = ref(false);
 const lightbox = ref<Fursuit | null>(null);
 const specialCodesOpen = ref(false);
 const activeSpecialCode = ref<SpecialCodeLink | null>(null);
@@ -250,11 +259,45 @@ const STATUS: Record<string, string> = {
 };
 
 function tier(a: Achievement) {
-    if (a.isOptional) return "var(--cea-tier-team)";
-    if (a.maxProgress >= 50) return "var(--cea-tier-3)";
-    if (a.maxProgress >= 10) return "var(--cea-tier-2)";
-    return "var(--cea-tier-1)";
+    switch (a.tier) {
+        case 0:
+        case 69:
+            return "var(--cea-tier-0)";
+        case 2:
+            return "var(--cea-tier-2)";
+        case 3:
+            return "var(--cea-tier-3)";
+        case 4:
+            return "var(--cea-tier-4)";
+        case 5:
+            return "var(--cea-tier-5)";
+        case 1:
+        default:
+            return "var(--cea-tier-1)";
+    }
 }
+
+const achievementProgress = computed(() => {
+        const total = props.achievementStats.total;
+        const earned = props.achievementStats.earned;
+        const percentage = total > 0 ? Math.min(100, (earned / total) * 100) : 0;
+
+        return {
+                percentage,
+                tone:
+                        percentage >= 100
+                                ? "var(--cea-tier-69)"
+                                : percentage >= 80
+                                    ? "var(--cea-tier-5)"
+                                    : percentage >= 60
+                                        ? "var(--cea-tier-4)"
+                                        : percentage >= 40
+                                            ? "var(--cea-tier-3)"
+                                            : percentage >= 20
+                                                ? "var(--cea-tier-2)"
+                                                : "var(--cea-tier-1)",
+        };
+});
 
 function addLink() {
     if (form.links.length >= 10) return;
@@ -361,9 +404,21 @@ const caughtHere = computed(
                 <span><b class="cea-tick" />Achievements</span>
                 <span class="meta">{{ achievements.length }} earned</span>
             </h3>
+            <div class="cea-progress cea-profile-progress">
+                <div class="cea-bar">
+                    <i
+                        :style="{
+                            width: `${achievementProgress.percentage}%`,
+                            background: achievementProgress.tone,
+                        }"
+                    />
+                </div>
+            </div>
             <div class="cea-case">
                 <div
-                    v-for="item in achievements.slice(0, 6)"
+                    v-for="item in achievementsExpanded
+                        ? achievements
+                        : achievements.slice(0, 3)"
                     :key="item.id"
                     class="cea-bcard"
                     :style="{ '--cea-tone': tier(item) }"
@@ -380,6 +435,21 @@ const caughtHere = computed(
                     </small>
                 </div>
             </div>
+            <button
+                v-if="achievements.length > 3"
+                class="cea-btn ghost sm cea-ach-toggle"
+                :aria-expanded="achievementsExpanded"
+                @click="achievementsExpanded = !achievementsExpanded"
+            >
+                <ChevronDown
+                    :size="16"
+                    :class="{ 'is-expanded': achievementsExpanded }"
+                />
+                {{ achievementsExpanded ? "Show fewer" : "Show all" }}
+                <span class="meta"
+                    >({{ achievementsExpanded ? 3 : achievements.length }})</span
+                >
+            </button>
         </template>
 
         <template v-if="fursuits.length">
@@ -964,6 +1034,21 @@ const caughtHere = computed(
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+.cea-ach-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+}
+.cea-profile-progress {
+    margin-bottom: 10px;
+}
+.cea-ach-toggle svg {
+    transition: transform 0.18s ease;
+}
+.cea-ach-toggle svg.is-expanded {
+    transform: rotate(180deg);
 }
 
 @media (max-width: 899px) {

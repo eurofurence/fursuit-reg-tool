@@ -18,7 +18,7 @@ const TIERS = [
     { at: 151, cls: "t5", word: "legend" },
     { at: 100, cls: "t4", word: "archivist" },
     { at: 70, cls: "t3", word: "catcher" },
-    { at: 69, cls: "t0", word: "69" },
+    { at: 69, cls: "t69", word: "69" },
     { at: 50, cls: "t3", word: "catcher" },
     { at: 20, cls: "t2", word: "curator" },
     { at: 10, cls: "t1", word: "collector" },
