@@ -189,8 +189,8 @@ class GameStatsService
         }
 
         $cacheKey = $useGlobalCacheKey
-            ? sprintf('collection_v2_user_%d', $user->id)
-            : sprintf('collection_v2_user_%d_events_%s', $user->id, $eventIds->implode('_'));
+            ? sprintf('collection_user_%d', $user->id)
+            : sprintf('collection_user_%d_events_%s', $user->id, $eventIds->implode('_'));
 
         $result = Cache::remember($cacheKey, 600, function () use ($user, $eventIds) {
             $eventUserIds = EventUser::where('user_id', $user->id)
