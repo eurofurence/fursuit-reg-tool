@@ -32,11 +32,11 @@ const props = defineProps<{
 
 /* highest first, matching FursuitRanking::ranked() */
 const RANKINGS = [
-    { key: 'diamond', label: 'Diamond', icon: Gem },
-    { key: 'platinum', label: 'Platinum', icon: Sparkles },
-    { key: 'gold', label: 'Gold', icon: Medal },
-    { key: 'silver', label: 'Silver', icon: Star },
-    { key: 'bronze', label: 'Bronze', icon: Circle },
+    { key: 'legend', label: 'Legend', icon: '/icons/cea/paw_icon_rank_5.svg' },
+    { key: 'extraordinaire', label: 'Extraordinaire', icon: '/icons/cea/paw_icon_rank_4.svg' },
+    { key: 'fluffy', label: 'Fluffy', icon: '/icons/cea/paw_icon_rank_3.svg' },
+    { key: 'regular', label: 'Regular', icon: '/icons/cea/paw_icon_rank_2.svg' },
+    { key: 'novice', label: 'Novice', icon: '/icons/cea/paw_icon_rank_1.svg' },
 ]
 
 const view = ref<'grid' | 'list'>('grid')
@@ -58,9 +58,9 @@ const tally = computed(() => RANKINGS.map(entry => ({
 /* fallbacks so an empty tier still shows its own colour */
 function colourFor(level: string) {
     return {
-        diamond: '#5fd0e0', platinum: '#6f9fd8', gold: '#d9a520',
-        silver: '#b9c4cf', bronze: '#cf8b52',
-    }[level] ?? '#cf8b52'
+        legend: '#c3aef5', extraordinaire: '#d9a520', fluffy: '#b9c4cf',
+        regular: '#cf8b52', novice: '#6f9fd8',
+    }[level] ?? '#6f9fd8'
 }
 
 const shown = computed(() =>
@@ -133,14 +133,21 @@ function openProfile(suit: Suit) {
             <button
                 v-for="entry in tally"
                 :key="entry.key"
-                class="cea-stat"
+                class="cea-stat flex items-center justify-center gap-1 flex-col"
                 :class="{ on: ranking === entry.key }"
-                :style="{ '--cea-tone': entry.colour }"
+                :style="{
+                    '--cea-tone': entry.colour,
+                    '--cea-icon': `url('${entry.icon}')`,
+                }"
                 @click="toggleRanking(entry.key)"
             >
-                <component :is="entry.icon" :size="16" />
+                <span
+                    class="rank-icon"
+                    role="img"
+                    :aria-label="entry.label"
+                />
                 <b>{{ entry.n }}</b>
-                <small>{{ entry.label }}</small>
+                <!--<small>{{ entry.label }}</small>-->
             </button>
         </div>
 
@@ -238,4 +245,18 @@ function openProfile(suit: Suit) {
     align-items: center;
 }
 .cea-seg button.on { background: var(--cea-accent); color: #fff; }
+.rank-icon {
+    width: 3.2rem;
+    height: 3.2rem;
+    display: block;
+    background-color: var(--cea-tone);
+    mask-image: var(--cea-icon);
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
+    -webkit-mask-image: var(--cea-icon);
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+}
 </style>

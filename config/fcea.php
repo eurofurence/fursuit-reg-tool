@@ -44,18 +44,18 @@ return [
     |--------------------------------------------------------------------------
     |
     | A fursuit's ranking comes from how many people have caught it: caught more
-    | means a higher ranking, Bronze through Diamond. It is a measure of how
+    | means a higher ranking, Novice through Legend. It is a measure of how
     | sought after a suiter is, not of how rare their species is, which is why
-    | the tiers are metals rather than Common-to-Legendary.
+    | the tiers use the event's own progression names.
     |
-    | Everyone starts at Bronze on the first morning and climbs from there.
+    | Everyone starts at Novice on the first morning and climbs from there.
     |
     */
 
-    'fursuit_ranking_threshold_silver' => env('FURSUIT_RANKING_THRESHOLD_SILVER', 5),
-    'fursuit_ranking_threshold_gold' => env('FURSUIT_RANKING_THRESHOLD_GOLD', 10),
-    'fursuit_ranking_threshold_platinum' => env('FURSUIT_RANKING_THRESHOLD_PLATINUM', 20),
-    'fursuit_ranking_threshold_diamond' => env('FURSUIT_RANKING_THRESHOLD_DIAMOND', 50),
+    'fursuit_ranking_threshold_regular' => env('FURSUIT_RANKING_THRESHOLD_REGULAR', 5),
+    'fursuit_ranking_threshold_fluffy' => env('FURSUIT_RANKING_THRESHOLD_FLUFFY', 10),
+    'fursuit_ranking_threshold_extraordinaire' => env('FURSUIT_RANKING_THRESHOLD_EXTRAORDINAIRE', 20),
+    'fursuit_ranking_threshold_legend' => env('FURSUIT_RANKING_THRESHOLD_LEGEND', 50),
 
     /*
     |--------------------------------------------------------------------------

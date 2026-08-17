@@ -5,42 +5,40 @@ namespace App\Domain\CatchEmAll\Enums;
 /**
  * How sought after a fursuit is, from how many people have caught it.
  *
- * This replaces the old Common-to-Legendary scale, which measured the same thing
- * but called it rarity: a suiter everybody photographs is popular, not rare, and
- * a species nobody else brought is rare however few people find it. Bronze to
- * Diamond says what the number actually is, so nothing has to be explained away.
+ * The ranking names describe how much attention a fursuit attracts during the
+ * event, from Novice through Legend.
  *
- * A ranking therefore starts at Bronze for everyone and climbs during the event.
+ * A ranking therefore starts at Novice for everyone and climbs during the event.
  * How many of that species are registered is a separate figure, shown as a plain
  * count where it is useful rather than folded into this scale.
  */
 enum FursuitRanking: string
 {
-    case BRONZE = 'bronze';
-    case SILVER = 'silver';
-    case GOLD = 'gold';
-    case PLATINUM = 'platinum';
-    case DIAMOND = 'diamond';
+    case NOVICE = 'novice';
+    case REGULAR = 'regular';
+    case FLUFFY = 'fluffy';
+    case EXTRAORDINAIRE = 'extraordinaire';
+    case LEGEND = 'legend';
 
     public static function fromCatchCount(int $catches): self
     {
         return match (true) {
-            $catches >= config('fcea.fursuit_ranking_threshold_diamond') => self::DIAMOND,
-            $catches >= config('fcea.fursuit_ranking_threshold_platinum') => self::PLATINUM,
-            $catches >= config('fcea.fursuit_ranking_threshold_gold') => self::GOLD,
-            $catches >= config('fcea.fursuit_ranking_threshold_silver') => self::SILVER,
-            default => self::BRONZE,
+            $catches >= config('fcea.fursuit_ranking_threshold_legend') => self::LEGEND,
+            $catches >= config('fcea.fursuit_ranking_threshold_extraordinaire') => self::EXTRAORDINAIRE,
+            $catches >= config('fcea.fursuit_ranking_threshold_fluffy') => self::FLUFFY,
+            $catches >= config('fcea.fursuit_ranking_threshold_regular') => self::REGULAR,
+            default => self::NOVICE,
         };
     }
 
     public function getLabel(): string
     {
         return match ($this) {
-            self::BRONZE => 'Bronze',
-            self::SILVER => 'Silver',
-            self::GOLD => 'Gold',
-            self::PLATINUM => 'Platinum',
-            self::DIAMOND => 'Diamond',
+            self::NOVICE => 'Novice',
+            self::REGULAR => 'Regular',
+            self::FLUFFY => 'Fluffy',
+            self::EXTRAORDINAIRE => 'Extraordinaire',
+            self::LEGEND => 'Legend',
         };
     }
 
@@ -48,11 +46,11 @@ enum FursuitRanking: string
     public function getColor(): string
     {
         return match ($this) {
-            self::BRONZE => '#cf8b52',
-            self::SILVER => '#b9c4cf',
-            self::GOLD => '#d9a520',
-            self::PLATINUM => '#6f9fd8',
-            self::DIAMOND => '#5fd0e0',
+            self::NOVICE => '#6f9fd8',
+            self::REGULAR => '#cf8b52',
+            self::FLUFFY => '#b9c4cf',
+            self::EXTRAORDINAIRE => '#d9a520',
+            self::LEGEND => '#c3aef5',
         };
     }
 
@@ -60,17 +58,17 @@ enum FursuitRanking: string
     public function getIcon(): string
     {
         return match ($this) {
-            self::BRONZE => 'circle',
-            self::SILVER => 'star',
-            self::GOLD => 'medal',
-            self::PLATINUM => 'sparkles',
-            self::DIAMOND => 'gem',
+            self::NOVICE => 'circle',
+            self::REGULAR => 'star',
+            self::FLUFFY => 'medal',
+            self::EXTRAORDINAIRE => 'sparkles',
+            self::LEGEND => 'gem',
         };
     }
 
     /** Highest first, for the filter row. */
     public static function ranked(): array
     {
-        return [self::DIAMOND, self::PLATINUM, self::GOLD, self::SILVER, self::BRONZE];
+        return [self::LEGEND, self::EXTRAORDINAIRE, self::FLUFFY, self::REGULAR, self::NOVICE];
     }
 }
