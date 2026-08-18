@@ -26,8 +26,6 @@ Route::prefix('/auth')->name('auth.')->group(function () {
 Route::middleware('catch-auth:web')->group(function () {
     Route::get('/introduction', [GameController::class, 'introduction'])->name('introduction');
     Route::post('/introduction/complete', [GameController::class, 'completeIntroduction'])->name('introduction.complete');
-    Route::get('/profiles/{userProfile:uuid}', [UserProfileController::class, 'show'])->name('profiles.show');
-    Route::put('/profiles/{userProfile:uuid}', [UserProfileController::class, 'update'])->name('profiles.update');
 });
 
 // Main game routes (auth + introduction middleware)
@@ -38,4 +36,6 @@ Route::middleware(['catch-auth:web', 'catch-introduction'])->group(function () {
     Route::get('/collection', [GameController::class, 'collection'])->name('collection');
     Route::post('/catch', [GameController::class, 'catch'])->name('catch.submit');
     Route::get('/profile', [GameController::class, 'profile'])->name('profile');
+    Route::get('/profiles/{userProfile:uuid}', [UserProfileController::class, 'show'])->name('profiles.show');
+    Route::put('/profiles/{userProfile:uuid}', [UserProfileController::class, 'update'])->name('profiles.update');
 });

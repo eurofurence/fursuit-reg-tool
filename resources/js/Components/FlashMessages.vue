@@ -8,9 +8,11 @@
   }>()
   const page = usePage()
 
-  const message = computed(() => props.flash.message ?? page.props.flash.message)
-  const error = computed(() => props.flash.error ?? page.props.flash.error)
-  const success = computed(() => props.flash.success ?? page.props.flash.message)
+  const message = computed(() => props.flash?.message ?? page.props.flash?.message)
+  const error = computed(() => props.flash?.error ?? page.props.flash?.error)
+  // this read flash.message, so an info message rendered twice: once as info,
+  // once as a green success
+  const success = computed(() => props.flash?.success ?? page.props.flash?.success)
 </script>
 
 <template>

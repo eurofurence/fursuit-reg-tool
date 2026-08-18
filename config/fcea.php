@@ -40,17 +40,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Fursuit Species Rarity Threshold
+    | Fursuit Ranking Thresholds
     |--------------------------------------------------------------------------
     |
-    | Fursuit Species is given a rarity based on the amount it appears among all fursuiter
-    | If a species appear more often than the threshold, it is considered this rarity
+    | A fursuit's ranking comes from how many people have caught it: caught more
+    | means a higher ranking, Novice through Legend. It is a measure of how
+    | sought after a suiter is, not of how rare their species is, which is why
+    | the tiers use the event's own progression names.
+    |
+    | Everyone starts at Novice on the first morning and climbs from there.
     |
     */
 
-    'species_rarity_threshold_uncommon' => env('SPECIES_RARITY_THRESHOLD_UNCOMMON', 5),
-    'species_rarity_threshold_rare' => env('SPECIES_RARITY_THRESHOLD_RARE', 10),
-    'species_rarity_threshold_epic' => env('SPECIES_RARITY_THRESHOLD_EPIC', 20),
-    'species_rarity_threshold_legendary' => env('SPECIES_RARITY_THRESHOLD_LEGENDARY', 50),
-    // If none of this applies, the species is considered common
+    'fursuit_ranking_threshold_regular' => env('FURSUIT_RANKING_THRESHOLD_REGULAR', 5),
+    'fursuit_ranking_threshold_fluffy' => env('FURSUIT_RANKING_THRESHOLD_FLUFFY', 10),
+    'fursuit_ranking_threshold_extraordinaire' => env('FURSUIT_RANKING_THRESHOLD_EXTRAORDINAIRE', 20),
+    'fursuit_ranking_threshold_legend' => env('FURSUIT_RANKING_THRESHOLD_LEGEND', 50),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Species Population
+    |--------------------------------------------------------------------------
+    |
+    | Not a tier any more, but still worth showing: how many fursuits of a
+    | species are registered for the event. SpeciesRarityService reads this to
+    | tell an attendee that the Kugsha Dog they just caught is the only one at
+    | the convention.
+    |
+    */
+
 ];

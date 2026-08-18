@@ -22,8 +22,11 @@ class PWAController extends Controller
             'scope' => $baseUrl.'/',
             'display' => 'standalone',
             'orientation' => 'portrait',
-            'theme_color' => '#1f2937',
-            'background_color' => '#ffffff',
+            // Both match --cea-page. background_color paints the launch splash and
+            // the area an overscroll bounce exposes when the game runs installed;
+            // it was white, which is exactly the flash the review reported.
+            'theme_color' => '#0a1017',
+            'background_color' => '#0a1017',
             'categories' => ['games', 'social'],
             'lang' => 'en',
             'icons' => [

@@ -18,6 +18,7 @@ class SpecialActionsRegister
         BugBountyAction::class,
         CatchEmAllTeamAction::class,
         ExplorerAction::class,
+        FursuitBadgeTeamAction::class,
     ];
 
     /**

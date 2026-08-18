@@ -44,7 +44,7 @@ class CatchEmAllCacheController extends Controller
             }
         }
 
-        Toast::flashSuccess('Listed cache keys removed', "Deleted {$deleted} key(s)." );
+        Toast::flashSuccess('Listed cache keys removed', "Deleted {$deleted} key(s).");
 
         return redirect()->route('admin.tools.catch-em-all-cache');
     }

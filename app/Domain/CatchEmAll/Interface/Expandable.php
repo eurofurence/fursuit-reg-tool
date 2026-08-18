@@ -2,8 +2,8 @@
 
 namespace App\Domain\CatchEmAll\Interface;
 
-use App\Models\EventUser;
-
-interface Expandable extends Achievement
-{
-}
+/**
+ *
+ * @deprecated By frontend automatically assumes Expandable
+ */
+interface Expandable extends Achievement {}

@@ -9,6 +9,7 @@ use App\Domain\CatchEmAll\SpecialActions\SpecialCodeActionRegistry;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\SpecialCodeRequest;
 use App\Models\Event;
+use App\Models\EventUser;
 use App\Support\Manage\Action;
 use App\Support\Manage\Column;
 use App\Support\Manage\EventScope;
@@ -16,6 +17,7 @@ use App\Support\Manage\Table;
 use App\Support\Manage\Toast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Response;
 
@@ -64,7 +66,10 @@ class SpecialCodeController extends Controller
 
     public function store(SpecialCodeRequest $request): RedirectResponse
     {
-        SpecialCode::create($request->payload());
+        DB::transaction(function () use ($request): void {
+            $specialCode = SpecialCode::create($request->payload());
+            $specialCode->eventUsers()->sync($request->eventUserIds());
+        });
 
         // the old panel's stock create toast; this resource declares none of its own.
         Toast::flashSuccess('Created');
@@ -81,7 +86,10 @@ class SpecialCodeController extends Controller
 
     public function update(SpecialCodeRequest $request, SpecialCode $code): RedirectResponse
     {
-        $code->update($request->payload());
+        DB::transaction(function () use ($request, $code): void {
+            $code->update($request->payload());
+            $code->eventUsers()->sync($request->eventUserIds());
+        });
 
         Toast::flashSuccess('Saved');
 
@@ -148,7 +156,7 @@ class SpecialCodeController extends Controller
      */
     public static function classLabel(?string $className): ?string
     {
-        return SpecialCodeActionRegistry::labelFor($className);
+        return SpecialActionsRegister::getDisplayNameForClass($className);
     }
 
     public static function typeLabel(?SpecialCodeType $type): ?string
@@ -301,10 +309,22 @@ class SpecialCodeController extends Controller
                 // not cover, which is what the form warns about.
                 'unmanagedData' => self::dataPreview($residue),
                 'code' => $specialCode->code,
+                'event_user_ids' => $specialCode->eventUsers()->pluck('event_users.id')->all(),
             ] : null,
             'events' => Event::orderByDesc('starts_at')
                 ->get()
                 ->map(fn (Event $event) => ['value' => $event->id, 'label' => $event->name])
+                ->all(),
+            'eventUsers' => EventUser::query()
+                ->with('user')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (EventUser $eventUser) => [
+                    'value' => $eventUser->id,
+                    'event_id' => $eventUser->event_id,
+                    'is_admin' => (bool) ($eventUser->user?->is_admin ?? false),
+                    'label' => trim(($eventUser->user?->name ?? 'Unknown user').' (#'.$eventUser->id.')'),
+                ])
                 ->all(),
             'manageEventId' => app(EventScope::class)->id(),
             'typeOptions' => $this->typeOptions(),
@@ -335,7 +355,7 @@ class SpecialCodeController extends Controller
             $className = SpecialActionsRegister::getClassForSpecialCodeType($type) ?? '';
 
             $schemas[$type->value] = [
-                'label' => $className !== '' ? SpecialCodeActionRegistry::labelFor($className) : null,
+                'label' => $className !== '' ? SpecialActionsRegister::getDisplayNameForClass($className) : null,
                 'description' => $className !== '' ? SpecialCodeActionRegistry::descriptionFor($className) : null,
                 'fields' => array_map(
                     fn ($field) => $field->toArray(),

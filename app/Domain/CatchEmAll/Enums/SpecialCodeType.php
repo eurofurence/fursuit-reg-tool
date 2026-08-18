@@ -16,4 +16,6 @@ enum SpecialCodeType: int
     case BUG_BOUNTY = 5;
     // Location Explorer
     case EXPLORER = 6;
+    // Fursuit Badge Team
+    case FURSUIT_BADGE_TEAM = 7;
 }

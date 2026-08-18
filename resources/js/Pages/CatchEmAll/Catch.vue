@@ -1,331 +1,192 @@
 <script setup lang="ts">
-import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue";
-import { useForm } from "@inertiajs/vue3";
-import { Star, Target, User, Zap } from "lucide-vue-next";
-import Button from "@/Components/UI/UiButton.vue";
-import Card from "@/Components/UI/UiCard.vue";
-import Dialog from "primevue/dialog";
-import InputText from "primevue/inputtext";
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from 'vue'
+import { router, useForm } from '@inertiajs/vue3'
+import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
+import FursuitPhoto from '@/Components/CatchEmAll/FursuitPhoto.vue'
+import BottomSheet from '@/Components/CatchEmAll/BottomSheet.vue'
+
+type Catch = {
+    id: number
+    fursuitId: number
+    name: string
+    species: string | null
+    owner: string | null
+    image: string | null
+    caughtAt: string | null
+    profileUuid: string | null
+    ranking: { level: string; label: string; color: string }
+}
 
 const props = defineProps<{
-    recentCatch?: any | null;
-    flash?: any;
-    isGameRunning: boolean;
-    code: string | "";
-    autoCatch: boolean;
-}>();
+    recentCatch?: any | null
+    flash?: any
+    isGameRunning: boolean
+    code: string | ''
+    autoCatch: boolean
+    recent: Catch[]
+    caughtTotal: number
+    eventTotal: number
+}>()
 
-const form = useForm({ catch_code: "" });
-form.catch_code = props.code.toUpperCase();
+const form = useForm({ catch_code: (props.code ?? '').toUpperCase() })
 
-const closedID = ref(null);
-const showRecentCatch = computed({
-    get: () => {
-        if (closedID.value === props.recentCatch?.id) {
-            return false;
-        }
-        return !!props.recentCatch;
-    },
-    set: (value) => {
-        if (value == false) {
-            closedID.value = props.recentCatch?.id;
-        }
-    },
-});
+/* The sheet is driven by the flashed catch, and closing it must not reopen on
+   the next visit, so the dismissed id is remembered. */
+const dismissed = ref<number | null>(null)
+const sheetOpen = computed(() => !!props.recentCatch && dismissed.value !== props.recentCatch?.id)
+watch(() => props.recentCatch?.id, () => (dismissed.value = null))
 
-// When page loaded, if autoCatch is true and code is provided, submit the form automatically
+const field = ref<HTMLInputElement | null>(null)
 onMounted(() => {
-    if (props.autoCatch && props.code) {
-        submit();
-    }
-});
+    if (props.autoCatch && props.code) submit()
+    else if (props.isGameRunning) field.value?.focus()
+})
 
-const submit = () => {
-    if (form.processing) return; // Prevent multiple submissions
-    if (!props.isGameRunning) {
-        form.setError("catch_code", "The game is not currently running.");
-        return;
-    }
+function onInput(event: Event) {
+    const input = event.target as HTMLInputElement
+    const clean = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5)
+    form.catch_code = clean
+    input.value = clean
+}
 
-    form.catch_code = form.catch_code.toUpperCase();
-    form.post(route("catch-em-all.catch.submit"), {
-        onSuccess: () => {
-            form.reset();
-        },
-        preserveScroll: true, // Preserve scroll position
-    });
-};
+function submit() {
+    if (form.processing || form.catch_code.length < 5) return
+    form.transform(data => ({ ...data, catch_code: data.catch_code.toUpperCase() }))
+        .post(route('catch-em-all.catch.submit'), {
+            preserveScroll: true,
+            onSuccess: () => form.reset(),
+        })
+}
 
-const formatCode = (value: string) => {
-    return value
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .substring(0, 5);
-};
+/* The colour of the screen follows the last thing you caught. */
+const hue = computed(() => props.recent[0]?.ranking?.color ?? null)
 
-const onCodeInput = (event: any) => {
-    const formatted = formatCode(event.target.value);
-    form.catch_code = formatted;
-    event.target.value = formatted;
-};
-
-// Auto-focus input on mount and handle cleanup
-const codeInput = ref();
-onMounted(() => {
-    // Use nextTick to ensure component is mounted
-    nextTick(() => {
-        if (codeInput.value?.$el) {
-            codeInput.value.$el.focus();
-        }
-    });
-
-    // Reset form when navigating away
-    window.addEventListener("beforeunload", () => {
-        form.reset();
-    });
-});
+function openProfile(entry: Catch) {
+    if (!entry.profileUuid) return
+    router.visit(route('catch-em-all.profiles.show', entry.profileUuid) + `?from=${entry.fursuitId}`)
+}
 </script>
 
 <template>
     <CatchEmAllLayout
-        title="Fursuit Catch em All"
-        subtitle="Catch them all!"
+        title="Catch 'Em All"
+        :subtitle="isGameRunning ? 'Eurofurence 30' : 'Game closed'"
+        :count="caughtTotal"
+        :hue="hue"
         :flash="flash"
-        icon="target"
     >
-        <!-- Recent Catch Celebration -->
-        <Dialog
-            v-model:visible="showRecentCatch"
-            :modal="true"
-            class="mx-4 dark dark-dialog"
-            :style="{ width: '90vw', maxWidth: '400px' }"
-            dismissableMask
-        >
-            <template #header>
-                <div class="inline-flex items-center gap-2">
-                    <div
-                        class="w-16 h-16 mx-auto mr-2 bg-green-900/30 rounded-full flex items-center justify-center"
-                    >
-                        <Star class="w-8 h-8 text-green-400" />
-                    </div>
-                    <h2
-                        class="flex item-center text-xl font-bold text-green-400"
-                    >
-                        Amazing Catch!
-                    </h2>
-                </div>
-            </template>
+        <div v-if="!isGameRunning" class="cea-note warn" style="margin-bottom: 14px">
+            The game is closed right now. Codes work again once it reopens.
+        </div>
 
-            <div v-if="recentCatch" class="text-center space-y-4">
-                <div
-                    class="relative mx-auto w-24 h-24 rounded-full overflow-hidden border-4"
-                    :class="`border-${recentCatch.rarity.color.replace(
-                        'text-',
-                        '',
-                    )}-500`"
-                >
-                    <img
-                        v-if="recentCatch.image"
-                        :src="recentCatch.image"
-                        :alt="recentCatch.name"
-                        class="w-full h-full object-cover"
-                    />
-                    <div
-                        v-else
-                        class="w-full h-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center"
-                    >
-                        <User class="w-8 h-8 text-white" />
-                    </div>
-                    <div
-                        class="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg"
-                    >
-                        <Star
-                            class="w-4 h-4"
-                            :class="recentCatch.rarity.color"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <div class="text-xl font-bold">{{ recentCatch.name }}</div>
-                    <div class="text-sm text-gray-200">
-                        {{ recentCatch.species }}
-                    </div>
-                    <div class="text-xs text-gray-200">
-                        owned by {{ recentCatch.user }}
-                    </div>
-                </div>
-
-                <div
-                    class="bg-gradient-to-r p-3 rounded-lg text-white"
-                    :class="recentCatch.rarity.gradient"
-                >
-                    <div class="font-bold">{{ recentCatch.rarity.label }}</div>
-                </div>
-
-                <Button
-                    @click="showRecentCatch = false"
-                    class="w-full"
-                    severity="success"
-                >
-                    <Target class="w-4 h-4 mr-2" />
-                    Continue Hunting!
-                </Button>
+        <div v-else class="cea-card">
+            <div class="cea-hint" style="letter-spacing: .16em; text-transform: uppercase; font-weight: 700; font-size: 11px; margin-bottom: 12px">
+                Badge code
             </div>
-        </Dialog>
+            <input
+                ref="field"
+                class="cea-field"
+                :value="form.catch_code"
+                maxlength="5"
+                placeholder="ABCDE"
+                inputmode="text"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                @input="onInput"
+                @keydown.enter="submit"
+            />
+            <button
+                class="cea-btn"
+                style="margin-top: 14px"
+                :disabled="form.catch_code.length < 5 || form.processing"
+                @click="submit"
+            >
+                {{ form.processing ? 'Catching' : 'Catch' }}
+            </button>
+            <p class="cea-hint" style="margin-top: 12px">
+                Five characters, printed under the name on their badge.
+            </p>
+        </div>
 
-        <!-- Code Input Card -->
-        <Card class="bg-gray-800 border border-gray-700 shadow-sm">
-            <template #content>
-                <form
-                    @submit.prevent="submit"
-                    class="space-y-4"
-                    v-if="isGameRunning"
+        <template v-if="recent.length">
+            <h3 class="cea-sec">
+                <span><b class="cea-tick" />Latest</span>
+                <span class="meta">{{ caughtTotal }} of {{ eventTotal.toLocaleString('en') }}</span>
+            </h3>
+            <div class="cea-tiles">
+                <button
+                    v-for="entry in recent.slice(0, 6)"
+                    :key="entry.id"
+                    class="cea-tile"
+                    :style="{ '--cea-tone': entry.ranking.color }"
+                    :title="`${entry.name} · ${entry.ranking.label}`"
+                    @click="openProfile(entry)"
                 >
-                    <div class="text-center mb-4">
-                        <div
-                            class="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center"
-                        >
-                            <Target class="w-8 h-8 text-white" />
-                        </div>
-                        <h2 class="text-lg font-bold text-gray-100">
-                            Spot a Fursuiter?
-                        </h2>
-                        <p class="text-sm text-gray-300">
-                            Enter their 5-letter code!
-                        </p>
-                    </div>
+                    <FursuitPhoto :src="entry.image" :name="entry.name" :tone="entry.ranking.color" />
+                </button>
+            </div>
 
-                    <div class="space-y-3">
-                        <InputText
-                            ref="codeInput"
-                            v-model="form.catch_code"
-                            placeholder="ABC12"
-                            class="w-full text-center text-2xl font-mono tracking-widest uppercase p-4 rounded-lg border-2"
-                            :class="{
-                                'border-red-500': form.hasErrors,
-                                'border-gray-600 focus:border-blue-400 bg-gray-700 text-white':
-                                    !form.hasErrors,
-                            }"
-                            maxlength="5"
-                            @input="onCodeInput"
-                            fluid
-                        />
+            <h3 class="cea-sec"><span><b class="cea-tick" />Today</span></h3>
+            <div class="cea-two">
+            <button
+                v-for="entry in recent.slice(0, 6)"
+                :key="`row-${entry.id}`"
+                class="cea-catchrow"
+                :style="{ '--cea-tone': entry.ranking.color }"
+                @click="openProfile(entry)"
+            >
+                <span class="thumb"><FursuitPhoto :src="entry.image" :name="entry.name" :tone="entry.ranking.color" /></span>
+                <span class="who">
+                    <b>{{ entry.name }}</b>
+                    <small>
+                        <span class="cea-rlabel" :style="{ color: entry.ranking.color }">{{ entry.ranking.label }}</span>
+                        · {{ entry.species }}<template v-if="entry.owner"> · {{ entry.owner }}</template>
+                    </small>
+                </span>
+                <span class="cea-hint">{{ entry.caughtAt }}</span>
+            </button>
+            </div>
+        </template>
 
-                        <Button
-                            type="submit"
-                            :loading="form.processing"
-                            class="w-full py-3 text-lg font-bold bg-blue-600 hover:bg-blue-700 border-0 rounded-lg"
-                            :disabled="form.catch_code.length !== 5"
-                        >
-                            <Zap class="w-5 h-5 mr-2" />
-                            {{ form.processing ? "Catching..." : "Catch!" }}
-                        </Button>
+        <p v-else-if="isGameRunning" class="cea-hint" style="margin-top: 22px">
+            Nothing caught yet. Ask a suiter for the code under the name on their badge.
+        </p>
 
-                        <div
-                            v-if="form.hasErrors"
-                            class="text-red-400 text-sm text-center bg-red-900/20 p-3 rounded-lg"
-                        >
-                            {{
-                                Object.values(form.errors)[0] ||
-                                "Invalid code - try again!"
-                            }}
-                        </div>
-                    </div>
-                </form>
-                <div v-else class="text-center text-gray-400">
-                    <div
-                        class="w-16 h-16 mx-auto mb-3 bg-gray-700 rounded-full flex items-center justify-center"
-                    >
-                        <Target class="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h2 class="text-lg font-bold">Game Not Running</h2>
-                    <p class="text-sm">
-                        The Catch em All game is over! Thanks for playing! Stay
-                        tuned for the next Eurofurence.
-                    </p>
+        <BottomSheet :open="sheetOpen" @close="dismissed = recentCatch?.id ?? null">
+            <template v-if="recentCatch">
+                <div class="art">
+                    <FursuitPhoto
+                        :src="recentCatch.image"
+                        :name="recentCatch.name"
+                        :tone="recentCatch.ranking?.color"
+                    />
                 </div>
+                <div class="nm">{{ recentCatch.name }}</div>
+                <div class="mt">
+                    {{ recentCatch.species }}<template v-if="recentCatch.user"> · badge by {{ recentCatch.user }}</template>
+                </div>
+                <div>
+                    <span class="cea-kind" :style="{ background: recentCatch.ranking?.color }">
+                        {{ recentCatch.ranking?.label }}
+                    </span>
+                </div>
+                <div class="cea-stats" style="margin-top: 18px">
+                    <div class="cea-stat" style="--cea-tone: var(--cea-accent-bright)">
+                        <b>{{ caughtTotal }}</b><small>caught</small>
+                    </div>
+                    <div class="cea-stat" :style="{ '--cea-tone': recentCatch.ranking?.color }">
+                        <b>{{ recentCatch.caught ?? 1 }}</b><small>times caught</small>
+                    </div>
+                    <div class="cea-stat" style="--cea-tone: var(--cea-gold)">
+                        <b>{{ Math.round((caughtTotal / Math.max(eventTotal, 1)) * 1000) / 10 }}%</b><small>of event</small>
+                    </div>
+                </div>
+                <button class="cea-btn" style="margin-top: 18px" @click="dismissed = recentCatch?.id ?? null">
+                    Next code
+                </button>
             </template>
-        </Card>
+        </BottomSheet>
     </CatchEmAllLayout>
 </template>
-
-<style scoped>
-/* Custom animations for mobile app feel */
-@keyframes bounce-in {
-    0% {
-        transform: scale(0.3);
-        opacity: 0;
-    }
-    50% {
-        transform: scale(1.05);
-    }
-    70% {
-        transform: scale(0.9);
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.animate-bounce-in {
-    animation: bounce-in 0.6s ease-out;
-}
-
-/* Custom input styling for mobile */
-:deep(.p-inputtext) {
-    border-radius: 8px !important;
-    font-size: 18px !important;
-    border: 2px solid #d1d5db !important;
-}
-
-:deep(.p-inputtext:focus) {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-}
-
-/* Enhanced button styling */
-:deep(.p-button) {
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    transition: all 0.2s ease !important;
-}
-
-:deep(.p-button:hover) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
-
-/* Card styling improvements for dark mode */
-:deep(.p-card) {
-    border-radius: 12px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
-    background: transparent !important;
-}
-
-/* Dark mode dialog styling */
-:deep(.dark-dialog .p-dialog) {
-    background: #1f2937 !important;
-    border: 1px solid #374151 !important;
-}
-
-:deep(.dark-dialog .p-dialog-header) {
-    background: #1f2937 !important;
-    border-bottom: 1px solid #374151 !important;
-    color: #f3f4f6 !important;
-}
-
-/* Dark mode input styling */
-:deep(.p-inputtext) {
-    background: #374151 !important;
-    border: 2px solid #4b5563 !important;
-    color: #f9fafb !important;
-}
-
-:deep(.p-inputtext:focus) {
-    border-color: #60a5fa !important;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1) !important;
-}
-</style>

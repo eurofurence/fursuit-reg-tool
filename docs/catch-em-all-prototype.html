@@ -1,0 +1,1522 @@
+<meta charset="utf-8">
+<title>Catch-Em-All Prototype</title>
+<style>
+  :root {
+    --accent: #005953;
+    --accent-hi: #0a7a71;
+    --accent-bright: #19b3a2;
+    --page: #0a1017;
+    --panel: #121c27;
+    --panel-2: #1a2634;
+    --line: #22303f;
+    --line-soft: #2b3d4f;
+    --ink: #f2f6fb;
+    --muted: #7d90a6;
+    --gold: #d9a520;
+    --team: #7b5cd6;
+    --tier-1: #17a08f;
+    --tier-2: #6f9fd8;
+    --tier-3: #d9a520;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  button, select, textarea, input { font-family: inherit; }
+  body {
+    background: #070a0e; color: var(--ink); margin: 0; padding: 26px 20px 60px;
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.015em; }
+  .lede { color: var(--muted); max-width: 76ch; margin: 0 0 20px; }
+  .stage { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+
+  .phone {
+    width: 390px; height: 800px; border: 1px solid #223142; border-radius: 34px; padding: 8px;
+    background: #05070a; flex: 0 0 auto;
+  }
+  .screen {
+    width: 100%; height: 100%; border-radius: 27px; overflow: hidden; background: var(--page);
+    display: flex; flex-direction: column; position: relative;
+  }
+  .ambient {
+    position: absolute; inset: 0; pointer-events: none; opacity: .5; transition: opacity .3s ease;
+  }
+  .ambient svg { width: 100%; height: 100%; display: block; }
+  .top {
+    padding: 18px 18px 13px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line); flex: 0 0 auto; gap: 12px;
+  }
+  .top .t { font-weight: 800; font-size: 20px; line-height: 1.15; letter-spacing: -0.02em; }
+  .top { position: relative; z-index: 1; }
+  .top::after {
+    content: ""; position: absolute; left: 18px; bottom: -1px; width: 46px; height: 2px; border-radius: 2px;
+    background: var(--screen-hue, var(--accent-bright)); transition: background .3s ease;
+  }
+  main, nav { position: relative; z-index: 1; }
+  .top .sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .pill {
+    background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 999px;
+    padding: 7px 13px; font-weight: 700; font-size: 13px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .pill.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pill.t0 { color: #93a6bb; }
+  .pill.t1 { color: #e0a35f; border-color: rgba(192,122,67,.55); background: rgba(192,122,67,.14); }
+  .pill.t2 { color: #cfd8e2; border-color: rgba(185,196,207,.5); background: rgba(185,196,207,.12); }
+  .pill.t3 { color: #f0c86b; border-color: rgba(217,165,32,.6); background: rgba(217,165,32,.15); }
+  .pill.t4 { color: #c3aef5; border-color: rgba(123,92,214,.6); background: rgba(123,92,214,.18); }
+  .pill .tierword { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; opacity: .8; margin-left: 6px; }
+  main { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 26px; }
+  main::-webkit-scrollbar { width: 0; }
+  .view { display: none; }
+  .view.on { display: block; animation: rise .22s ease both; }
+
+  /* ---- controls ---- */
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  select, .seg {
+    background: var(--panel-2); border: 1px solid var(--line-soft); color: var(--ink);
+    border-radius: 10px; font-weight: 600; font-size: 13px; line-height: 1; padding: 9px 10px; outline: none;
+  }
+  select:focus { border-color: var(--accent-hi); }
+  .seg { display: flex; padding: 3px; gap: 3px; }
+  .seg button {
+    border: 0; background: none; color: var(--muted); font-weight: 600; font-size: 12.5px; line-height: 1; padding: 7px 11px;
+    border-radius: 8px; cursor: pointer;
+  }
+  .seg button.on { background: var(--accent); color: #fff; }
+
+  /* ---- code entry ---- */
+  .entry { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  .entry .label {
+    font-weight: 700; font-size: 11px; line-height: 1; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px;
+  }
+  #code {
+    width: 100%; background: var(--page); border: 1px solid var(--line-soft); border-radius: 12px;
+    color: var(--ink); font: 800 30px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.4em; text-indent: 0.4em; text-align: center; padding: 15px 10px; outline: none;
+    text-transform: uppercase;
+  }
+  #code::placeholder { color: #223142; font-weight: 500; }
+  #code:focus { border-color: var(--accent-hi); box-shadow: inset 0 0 0 1px var(--accent-hi); }
+  .btn {
+    margin-top: 14px; width: 100%; height: 52px; border: 0; border-radius: 12px;
+    background: var(--accent); color: #fff; font-weight: 700; font-size: 16px; line-height: 1; cursor: pointer;
+  }
+  .btn:disabled { background: var(--panel-2); color: #46586d; cursor: default; }
+  .btn:active:not(:disabled) { transform: scale(.985); }
+  .btn.ghost { background: transparent; border: 1px solid var(--line-soft); color: var(--ink); }
+  .btn.sm { height: 42px; font-size: 14px; margin-top: 10px; }
+  .hint { color: var(--muted); font-size: 12.5px; margin-top: 12px; }
+
+  /* ---- tiles: colour comes from the fursuits ---- */
+  h3.sec {
+    font-weight: 700; font-size: 12.5px; line-height: 1; letter-spacing: 0; text-transform: none;
+    color: var(--screen-hue, var(--muted));
+    margin: 20px 0 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  }
+  h3.sec .meta { color: #7286a0; font-weight: 600; font-size: 11.5px; }
+  h3.sec b.tick {
+    width: 8px; height: 8px; border-radius: 2px; background: var(--screen-hue, var(--accent-bright));
+    display: inline-block; margin-right: 8px; vertical-align: 1px;
+  }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile {
+    aspect-ratio: 3 / 4; border-radius: 13px; overflow: hidden; position: relative; cursor: pointer;
+    border: 2px solid var(--rare, rgba(255,255,255,.09));
+  }
+  .tile.blank { background: #0e151d; border: 1px dashed #1c2836; cursor: default; }
+  .tile.fresh { animation: tilein .34s cubic-bezier(.2,1.25,.4,1) both; }
+  .tile.fresh::after {
+    content: ""; position: absolute; inset: 0; border-radius: 13px; box-shadow: inset 0 0 0 2px #fff;
+  }
+  .tile svg { width: 100%; height: 100%; display: block; }
+  .tile .cnt {
+    position: absolute; right: 4px; bottom: 4px; background: rgba(6,10,14,.78); color: #fff;
+    border-radius: 6px; padding: 2px 5px; font-weight: 700; font-size: 10.5px; line-height: 1.3;
+  }
+  .listrow {
+    display: flex; align-items: stretch; gap: 12px; padding: 0 12px 0 0; margin-bottom: 8px; min-height: 76px;
+    border-radius: 14px; border: 1px solid color-mix(in srgb, var(--tone, #2b3d4f) 38%, transparent);
+    background: color-mix(in srgb, var(--tone, #22303f) 17%, var(--panel));
+    transition: background .35s ease, border-color .35s ease; overflow: hidden;
+  }
+  /* badge photo is 3:4 and flush: no padding, left corners follow the card, hard edge on the right */
+  .listrow .th { width: 57px; height: auto; border-radius: 0; flex: 0 0 auto; align-self: stretch; }
+  .listrow .th svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .listrow .who { flex: 1; min-width: 0; align-self: center; }
+  .listrow > :last-child { align-self: center; }
+  .listrow .who b { font-weight: 700; }
+  .listrow .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .herostat {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 13px; padding: 14px;
+    display: flex; align-items: center; gap: 16px; margin-bottom: 8px;
+  }
+  .hsnum { text-align: center; flex: 0 0 auto; }
+  .hsnum b { display: block; font-weight: 800; font-size: 34px; line-height: 1; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+  .hsnum span { display: block; font-size: 11px; color: var(--muted); margin-top: 5px; }
+  .hsmeta { flex: 1; min-width: 0; }
+  .hsmeta small { color: var(--muted); font-size: 11.5px; display: block; margin-top: 8px; }
+
+  .raritygrid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 14px;
+  }
+  .stat.rarity { padding: 11px 4px; cursor: pointer; border-radius: 12px; }
+  .stat.rarity svg { color: var(--tone); display: block; margin: 0 auto 7px; }
+  .stat.rarity b { font-size: 17px; }
+  .stat.rarity small {
+    font-size: 8.5px; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    letter-spacing: -.02em; max-width: 100%;
+  }
+  .stat.rarity.on { background: color-mix(in srgb, var(--tone) 30%, var(--panel)); }
+  .stat.rarity.on small { color: var(--ink); }
+  .rlabel { font-weight: 700; font-size: 10.5px; line-height: 1; letter-spacing: .08em; text-transform: uppercase; }
+
+  .specrow {
+    border-radius: 14px; margin-bottom: 8px; overflow: hidden; cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--tone) 38%, transparent);
+    background: color-mix(in srgb, var(--tone) 17%, var(--panel));
+  }
+  .specrow .subrows { display: none; padding: 0 12px 10px; }
+  .specrow.open .subrows { display: block; }
+  .subrow {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 9px 10px; border-radius: 10px; background: rgba(6,10,14,.32); margin-top: 6px; font-size: 13.5px;
+  }
+  .subrow small { color: var(--muted); font-size: 12px; }
+
+  /* ---- ranking ---- */
+  .row {
+    display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 8px; border-radius: 14px;
+    background: var(--panel); border: 1px solid var(--line);
+  }
+  .row .rank {
+    width: 30px; flex: 0 0 auto; font-weight: 800; font-size: 15px; line-height: 1; font-variant-numeric: tabular-nums;
+    color: var(--muted); text-align: center;
+  }
+  .row .who { flex: 1; min-width: 0; }
+  .row .who b { font-weight: 700; }
+  .row .who small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .row .n { font-weight: 800; font-size: 17px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .row.me { background: color-mix(in srgb, var(--accent) 30%, var(--panel)); border-color: var(--accent); }
+  .row.rarity {
+    background: color-mix(in srgb, var(--tone) 13%, var(--panel));
+    border-color: color-mix(in srgb, var(--tone) 34%, transparent);
+  }
+  .row .th svg { width: 100%; height: 100%; display: block; }
+  .medal { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #10161e; }
+  /* leaderboard medals stay metal and are independent of the achievement tiers */
+  .medal.g { background: #d9a520; } .medal.s { background: #b9c4cf; } .medal.b { background: #cf8b52; }
+
+  /* ---- achievements ---- */
+  .ach {
+    display: flex; gap: 12px; padding: 12px; margin-bottom: 8px; border-radius: 14px;
+    border: 1px solid var(--line); background: var(--panel);
+    transition: background .3s ease, border-color .3s ease;
+  }
+  .ach.earned {
+    background: color-mix(in srgb, var(--tier, #2b3d4f) 16%, var(--panel));
+    border-color: color-mix(in srgb, var(--tier, #2b3d4f) 42%, transparent);
+  }
+  .ach .b {
+    width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto; color: #0b0f14; font-weight: 800;
+  }
+  .ach .b.locked { background: var(--panel-2); border: 1px solid var(--line-soft); color: #46586d; }
+  .ach .x { flex: 1; min-width: 0; }
+  .ach .x b { font-weight: 700; }
+  .ach .x small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .ach .x .desc { font-size: 12.5px; color: #a9b8cb; margin-top: 6px; }
+  .ach .new { color: var(--accent-hi); font-weight: 700; font-size: 11px; line-height: 1; letter-spacing: .1em; text-transform: uppercase; }
+  .bar { height: 6px; border-radius: 3px; background: #0c131b; margin-top: 9px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; transition: width .4s ease; }
+
+  /* ---- profile ---- */
+  .showcase {
+    position: relative; overflow: hidden;
+    margin: -14px -18px 0;                 /* bleed past main padding, edge to edge */
+    height: 196px;
+  }
+  .showcase svg { width: 100%; height: 100%; display: block; }
+  .profhead { position: relative; z-index: 1; text-align: center; padding: 0 4px 2px; }
+  .profhead .avatar {
+    width: 92px; height: 92px; border-radius: 22px; overflow: hidden; margin: -54px auto 11px;
+    border: 4px solid var(--page); position: relative; z-index: 2;
+    box-shadow: 0 8px 22px rgba(0,0,0,.45);
+  }
+  .profhead .avatar svg { width: 100%; height: 100%; display: block; }
+  .nm { font-weight: 800; font-size: 18px; line-height: 1.2; }
+  .sp { color: var(--muted); font-size: 12px; margin-top: 5px; }
+  .statgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+  .statgrid.two { grid-template-columns: repeat(2, 1fr); }
+  .stat {
+    background: color-mix(in srgb, var(--tone, #22303f) 14%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--tone, #2b3d4f) 40%, transparent);
+    border-radius: 13px; padding: 14px 8px; text-align: center;
+  }
+  .stat b { display: block; font-weight: 800; font-size: 19px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--tone, var(--ink)); }
+  .stat small { color: var(--muted); font-size: 10.5px; display: block; margin-top: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 12px;
+    font-weight: 700; font-size: 11.5px; line-height: 1; border: 1px solid var(--line-soft); background: var(--panel-2); color: var(--muted);
+  }
+  .chip.ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip.wait { border-color: #6a5a20; color: #e3c661; background: #221d10; }
+  .chip.no { border-color: #6d3040; color: #eb9aa6; background: #221319; }
+  .badgerow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .mini {
+    width: 46px; height: 46px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+    color: #0b0f14; font-weight: 800; font-size: 15px; line-height: 1;
+  }
+  .link { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .link span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link button { background: none; border: 0; color: var(--muted); cursor: pointer; font-weight: 600; font-size: 12px; line-height: 1; padding: 6px; }
+  textarea.bio {
+    width: 100%; background: var(--page); border: 1px solid var(--line-soft); border-radius: 12px; color: var(--ink);
+    font-weight: 400; font-size: 14px; line-height: 1.5; padding: 12px; resize: none; outline: none;
+  }
+  textarea.bio:focus { border-color: var(--accent-hi); }
+  .banner {
+    border: 1px solid var(--line-soft); background: var(--panel-2); border-radius: 12px; padding: 12px 14px;
+    font-size: 13px; color: #c8d1e2; text-align: left; margin-bottom: 12px;
+  }
+  .banner.warn { border-color: #6a5a20; background: #1c1810; color: #e6d199; }
+
+  /* ---- nav ---- */
+  nav { border-top: 1px solid var(--line); display: flex; padding: 6px 4px 12px; flex: 0 0 auto; background: var(--page); }
+  nav button {
+    flex: 1; background: none; border: 0; cursor: pointer; padding: 6px 0; position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    color: var(--muted); font-weight: 600; font-size: 10.5px; line-height: 1;
+  }
+  nav button .box {
+    width: 44px; height: 30px; display: flex; align-items: center; justify-content: center;
+    position: relative; transition: color .16s ease, transform .16s ease;
+  }
+  nav button::before {
+    content: ""; position: absolute; top: -6px; width: 22px; height: 3px; border-radius: 0 0 3px 3px;
+    background: transparent; transition: background .18s ease;
+  }
+  nav button.on { color: var(--ink); }
+  nav button.on::before { background: var(--accent-bright); }
+  nav button.on .box { color: var(--accent-bright); transform: translateY(-1px); }
+  nav button:active .box { transform: scale(.92); }
+  nav button .dot {
+    position: absolute; top: 1px; right: 6px; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--gold); border: 2px solid var(--page);
+  }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--sw); cursor: pointer;
+    border: 1px solid rgba(255,255,255,.14); font-weight: 800; font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .swatch.on { box-shadow: 0 0 0 2px var(--page), 0 0 0 4px var(--accent-bright); }
+  .swatch[data-colour=""] { border-style: dashed; color: var(--accent-bright); }
+
+  .badgecase { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .bcard {
+    background: color-mix(in srgb, var(--tone) 15%, var(--panel)); border-radius: 13px; padding: 10px 7px;
+    border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent); text-align: center;
+    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .bcard .disc {
+    width: 32px; height: 32px; border-radius: 10px; background: var(--tone); color: #0b0f14;
+    display: flex; align-items: center; justify-content: center; margin: 0 0 8px; flex: 0 0 auto;
+  }
+  .bcard b {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    font-weight: 700; font-size: 10.5px; line-height: 1.25;
+  }
+  .bcard small { display: block; color: var(--muted); font-size: 9.5px; margin-top: 4px; }
+  .bcard.more { display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+  .bcard.more b { min-height: 0; color: var(--accent-bright); font-size: 13px; }
+
+  /* ---- big badge photo, and the lightbox behind it ---- */
+  .hero.current { box-shadow: 0 0 0 2px var(--accent-bright); }
+  .tile.current { border-color: var(--accent-bright); box-shadow: 0 0 0 2px var(--accent-bright); animation: flag .9s ease 1; }
+  .tile.missing { opacity: .42; filter: saturate(.5); }
+  .tile .tname {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 7px 8px; background: rgba(7,11,16,.8);
+    font-weight: 700; font-size: 11px; line-height: 1.2; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  @keyframes flag {
+    0% { box-shadow: 0 0 0 2px var(--accent-bright); }
+    35% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-bright) 55%, transparent); }
+    100% { box-shadow: 0 0 0 2px var(--accent-bright); }
+  }
+  .hero {
+    position: relative; width: 62%; max-width: 230px; margin: 0 auto; aspect-ratio: 3 / 4;
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--tone, #2b3d4f) 40%, transparent); cursor: zoom-in;
+  }
+  .hero svg { width: 100%; height: 100%; display: block; }
+  .hero .cap {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 14px; background: rgba(7,11,16,.82);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  }
+  .hero .cap b { font-weight: 800; font-size: 14px; line-height: 1; }
+  .hero .cap small { color: #b9c6d6; font-size: 12px; }
+  .lightbox {
+    position: absolute; inset: 0; z-index: 5; background: rgba(4,7,11,.94); display: flex;
+    align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  .lightbox.on { opacity: 1; pointer-events: auto; }
+  .lbinner { width: 100%; }
+  .lbart {
+    width: 100%; max-width: 300px; margin: 0 auto; aspect-ratio: 3 / 4; border-radius: 16px; overflow: hidden; border: 1px solid var(--line-soft);
+    transform: scale(.94); transition: transform .24s cubic-bezier(.2,1.1,.4,1);
+  }
+  .lightbox.on .lbart { transform: none; }
+  .lbart svg { width: 100%; height: 100%; display: block; }
+  .lbmeta { text-align: center; margin-top: 14px; }
+  .lbmeta .mt { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+  /* ---- sheet, toast, flash ---- */
+  .scrim {
+    position: absolute; inset: 0; background: rgba(3,6,10,.74); display: flex; align-items: flex-end;
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .sheet {
+    width: 100%; background: var(--panel); border-top: 1px solid var(--line-soft);
+    border-radius: 22px 22px 27px 27px; padding: 6px 18px 22px; text-align: center;
+    transform: translateY(102%); touch-action: none; transition: transform .42s cubic-bezier(.16,1.02,.3,1);
+  }
+  .scrim.on .sheet { transform: translateY(0); }
+  .sheet.dragging { transition: none; }
+  .grab { width: 40px; height: 4px; border-radius: 2px; background: #2a3a4c; margin: 8px auto 14px; }
+  .sheet .big { width: 138px; height: 184px; border-radius: 20px; overflow: hidden; margin: 0 auto 14px; border: 2px solid #fff2; }
+  .sheet .big svg { width: 100%; height: 100%; display: block; }
+  .scrim.on .sheet .big { animation: pop .5s cubic-bezier(.2,1.3,.4,1) both .06s; }
+  .scrim.on .sheet .nm, .scrim.on .sheet .mt, .scrim.on .sheet .statgrid, .scrim.on .sheet .btn { animation: rise .38s ease both; }
+  .scrim.on .sheet .mt { animation-delay: .05s; }
+  .scrim.on .sheet .statgrid { animation-delay: .1s; }
+  .scrim.on .sheet .btn { animation-delay: .14s; }
+  .sheet .mt { color: var(--muted); font-size: 13.5px; margin-top: 7px; }
+  .sheet .kind {
+    display: inline-block; margin-top: 12px; border-radius: 999px; padding: 6px 13px;
+    font-weight: 800; font-size: 11.5px; line-height: 1; letter-spacing: .12em; text-transform: uppercase; color: #0b0f14;
+  }
+  .toast {
+    position: absolute; left: 16px; right: 16px; bottom: 96px; background: var(--panel-2);
+    border: 1px solid var(--line-soft); border-radius: 12px; padding: 13px 15px; font-size: 14px;
+    opacity: 0; transform: translateY(8px); transition: all .2s ease; pointer-events: none;
+  }
+  .toast.on { opacity: 1; transform: translateY(0); }
+  .toast.bad { border-color: #6d3040; background: #1e1319; }
+  .toast.good { border-color: var(--accent); background: #0d1f1d; }
+
+  /* motion: short, weighted, nothing bouncing for its own sake */
+  .tiles .tile { animation: settle .26s ease both; }
+  .tiles .tile:nth-child(n+13) { animation-delay: .04s; }
+  .listrow { animation: slidein .24s ease both; }
+  .ach { animation: slidein .22s ease both; }
+  @keyframes settle { from { opacity: 0; transform: translateY(5px) } to { opacity: 1; transform: none } }
+  @keyframes slidein { from { opacity: 0; transform: translateX(-5px) } to { opacity: 1; transform: none } }
+  @keyframes pop { from { transform: scale(.72) rotate(-4deg); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes rise { from { transform: translateY(9px); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes tilein { from { transform: scale(.6); opacity: 0 } to { transform: none; opacity: 1 } }
+  @keyframes bump { 50% { transform: scale(1.17) } }
+  .pill.bump { animation: bump .34s ease; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  /* ---- notes ---- */
+  .notes { flex: 1; min-width: 340px; max-width: 620px; }
+  .notes h2 { font-size: 16px; margin: 22px 0 8px; }
+  .notes h2:first-child { margin-top: 0; }
+  .notes ul { padding-left: 18px; color: #c8d1e2; margin: 0; }
+  .notes li { margin-bottom: 6px; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: #9fb3d0; }
+  .try { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 4px; }
+  .try b {
+    font: 700 13px/1 ui-monospace, Menlo, monospace; background: var(--panel-2); border: 1px solid var(--line-soft);
+    border-radius: 6px; padding: 6px 9px; letter-spacing: .1em;
+  }
+  .try b.gold { border-color: var(--gold); color: #f0cd6d; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; }
+  td.y { color: #7fc9bf; } td.n { color: #c98b8b; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/>
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+  </symbol>
+  <symbol id="i-medal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/>
+    <path d="M11 12 5.12 2.2"/><path d="m13 12 5.88-9.8"/><path d="M8 7h8"/><circle cx="12" cy="17" r="5"/><path d="M12 18v-2h-.5"/>
+  </symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+  </symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/>
+    <rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
+  </symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 6 9 17l-5-5"/>
+  </symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>
+  </symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11.5 2.6a.6.6 0 0 1 1 0l2.4 5 5.4.8c.5.1.7.7.3 1l-3.9 3.8.9 5.4c.1.5-.4.9-.9.6L12 16.7l-4.8 2.5c-.5.3-1-.1-.9-.6l.9-5.4-3.9-3.8c-.4-.3-.2-.9.3-1l5.4-.8z"/>
+  </symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.52l4.276 3.664a1 1 0 0 0 1.516-.294z"/>
+    <path d="M5 21h14"/>
+  </symbol>
+  <symbol id="i-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>
+  </symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+  </symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
+  </symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/>
+  </symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.8 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/>
+  </symbol>
+</defs></svg>
+
+<h1>Catch-Em-All: sticker book, working prototype</h1>
+<p class="lede">Feature-paired with what is live now: intro, catch with special codes and QR auto-catch, collection with
+event / rarity filters and grid-list-counter toggles, leaderboard with the event filter, the real achievement set with
+progress, and the profile pages including edit and review status. Colour comes from the fursuits themselves, the way a
+Steam profile gets its colour from the art, not from the chrome. <code>#005953</code> stays the one interface colour.</p>
+
+<div class="stage">
+  <div class="phone"><div class="screen">
+    <div class="ambient" id="ambient"></div>
+
+    <div class="top">
+      <div style="min-width:0"><div class="t" id="title">Catch 'Em All</div><div class="sub" id="subtitle">Eurofurence 30</div></div>
+      <span class="pill" id="headpill">6 caught</span>
+    </div>
+
+    <main>
+      <!-- INTRODUCTION -->
+      <section class="view" id="v-intro">
+        <div class="entry">
+          <div class="nm" style="font-size:22px">Collect the fursuiters you meet</div>
+          <p style="color:#c8d1e2;font-size:14px;margin:12px 0 0">
+            Every fursuit badge here carries a five-character code. Ask, type it in, and that suiter joins your book.
+          </p>
+          <p style="color:#c8d1e2;font-size:14px;margin:12px 0 0">
+            Ask before you photograph or approach anyone. A suiter with a handler and a closed pose is busy.
+          </p>
+          <p style="color:#c8d1e2;font-size:14px;margin:12px 0 0">
+            Codes also work from the QR on the badge, and staff hand out a few special ones.
+          </p>
+          <button class="btn" id="introDone">Start collecting</button>
+        </div>
+        <p class="hint">Shown once per event, matching <code>catch-introduction</code> middleware.</p>
+      </section>
+
+      <!-- CATCH -->
+      <section class="view on" id="v-catch">
+        <div id="gameState"></div>
+        <div class="entry" id="catchCard">
+          <div class="label">Badge code</div>
+          <input id="code" maxlength="5" placeholder="ABCDE" autocomplete="off" autocorrect="off"
+                 autocapitalize="characters" spellcheck="false" inputmode="text">
+          <button class="btn" id="catchBtn" disabled>Catch</button>
+          <div class="hint">Five characters, printed under the name on their badge.</div>
+        </div>
+        <h3 class="sec"><span><b class="tick"></b>Latest</span> <span class="meta" id="latestMeta"></span></h3>
+        <div class="tiles" id="latest"></div>
+        <h3 class="sec"><span><b class="tick"></b>Today</span></h3>
+        <div id="timeline"></div>
+      </section>
+
+      <!-- COLLECTION -->
+      <section class="view" id="v-collection">
+        <div class="toolbar">
+          <select id="colRarity">
+            <option value="all">All rarities</option>
+            <option value="legendary">Legendary</option>
+            <option value="epic">Epic</option>
+            <option value="rare">Rare</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="common">Common</option>
+          </select>
+          <div class="seg icons">
+            <button data-view="grid" class="on" title="Grid" aria-label="Grid">
+              <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-grid"/></svg>
+            </button>
+            <button data-view="list" title="List" aria-label="List">
+              <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-list"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="colSummary"></div>
+        <div id="colBody"></div>
+      </section>
+
+      <!-- LEADERBOARD -->
+      <section class="view" id="v-ranking">
+        <div class="toolbar">
+          <select id="lbEvent">
+            <option value="30">EF30 (2026)</option>
+            <option value="29">EF29 (2025)</option>
+          </select>
+          <div class="seg">
+            <button data-lb="players" class="on">Players</button>
+            <button data-lb="suits">Fursuits</button>
+          </div>
+        </div>
+        <div id="lbBody"></div>
+      </section>
+
+      <!-- ACHIEVEMENTS -->
+      <section class="view" id="v-marks">
+        <div class="toolbar">
+          <div class="seg">
+            <button data-ach="all" class="on">All</button>
+            <button data-ach="earned">Earned</button>
+            <button data-ach="progress">In progress</button>
+          </div>
+        </div>
+        <div id="achBody"></div>
+      </section>
+
+      <!-- OWN PROFILE -->
+      <section class="view" id="v-you"></section>
+
+      <!-- SOMEONE ELSE -->
+      <section class="view" id="v-profile"></section>
+    </main>
+
+    <nav>
+      <button data-v="ranking"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-trophy"/></svg></span>Ranking</button>
+      <button data-v="marks"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-medal"/></svg><span class="dot" id="achDot" hidden></span></span>Achievements</button>
+      <button data-v="catch" class="on"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-target"/></svg></span>Catch</button>
+      <button data-v="collection"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-grid"/></svg></span>Collection</button>
+      <button data-v="you"><span class="box"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-user"/></svg></span>You</button>
+    </nav>
+
+    <div class="lightbox" id="lightbox">
+      <div class="lbinner">
+        <div class="lbart" id="lbArt"></div>
+        <div class="lbmeta">
+          <div class="nm" id="lbName"></div>
+          <div class="mt" id="lbMeta"></div>
+        </div>
+        <button class="btn ghost sm" id="lbClose">Close</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="scrim" id="scrim">
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="big" id="sheetArt"></div>
+        <div class="nm" id="sheetName"></div>
+        <div class="mt" id="sheetMeta"></div>
+        <div id="sheetKind"></div>
+        <div class="statgrid">
+          <div class="stat"><b id="sheetCaught">0</b><small>caught</small></div>
+          <div class="stat"><b id="sheetSpecies">0</b><small>species</small></div>
+          <div class="stat"><b id="sheetNth">1st</b><small id="sheetNthLabel">met</small></div>
+        </div>
+        <button class="btn" id="sheetNext">Next code</button>
+        <button class="btn ghost sm" id="sheetProfile">Open profile</button>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="notes">
+    <h2>Try it</h2>
+    <div class="try">
+      <b>XSEPE</b><b>UPXNE</b><b>YLSNB</b><b>KHXYZ</b><b>FBAWY</b><b>EHCVF</b><b>GAYLB</b><b>SWPBL</b>
+      <b>MRTQZ</b><b>PLZKD</b><b>VNBHR</b><b>QWEDC</b><b>ZQMPT</b><b>TRWNE</b>
+    </div>
+    <div class="try"><b class="gold">EFCEA</b><b class="gold">STAFF</b></div>
+    <p class="hint" style="margin-top:4px">Gold ones are special codes. Unknown codes fail, repeats say so, and
+      <code>?code=XSEPE&amp;auto=1</code> on the URL catches on load like the badge QR does.</p>
+
+    <h2>Feature parity with what is live</h2>
+    <table>
+      <tr><th>Live today</th><th>In here</th></tr>
+      <tr><td>Introduction, once per event</td><td class="y">Intro screen, Start collecting</td></tr>
+      <tr><td>Code entry, 5 chars, rate limited</td><td class="y">One field, disabled until 5, throttle message</td></tr>
+      <tr><td>QR auto-catch (<code>?code=&amp;auto=</code>)</td><td class="y">Same query parameters</td></tr>
+      <tr><td>Special codes (staff, CEA team)</td><td class="y">Gold codes, own result state</td></tr>
+      <tr><td>Already caught / invalid / game closed</td><td class="y">All three states</td></tr>
+      <tr><td>Collection: event filter incl. global</td><td class="n">Dropped, the collection is this event</td></tr>
+      <tr><td>Collection: rarity filter</td><td class="y">Five tiers, cards double as the filter</td></tr>
+      <tr><td>Collection: grid-list and counter toggles</td><td class="y">Grid-list as icons, counts always shown</td></tr>
+      <tr><td>Leaderboard: event filter, top 50, own rank</td><td class="y">Plus a fursuits board</td></tr>
+      <tr><td>Achievements: progress, secret, locked</td><td class="y">Real set, progress, new marker</td></tr>
+      <tr><td>Profile: about, links, edit, status</td><td class="y">Own and other players</td></tr>
+      <tr><td>Rarity tiers on catches</td><td class="y">Kept, recomputed from species frequency</td></tr>
+    </table>
+
+    <h2>Where the colour comes from</h2>
+    <ul>
+      <li><b>The fursuits.</b> Each species carries its own palette, so the collection is a wall of colour instead of grey pills. The chrome stays dark and quiet, like a Steam profile where the art is loud and the page is not.</li>
+      <li><b>Achievements are tiered.</b> Teal for the early ones, blue next, gold for the long hauls and purple for team
+      codes, so the row reads at a glance instead of being sixteen identical ticks. Leaderboard medals keep gold,
+      silver and copper, but only on the medal itself, not as a row wash.</li>
+      <li><b>The showcase.</b> Profiles lead with the owner's fursuit as a wide banner, the way Steam leads with artwork.</li>
+      <li><b>One interface colour.</b> <code>#005953</code> for actions, active nav and progress. Content colour never leaks into buttons, so nothing competes with the primary action.</li>
+    </ul>
+
+    <h2>Still worth deciding</h2>
+    <ul>
+      <li><b>Rarity is recomputed.</b> <code>UserCatch::getFursuitRarity()</code> ranks by how often a suit was already
+      caught, so popular reads as Legendary and day one is all Common. Here a species' share of the event population
+      decides the tier, so a Fenfonex among three is Legendary from the first minute. Thresholds are 0.2 / 0.5 / 1.2 /
+      2.5 percent of the badges at the event. The colour then drives the tile ring, the row tint and the species heading.</li>
+      <li><b>Emoji.</b> The live achievement icons are emoji in PHP (<code>Furedex5.php</code> and friends). These become tier colour plus a lucide glyph.</li>
+      <li><b>Naming.</b> "furédex" kept or dropped.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// ---------- data ----------
+const SPECIES = {
+  "Beagle":            ["#2b4a86", "#5b86d6"],
+  "Kugsha Dog":        ["#3c2f6b", "#7a63c8"],
+  "Norsk Skogkatt":    ["#1f4436", "#3f9070"],
+  "African Wild Dog":  ["#6b3a12", "#d08a35"],
+  "Coffee fox":        ["#5a2a1c", "#c2653f"],
+  "Red Deer":          ["#63202c", "#c14a5e"],
+  "Rexouium":          ["#144a4a", "#2fae9f"],
+  "Husky":             ["#25405c", "#5f9ec9"],
+  "Fenfonex":          ["#5b2f5e", "#b45fb0"],
+  "Raptor":            ["#4a4a12", "#b0b03a"],
+  "Coyote":            ["#5c3a1b", "#c08a4a"],
+  "Dog-Shark":         ["#1b3a5c", "#3f7fc0"],
+  "Kangaroo":          ["#5c3324", "#c07048"],
+  "Snow Leopard":      ["#2f3f52", "#8fa9c4"],
+};
+
+const SUITS = {
+  XSEPE: { name: "Caspian", species: "Beagle",           owner: "retrogradeprotogen", bio: "First con in suit. Beagle noises only.", links: ["https://bsky.app/profile/caspian"] },
+  UPXNE: { name: "Nox",     species: "Kugsha Dog",       owner: "voltaic",  bio: "Dance comp regular. Say hi at the stage.", links: ["https://voltaic.example", "https://bsky.app/profile/voltaic"] },
+  YLSNB: { name: "Birch",   species: "Norsk Skogkatt",   owner: "pinefall", bio: null, links: [] },
+  KHXYZ: { name: "Juno",    species: "African Wild Dog", owner: "sunspot",  bio: "Suit built 2024. The handler has the water.", links: ["https://sunspot.example/juno"] },
+  FBAWY: { name: "Rye",     species: "Coffee fox",       owner: "brewclaw", bio: "Coffee fox. Yes, really.", links: ["https://brewclaw.example"] },
+  EHCVF: { name: "Sable",   species: "Red Deer",         owner: "hartline", bio: "Quiet suiter, loud antlers.", links: [] },
+  GAYLB: { name: "Marl",    species: "Beagle",           owner: "tuftear",  bio: null, links: [] },
+  SWPBL: { name: "Wisp",    species: "Rexouium",         owner: "glasswing",bio: "Ask before hugs, the tail is fragile.", links: ["https://glasswing.example"] },
+  MRTQZ: { name: "Kettle",  species: "Husky",            owner: "northline",bio: "Photos welcome, ask first.", links: [] },
+  PLZKD: { name: "Vex",     species: "Fenfonex",         owner: "orchid",   bio: null, links: ["https://orchid.example"] },
+  VNBHR: { name: "Cobalt",  species: "Dog-Shark",        owner: "tidepool", bio: "Shark dog. Fins are foam, be gentle.", links: [] },
+  QWEDC: { name: "Pepper",  species: "Coyote",           owner: "dustdevil",bio: null, links: [] },
+  ZQMPT: { name: "Ember",   species: "Red Deer",         owner: "voltaic",  bio: null, links: [] },
+  TRWNE: { name: "Puddle",  species: "Dog-Shark",        owner: "glasswing",bio: null, links: [] },
+};
+const SPECIAL = {
+  EFCEA: { label: "Catch-Em-All team", note: "You met the people who run this thing." },
+  STAFF: { label: "Staff code",        note: "Thank you for your service." },
+};
+
+const SEED = ["UPXNE", "YLSNB", "KHXYZ", "FBAWY", "EHCVF", "SWPBL"];
+const TIMES = ["13:08", "14:22", "15:51", "16:15", "17:02", "18:04"];
+const caught = SEED.map((code, i) => ({ code, ...SUITS[code], time: TIMES[i] }));
+const specials = [];
+const SLOTS = 20;
+const TOTAL_BADGES = 2775;
+
+// A fixed palette, not a colour wheel: every swatch is checked against the dark
+// surface, and a preset choice needs no re-review the way free text does.
+const PALETTE = [
+  { key: "auto",   label: "Auto",     hex: null },
+  { key: "teal",   label: "Teal",     hex: "#19b3a2" },
+  { key: "green",  label: "Green",    hex: "#4bb161" },
+  { key: "lime",   label: "Lime",     hex: "#9db83c" },
+  { key: "gold",   label: "Gold",     hex: "#d9a520" },
+  { key: "orange", label: "Orange",   hex: "#e0762a" },
+  { key: "red",    label: "Red",      hex: "#d9534f" },
+  { key: "pink",   label: "Pink",     hex: "#d95d8f" },
+  { key: "purple", label: "Purple",   hex: "#9b6ae0" },
+  { key: "blue",   label: "Blue",     hex: "#4a8fe0" },
+  { key: "ice",    label: "Ice",      hex: "#5fc3d9" },
+  { key: "slate",  label: "Slate",    hex: "#8496ad" },
+];
+
+const me = {
+  name: "Tin", status: "approved",
+  bio: "Rat person. Ask before photos, happy to pose.",
+  links: ["https://tin.example", "https://bsky.app/profile/tin"],
+  species: "Husky",
+  colour: null,          // null means: take it from the profile picture
+};
+// stand-in for other players having picked one
+const ownerColour = (owner) => {
+  const seed = [...owner].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const picks = PALETTE.filter(p => p.hex);
+  return seed % 3 === 0 ? picks[seed % picks.length].hex : null;
+};
+
+let gameRunning = true;
+let viewing = null;
+let clock = 18 * 60 + 41;
+let colView = "grid", colRarity = "all";
+let lbBoard = "players", lbEvent = "30", achFilter = "all";
+let recentMarks = [];
+
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+const pal = (s) => SPECIES[s] || ["#243040", "#54687f"];
+
+// Stand-in for the badge photo. Badge images are always 3:4 portrait, locked by
+// the crop stencil (FursuitImageService::ASPECT_WIDTH / ASPECT_HEIGHT), so the
+// placeholder is drawn at 3:4 and everything that shows one reserves that box.
+function art(entity, square = false) {
+  const name = entity.name || "?";
+  const [back, fur] = pal(entity.species);
+  const seed = [...name].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const ear = seed % 3;
+  const W = square ? 64 : 48, H = 64;
+  const cx = W / 2, shift = square ? 0 : -8;
+  const ears = ear === 0
+    ? `<path d="M${cx - 15} ${30 + shift} ${cx - 17} ${12 + shift}l14 9z" fill="${fur}"/>
+       <path d="M${cx + 15} ${30 + shift} ${cx + 17} ${12 + shift} ${cx + 3} ${21 + shift}z" fill="${fur}"/>`
+    : ear === 1
+      ? `<circle cx="${cx - 14}" cy="${23 + shift}" r="7.5" fill="${fur}"/>
+         <circle cx="${cx + 14}" cy="${23 + shift}" r="7.5" fill="${fur}"/>`
+      : `<path d="M${cx - 13} ${32 + shift} ${cx - 16} ${8 + shift}l10 12z" fill="${fur}"/>
+         <path d="M${cx + 13} ${32 + shift} ${cx + 16} ${8 + shift} ${cx + 6} ${20 + shift}z" fill="${fur}"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${name}">
+    <rect width="${W}" height="${H}" fill="${back}"/>
+    <circle cx="${8 + seed % 8}" cy="${10 + seed % 6}" r="14" fill="${fur}" opacity=".22"/>
+    ${ears}
+    <ellipse cx="${cx}" cy="${40 + shift}" rx="16" ry="15" fill="${fur}"/>
+    <ellipse cx="${cx}" cy="${47 + shift}" rx="8.5" ry="7" fill="#f6f9fc" opacity=".93"/>
+    <circle cx="${cx - 6.5}" cy="${37 + shift}" r="2.5" fill="#0b0f14"/>
+    <circle cx="${cx + 6.5}" cy="${37 + shift}" r="2.5" fill="#0b0f14"/>
+    <path d="M${cx} ${44.5 + shift}c-1.6 0-3 1-3 2.1 0 1.2 1.4 2 3 2s3-.8 3-2c0-1.1-1.4-2.1-3-2.1z" fill="#0b0f14"/>
+  </svg>`;
+}
+// people, not fursuits: the identity mirror stores a square 512x512 webp
+const avatar = (person) => art(person, true);
+
+function showcase(entity, override) {
+  const [back, fur] = override
+    ? [`color-mix(in srgb, ${override} 32%, #0a1017)`, override]
+    : pal(entity.species);
+  return `<svg viewBox="0 0 390 196" preserveAspectRatio="none">
+    <rect width="390" height="196" fill="${back}"/>
+    <circle cx="52" cy="34" r="92" fill="${fur}" opacity=".34"/>
+    <circle cx="340" cy="164" r="104" fill="${fur}" opacity=".26"/>
+    <circle cx="300" cy="30" r="38" fill="#ffffff" opacity=".09"/>
+    <circle cx="146" cy="170" r="30" fill="#ffffff" opacity=".06"/>
+    <rect x="196" y="84" width="150" height="7" rx="3.5" fill="${fur}" opacity=".5"/>
+    <rect x="196" y="100" width="96" height="7" rx="3.5" fill="#ffffff" opacity=".12"/>
+  </svg>`;
+}
+
+
+// ---------- dominant colour, sampled from the badge picture ----------
+// Draws the image small, weights the centre, buckets by hue and keeps the most
+// present colour that is neither near-black, near-white nor washed out.
+const swatchCache = new Map();
+function dominantColour(markup, key) {
+  if (swatchCache.has(key)) return Promise.resolve(swatchCache.get(key));
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const N = 48;
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = N;
+      const ctx = cv.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, N, N);
+      const { data } = ctx.getImageData(0, 0, N, N);
+      const buckets = new Map();
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const i = (y * N + x) * 4;
+          const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
+          if (a < 200) continue;
+          const max = Math.max(r, g, b), min = Math.min(r, g, b);
+          const lum = (max + min) / 2, sat = max === min ? 0 : (max - min) / (255 - Math.abs(max + min - 255));
+          if (lum < 34 || lum > 226 || sat < 0.18) continue;      // skip ink, highlights, greys
+          // centre counts for more, the way a portrait's subject sits mid frame
+          const dx = (x - N / 2) / (N / 2), dy = (y - N / 2) / (N / 2);
+          const weight = 1 + 2.2 * Math.max(0, 1 - Math.hypot(dx, dy));
+          const kb = `${r >> 4},${g >> 4},${b >> 4}`;
+          const cur = buckets.get(kb) || { w: 0, r: 0, g: 0, b: 0 };
+          cur.w += weight; cur.r += r * weight; cur.g += g * weight; cur.b += b * weight;
+          buckets.set(kb, cur);
+        }
+      }
+      let best = null;
+      buckets.forEach(v => { if (!best || v.w > best.w) best = v; });
+      const hex = best
+        ? "#" + [best.r, best.g, best.b].map(c => Math.round(c / best.w).toString(16).padStart(2, "0")).join("")
+        : "#19b3a2";
+      swatchCache.set(key, hex);
+      resolve(hex);
+    };
+    img.onerror = () => resolve("#19b3a2");
+    // a data-URL SVG only rasterises with an xmlns and an intrinsic size
+    const drawable = markup.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" ');
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(drawable);
+  });
+}
+// lifts a sampled colour to something readable on a dark screen
+function readable(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  let [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  if (lum < 0.42) {
+    const k = 0.42 / Math.max(lum, 0.05);
+    [r, g, b] = [r, g, b].map(c => Math.min(255, Math.round(c * k)));
+  }
+  return "#" + [r, g, b].map(c => c.toString(16).padStart(2, "0")).join("");
+}
+function swatchFor(entity) {
+  return dominantColour(art(entity), entity.name || "?").then(readable);
+}
+
+// how many of each species are registered at the event. Rarity is share of the
+// event population, so a species nobody else brought is Legendary on day one,
+// unlike the live rule which ranks by how often a suit was already caught.
+const POPULATION = {
+  "Husky": 214, "Beagle": 96, "Coyote": 88, "Red Deer": 61, "Kangaroo": 44,
+  "Norsk Skogkatt": 38, "African Wild Dog": 27, "Coffee fox": 19, "Raptor": 15,
+  "Rexouium": 11, "Kugsha Dog": 7, "Dog-Shark": 5, "Fenfonex": 3, "Snow Leopard": 2,
+};
+const RARITY = {
+  legendary: { label: "Legendary", colour: "#e0a020", icon: "crown" },
+  epic:      { label: "Epic",      colour: "#a35fd6", icon: "gem" },
+  rare:      { label: "Rare",      colour: "#3f8fe0", icon: "sparkles" },
+  uncommon:  { label: "Uncommon",  colour: "#46b06a", icon: "star" },
+  common:    { label: "Common",    colour: "#7d90a6", icon: "book" },
+};
+function rarityOf(species) {
+  const share = (POPULATION[species] ?? 1) / TOTAL_BADGES * 100;
+  return share < 0.2 ? "legendary"
+    : share < 0.5 ? "epic"
+    : share < 1.2 ? "rare"
+    : share < 2.5 ? "uncommon"
+    : "common";
+}
+const rarityColour = (species) => RARITY[rarityOf(species)].colour;
+
+function speciesCount(list = caught) { return new Set(list.map(c => c.species)).size; }
+function timeNow() { clock += 7; return `${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`; }
+
+// ---------- achievements, the live set ----------
+function achievements() {
+  const n = caught.length, s = speciesCount(), sp = specials.length;
+  const def = [
+    { t: "First Catch",             d: "You have successfully made your first catch.", cur: Math.min(n, 1),  max: 1,   tier: "bronze" },
+    { t: "Fill the furédex I",      d: "You caught 5 species at least once.",          cur: Math.min(s, 5),  max: 5,   tier: "bronze" },
+    { t: "Collector",               d: "You are an aspiring collector.",               cur: Math.min(n, 10), max: 10,  tier: "bronze" },
+    { t: "Fill the furédex II",     d: "You caught 10 species at least once.",         cur: Math.min(s, 10), max: 10,  tier: "silver" },
+    { t: "Curator",                 d: "Your reputation as a collector is growing.",   cur: Math.min(n, 25), max: 25,  tier: "silver" },
+    { t: "Fill the furédex III",    d: "You caught 20 species at least once.",         cur: Math.min(s, 20), max: 20,  tier: "silver" },
+    { t: "Archivist",               d: "Your dedication is clear.",                    cur: Math.min(n, 50), max: 50,  tier: "gold" },
+    { t: "Nice",                    d: "Sixty nine of them. You know what you did.",   cur: Math.min(n, 69), max: 69,  tier: "gold" },
+    { t: "The Completionist",       d: "You are dedicated to the cause.",              cur: Math.min(n, 100), max: 100, tier: "gold" },
+    { t: "The Legendary 151",       d: "Just like a certain little mouse.",            cur: Math.min(n, 151), max: 151, tier: "gold" },
+    { t: "Night Owl",               d: "The hunt never sleeps, and neither do you.",   cur: clock > 24 * 60 ? 1 : 0, max: 1, tier: "silver" },
+    { t: "Catch-Em-All team",       d: "You met the people who run this thing.",       cur: Math.min(sp, 1), max: 1,  tier: "team" },
+    { t: "Your Furédex is complete!", d: "Every species at the event, at least once.", cur: s, max: 42, tier: "gold", locked: true },
+  ];
+  return def.map(a => ({ ...a, done: a.cur >= a.max, pct: Math.round(a.cur / a.max * 100) }));
+}
+// tier ramp: teal for the early ones, blue, then gold, purple for team codes
+const TIER = { bronze: "var(--tier-1)", silver: "var(--tier-2)", gold: "var(--tier-3)", team: "var(--team)" };
+
+// ---------- header ----------
+const TITLES = {
+  intro:      () => ["Welcome", "Eurofurence 30"],
+  catch:      () => ["Catch 'Em All", gameRunning ? "Eurofurence 30" : "Game closed"],
+  collection: () => ["Collection", `${caught.length} of ${TOTAL_BADGES.toLocaleString("en")} badges at EF30`],
+  ranking:    () => ["Leaderboard", `EF${lbEvent} · ${lbBoard === "players" ? "players" : "most caught fursuits"}`],
+  marks:      () => ["Achievements", `${achievements().filter(a => a.done).length} of ${achievements().length} earned`],
+  you:        () => ["Your profile", STATUS[me.status].sub],
+  profile:    () => [viewing ? viewing.owner : "Profile", "Player profile"],
+};
+const STATUS = {
+  approved: { chip: "ok",   label: "Approved · public", sub: "Visible to other players" },
+  pending:  { chip: "wait", label: "Waiting for review", sub: "Hidden until a reviewer approves it" },
+  rejected: { chip: "no",   label: "Rejected",           sub: "Hidden, reason below" },
+};
+
+const HUES = {
+  intro:      () => "#19b3a2",
+  catch:      () => "#19b3a2",
+  collection: () => pal(caught[caught.length - 1]?.species)[1],
+  ranking:    () => "#d9a520",
+  marks:      () => "#b9c4cf",
+  you:        () => me.colour || pal(me.species)[1],
+  profile:    () => viewing ? (ownerColour(viewing.owner) || pal(viewing.species)[1]) : "#19b3a2",
+};
+function setHue(view) {
+  const hue = (HUES[view] || HUES.catch)();
+  const chosen = view === "you" ? me.colour
+    : view === "profile" ? ownerColour(viewing?.owner || "")
+    : null;
+  const subject = chosen ? null
+    : view === "you" ? me
+    : view === "profile" ? viewing
+    : view === "collection" || view === "catch" ? caught[caught.length - 1]
+    : null;
+  if (subject) swatchFor(subject).then(c => paintHue(c, view));
+  paintHue(hue, view);
+}
+let hueView = "catch";
+function paintHue(hue, view) {
+  if (view && view !== currentView()) return;      // a late sample must not repaint another screen
+  hueView = view || hueView;
+  document.querySelector(".screen").style.setProperty("--screen-hue", hue);
+  $("ambient").innerHTML = `<svg viewBox="0 0 390 800" preserveAspectRatio="none">
+    <circle cx="330" cy="-30" r="150" fill="${hue}" opacity=".17"/>
+    <circle cx="20" cy="330" r="120" fill="${hue}" opacity=".08"/>
+    <circle cx="360" cy="720" r="130" fill="${hue}" opacity=".1"/>
+  </svg>`;
+}
+const currentView = () => (document.querySelector(".view.on") || { id: "v-catch" }).id.replace("v-", "");
+
+// caught count tiers, colour the header badge by how far along you are
+const COUNT_TIERS = [
+  { at: 100, cls: "t4", word: "legend" },
+  { at: 50,  cls: "t3", word: "gold" },
+  { at: 25,  cls: "t2", word: "silver" },
+  { at: 10,  cls: "t1", word: "bronze" },
+  { at: 0,   cls: "t0", word: "" },
+];
+let shownCount = 0;
+function renderPill(animate) {
+  const pill = $("headpill");
+  const tier = COUNT_TIERS.find(t => caught.length >= t.at);
+  const prev = pill.dataset.tier;
+  pill.className = `pill ${tier.cls}`;
+  pill.dataset.tier = tier.cls;
+  const paint = (n) => pill.innerHTML =
+    `${n} caught${tier.word ? `<span class="tierword">${tier.word}</span>` : ""}`;
+  if (!animate || shownCount === caught.length) { shownCount = caught.length; paint(caught.length); }
+  else {
+    const from = shownCount, to = caught.length, start = performance.now();
+    const step = (now) => {
+      const k = Math.min(1, (now - start) / 260);
+      paint(Math.round(from + (to - from) * k));
+      if (k < 1) requestAnimationFrame(step); else shownCount = to;
+    };
+    requestAnimationFrame(step);
+  }
+  if (prev && prev !== tier.cls) {
+    pill.classList.add("bump");
+    setTimeout(() => pill.classList.remove("bump"), 400);
+  }
+}
+
+function renderHead(view) {
+  const [t, s] = TITLES[view]();
+  $("title").textContent = t;
+  $("subtitle").textContent = s;
+  renderPill(false);
+  setHue(view);
+}
+
+// ---------- catch screen ----------
+function renderCatch() {
+  $("gameState").innerHTML = gameRunning ? "" :
+    `<div class="banner warn">The game is closed. It runs from Wednesday 12:00 until Saturday 22:00.</div>`;
+  $("catchCard").style.display = gameRunning ? "" : "none";
+  $("latestMeta").textContent = `${caught.length} of ${TOTAL_BADGES.toLocaleString("en")}`;
+  $("latest").innerHTML = [...caught].reverse().slice(0, 8).map(tile).join("");
+  $("timeline").innerHTML = [...caught].reverse().slice(0, 6).map(c => `
+    <div class="listrow" data-i="${caught.indexOf(c)}" style="--tone:${pal(c.species)[1]}">
+      <div class="th">${art(c)}</div>
+      <div class="who"><b>${c.name}</b><small>${c.species} · ${c.owner}</small></div>
+      <div style="color:var(--muted);font-size:13px">${c.time}</div>
+    </div>`).join("") || `<p class="hint" style="margin:0">Nothing yet today.</p>`;
+}
+const tile = (c, i = 0) => `<div class="tile ${c.fresh ? "fresh" : ""}" data-i="${caught.indexOf(c)}"
+  style="animation-delay:${Math.min(i, 12) * 22}ms;--rare:${rarityColour(c.species)}"
+  title="${RARITY[rarityOf(c.species)].label}">${art(c)}${
+  speciesTally(c.species) > 1 ? `<span class="cnt">${speciesTally(c.species)}</span>` : ""}</div>`;
+function speciesTally(sp) { return caught.filter(c => c.species === sp).length; }
+
+// ---------- collection ----------
+function renderCollection() {
+  const list = caught.filter(c => colRarity === "all" || rarityOf(c.species) === colRarity);
+
+  const pct = Math.round(caught.length / TOTAL_BADGES * 1000) / 10;
+  const tally = Object.keys(RARITY).map(key => ({
+    key, ...RARITY[key], n: caught.filter(c => rarityOf(c.species) === key).length,
+  }));
+  $("colSummary").innerHTML = `
+    <div class="herostat">
+      <div class="hsnum"><b>${caught.length}</b><span>caught</span></div>
+      <div class="hsmeta">
+        <div class="bar"><i style="width:${Math.max(pct, 1.5)}%;background:var(--accent-bright)"></i></div>
+        <small>${pct}% of ${TOTAL_BADGES.toLocaleString("en")} badges · ${speciesCount()} species</small>
+      </div>
+    </div>
+    <div class="raritygrid">${tally.map(t => `
+      <button class="stat rarity ${colRarity === t.key ? "on" : ""}" data-rarity="${t.key}" style="--tone:${t.colour}">
+        <svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-${t.icon}"/></svg>
+        <b>${t.n}</b><small>${t.label}</small>
+      </button>`).join("")}</div>`;
+
+  if (colView === "grid") {
+    const blanks = Math.max(SLOTS - list.length, 4);
+    $("colBody").innerHTML = `<div class="tiles rarity">${list.map(tile).join("")}${
+      Array.from({ length: blanks }, () => `<div class="tile blank"></div>`).join("")}</div>
+      <p class="hint">Tap a sticker for the player behind it. Dashed slots are people still out there.</p>`;
+  } else {
+    // one row per species, not a heading per species: with mostly one catch each,
+    // headings outnumbered their own contents. Tap a row to see who they were.
+    const bySpecies = {};
+    list.forEach(c => (bySpecies[c.species] ||= []).push(c));
+    const rows = Object.entries(bySpecies).sort((a, b) => b[1].length - a[1].length);
+    $("colBody").innerHTML = rows.map(([sp, cs]) => `
+      <div class="specrow" data-species="${sp}" style="--tone:${rarityColour(sp)}">
+        <div class="listrow" style="--tone:${rarityColour(sp)};margin:0;border:0;border-radius:0;background:none">
+          <div class="th">${art(cs[0])}</div>
+          <div class="who">
+            <b>${sp}</b>
+            <small>${cs.length} caught · ${POPULATION[sp] ?? 1} at EF30</small>
+          </div>
+          <span class="rlabel" style="color:${rarityColour(sp)}">${RARITY[rarityOf(sp)].label}</span>
+        </div>
+        <div class="subrows">${cs.map(c => `
+          <div class="subrow" data-i="${caught.indexOf(c)}">
+            <span>${c.name}</span><small>${c.owner} · ${c.time}</small>
+          </div>`).join("")}</div>
+      </div>`).join("")
+      || `<p class="hint" style="margin:0">Nothing at that rarity yet.</p>`;
+  }
+}
+
+// ---------- leaderboard ----------
+const PLAYERS = [
+  { n: "Rye", sp: 41, c: 63 }, { n: "Nox", sp: 38, c: 57 }, { n: "Birch", sp: 35, c: 49 },
+  { n: "Juno", sp: 14, c: 15 }, { n: "Sable", sp: 13, c: 14 }, { n: "Marl", sp: 12, c: 12 },
+  { n: "Wisp", sp: 11, c: 11 }, { n: "Kettle", sp: 9, c: 9 }, { n: "Vex", sp: 8, c: 8 },
+];
+function renderRanking() {
+  if (lbBoard === "suits") {
+    const suits = Object.values(SUITS)
+      .map((s, i) => ({ ...s, times: 90 - i * 7 }))
+      .sort((a, b) => b.times - a.times).slice(0, 8);
+    $("lbBody").innerHTML = suits.map((s, i) => `
+      <div class="row rarity" style="--tone:${rarityColour(s.species)}" data-zoom="${s.name}">
+        <div class="rank">${medal(i)}</div>
+        <div class="th" style="width:42px;height:56px;border-radius:8px;overflow:hidden;flex:0 0 auto">${art(s)}</div>
+        <div class="who">
+          <b>${s.name}</b>
+          <small><span class="rlabel" style="color:${rarityColour(s.species)}">${RARITY[rarityOf(s.species)].label}</span> · ${s.species}</small>
+        </div>
+        <div class="n">${s.times}</div>
+      </div>`).join("") + `<p class="hint">How often each fursuit was caught by anyone. Not a rarity score.</p>`;
+    return;
+  }
+  const RANK_ORDER = ["legendary", "epic", "rare", "uncommon", "common"];
+  const best = (player) => {
+    if (player.me) {
+      const found = caught.map(c => rarityOf(c.species));
+      return RANK_ORDER.find(r => found.includes(r)) || "common";
+    }
+    // deterministic stand-in for someone else's rarest find
+    const seed = [...player.n].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+    return RANK_ORDER[seed % RANK_ORDER.length];
+  };
+  const mine = { n: me.name, sp: speciesCount(), c: caught.length, me: true };
+  const all = [...PLAYERS, mine].sort((a, b) => b.c - a.c);
+  const myRank = all.indexOf(mine) + 1;
+  $("lbBody").innerHTML = all.map((r, i) => {
+    const tier = best(r);
+    return `
+    <div class="row ${r.me ? "me" : "rarity"}" style="--tone:${RARITY[tier].colour}">
+      <div class="rank">${medal(i)}</div>
+      <div class="who">
+        <b>${r.n}</b>
+        <small><span class="rlabel" style="color:${RARITY[tier].colour}">${RARITY[tier].label}</span> best find · ${r.sp} species${r.me ? " · you" : ""}</small>
+      </div>
+      <div class="n">${r.c}</div>
+    </div>`;
+  }).join("") +
+    `<p class="hint">Top 50 shown, your row is pinned wherever you land. You are ${ordinal(myRank)}.
+     The colour is the rarest species that player has found.</p>`;
+}
+const medal = (i) => i < 3
+  ? `<span class="medal ${["g", "s", "b"][i]}"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-medal"/></svg></span>`
+  : i + 1;
+const ordinal = (n) => n + (["st", "nd", "rd"][n - 1] || "th");
+function myRank() {
+  const mine = { c: caught.length, me: true };
+  return [...PLAYERS, mine].sort((a, b) => b.c - a.c).findIndex(p => p.me) + 1;
+}
+
+// ---------- marks ----------
+function renderMarks() {
+  const list = achievements().filter(a =>
+    achFilter === "all" || (achFilter === "earned" && a.done) || (achFilter === "progress" && !a.done));
+  $("achBody").innerHTML = list.map(a => `
+    <div class="ach ${a.done ? "earned" : ""}" data-ach="${a.t}" style="--tier:${a.done ? TIER[a.tier] : "transparent"}">
+      <div class="b ${a.done ? "" : "locked"}" ${a.done ? `style="background:${TIER[a.tier]}"` : ""}>
+        <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-${a.done ? "check" : a.locked ? "lock" : "flag"}"/></svg>
+      </div>
+      <div class="x">
+        <b>${a.t}</b>${recentMarks.includes(a.t) ? ' <span class="new">new</span>' : ""}
+        <small>${a.done ? `Earned · ${a.max}/${a.max}` : a.locked ? "Locked until the event ends" : `${a.cur} of ${a.max}`}</small>
+        ${a.done || a.locked ? "" : `<div class="bar"><i style="width:${a.pct}%;background:${TIER[a.tier]}"></i></div>`}
+        <div class="desc">${a.d}</div>
+      </div>
+    </div>`).join("");
+  $("achDot").hidden = recentMarks.length === 0;
+}
+
+// ---------- profiles ----------
+const bcard = (a) => `
+  <div class="bcard" style="--tone:${TIER[a.tier]}" title="${a.d}">
+    <span class="disc"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-${a.done ? "check" : "flag"}"/></svg></span>
+    <b>${a.t}</b><small>${a.done ? "12 Aug" : `${a.cur}/${a.max}`}</small>
+  </div>`;
+
+function renderYou() {
+  const st = STATUS[me.status];
+  const marks = achievements().filter(a => a.done);
+  $("v-you").innerHTML = `
+    <div class="showcase">${showcase(me, me.colour)}</div>
+    <div class="profhead">
+      <div class="avatar">${avatar(me)}</div>
+      <div class="nm">${me.name}</div>
+      <div class="sp">${st.sub}</div>
+    </div>
+    <div class="statgrid">
+      <div class="stat" style="--tone:var(--accent-bright)"><b>${caught.length}</b><small>caught</small></div>
+      <div class="stat" style="--tone:${pal(me.species)[1]}"><b>${speciesCount()}</b><small>species</small></div>
+      <div class="stat" style="--tone:var(--gold)"><b>${ordinal(myRank())}</b><small>rank</small></div>
+    </div>
+    <h3 class="sec"><span><b class="tick"></b>Achievements</span><span class="meta">${marks.length} of ${achievements().length}</span></h3>
+    ${marks.length ? `<div class="badgecase">${marks.slice(0, 5).map(a => bcard(a)).join("")}
+      ${marks.length > 5 || true ? `<div class="bcard more" style="--tone:var(--accent)" data-go="marks">
+        <b>${marks.length > 5 ? `+${marks.length - 5}` : "See all"}</b><small>achievements</small></div>` : ""}
+      </div>` : `<p class="hint" style="margin:0">None yet. Catch someone.</p>`}
+    <h3 class="sec"><span><b class="tick"></b>Profile colour</span>
+      <span class="meta">${me.colour ? PALETTE.find(p => p.hex === me.colour)?.label ?? "Custom" : "From your picture"}</span></h3>
+    <div class="swatches">${PALETTE.map(p => `
+      <button class="swatch ${(!me.colour && !p.hex) || me.colour === p.hex ? "on" : ""}"
+        data-colour="${p.hex ?? ""}" title="${p.label}" aria-label="${p.label}"
+        style="--sw:${p.hex ?? "var(--panel-2)"}">${p.hex ? "" :
+          `<svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-sparkles"/></svg>`}</button>`).join("")}</div>
+
+    <h3 class="sec"><span><b class="tick"></b>About</span></h3>
+    <textarea class="bio" id="myBio" rows="3" maxlength="255">${me.bio ?? ""}</textarea>
+    <div class="hint" style="text-align:right" id="bioCount">${(me.bio ?? "").length} / 255</div>
+    <h3 class="sec"><span><b class="tick"></b>Links</span><span class="meta">${me.links.length} of 10</span></h3>
+    <div id="myLinks">${me.links.map((u, i) => `
+      <div class="link">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--muted)"><use href="#i-link"/></svg>
+        <span>${u}</span><button data-rm="${i}">Remove</button>
+      </div>`).join("") || `<p class="hint" style="margin:0">No links yet.</p>`}</div>
+    <button class="btn ghost sm" id="addLink" ${me.links.length >= 10 ? "disabled" : ""}>Add link</button>
+    <div class="banner" style="margin-top:14px">Your picture comes from your Eurofurence identity account. Change it there.</div>
+    <p class="hint" style="margin-top:0">Editing the text, the links or the picture sends the profile back for review before other players see it.</p>
+    <button class="btn" id="saveProfile">Save profile</button>`;
+
+    document.querySelectorAll("[data-colour]").forEach(b => b.onclick = () => {
+    me.colour = b.dataset.colour || null;
+    renderYou();
+    setHue("you");
+    renderHead("you");
+    toast(me.colour ? "Colour updated" : "Colour follows your picture", "good");
+  });
+
+$("myBio").addEventListener("input", e => {
+    me.bio = e.target.value;
+    $("bioCount").textContent = `${e.target.value.length} / 255`;
+    dirty();
+  });
+  $("addLink").onclick = () => {
+    const url = prompt("Link URL", "https://");
+    if (!url || !/^https?:\/\/\S+$/i.test(url)) return toast("Needs an http or https URL", "bad");
+    if (me.links.includes(url.toLowerCase())) return toast("That link is already there", "bad");
+    me.links.push(url.toLowerCase()); dirty(); renderYou();
+  };
+  $("saveProfile").onclick = () => toast(me.status === "pending"
+    ? "Saved. A reviewer sees it next." : "Saved.", "good");
+}
+
+function openProfile(entry) {
+  viewing = entry;
+  const owner = { name: entry.owner, species: entry.species };
+  const theirs = Object.values(SUITS).filter(s => s.owner === entry.owner);
+  // deterministic per player, so the same profile always shows the same case
+  const seed = [...entry.owner].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const theirMarks = achievements().filter((_, i) => (seed + i * 7) % 4 === 0).slice(0, 6)
+    .map(a => ({ ...a, done: true }));
+  $("v-profile").innerHTML = `
+    <div class="showcase">${showcase(entry, ownerColour(entry.owner))}</div>
+    <div class="profhead">
+      <div class="avatar">${avatar(owner)}</div>
+      <div class="nm">${entry.owner}</div>
+      <div class="sp">Player at Eurofurence 30</div>
+    </div>
+    <div class="statgrid">
+      <div class="stat" style="--tone:${pal(entry.species)[1]}"><b>${theirs.length}</b><small>fursuit${theirs.length === 1 ? "" : "s"}</small></div>
+      <div class="stat" style="--tone:var(--gold)"><b>${18 + theirs.length * 9}</b><small>times caught</small></div>
+      <div class="stat" style="--tone:var(--accent-bright)"><b>${theirs.filter(t => caught.some(c => c.name === t.name)).length}/${theirs.length}</b><small>you have</small></div>
+    </div>
+    ${entry.bio ? `<h3 class="sec"><span><b class="tick"></b>About</span></h3>
+      <p style="margin:0;font-size:13px;color:#c9d3e2">${entry.bio}</p>` : ""}
+    <h3 class="sec"><span><b class="tick"></b>Achievements</span><span class="meta">${theirMarks.length} of ${achievements().length}</span></h3>
+    <div class="badgecase">${theirMarks.map(a => bcard(a)).join("")}</div>
+    <h3 class="sec"><span><b class="tick"></b>Fursuits</span>
+      <span class="meta">${theirs.filter(t => caught.some(c => c.name === t.name)).length} of ${theirs.length} caught</span></h3>
+    <div class="tiles">${theirs.map(s => {
+      const got = caught.some(c => c.name === s.name);
+      const here = s.name === entry.name;
+      return `<div class="tile ${here ? "current" : ""} ${got ? "" : "missing"}"
+        style="--rare:${rarityColour(s.species)}" data-zoom="${s.name}" title="${s.name} · ${s.species}">
+        ${art(s)}
+        <span class="tname">${s.name}</span>
+
+      </div>`;
+    }).join("")}</div>
+    <h3 class="sec"><span><b class="tick"></b>Links</span></h3>
+    ${entry.links && entry.links.length ? `
+      <div class="banner">Written by the attendee. These lead off Eurofurence sites.</div>
+      ${entry.links.map(u => `<div class="link">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="color:var(--muted)"><use href="#i-link"/></svg>
+        <span>${u}</span></div>`).join("")}` : `<p class="hint" style="margin:0">None shared.</p>`}
+    <button class="btn ghost" id="profBack" style="margin-top:18px">Back</button>
+    <p class="hint">Profiles appear here only after a reviewer approved them. Pending and rejected ones stay hidden.</p>`;
+  show("profile");
+  document.querySelectorAll("#v-profile .listrow[data-suit]").forEach(row => {
+    const suit = Object.values(SUITS).find(x => x.name === row.dataset.suit);
+    if (suit) swatchFor(suit).then(hex => row.style.setProperty("--tone", hex));
+  });
+  $("profBack").onclick = () => show("collection");
+}
+
+function dirty() {
+  if (me.status === "pending") return;
+  me.status = "pending";
+  renderHead("you");
+  const sub = document.querySelector("#v-you .sp");
+  if (sub) sub.textContent = STATUS.pending.sub;
+  toast("Changed. Back in the review queue until approved.");
+}
+
+// ---------- shell ----------
+// rows start on the species fallback, then settle onto the sampled colour
+function paintRowTones() {
+  document.querySelectorAll(".listrow[data-i]:not(.keep-tone)").forEach(row => {
+    const c = caught[+row.dataset.i];
+    if (c) swatchFor(c).then(hex => row.style.setProperty("--tone", hex));
+  });
+}
+
+function renderAll() {
+  renderCatch(); renderCollection(); renderRanking(); renderMarks(); renderYou();
+  paintRowTones();
+  const open = document.querySelector(".view.on");
+  renderHead(open ? open.id.replace("v-", "") : "catch");
+}
+function show(view) {
+  const tab = view === "profile" ? "collection" : view === "intro" ? "catch" : view;
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + view));
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === tab));
+  document.querySelector("main").scrollTop = 0;
+  if (view === "marks") { recentMarks = []; renderMarks(); }
+  renderHead(view);
+  paintRowTones();
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
+
+let toastTimer;
+function toast(msg, kind) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast on" + (kind ? " " + kind : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("on"), 2400);
+}
+
+// ---------- catching ----------
+let attempts = [];
+$("code").addEventListener("input", e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  $("catchBtn").disabled = e.target.value.length < 5;
+});
+$("code").addEventListener("keydown", e => { if (e.key === "Enter" && !$("catchBtn").disabled) submit(); });
+$("catchBtn").onclick = () => submit();
+$("introDone").onclick = () => { show("catch"); toast("Have a good hunt.", "good"); };
+
+function submit(codeIn) {
+  const code = (codeIn || $("code").value).toUpperCase();
+  $("code").value = ""; $("catchBtn").disabled = true;
+
+  if (!gameRunning) return toast("The game is closed right now", "bad");
+
+  // rate limit, mirroring fursuit_catch_attempts_per_minute
+  attempts = attempts.filter(t => performance.now() - t < 60000);
+  if (attempts.length >= 20) return toast("Too many tries. Wait a minute.", "bad");
+  attempts.push(performance.now());
+
+  const special = SPECIAL[code];
+  if (special) {
+    if (specials.includes(code)) return toast("Special code already claimed", "bad");
+    specials.push(code);
+    openSheet({ special, code });
+    return;
+  }
+  const suit = SUITS[code];
+  if (!suit) return toast("No badge with that code", "bad");
+  if (caught.some(c => c.code === code)) return toast(`${suit.name} is already in your book`, "bad");
+
+  const before = achievements().filter(a => a.done).map(a => a.t);
+  caught.forEach(c => (c.fresh = false));
+  const entry = { code, ...suit, time: timeNow(), fresh: true };
+  caught.push(entry);
+  const earned = achievements().filter(a => a.done && !before.includes(a.t)).map(a => a.t);
+  recentMarks.push(...earned);
+
+  openSheet({ entry, earned });
+}
+
+function openSheet({ entry, special, earned = [] }) {
+  if (special) {
+    $("sheetArt").innerHTML = showcase({ species: "Rexouium" });
+    $("sheetName").textContent = special.label;
+    $("sheetMeta").textContent = special.note;
+    $("sheetKind").innerHTML = `<span class="kind" style="background:var(--gold)">Special code</span>`;
+    $("sheetProfile").style.display = "none";
+  } else {
+    const nth = caught.filter(c => c.species === entry.species).length;
+    $("sheetArt").innerHTML = art(entry);
+    $("sheetName").textContent = entry.name;
+    $("sheetMeta").textContent = `${entry.species} · badge by ${entry.owner}`;
+    $("sheetKind").innerHTML = earned.length
+      ? `<span class="kind" style="background:var(--gold)">Achievement: ${earned[0]}</span>` : "";
+    $("sheetNth").textContent = ordinal(nth);
+    $("sheetNthLabel").textContent = `${entry.species} met`;
+    $("sheetProfile").style.display = "";
+    $("sheetProfile").onclick = () => { closeSheet(); openProfile(entry); };
+  }
+  $("sheetCaught").textContent = caught.length;
+  $("sheetSpecies").textContent = speciesCount();
+  $("scrim").classList.add("on");
+  renderAll();
+  renderPill(true);
+  if (earned.length) setTimeout(() => toast(`Achievement unlocked: ${earned[0]}`, "good"), 900);
+}
+
+// ---------- sheet gestures ----------
+// lightbox: the badge photo at full size, dismissed by tap, Escape or the button
+function openLightbox(name) {
+  const suit = Object.values(SUITS).find(x => x.name === name) || caught.find(c => c.name === name);
+  if (!suit) return;
+  $("lbArt").innerHTML = art(suit);
+  $("lbName").textContent = suit.name;
+  $("lbMeta").textContent = `${suit.species} · badge by ${suit.owner}`;
+  $("lightbox").classList.add("on");
+}
+const closeLightbox = () => $("lightbox").classList.remove("on");
+$("lbClose").onclick = closeLightbox;
+$("lightbox").onclick = e => { if (!e.target.closest(".lbmeta")) closeLightbox(); };
+
+const sheet = document.querySelector(".sheet");
+function closeSheet() {
+  sheet.classList.remove("dragging");
+  sheet.style.transform = "";
+  $("scrim").style.opacity = "";
+  $("scrim").classList.remove("on");
+}
+$("sheetNext").onclick = () => { closeSheet(); show("catch"); $("code").focus(); };
+$("scrim").onclick = e => { if (e.target === $("scrim")) closeSheet(); };
+let dragY = null, lastY = 0, lastT = 0, velocity = 0;
+sheet.addEventListener("pointerdown", e => {
+  if (e.target.closest("button")) return;
+  dragY = e.clientY; lastY = e.clientY; lastT = performance.now(); velocity = 0;
+  sheet.classList.add("dragging"); sheet.setPointerCapture(e.pointerId);
+});
+sheet.addEventListener("pointermove", e => {
+  if (dragY === null) return;
+  const dy = Math.max(0, e.clientY - dragY), now = performance.now();
+  if (now > lastT) { velocity = (e.clientY - lastY) / (now - lastT); lastT = now; lastY = e.clientY; }
+  sheet.style.transform = `translateY(${dy}px)`;
+  $("scrim").style.opacity = String(Math.max(0, 1 - dy / 320));
+});
+function endDrag(e) {
+  if (dragY === null) return;
+  const dy = Math.max(0, e.clientY - dragY);
+  dragY = null; sheet.classList.remove("dragging"); $("scrim").style.opacity = "";
+  if (dy > 110 || velocity > 0.65) closeSheet(); else sheet.style.transform = "";
+}
+sheet.addEventListener("pointerup", endDrag);
+sheet.addEventListener("pointercancel", endDrag);
+sheet.addEventListener("wheel", e => { if (e.deltaY > 24) closeSheet(); }, { passive: true });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  $("lightbox").classList.contains("on") ? closeLightbox() : closeSheet();
+});
+
+// ---------- controls ----------
+$("colRarity").onchange = e => { colRarity = e.target.value; renderCollection(); };
+document.addEventListener("click", e => {
+  const chip = e.target.closest("[data-rarity]");
+  if (!chip) return;
+  colRarity = colRarity === chip.dataset.rarity ? "all" : chip.dataset.rarity;
+  $("colRarity").value = colRarity;
+  renderCollection();
+});
+$("lbEvent").onchange = e => { lbEvent = e.target.value; renderRanking(); renderHead("ranking"); };
+document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => {
+  colView = b.dataset.view;
+  document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x === b));
+  renderCollection();
+});
+document.querySelectorAll("[data-lb]").forEach(b => b.onclick = () => {
+  lbBoard = b.dataset.lb;
+  document.querySelectorAll("[data-lb]").forEach(x => x.classList.toggle("on", x === b));
+  renderRanking(); renderHead("ranking");
+});
+document.querySelectorAll("[data-ach]").forEach(b => b.onclick = () => {
+  achFilter = b.dataset.ach;
+  document.querySelectorAll("[data-ach]").forEach(x => x.classList.toggle("on", x === b));
+  renderMarks();
+});
+
+// tiles, rows and achievement expanding
+document.addEventListener("click", e => {
+  const go = e.target.closest("[data-go]");
+  if (go) { show(go.dataset.go); return; }
+  const zoom = e.target.closest("[data-zoom]");
+  if (zoom) { openLightbox(zoom.dataset.zoom); return; }
+  const spec = e.target.closest(".specrow");
+  if (spec && !e.target.closest(".subrow")) { spec.classList.toggle("open"); return; }
+  const hit = e.target.closest("[data-i]");
+  if (hit) { const c = caught[+hit.dataset.i]; if (c) openProfile(c); return; }
+  const rm = e.target.closest("[data-rm]");
+  if (rm) { me.links.splice(+rm.dataset.rm, 1); dirty(); renderYou(); }
+});
+
+// ---------- boot: QR auto-catch, first-run intro ----------
+renderAll();
+const params = new URLSearchParams(location.search);
+if (params.get("intro") === "1") show("intro");
+if (params.get("code")) {
+  $("code").value = params.get("code").toUpperCase().slice(0, 5);
+  $("catchBtn").disabled = $("code").value.length < 5;
+  if (params.get("auto")) setTimeout(() => submit(), 400);
+}
+if (params.get("closed") === "1") { gameRunning = false; renderCatch(); renderHead("catch"); }
+</script>

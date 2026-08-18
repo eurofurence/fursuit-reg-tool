@@ -3,9 +3,14 @@
 namespace App\Domain\CatchEmAll\Achievements;
 
 use App\Domain\CatchEmAll\Achievements\Abstract\SimpleAchievement;
+use App\Domain\CatchEmAll\Enums\AchievementsTier;
+use App\Domain\CatchEmAll\Interface\AchievementSeries;
 use App\Domain\CatchEmAll\Interface\HasGlobalCache;
 use App\Domain\CatchEmAll\Interface\HasUserCache;
+use App\Domain\CatchEmAll\Interface\HiddenIfLocked;
+use App\Domain\CatchEmAll\Interface\LockedBy;
 use App\Domain\CatchEmAll\Interface\ProgressInfo;
+use App\Domain\CatchEmAll\Interface\StacksOn;
 use App\Domain\CatchEmAll\Models\AchievementUpdateContext;
 use App\Domain\CatchEmAll\Models\UserCatch;
 use App\Models\Event;
@@ -13,11 +18,39 @@ use App\Models\EventUser;
 use App\Models\Fursuit\Fursuit;
 use Cache;
 
-abstract class AFuredex extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo
+class Furedex extends SimpleAchievement implements HasGlobalCache, HasUserCache, ProgressInfo, LockedBy, AchievementSeries, HiddenIfLocked, StacksOn
 {
     protected const CACHE_KEY = 'furedex_complete';
 
     protected const INFO_CACHE_KEY = 'info_furedex_complete';
+
+    protected int $maxProgress;
+    protected array $lockedByIds;
+    protected string $stacksOnId;
+
+
+    public function __construct(string $id, string $title, string $description, string $task, int $maxProgress, array $lockedByIds = [], string $stacksOnId = '', AchievementsTier $tier = AchievementsTier::TIER_1, bool $isSecret = false, bool $isOptional = false, bool $isHidden = false)
+    {
+        parent::__construct($id, $title, $description, $task, '', $isSecret, $isOptional, $isHidden, $tier);
+        $this->maxProgress = $maxProgress;
+        $this->lockedByIds = $lockedByIds;
+        $this->stacksOnId = $stacksOnId;
+    }
+
+    public function lockedBy(): array
+    {
+        return $this->lockedByIds;
+    }
+
+    public function getMaxProgress(): int
+    {
+        return $this->maxProgress ?: \count($this->getSpecies());
+    }
+
+    public function stacksOn(): string
+    {
+        return $this->stacksOnId;
+    }
 
     /**
      * Get the info cache key for a specific event user.
@@ -104,5 +137,44 @@ abstract class AFuredex extends SimpleAchievement implements HasGlobalCache, Has
     public function getUserCacheKeys(EventUser $eventUser): array
     {
         return [$this->getInfoCacheKey($eventUser)];
+    }
+
+    public static function getAchievements(): array
+    {
+        $achievements = [
+            new self(
+                'furedex_5',
+                'Fill the furédex (1/4)',
+                'You caught 5 species at least once. Congratulations!',
+                'Catch 5 species at least once.',
+                5,
+                tier: AchievementsTier::TIER_1
+            ),
+            new self(
+                'furedex_10',
+                'Fill the furédex (2/4)',
+                'You caught 10 species at least once. Congratulations!',
+                'Catch 10 species at least once.',
+                10,
+                ['furedex_5'],
+                'furedex_5',
+                tier: AchievementsTier::TIER_3
+            ),
+            new self(
+                'furedex_20',
+                'Fill the furédex (3/4)',
+                'You caught 20 species at least once. Congratulations!',
+                'Catch 20 species at least once.',
+                20,
+                ['furedex_10'],
+                'furedex_10',
+                tier: AchievementsTier::TIER_4
+            ),
+        ];
+
+        // Total species count is only known via the instance (cached lookup), not statically
+        $achievements[] = new self('furedex_complete', 'Fill the furédex (4/4)', 'You caught every species. Congratulations!', 'Catch every species at least once.', 0, ['furedex_20'], 'furedex_20', tier: AchievementsTier::TIER_5);
+
+        return $achievements;
     }
 }

@@ -4,7 +4,7 @@ import { Link } from '@inertiajs/vue3';
 
 const props = defineProps({
     fursuit: Object,
-    rarity: Object,
+    ranking: Object,
     hideCount: Boolean,
     profileUrl: String
 });
@@ -13,11 +13,11 @@ const props = defineProps({
 // Catch-Em-All collection) fall back to the full gallery variant.
 const thumbSrc = computed(() => props.fursuit.thumb || props.fursuit.image);
 
-const rarityConfig = computed(() => {
-    const level = props.rarity?.level || 'common';
-    
+const rankingConfig = computed(() => {
+    const level = props.ranking?.level || 'novice';
+
     const config = {
-        'common': {
+        'novice': {
             bgClass: 'bg-gray-100/95',
             titleClass: 'text-gray-900',
             speciesClass: 'text-gray-700',
@@ -26,16 +26,16 @@ const rarityConfig = computed(() => {
             cardRing: '',
             badgeClass: 'bg-slate-600 text-white border-white/20'
         },
-        'uncommon': {
+        'regular': {
             bgClass: 'bg-emerald-200/95',
-            titleClass: 'text-emerald-900 font-semibold', 
+            titleClass: 'text-emerald-900 font-semibold',
             speciesClass: 'text-emerald-800',
             shadowClass: 'shadow-emerald-200/50',
             cardGlow: 'shadow-emerald-400/20 hover:shadow-emerald-400/40',
             cardRing: '',
             badgeClass: 'bg-emerald-600 text-white border-emerald-400/30 shadow-emerald-200/50'
         },
-        'rare': {
+        'fluffy': {
             bgClass: 'bg-blue-200/95',
             titleClass: 'text-blue-900 font-bold',
             speciesClass: 'text-blue-800',
@@ -44,7 +44,7 @@ const rarityConfig = computed(() => {
             cardRing: '',
             badgeClass: 'bg-blue-600 text-white border-blue-400/30 shadow-blue-200/50'
         },
-        'epic': {
+        'extraordinaire': {
             bgClass: 'bg-violet-300/95',
             titleClass: 'text-violet-900 font-bold',
             speciesClass: 'text-violet-800 font-medium',
@@ -53,18 +53,18 @@ const rarityConfig = computed(() => {
             cardRing: 'ring-1 ring-violet-400/30',
             badgeClass: 'bg-gradient-to-br from-violet-600 to-violet-700 text-white border-violet-400/40 shadow-violet-300/60'
         },
-        'legendary': {
+        'legend': {
             bgClass: 'bg-gradient-to-r from-amber-200/95 to-orange-200/95',
             titleClass: 'text-amber-900 font-bold',
             speciesClass: 'text-amber-800 font-medium',
             shadowClass: 'shadow-xl shadow-amber-300/70',
-            cardGlow: 'shadow-amber-400/50 hover:shadow-amber-400/70 legendary-glow',
+            cardGlow: 'shadow-amber-400/50 hover:shadow-amber-400/70 diamond-glow',
             cardRing: 'ring-1 ring-amber-400/30',
             badgeClass: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-300/50 shadow-amber-300/70'
         }
     };
 
-    const result = config[level] || config.common;
+    const result = config[level] || config.novice;
     return { ...result, level };
 });
 
@@ -72,7 +72,7 @@ const rarityConfig = computed(() => {
 
 <template>
     <div class="group relative bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden"
-         :class="[rarityConfig.cardGlow, rarityConfig.cardRing]">
+         :class="[rankingConfig.cardGlow, rankingConfig.cardRing]">
         <div class="overflow-hidden">
             <img
                 :src="thumbSrc"
@@ -96,19 +96,19 @@ const rarityConfig = computed(() => {
         </div>
 
         <!-- Always visible info bar at bottom -->
-        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300" 
-             :class="[rarityConfig.bgClass, rarityConfig.shadowClass]">
-            <h4 class="text-sm truncate" :class="[rarityConfig.titleClass]">
+        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm p-2 transform translate-y-0 group-hover:translate-y-full transition-transform duration-300"
+             :class="[rankingConfig.bgClass, rankingConfig.shadowClass]">
+            <h4 class="text-sm truncate" :class="[rankingConfig.titleClass]">
                 <Link v-if="profileUrl" :href="profileUrl" @click.stop class="hover:underline">{{ fursuit.name }}</Link>
                 <template v-else>{{ fursuit.name }}</template>
             </h4>
-            <p class="text-xs truncate" :class="[rarityConfig.speciesClass]">{{ fursuit.species }}</p>
+            <p class="text-xs truncate" :class="[rankingConfig.speciesClass]">{{ fursuit.species }}</p>
         </div>
 
                 <!-- Catches count -->
-        <div v-show="fursuit.scoring > 0 && !hideCount" 
+        <div v-show="fursuit.scoring > 0 && !hideCount"
              class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full shadow-lg border"
-             :class="[rarityConfig.badgeClass]">
+             :class="[rankingConfig.badgeClass]">
             {{ fursuit.scoring }}
         </div>
 
@@ -123,33 +123,33 @@ const rarityConfig = computed(() => {
 
 @keyframes epic-pulse {
     0%, 100% {
-        box-shadow: 
-            0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
             0 2px 4px -1px rgba(0, 0, 0, 0.06),
             0 0 0 rgba(139, 92, 246, 0);
     }
     50% {
-        box-shadow: 
-            0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
             0 2px 4px -1px rgba(0, 0, 0, 0.06),
             0 0 20px rgba(139, 92, 246, 0.3);
     }
 }
 
-.legendary-glow {
-    animation: legendary-pulse 2.5s ease-in-out infinite;
+.diamond-glow {
+    animation: diamond-pulse 2.5s ease-in-out infinite;
 }
 
-@keyframes legendary-pulse {
+@keyframes diamond-pulse {
     0%, 100% {
-        box-shadow: 
-            0 10px 15px -3px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 10px 15px -3px rgba(0, 0, 0, 0.1),
             0 4px 6px -2px rgba(0, 0, 0, 0.05),
             0 0 0 rgba(251, 191, 36, 0);
     }
     50% {
-        box-shadow: 
-            0 10px 15px -3px rgba(0, 0, 0, 0.1), 
+        box-shadow:
+            0 10px 15px -3px rgba(0, 0, 0, 0.1),
             0 4px 6px -2px rgba(0, 0, 0, 0.05),
             0 0 25px rgba(251, 191, 36, 0.4),
             0 0 40px rgba(251, 191, 36, 0.2);
