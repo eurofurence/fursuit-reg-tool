@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\EventUser;
 use App\Models\User;
 use App\Services\TokenRefreshService;
+use App\Support\LoginRedirect;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -24,6 +25,8 @@ class AuthController extends Controller
 
     public function login()
     {
+        LoginRedirect::remember(request());
+
         // Determine callback URL based on current domain
         $currentHost = request()->getHost();
         $isCatchEmAll = $currentHost === config('fcea.domain');
@@ -187,10 +190,11 @@ class AuthController extends Controller
         $isCatchEmAll = $currentHost === config('fcea.domain');
 
         if ($isCatchEmAll) {
-            // Redirect to introduction page for new users, or home for returning users
-            return redirect()->route('catch-em-all.introduction');
+            // Introduction is the floor, not the ceiling: the introduction middleware
+            // still pulls an un-introduced user back to it, and hands them on afterwards.
+            return redirect(LoginRedirect::resolve(request(), route('catch-em-all.introduction')));
         } else {
-            return redirect()->route('dashboard');
+            return redirect(LoginRedirect::resolve(request(), route('dashboard')));
         }
     }
 

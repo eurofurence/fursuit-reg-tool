@@ -17,6 +17,7 @@ use App\Models\EventUser;
 use App\Models\FCEA\UserCatchLog;
 use App\Models\Fursuit\Fursuit;
 use App\Models\User;
+use App\Support\LoginRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -300,7 +301,8 @@ class GameController extends Controller
             'introduced' => $eventUser->fresh()->catch_em_all_introduced,
         ]);
 
-        return redirect()->route('catch-em-all.catch')->with('success', 'Welcome to Fursuit Catch em All! Happy hunting!');
+        return redirect(LoginRedirect::resolve($request, route('catch-em-all.catch')))
+            ->with('success', 'Welcome to Fursuit Catch em All! Happy hunting!');
     }
 
     private function getCurrentEvent(): ?Event
