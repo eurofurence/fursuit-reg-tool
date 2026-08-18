@@ -104,6 +104,7 @@ function openProfile(suit: Suit) {
         :subtitle="`${suits.length} of ${total.toLocaleString('en')} badges at EF30`"
         :count="collection?.totalCatches ?? 0"
         :hue="hue"
+        :isEventActive="true"
         :flash="flash"
     >
         <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 14px">
@@ -211,6 +212,7 @@ function openProfile(suit: Suit) {
             </div>
             <p v-if="!bySpecies.length" class="cea-hint">Nothing at that ranking yet.</p>
         </template>
+        <p class="cea-hint" style="margin-top: 14px">Icons by Nighty &gt;:3</p>
     </CatchEmAllLayout>
 </template>
 

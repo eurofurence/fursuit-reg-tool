@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Event;
+use App\Support\LoginRedirect;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,7 +49,12 @@ class CatchEmAllIntroductionMiddleware
         ]);
 
         if (! $eventUser || ! $eventUser->catch_em_all_introduced) {
-            // Redirect to introduction page
+            // Hold on to where they were headed so finishing the introduction can hand
+            // them on to it, rather than dropping everyone on the game's front page.
+            if ($request->isMethod('GET')) {
+                LoginRedirect::keep($request);
+            }
+
             return redirect()->route('catch-em-all.introduction');
         }
 

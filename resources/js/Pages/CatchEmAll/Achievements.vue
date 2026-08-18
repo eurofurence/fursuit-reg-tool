@@ -207,6 +207,7 @@ const inProgressPercent = computed(() =>
         hue="var(--cea-tier-2)"
         :flash="flash"
         class="select-none"
+        :isEventActive="true"
     >
         <div class="cea-progress" style="margin-bottom: 14px">
             <div class="cea-bar">
