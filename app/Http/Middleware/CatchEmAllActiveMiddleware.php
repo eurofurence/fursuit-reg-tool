@@ -23,6 +23,10 @@ class CatchEmAllActiveMiddleware
             return $next($request);
         }
 
+        if ($request->user()->is_admin) {
+            return $next($request);
+        }
+
         $currentEvent = Event::latest('starts_at')->first();
         $isActive = $currentEvent?->isCatchEmAllActive();
 
