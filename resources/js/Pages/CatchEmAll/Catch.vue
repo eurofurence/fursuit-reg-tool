@@ -74,6 +74,7 @@ function openProfile(entry: Catch) {
         :count="caughtTotal"
         :hue="hue"
         :flash="flash"
+        :isEventActive="isGameRunning"
     >
         <div v-if="!isGameRunning" class="cea-note warn" style="margin-bottom: 14px">
             The game is closed right now. Codes work again once it reopens.

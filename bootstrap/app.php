@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CatchEmAllActiveMiddleware;
 use App\Http\Middleware\CatchEmAllAuthMiddleware;
 use App\Http\Middleware\CatchEmAllIntroductionMiddleware;
 use App\Http\Middleware\EnsureEventUserMiddleware;
@@ -116,6 +117,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'pos-auth' => PosAuthMiddleware::class,
             'catch-auth' => CatchEmAllAuthMiddleware::class,
             'catch-introduction' => CatchEmAllIntroductionMiddleware::class,
+            'catch-active' => CatchEmAllActiveMiddleware::class,
             'ensure-event-user' => EnsureEventUserMiddleware::class,
         ]);
     })

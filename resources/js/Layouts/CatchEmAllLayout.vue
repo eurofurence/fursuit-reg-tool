@@ -25,9 +25,11 @@ const props = withDefaults(defineProps<{
     count?: number | null
     hue?: string | null
     flash?: any
+    isEventActive: boolean
 }>(), {
     count: null,
     hue: null,
+    isEventActive: false,
 })
 
 const hue = computed(() => props.hue || 'var(--cea-accent-bright)')
@@ -87,6 +89,6 @@ onBeforeUnmount(() => {
 
         <CatchToasts :flash="flash" />
 
-        <BottomNavigation />
+        <BottomNavigation :isEventActive="isEventActive" />
     </div>
 </template>

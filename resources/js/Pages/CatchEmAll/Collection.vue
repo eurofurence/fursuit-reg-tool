@@ -104,6 +104,7 @@ function openProfile(suit: Suit) {
         :subtitle="`${suits.length} of ${total.toLocaleString('en')} badges at EF30`"
         :count="collection?.totalCatches ?? 0"
         :hue="hue"
+        :isEventActive="true"
         :flash="flash"
     >
         <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 14px">

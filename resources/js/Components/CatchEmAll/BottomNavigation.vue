@@ -8,12 +8,19 @@ import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { Trophy, Medal, Target, LayoutGrid, User } from 'lucide-vue-next'
 
+const props = withDefaults(defineProps<{
+    isEventActive: boolean
+}>(), {
+    isEventActive: false,
+})
+
+
 const items = [
-    { key: 'leaderboard', label: 'Ranking', icon: Trophy, route: 'catch-em-all.leaderboard' },
-    { key: 'achievements', label: 'Achievements', icon: Medal, route: 'catch-em-all.achievements' },
-    { key: 'catch', label: 'Catch', icon: Target, route: 'catch-em-all.catch' },
-    { key: 'collection', label: 'Collection', icon: LayoutGrid, route: 'catch-em-all.collection' },
-    { key: 'profile', label: 'You', icon: User, route: 'catch-em-all.profile' },
+    { key: 'leaderboard', label: 'Ranking', icon: Trophy, route: 'catch-em-all.leaderboard', locked: !props.isEventActive },
+    { key: 'achievements', label: 'Achievements', icon: Medal, route: 'catch-em-all.achievements', locked: !props.isEventActive },
+    { key: 'catch', label: 'Catch', icon: Target, route: 'catch-em-all.catch', locked: false },
+    { key: 'collection', label: 'Collection', icon: LayoutGrid, route: 'catch-em-all.collection', locked: !props.isEventActive },
+    { key: 'profile', label: 'You', icon: User, route: 'catch-em-all.profile', locked: false },
 ]
 
 const current = computed(() => {
@@ -28,15 +35,24 @@ const current = computed(() => {
 
 <template>
     <nav class="cea-nav">
-        <Link
-            v-for="item in items"
-            :key="item.key"
-            :href="route(item.route)"
-            :class="{ 'is-on': current === item.key }"
-            preserve-scroll
-        >
-            <span class="cea-nav-icon"><component :is="item.icon" :size="20" /></span>
-            {{ item.label }}
-        </Link>
+        <template v-for="item in items" :key="item.key">
+            <div
+                v-if="item.locked"
+                class="opacity-50"
+            >
+                <span class="cea-nav-icon"><component :is="item.icon" :size="20" /></span>
+                {{ item.label }}
+            </div>
+
+            <Link
+                v-else
+                :href="route(item.route)"
+                :class="{ 'is-on': current === item.key }"
+                preserve-scroll
+            >
+                <span class="cea-nav-icon"><component :is="item.icon" :size="20" /></span>
+                {{ item.label }}
+            </Link>
+        </template>
     </nav>
 </template>

@@ -134,7 +134,7 @@ body.cea-page { overscroll-behavior-y: contain; }
     border-top: 1px solid var(--cea-line);
     padding: 6px 4px calc(12px + env(safe-area-inset-bottom, 0px));
 }
-.cea-nav a {
+.cea-nav > * {
     position: relative;
     flex: 1;
     display: flex;
@@ -148,7 +148,7 @@ body.cea-page { overscroll-behavior-y: contain; }
     font-size: 10.5px;
     line-height: 1;
 }
-.cea-nav a::before {
+.cea-nav > *::before {
     content: "";
     position: absolute;
     top: -6px;
@@ -664,7 +664,7 @@ body.cea-page { overscroll-behavior-y: contain; }
     .cea-head::after { left: max(18px, calc((100% - 900px) / 2 + 18px)); }
     .cea-tiles { grid-template-columns: repeat(6, 1fr); }
     .cea-nav { padding-bottom: 10px; }
-    .cea-nav a { flex: 0 1 150px; }
+    .cea-nav > * { flex: 0 1 150px; }
     .cea-nav { justify-content: center; }
     .cea-showcase { margin-left: -18px; margin-right: -18px; }
 }
