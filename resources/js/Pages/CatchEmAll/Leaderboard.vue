@@ -37,6 +37,7 @@ const MEDALS = ['g', 's', 'b']
         subtitle="Most fursuits caught"
         :count="total"
         hue="var(--cea-gold)"
+        :isEventActive="true"
         :flash="flash"
     >
         <button

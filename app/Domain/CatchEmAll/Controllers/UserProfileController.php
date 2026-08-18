@@ -81,6 +81,7 @@ class UserProfileController extends Controller
             'palette' => UserProfile::PALETTE,
             'fromFursuit' => (int) $request->query('from') ?: null,
             'canEdit' => $isOwner,
+            'isEventActive' => $event?->isCatchEmAllActive() ?? false,
         ]);
     }
 

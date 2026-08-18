@@ -31,11 +31,15 @@ Route::middleware('catch-auth:web')->group(function () {
 // Main game routes (auth + introduction middleware)
 Route::middleware(['catch-auth:web', 'catch-introduction'])->group(function () {
     Route::get('/', [GameController::class, 'index'])->name('catch');
-    Route::get('/leaderboard', [GameController::class, 'leaderboard'])->name('leaderboard');
-    Route::get('/achievements', [GameController::class, 'achievements'])->name('achievements');
-    Route::get('/collection', [GameController::class, 'collection'])->name('collection');
-    Route::post('/catch', [GameController::class, 'catch'])->name('catch.submit');
     Route::get('/profile', [GameController::class, 'profile'])->name('profile');
     Route::get('/profiles/{userProfile:uuid}', [UserProfileController::class, 'show'])->name('profiles.show');
     Route::put('/profiles/{userProfile:uuid}', [UserProfileController::class, 'update'])->name('profiles.update');
+});
+
+// Main game routs (auth + introduction + active middleware)
+Route::middleware(['catch-auth:web', 'catch-introduction', 'catch-active'])->group(function () {
+    Route::get('/leaderboard', [GameController::class, 'leaderboard'])->name('leaderboard');
+    Route::post('/catch', [GameController::class, 'catch'])->name('catch.submit');
+    Route::get('/achievements', [GameController::class, 'achievements'])->name('achievements');
+    Route::get('/collection', [GameController::class, 'collection'])->name('collection');
 });

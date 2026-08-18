@@ -66,6 +66,7 @@ const props = defineProps<{
     fromFursuit: number | null;
     canEdit: boolean;
     flash?: any;
+    isEventActive: boolean;
 }>();
 
 // TODO: add rarety tiers to achievements, and sort by tier first, then title
@@ -330,6 +331,7 @@ const caughtHere = computed(
         :count="canEdit ? (stats?.caught ?? 0) : null"
         :hue="hue"
         :flash="flash"
+        :isEventActive="isEventActive"
     >
         <div class="cea-showcase" :style="{ background: hue }">
             <svg
