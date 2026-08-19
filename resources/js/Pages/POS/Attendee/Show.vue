@@ -174,6 +174,62 @@ function startOverride(badge) {
     overriding.value = badge;
 }
 
+/* --- Leaving with work left -----------------------------------------------
+ * The desk's worst failure is quiet: the clerk closes the attendee, the next
+ * one steps up, and a printed card stays in the crate with nobody looking for
+ * it again until the attendee comes back asking. Every way off this page - the
+ * back arrow in the system bar, Dashboard, Next attendee, the Backspace
+ * shortcut and the browser's own back button - goes through the same check.
+ *
+ * Only actual departures are stopped. Paying and handing out post to the server
+ * and come back here, so non-GET visits pass straight through, as does the
+ * checkout screen: starting a payment is doing the work, not abandoning it.
+ */
+const pendingHandout = computed(() => props.badges.filter(isHandoutable));
+const pendingPayment = computed(() => props.badges.filter(isPayable));
+const hasOpenWork = computed(() => pendingHandout.value.length > 0 || pendingPayment.value.length > 0);
+
+const leaveTarget = ref(null);
+let leaveConfirmed = false;
+
+const leaveMessage = computed(() => {
+    const parts = [];
+
+    if (pendingHandout.value.length) {
+        parts.push(`${pendingHandout.value.length} badge${pendingHandout.value.length === 1 ? '' : 's'} awaiting hand out`);
+    }
+    if (pendingPayment.value.length) {
+        parts.push(`${pendingPayment.value.length} unpaid`);
+    }
+
+    return `Did you hand out all the badges? ${props.attendee.name} still has ${parts.join(' and ')}.`;
+});
+
+function isLeaving(visit) {
+    if (visit.method && String(visit.method).toLowerCase() !== 'get') {
+        return false;
+    }
+
+    const path = typeof visit.url === 'string'
+        ? new URL(visit.url, window.location.origin).pathname
+        : visit.url?.pathname ?? '';
+
+    // Reloading this same screen, or stepping into the checkout, is the work.
+    return path !== window.location.pathname && ! path.startsWith('/pos/checkout');
+}
+
+function confirmLeave() {
+    const target = leaveTarget.value;
+    leaveTarget.value = null;
+    leaveConfirmed = true;
+
+    if (target) {
+        router.visit(target);
+    }
+}
+
+let stopLeaveGuard = null;
+
 /* --- Sheets --------------------------------------------------------------- */
 
 const showDetails = ref(false);
@@ -200,6 +256,13 @@ function onHandoutShortcut() {
 }
 
 function onConfirmShortcut(event) {
+    if (leaveTarget.value) {
+        event.preventDefault();
+        confirmLeave();
+
+        return;
+    }
+
     if (! confirm.value) {
         return;
     }
@@ -210,16 +273,53 @@ function onConfirmShortcut(event) {
     runConfirm();
 }
 
+// The browser's own back button never reaches Inertia's `before` event, so it
+// gets the same treatment through history: a duplicate entry sits on top of this
+// page, and the press that pops it asks instead of navigating. With nothing left
+// open the press is handed straight on to the real previous page, so a finished
+// attendee still costs one tap of Back.
+let sentinelPushed = false;
+
+function onPopState() {
+    if (! hasOpenWork.value || leaveConfirmed) {
+        if (sentinelPushed) {
+            sentinelPushed = false;
+            window.history.back();
+        }
+
+        return;
+    }
+
+    window.history.pushState(window.history.state, '', window.location.href);
+    leaveTarget.value = route('pos.dashboard');
+}
+
 onMounted(() => {
     window.addEventListener('pos-shortcut-payment', onPaymentShortcut);
     window.addEventListener('pos-shortcut-handout', onHandoutShortcut);
     window.addEventListener('pos-shortcut-confirm', onConfirmShortcut);
+
+    stopLeaveGuard = router.on('before', (event) => {
+        if (! hasOpenWork.value || leaveConfirmed || ! isLeaving(event.detail.visit)) {
+            return;
+        }
+
+        leaveTarget.value = event.detail.visit.url.toString();
+
+        return false;
+    });
+
+    window.history.pushState(window.history.state, '', window.location.href);
+    sentinelPushed = true;
+    window.addEventListener('popstate', onPopState);
 });
 
 onUnmounted(() => {
     window.removeEventListener('pos-shortcut-payment', onPaymentShortcut);
     window.removeEventListener('pos-shortcut-handout', onHandoutShortcut);
     window.removeEventListener('pos-shortcut-confirm', onConfirmShortcut);
+    window.removeEventListener('popstate', onPopState);
+    stopLeaveGuard?.();
 });
 
 usePosKeyboard({
@@ -244,6 +344,17 @@ usePosKeyboard({
             :accept-severity="confirm?.acceptSeverity || null"
             @confirm="runConfirm()"
             @cancel="confirm = null"
+        />
+
+        <ConfirmModal
+            :show="leaveTarget !== null"
+            title="STOP"
+            :message="leaveMessage"
+            accept-label="Leave anyway"
+            accept-severity="danger"
+            reject-label="Stay here"
+            @confirm="confirmLeave()"
+            @cancel="leaveTarget = null"
         />
 
         <AttendeeDetailsSheet
