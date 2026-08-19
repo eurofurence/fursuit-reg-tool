@@ -28,7 +28,7 @@ const props = defineProps<{
     eventTotal: number
 }>()
 
-const form = useForm({ catch_code: (props.code ?? '').toUpperCase() })
+const form = useForm({ catch_code: '' })
 
 /* The sheet is driven by the flashed catch, and closing it must not reopen on
    the next visit, so the dismissed id is remembered. */
@@ -38,8 +38,12 @@ watch(() => props.recentCatch?.id, () => (dismissed.value = null))
 
 const field = ref<HTMLInputElement | null>(null)
 onMounted(() => {
-    if (props.autoCatch && props.code) submit()
-    else if (props.isGameRunning) field.value?.focus()
+    if (props.autoCatch && props.code) {
+        form.catch_code = props.code.toUpperCase()
+        submit()
+    } else if (props.isGameRunning) {
+        field.value?.focus()
+    }
 })
 
 function onInput(event: Event) {
