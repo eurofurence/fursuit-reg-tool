@@ -13,6 +13,7 @@ import ShortcutsDialog from "@/Components/POS/ShortcutsDialog.vue";
 import PrinterStatusIndicator from "@/Components/POS/PrinterStatusIndicator.vue";
 import InactivityTimer from "@/Components/POS/InactivityTimer.vue";
 import AutoLogoutModal from "@/Components/POS/AutoLogoutModal.vue";
+import SumUpReaderModal from "@/Components/POS/SumUpReaderModal.vue";
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
@@ -42,6 +43,7 @@ onUnmounted(() => {
 const userMenu = ref();
 const showShortcutsDialog = ref(false);
 const showAutoLogoutModal = ref(false);
+const showSumUpReaderModal = ref(false);
 
 // Auto logout modal is now handled by the modal component
 
@@ -194,11 +196,23 @@ const backRoute = computed(() => {
                     <span class="text-pos-line-strong">|</span>
                     <i class="pi pi-user text-xs"></i>
                     <span class="font-medium text-pos-text">{{ cashier?.name || 'Unknown' }}</span>
-                    <template v-if="machine?.sumup_reader">
-                        <span class="text-pos-line-strong">|</span>
+                    <!--
+                        Always shown, and always a button: a till with no reader
+                        is the state a clerk most needs to fix from here, so
+                        hiding the control exactly then was backwards.
+                    -->
+                    <span class="text-pos-line-strong">|</span>
+                    <button
+                        type="button"
+                        class="flex items-center gap-1 hover:text-pos-text"
+                        title="Choose the card reader for this till"
+                        @click="showSumUpReaderModal = true"
+                    >
                         <i class="pi pi-credit-card text-xs"></i>
-                        <span class="font-medium">{{ machine.sumup_reader.name || 'Unknown Reader' }}</span>
-                    </template>
+                        <span class="font-medium" :class="machine?.sumup_reader ? '' : 'text-pos-warn'">
+                            {{ machine?.sumup_reader?.name || 'No reader' }}
+                        </span>
+                    </button>
                     <span class="text-pos-line-strong">|</span>
                     <PrinterStatusIndicator />
                     <span class="text-pos-line-strong">|</span>
@@ -227,6 +241,7 @@ const backRoute = computed(() => {
             <slot></slot>
             <ShortcutsDialog v-model:visible="showShortcutsDialog" />
             <AutoLogoutModal v-model:visible="showAutoLogoutModal" />
+            <SumUpReaderModal v-model:visible="showSumUpReaderModal" />
         </main>
     </div>
 </template>

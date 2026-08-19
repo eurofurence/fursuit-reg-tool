@@ -68,5 +68,7 @@ Route::prefix('/verification')->name('verification.')->group(function () {
 // Statistics
 Route::get('/statistics', [StatisticsController::class, 'index'])->name('statistics');
 // Machine Settings
+Route::get('/machine/sumup-readers', [MachineController::class, 'sumUpReaders'])->name('machine.sumup-readers');
+Route::put('/machine/sumup-reader', [MachineController::class, 'updateSumUpReader'])->name('machine.sumup-reader');
 Route::put('/machine/{machine}/timeout', [MachineController::class, 'updateTimeout'])->name('machine.timeout');
 Route::put('/machine/{machine}/badge-range', [MachineController::class, 'updateBadgeRange'])->name('machine.badge-range');
