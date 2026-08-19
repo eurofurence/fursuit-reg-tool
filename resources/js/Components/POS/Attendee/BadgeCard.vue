@@ -16,6 +16,12 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    // Pressed on this screen a moment ago, before the worker has moved the badge
+    // into Processing. Purely local, and only ever true for a few seconds.
+    queued: {
+        type: Boolean,
+        default: false,
+    },
     // Set for a badge from an earlier convention. It sits in the same list as
     // this year's, so it has to announce itself loudly enough that nobody hands
     // over a 2025 badge thinking it is the one they just printed.
@@ -38,6 +44,16 @@ const approval = computed(() => approvalNote(props.badge));
 // One accent for every "do this" button, the same blue the rest of the POS
 // uses. Green stays reserved for status, so a colour never means two things.
 const actionClass = 'pos-btn--primary';
+
+/*
+ * A card that is still in the queue has no printed_at yet, so keying the label
+ * on that alone left the button reading "Print" while a job for the same badge
+ * was already on the printer - and the clerk, with nothing in their hand and no
+ * sign anything had happened, pressed it again. Anything that has been sent to a
+ * printer reads "Re-print" from that moment on.
+ */
+const isPrinting = computed(() => props.badge.status_fulfillment === 'processing' || props.queued);
+const wasSentToPrinter = computed(() => isPrinting.value || !! props.badge.printed_at);
 
 const extras = computed(() => {
     const list = [];
@@ -109,6 +125,18 @@ const extras = computed(() => {
                     <span v-if="isDone && badge.picked_up_at" class="text-pos-muted">
                         {{ dayjs(badge.picked_up_at).format('DD.MM. HH:mm') }}
                     </span>
+                    <!--
+                        When the card came off the printer. The row otherwise said
+                        nothing about whether a press of Print had done anything,
+                        which is the whole reason duplicates get made.
+                    -->
+                    <span v-if="isPrinting" class="text-pos-accent font-semibold">
+                        <i class="pi pi-spin pi-spinner text-xs"></i>
+                        {{ badge.status_fulfillment === 'processing' ? 'on the printer' : 'sent to the printer' }}
+                    </span>
+                    <span v-else-if="badge.printed_at" class="text-pos-muted">
+                        printed {{ dayjs(badge.printed_at).format('DD.MM. HH:mm') }}
+                    </span>
                 </span>
             </span>
         </button>
@@ -124,7 +152,7 @@ const extras = computed(() => {
                 class="pos-btn pos-badge__go"
                 @click="emit('print', badge)"
             >
-                {{ badge.printed_at ? 'Reprint' : 'Print' }}
+                {{ wasSentToPrinter ? 'Re-print' : 'Print' }}
             </button>
 
             <button

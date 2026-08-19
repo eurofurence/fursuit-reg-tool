@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { useForm } from 'laravel-precognition-vue-inertia';
+import dayjs from 'dayjs';
 
 import POSLayout from '@/Layouts/POSLayout.vue';
 import ConfirmModal from '@/Components/POS/ConfirmModal.vue';
@@ -84,13 +85,61 @@ const olderBadges = computed(() =>
  */
 const confirm = ref(null);
 
+function badgeLabel(badge) {
+    return `${badge.fursuit?.name || 'this badge'} (${badge.custom_id || badge.id})`;
+}
+
+/*
+ * Badges this screen has pressed Print on, remembered client-side.
+ *
+ * Queueing only opens the batch; the badge does not reach Processing until the
+ * worker picks up PrepareBadgePrintBatchJob a moment later. For those seconds
+ * the server still says "pending", so the row would go back to reading "Print"
+ * right after the clerk pressed it - they look at the printer, see nothing yet,
+ * look back at a button that says Print, and press it again. The set bridges the
+ * gap until the server agrees, which is why the print submit preserves state.
+ */
+const justQueued = ref(new Set());
+
+function isQueued(badge) {
+    return justQueued.value.has(badge.id);
+}
+
+/*
+ * A first print asks once. A second one asks twice.
+ *
+ * The desk's expensive mistake here is a duplicate card: blank stock is finite,
+ * the printer is the bottleneck at the door, and a card that is merely still in
+ * the queue looks exactly like one that never printed. So a re-print states what
+ * the badge is actually doing, makes the clerk say which of the two it is, and
+ * only then offers the button that burns another card. Enter does not reach
+ * either of those two dialogs - a duplicate has to be deliberate.
+ */
 function askPrint(badge) {
+    const printing = badge.status_fulfillment === 'processing' || isQueued(badge);
+
+    if (! printing && ! badge.printed_at) {
+        confirm.value = {
+            kind: 'print',
+            badge,
+            title: 'Print badge',
+            message: `Queue a print job for ${badgeLabel(badge)}?`,
+            acceptLabel: 'Print',
+        };
+
+        return;
+    }
+
     confirm.value = {
-        kind: 'print',
+        kind: 'reprint-check',
         badge,
-        title: badge.printed_at ? 'Reprint badge' : 'Print badge',
-        message: `Queue a print job for ${badge.fursuit?.name || 'this badge'} (${badge.custom_id || badge.id})?`,
-        acceptLabel: 'Print',
+        requireClick: true,
+        title: printing ? 'This badge is printing now' : 'This badge was already printed',
+        message: printing
+            ? `A print job for ${badgeLabel(badge)} is queued or on the printer right now. Check the printer and the crate before making a second card.`
+            : `${badgeLabel(badge)} was printed at ${dayjs(badge.printed_at).format('DD.MM. HH:mm')}. Check the crate before making a second card.`,
+        acceptLabel: printing ? 'It has not come out' : 'It is missing or damaged',
+        acceptSeverity: 'danger',
     };
 }
 
@@ -128,8 +177,29 @@ function runConfirm() {
     // otherwise fire the same print twice.
     confirm.value = null;
 
+    // The state has been acknowledged; now the actual "burn another card" ask.
+    if (pending.kind === 'reprint-check') {
+        confirm.value = {
+            kind: 'print',
+            badge: pending.badge,
+            requireClick: true,
+            title: 'Print another copy',
+            message: `This sends a second card for ${badgeLabel(pending.badge)} to the printer. The first one stays valid if it turns up.`,
+            acceptLabel: 'Print another copy',
+            acceptSeverity: 'danger',
+        };
+
+        return;
+    }
+
     useForm('POST', route('pos.badges.print', { badge: pending.badge.id }), {})
-        .submit({ preserveScroll: true });
+        .submit({
+            preserveScroll: true,
+            // Keeps `justQueued` across the redirect back, which is the only
+            // thing marking this badge as sent until the worker moves it.
+            preserveState: true,
+            onSuccess: () => justQueued.value.add(pending.badge.id),
+        });
 }
 
 /* --- Money ---------------------------------------------------------------- */
@@ -270,6 +340,15 @@ function onConfirmShortcut(event) {
     // Marks the Enter as consumed, so it cannot also activate the button that
     // regains focus behind the dialog.
     event.preventDefault();
+
+    // Both halves of the re-print ask are click-only. Enter is how the desk
+    // clears a normal print confirm without leaving the keypad, and a clerk
+    // tapping through at speed would otherwise blow past both warnings and
+    // burn a card before reading either.
+    if (confirm.value.requireClick) {
+        return;
+    }
+
     runConfirm();
 }
 
@@ -342,6 +421,7 @@ usePosKeyboard({
             :message="confirm?.message || ''"
             :accept-label="confirm?.acceptLabel || 'Confirm'"
             :accept-severity="confirm?.acceptSeverity || null"
+            :show-enter-hint="! confirm?.requireClick"
             @confirm="runConfirm()"
             @cancel="confirm = null"
         />
@@ -421,6 +501,7 @@ usePosKeyboard({
                 :key="badge.id"
                 :badge="badge"
                 :selected="isSelected(badge)"
+                :queued="isQueued(badge)"
                 @toggle="toggleSelect"
                 @act="runBadgeAction"
                 @print="askPrint"
@@ -438,6 +519,7 @@ usePosKeyboard({
                 :badge="entry.badge"
                 :event-label="entry.eventName"
                 :selectable="false"
+                :queued="isQueued(entry.badge)"
                 @act="runBadgeAction"
                 @print="askPrint"
                 @undo="undoNow"

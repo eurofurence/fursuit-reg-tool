@@ -22,6 +22,12 @@ const props = defineProps({
     rejectSeverity: {
         type: String,
         default: 'secondary'
+    },
+    // Cleared for dialogs the keyboard deliberately cannot answer, so the cap
+    // does not promise a shortcut that has been switched off.
+    showEnterHint: {
+        type: Boolean,
+        default: true
     }
 });
 
@@ -43,7 +49,7 @@ const rejectClass = computed(() => (props.rejectSeverity === 'danger' ? 'pos-btn
                 {{ rejectLabel }}
             </button>
             <button type="button" class="pos-btn pos-btn--commit w-full" :class="acceptClass" @click="emit('confirm')">
-                {{ acceptLabel }} <span class="pos-kcap">Enter</span>
+                {{ acceptLabel }} <span v-if="showEnterHint" class="pos-kcap">Enter</span>
             </button>
         </div>
     </Dialog>
