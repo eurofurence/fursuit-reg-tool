@@ -64,7 +64,7 @@ function colourFor(level: string) {
 }
 
 const shown = computed(() =>
-    ranking.value === 'all' ? suits.value : suits.value.filter(s => s.ranking.level === ranking.value))
+    (ranking.value === 'all' ? suits.value : suits.value.filter(s => s.ranking.level === ranking.value)).sort((a, b) => b.caught - a.caught || a.gallery.name.localeCompare(b.gallery.name)))
 
 /* list view is a species view: one row per species with how many you met,
    because a heading per species with one row under it is twice the rows */
@@ -163,8 +163,8 @@ function openProfile(suit: Suit) {
                     @click="openProfile(suit)"
                 >
                     <FursuitPhoto :src="suit.gallery.image" :name="suit.gallery.name" :tone="suit.ranking.color" />
-                    <span v-if="(collection.species[suit.species] ?? 0) > 1" class="count">
-                        {{ collection.species[suit.species] }}
+                    <span v-if="(suit.caught ?? 0) > 1" class="count">
+                        {{ suit.caught }}
                     </span>
                 </button>
                 <span v-for="n in blanks" :key="`blank-${n}`" class="cea-tile blank" />
