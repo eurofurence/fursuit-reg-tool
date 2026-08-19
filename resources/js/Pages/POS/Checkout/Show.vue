@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref, watchEffect, computed} from "vue";
+import {onMounted, onUnmounted, ref, watch, computed} from "vue";
 import { usePosKeyboard } from '@/composables/usePosKeyboard';
 import POSLayout from "@/Layouts/POSLayout.vue";
 import Button from 'primevue/button';
@@ -28,10 +28,6 @@ const props = defineProps({
 const page = usePage();
 const machine = computed(() => page.props.auth.machine);
 const flashError = computed(() => page.props.flash?.error);
-
-// Debug: Log machine data to console
-console.log('🔍 Machine data:', machine.value);
-console.log('🔍 SumUp Reader:', machine.value?.sumupReader);
 
 const denominations = [
     200, // what's wrong with you, the order amount is TWO EUROS
@@ -78,24 +74,72 @@ const positions = computed(() => props.checkout.items.map((item) => {
     };
 }));
 
-const cardPaymentCheckInterval = ref(null);
+/* --- Waiting on the card reader -------------------------------------------
+ * One question, asked one at a time: the next check is scheduled only once the
+ * previous answer is in, so a slow SumUp stretches the gap instead of stacking
+ * requests behind itself. Only a changed answer costs a page load.
+ *
+ * The old version re-rendered the whole page through Inertia on a fixed 1.5s
+ * interval, and only ever started once a transaction had already been reported:
+ * with the reader still waiting for a card there was no transaction prop, so
+ * nothing polled and the screen sat on "pending" until somebody pressed F5.
+ */
+const POLL_INTERVAL = 1500;
+let pollTimer = null;
 
-watchEffect(() => {
-    if (props.transaction) {
-        if(props.transaction.status === 'PENDING' && !cardPaymentCheckInterval.value) {
-            cardPaymentCheckInterval.value = setInterval(() => {
-                console.log('checking transaction status');
-                router.reload({only: ['transaction', 'checkout']});
-                if (props.transaction.status !== 'PENDING') {
-                    clearInterval(cardPaymentCheckInterval.value);
-                }
-            }, 1500);
-        }
-        if (props.transaction.status !== 'PENDING') {
-            clearInterval(cardPaymentCheckInterval.value);
-        }
+const awaitingCard = computed(() => props.checkout.status !== 'FINISHED'
+    && !! props.checkout.payment_method_remote_id
+    && (! props.transaction || props.transaction.status === 'PENDING'));
+
+function schedulePoll() {
+    if (pollTimer || ! awaitingCard.value) {
+        return;
     }
-});
+    pollTimer = setTimeout(checkTransaction, POLL_INTERVAL);
+}
+
+async function checkTransaction() {
+    pollTimer = null;
+
+    if (! awaitingCard.value) {
+        return;
+    }
+
+    try {
+        const response = await fetch(route('pos.checkout.status', {checkout: props.checkout.id}), {
+            headers: {Accept: 'application/json'},
+            credentials: 'same-origin',
+        });
+
+        if (response.ok) {
+            const status = await response.json();
+            const changed = status.checkout_status !== props.checkout.status
+                || (status.transaction_status ?? null) !== (props.transaction?.status ?? null);
+
+            if (changed) {
+                router.reload({only: ['transaction', 'checkout'], onFinish: schedulePoll});
+                return;
+            }
+        }
+    } catch (e) {
+        // A reader that cannot be reached is the operator's problem, not the
+        // poll's: keep asking rather than going quiet on the one screen where
+        // silence looks like "still waiting".
+    }
+
+    schedulePoll();
+}
+
+watch(awaitingCard, (waiting) => {
+    if (waiting) {
+        schedulePoll();
+    } else if (pollTimer) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+    }
+}, {immediate: true});
+
+onUnmounted(() => clearTimeout(pollTimer));
 
 function denomToValue(denom) {
     return Number(denom.replace(/[^\d]/g, '')) / (denom.endsWith('¢') ? 100 : 1);

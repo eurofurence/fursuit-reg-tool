@@ -35,18 +35,7 @@ class CheckoutController extends Controller
             return redirect()->route('pos.attendee.show', ['attendeeId' => $attendeeId])->with('error', 'Checkout is cancelled.');
         }
         $transactionData = $this->getTransactionData($checkout);
-
-        if ($transactionData && $transactionData['status'] === 'SUCCESSFUL' && $checkout->status->equals(Active::class)) {
-            $checkout->payment_method = 'card';
-            $checkout->save();
-
-            // Update Fiskaly transaction to FINISHED state to get end signature
-            $fiskalyService = new FiskalyService;
-            $fiskalyService->finishTransaction($checkout);
-
-            // Transition to finished state after Fiskaly update
-            $checkout->status->transitionTo(Finished::class);
-        }
+        $this->settleCardPayment($checkout, $transactionData);
 
         return Inertia::render('POS/Checkout/Show', [
             // The payable comes along so the price override dialog can name the
@@ -56,6 +45,56 @@ class CheckoutController extends Controller
             'checkout' => $checkout->load('items.payable.fursuit.species'),
             'transaction' => $transactionData ?? null,
         ]);
+    }
+
+    /**
+     * What the card reader is doing, as JSON.
+     *
+     * The screen used to learn this by re-rendering itself through Inertia every
+     * 1.5s - a full page payload, badge artwork and all, for two strings, and one
+     * more router visit competing with whatever the clerk was doing. This endpoint
+     * answers the only question the poll has, and the page reloads once, when the
+     * answer changes.
+     */
+    public function status(Checkout $checkout)
+    {
+        if ($checkout->machine_id !== auth('machine')->user()->id) {
+            abort(403);
+        }
+
+        $transactionData = $this->getTransactionData($checkout);
+        $this->settleCardPayment($checkout, $transactionData);
+
+        return response()->json([
+            'checkout_status' => (string) $checkout->status,
+            'transaction_status' => $transactionData['status'] ?? null,
+        ]);
+    }
+
+    /**
+     * A card payment that went through is the moment the checkout closes: the
+     * Fiskaly transaction gets its end signature and the badges become paid.
+     * Guarded on Active, so the poll and the page render cannot both do it.
+     */
+    protected function settleCardPayment(Checkout $checkout, ?array $transactionData): void
+    {
+        if (! $transactionData || ($transactionData['status'] ?? null) !== 'SUCCESSFUL') {
+            return;
+        }
+
+        if (! $checkout->status->equals(Active::class)) {
+            return;
+        }
+
+        $checkout->payment_method = 'card';
+        $checkout->save();
+
+        // Update Fiskaly transaction to FINISHED state to get end signature
+        $fiskalyService = new FiskalyService;
+        $fiskalyService->finishTransaction($checkout);
+
+        // Transition to finished state after Fiskaly update
+        $checkout->status->transitionTo(Finished::class);
     }
 
     public function payWithCash(Checkout $checkout)
@@ -180,11 +219,17 @@ class CheckoutController extends Controller
                 'foreign_transaction_id' => $checkout->payment_method_remote_id,
             ]);
             $transactionData = $response->json();
-            if (isset($transactionData['error_code']) && $transactionData['error_code'] === 'NOT_FOUND') {
-                sleep(2);
 
-                return $this->getTransactionData($checkout);
+            // The reader has been given the amount but nobody has tapped a card
+            // yet, so SumUp has nothing to report. That is a payment in progress,
+            // not an error. It used to retry here every two seconds forever,
+            // which pinned one PHP worker per waiting screen until the pool was
+            // full of sleepers and the whole till stopped answering.
+            if ($response->status() === 404
+                || (isset($transactionData['error_code']) && $transactionData['error_code'] === 'NOT_FOUND')) {
+                return ['status' => 'PENDING', 'awaiting_card' => true];
             }
+
             $response->throw();
         }
 

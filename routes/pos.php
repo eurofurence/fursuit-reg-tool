@@ -40,6 +40,7 @@ Route::post('/badges/handout/bulk', [BadgeController::class, 'handoutBulk'])->na
 Route::put('/badges/{badge}', [BadgeEditController::class, 'update'])->name('badges.update');
 Route::post('/badges/prices', [BadgeEditController::class, 'updatePrices'])->name('badges.prices');
 Route::resource('checkout', CheckoutController::class);
+Route::get('/checkout/{checkout}/status', [CheckoutController::class, 'status'])->name('checkout.status');
 Route::post('/checkout/{checkout}/startCardPayment', [CheckoutController::class, 'startCardPayment'])->name('checkout.startCardPayment');
 Route::post('/checkout/{checkout}/payWithCash', [CheckoutController::class, 'payWithCash'])->name('checkout.payWithCash');
 Route::get('/checkout/{checkout}/receipt', [ReceiptController::class, 'show'])->name('checkout.receipt');
