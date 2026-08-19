@@ -3,6 +3,7 @@
 namespace App\Domain\CatchEmAll\Achievements\Utils;
 
 use App\Domain\CatchEmAll\Achievements\Collector;
+use App\Domain\CatchEmAll\Achievements\EarlyBird;
 use App\Domain\CatchEmAll\Achievements\Furedex;
 use App\Domain\CatchEmAll\Achievements\NightOwl;
 use App\Domain\CatchEmAll\Achievements\Special\BugBountyHunter;
@@ -31,6 +32,7 @@ class AchievementRegister
      */
     private static array $achievementClasses = [
         NightOwl::class,
+        EarlyBird::class,
         TheCompletionist::class,
         // Special achievements
         BugBountyHunter::class,
