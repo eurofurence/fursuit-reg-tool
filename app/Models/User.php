@@ -148,10 +148,26 @@ class User extends Authenticatable
             return 0;
         }
 
-        // The user's full prepaid entitlement is honored as free badges. (Historically this
-        // deducted an extra 1 after order_starts_at — "the included badge is no longer honored" —
-        // which wrongly charged the user's last prepaid badge. See docs/bugfix-03-fix.md.)
+        // `prepaid_badges` is the sum of two different things (AuthController sets it from
+        // the registration system): the one badge that comes with the fursuit package, and
+        // however many extra copies were bought on top of it as `fursuitadd`.
+        //
+        // Only the first of those expires. The deadline the Welcome page and the FAQ quote
+        // is exactly this: submit by then and the included badge is free, order later and it
+        // costs the badge fee like any other. Extra copies were paid for in the registration
+        // system and stay free whenever they are claimed.
+        //
+        // This is not the `- 1` that was removed as bugfix-03. That one keyed off
+        // `order_starts_at`, which is the moment general ordering *opens*, so it charged the
+        // included badge for the entire window it was supposed to be free in. This keys off
+        // `free_badge_deadline`, the column that exists for the question and until now was
+        // only ever rendered, never enforced. A null deadline means the event never set one,
+        // and the entitlement is honored in full. See docs/prepaid-badges.md.
         $prepaidBadges = $eventUser->prepaid_badges;
+
+        if ($event->free_badge_deadline && $event->free_badge_deadline < now()) {
+            $prepaidBadges = max(0, $prepaidBadges - 1);
+        }
 
         // Only main badges consume the prepaid allowance; spare copies are always separately
         // paid (extra_copy_of !== null) and must not eat into the free entitlement.
