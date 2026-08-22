@@ -21,6 +21,8 @@ import FormSection from '@/Components/Manage/FormSection.vue';
 const props = defineProps({
   /** null on create. */
   user: { type: Object, default: null },
+  /** What we have mailed this person, newest first. Empty on create. */
+  sentNotifications: { type: Array, default: () => [] },
 });
 
 const editing = computed(() => Boolean(props.user?.id));
@@ -102,6 +104,31 @@ const submit = () => {
             :error="form.errors.is_admin"
             required
           />
+        </FormSection>
+
+        <!-- Read-only, and outside the form on purpose: it is a record of what happened, not a
+             field. The desk's question is "did they hear from us", usually about a badge waiting
+             at the counter, and until this existed the only answer was the mail server's log. -->
+        <FormSection
+          v-if="editing"
+          title="Emails sent"
+          description="What we have sent this account, newest first. The 25 most recent."
+        >
+          <ul v-if="sentNotifications.length" class="divide-y divide-hairline">
+            <li
+              v-for="sent in sentNotifications"
+              :key="sent.id"
+              class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2"
+            >
+              <span class="text-[13px] font-semibold">{{ sent.label }}</span>
+              <span class="text-[12px] text-fg-3 tabular-nums" :title="sent.sentAtIso">{{ sent.sentAt }}</span>
+              <span v-if="sent.subject" class="w-full text-[12px] text-fg-2">{{ sent.subject }}</span>
+            </li>
+          </ul>
+
+          <p v-else class="py-2 text-[13px] text-fg-2">
+            Nothing sent to this account yet.
+          </p>
         </FormSection>
       </div>
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manage;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Manage\UserRequest;
+use App\Models\SentNotification;
 use App\Models\User;
 use App\Support\Manage\Action;
 use App\Support\Manage\Column;
@@ -38,6 +39,14 @@ class UserController extends Controller
      * the move. Rendered on the server; the ISO string rides along as the cell title.
      */
     private const DATETIME_FORMAT = 'M j, Y H:i:s';
+
+    /**
+     * How much mail history the account page shows.
+     *
+     * A cap rather than a pager: this is a sanity check beside a form, and the question it answers
+     * ("did we tell them, and when") is always about something recent.
+     */
+    private const SENT_NOTIFICATION_LIMIT = 25;
 
     /**
      * The list envelope is spread across top-level props rather than nested under one,
@@ -77,6 +86,7 @@ class UserController extends Controller
 
         return inertia('Manage/Users/Form', [
             'user' => $this->formData($user),
+            'sentNotifications' => $this->sentNotifications($user),
         ]);
     }
 
@@ -303,5 +313,35 @@ class UserController extends Controller
             'is_reviewer' => (bool) $user->is_reviewer,
             'is_admin' => (bool) $user->is_admin,
         ];
+    }
+
+    /**
+     * What we have actually mailed this person, newest first.
+     *
+     * Read from `sent_notifications`, which App\Listeners\LogSentNotification writes after the
+     * framework reports a delivery, so this is what left the building rather than what a
+     * notification class would render today. Read-only and capped: the desk asks "did they hear
+     * from us about this", and the answer is in the last few, not in an unbounded history that
+     * turns an account page into a mail archive.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function sentNotifications(User $user): array
+    {
+        return SentNotification::query()
+            ->where('notifiable_type', $user->getMorphClass())
+            ->where('notifiable_id', $user->getKey())
+            ->latest('sent_at')
+            ->limit(self::SENT_NOTIFICATION_LIMIT)
+            ->get()
+            ->map(fn (SentNotification $sent) => [
+                'id' => $sent->id,
+                'label' => $sent->label(),
+                'subject' => $sent->subject,
+                'channel' => $sent->channel,
+                'sentAt' => $sent->sent_at?->format(self::DATETIME_FORMAT),
+                'sentAtIso' => $sent->sent_at?->toIso8601String(),
+            ])
+            ->all();
     }
 }
