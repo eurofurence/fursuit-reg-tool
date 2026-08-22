@@ -39,9 +39,28 @@ const uid = useId();
 const draft = ref('');
 const bounds = ref({ min: '', max: '' });
 
+/**
+ * Whether the operator is still working in this editor: the box has focus, or a debounced
+ * commit has not gone out yet.
+ *
+ * This is what stops the sync below from typing over them. Committing reloads `filters`, so
+ * every commit hands back a fresh value while the next keystrokes are already in the box - and
+ * a naive sync then rewrites "1234" to the "12" the server was told about half a second ago.
+ * That was the "it resets while I type" bug: fast typing lost the tail, slow typing had each
+ * debounce land on top of the next word.
+ */
+const editing = ref(false);
+const focused = ref(false);
+
 watch(
   () => props.filter.value,
   (value) => {
+    // While they are typing, the box is the truth and the server is behind. It catches up on
+    // blur, which commits and releases the guard.
+    if (editing.value || focused.value) {
+      return;
+    }
+
     draft.value = typeof value === 'string' ? value : '';
     bounds.value = { min: value?.min ?? '', max: value?.max ?? '' };
   },
@@ -52,13 +71,35 @@ let debounce = null;
 
 const commit = (value) => {
   window.clearTimeout(debounce);
+  editing.value = false;
   emit('update', value);
 };
 
 /** Typing settles before the visit goes out; Enter and blur commit at once. */
 const commitLater = (value) => {
   window.clearTimeout(debounce);
-  debounce = window.setTimeout(() => emit('update', value), 400);
+  editing.value = true;
+  debounce = window.setTimeout(() => {
+    editing.value = false;
+    emit('update', value);
+  }, 400);
+};
+
+const onFocus = () => {
+  focused.value = true;
+};
+
+/**
+ * Leaving the field ends the edit and sends whatever is in it, rather than waiting out the
+ * remaining debounce: clicking from "From" to "To" and typing has to apply the first bound,
+ * and a popover closed on the click outside would otherwise drop it entirely.
+ */
+const onBlur = (value) => {
+  focused.value = false;
+
+  if (editing.value) {
+    commit(value);
+  }
 };
 
 const selected = computed(() => props.filter.value);
@@ -142,6 +183,8 @@ const field =
         type="number"
         inputmode="numeric"
         :class="field"
+        @focus="onFocus"
+        @blur="onBlur({ ...bounds })"
         @input="commitLater({ ...bounds })"
         @keydown.enter.prevent="commit({ ...bounds })"
       />
@@ -154,6 +197,8 @@ const field =
         type="number"
         inputmode="numeric"
         :class="field"
+        @focus="onFocus"
+        @blur="onBlur({ ...bounds })"
         @input="commitLater({ ...bounds })"
         @keydown.enter.prevent="commit({ ...bounds })"
       />
@@ -168,6 +213,8 @@ const field =
       :type="inputType"
       :placeholder="filter.placeholder ?? filter.label"
       :class="field"
+      @focus="onFocus"
+      @blur="onBlur(draft)"
       @input="commitLater(draft)"
       @change="commit(draft)"
       @keydown.enter.prevent="commit(draft)"
