@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Manage\BadgeController;
+use App\Http\Controllers\Manage\BadgePickupReminderController;
 use App\Http\Controllers\Manage\BadgePrintController;
 use App\Http\Controllers\Manage\BadgeVerificationController;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +43,10 @@ Route::prefix('badges')->name('badges.')->group(function () {
     Route::middleware('can:manage-admin')->group(function () {
         Route::post('bulk/print', [BadgePrintController::class, 'bulk'])->name('bulk.print');
         Route::post('bulk/status', [BadgeController::class, 'bulkStatus'])->name('bulk.status');
+        // Mails the selection; declared by the controller that owns the send, like bulk/print.
+        Route::post('bulk/remind', [BadgePickupReminderController::class, 'bulk'])->name('bulk.remind');
+        // The day's send, not a selection. A literal segment, declared before {badge}.
+        Route::post('remind-today', [BadgePickupReminderController::class, 'today'])->name('remind-today');
         Route::post('{badge}/print', [BadgePrintController::class, 'store'])->whereNumber('badge')->name('print');
         // The inline check-off column. A POST carrying the state it wants, never a PUT on
         // the record: it writes one column and it is not the form.

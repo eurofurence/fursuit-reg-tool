@@ -58,7 +58,7 @@ const props = defineProps({
 const hoursForm = useForm({
   // Copied, not referenced: the prop is replaced wholesale on every Inertia response, and
   // editing it in place would make the "unsaved changes" comparison meaningless.
-  hours: props.openingHours.map((row) => ({ ...row, note: row.note ?? '' })),
+  hours: props.openingHours.map((row) => ({ ...row, note: row.note ?? '', reminds_at: row.reminds_at ?? '' })),
 });
 
 /**
@@ -105,6 +105,9 @@ const addHourRow = () => {
     opens: previous?.opens ?? '10:00',
     closes: previous?.closes ?? '18:00',
     note: '',
+    // Deliberately blank rather than copied from the day before: a reminder mails every
+    // attendee still holding a badge, so each day it goes out is a decision somebody makes.
+    reminds_at: '',
   });
 };
 
@@ -119,7 +122,8 @@ const hourError = (index, field) => hoursForm.errors[`hours.${index}.${field}`];
 const submitHours = () => hoursForm.put(route('admin.settings.on-site-desk.hours'), { preserveScroll: true });
 
 const hoursDirty = computed(
-  () => JSON.stringify(hoursForm.hours) !== JSON.stringify(props.openingHours.map((row) => ({ ...row, note: row.note ?? '' }))),
+  () => JSON.stringify(hoursForm.hours)
+    !== JSON.stringify(props.openingHours.map((row) => ({ ...row, note: row.note ?? '', reminds_at: row.reminds_at ?? '' }))),
 );
 
 const canAddHourRow = computed(() => hoursForm.hours.length < props.maxHourRows);
@@ -127,7 +131,7 @@ const canAddHourRow = computed(() => hoursForm.hours.length < props.maxHourRows)
 // The bounds are named in the copy as well as enforced on the control, because a date
 // input that silently refuses a day out of range explains nothing about why.
 const hoursDescription = computed(() => {
-  const base = 'One row per convention day, by date. Shown on the public pickup page; publish nothing and the page stays quiet about times.';
+  const base = 'One row per convention day, by date. Shown on the public pickup page; publish nothing and the page stays quiet about times. "Remind at" mails everybody who still has an uncollected badge that day, once each; leave it blank on days that should send nothing.';
 
   if (!firstDay.value || !lastDay.value) {
     return base;
@@ -235,12 +239,13 @@ const control =
                grid is four narrow controls and repeating "Date / Opens / Closes" five times
                is noise. -->
           <div
-            class="grid grid-cols-[9.5rem_5.5rem_5.5rem_5.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-3"
+            class="grid grid-cols-[8.75rem_5.25rem_5.25rem_5.25rem_minmax(0,1fr)_2rem] xl:grid-cols-[9.5rem_4.5rem_5.5rem_5.5rem_5.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-3"
           >
             <span>Date</span>
-            <span></span>
+            <span class="hidden xl:block"></span>
             <span>Opens</span>
             <span>Closes</span>
+            <span>Remind at</span>
             <span>Note (optional)</span>
             <span class="sr-only">Remove</span>
           </div>
@@ -248,7 +253,7 @@ const control =
           <div
             v-for="(row, index) in hoursForm.hours"
             :key="index"
-            class="grid grid-cols-[9.5rem_5.5rem_5.5rem_5.5rem_minmax(0,1fr)_2rem] items-start gap-2"
+            class="grid grid-cols-[8.75rem_5.25rem_5.25rem_5.25rem_minmax(0,1fr)_2rem] xl:grid-cols-[9.5rem_4.5rem_5.5rem_5.5rem_5.5rem_minmax(0,1fr)_2rem] items-start gap-2"
           >
             <div class="min-w-0">
               <input
@@ -266,7 +271,7 @@ const control =
 
             <!-- Read-only echo of the date, so an operator can sanity-check that the day
                  they picked is the day they meant without doing the arithmetic. -->
-            <span class="flex h-8 items-center text-[12px] text-fg-3">{{ weekday(row.date) }}</span>
+            <span class="hidden h-8 items-center text-[12px] text-fg-3 xl:flex">{{ weekday(row.date) }}</span>
 
             <div>
               <input v-model="row.opens" type="time" :class="control" :disabled="!canEdit" />
@@ -280,6 +285,26 @@ const control =
               <p v-if="hourError(index, 'closes')" class="mt-1 text-[11px] text-state-danger">
                 {{ hourError(index, 'closes') }}
               </p>
+            </div>
+
+            <!-- The day's pickup reminder. Blank on the first row and disabled there: the desk
+                 opens that day, so nobody is late for a badge yet.
+
+                 No min/max on the input, deliberately. A time input with bounds refuses to submit
+                 at all and shows the browser's own bubble, in the browser's own language, so the
+                 operator never sees our sentence about the desk being shut - and the bound the
+                 browser enforces is not quite ours either, since the closing minute is out. The
+                 server owns this rule and says it in English under the input. -->
+            <div>
+              <input
+                v-model="row.reminds_at"
+                type="time"
+                :class="control"
+                :disabled="!canEdit || index === 0"
+                :title="index === 0
+                  ? 'The first desk day does not send reminders.'
+                  : 'Emails everybody with an uncollected badge, once, at this time.'"
+              />
             </div>
 
             <div class="min-w-0">
@@ -306,6 +331,15 @@ const control =
               <ManageIcon name="trash-2" :size="14" />
             </button>
             <span v-else />
+
+            <!-- Under the whole row rather than under its input: this is the only message on this
+                 page that is a sentence, and a sentence in a 5rem column wraps to six lines. -->
+            <p
+              v-if="hourError(index, 'reminds_at')"
+              class="col-span-full -mt-0.5 text-[11px] text-state-danger"
+            >
+              {{ hourError(index, 'reminds_at') }}
+            </p>
           </div>
         </div>
 

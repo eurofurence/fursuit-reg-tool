@@ -82,7 +82,7 @@ test('it reminds the attendee whose printed badge is still at the desk', functio
                 // to read as a follow-up rather than a repeat.
                 ->and($message->viewData['tone'])->toBe('warn');
 
-            return str_contains($html, 'still at our desk')
+            return str_contains($html, 'still waiting at our desk in the Fursuit Lounge')
                 && str_contains($html, 'until the next Eurofurence')
                 && str_contains($html, 'Pickup information');
         });

@@ -5,6 +5,8 @@ namespace App\Notifications\Concerns;
 use App\Models\Badge\Badge;
 use App\Models\Event;
 use App\Models\Fursuit\Fursuit;
+use App\Support\DeskOpeningHours;
+use Carbon\CarbonImmutable;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /**
@@ -27,7 +29,7 @@ trait BuildsBadgeMail
     protected function badgeMail(
         object $notifiable,
         string $subject,
-        string $band,
+        ?string $band,
         string $tone,
         string $headline,
         array $answers,
@@ -98,6 +100,56 @@ trait BuildsBadgeMail
         }
 
         return 'The printing deadline ('.$massPrintedAt->format('j F Y').') has passed, so you can collect it from the second convention day.';
+    }
+
+    /**
+     * The desk hours a reminder prints, and the sentence that goes under them.
+     *
+     * Printed in the mail rather than left to a link, because the question the desk gets asked
+     * is "when are you open", and an attendee reading a nudge on their phone in a corridor
+     * should not have to open a page to answer it. Only today and later are listed - see
+     * DeskOpeningHours::upcoming() - so the list never opens with days that have gone.
+     *
+     * The last day gets its own line. "We are open today until 16:00" is the only piece of
+     * this mail with a deadline in it, and on the day the desk closes for good it is the whole
+     * point of sending: after that the badge waits a year.
+     *
+     * An event that publishes no hours gets no question. The alternative is a heading over an
+     * empty list, or an invented time, and both are worse than the pickup page's link in the
+     * footer, which every one of these mails already carries.
+     *
+     * Today is marked in the list rather than repeated above it. "We are open today until 16:00"
+     * over a list whose first row already says today's times is the same fact twice, and read as a
+     * contradiction the moment a later row carried a different time.
+     *
+     * The one sentence that is not in the list is the deadline: on the desk's last day the mail has
+     * to say that it is the last day, because no list of times conveys that the next one is a year
+     * away.
+     *
+     * @return array{q: string, hours: list<array{date: string, opens: string, closes: string, note: string|null, today: bool}>, a: string|null}|null
+     */
+    protected function deskHoursAnswer(?Event $event): ?array
+    {
+        $rows = DeskOpeningHours::upcoming($event);
+
+        if ($rows === []) {
+            return null;
+        }
+
+        $today = CarbonImmutable::now()->format('Y-m-d');
+
+        $rows = array_map(
+            fn (array $row) => [...$row, 'today' => $row['date'] === $today],
+            $rows,
+        );
+
+        $closesToday = DeskOpeningHours::today($event)['closes'] ?? null;
+
+        $note = $closesToday !== null && DeskOpeningHours::isLastDay($event)
+            ? 'Today is the last day of the desk and we close at '.$closesToday.'. After that your badge waits for you at the next Eurofurence.'
+            : null;
+
+        return ['q' => 'When is the desk open?', 'hours' => $rows, 'a' => $note];
     }
 
     /**

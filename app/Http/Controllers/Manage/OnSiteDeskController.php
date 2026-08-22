@@ -133,6 +133,7 @@ class OnSiteDeskController extends Controller
             'hours.*.opens' => ['required', 'date_format:H:i'],
             'hours.*.closes' => ['required', 'date_format:H:i'],
             'hours.*.note' => ['nullable', 'string', 'max:120'],
+            'hours.*.reminds_at' => ['nullable', 'date_format:H:i'],
         ], [
             'hours.*.date.required' => 'Every row needs a date.',
             'hours.*.date.date_format' => 'Pick a real calendar day.',
@@ -141,21 +142,88 @@ class OnSiteDeskController extends Controller
             'hours.*.date.before_or_equal' => $withinEvent,
             'hours.*.opens.date_format' => 'Opening times have to look like 10:00.',
             'hours.*.closes.date_format' => 'Closing times have to look like 18:00.',
+            'hours.*.reminds_at.date_format' => 'Reminder times have to look like 15:00.',
         ]);
 
         $hours = DeskOpeningHours::normalize($validated['hours']);
 
+        // The reminder is checked after normalize() rather than in the rules above, because the
+        // rules see the rows in the order they were typed and the reminder rules are about the
+        // rows in date order: which day is first, and whether the time sits inside that day's
+        // own hours. Both are refusals rather than silent drops - a reminder time an operator
+        // typed and the panel then ignored is a mail they think is scheduled and is not.
+        $this->validateReminders($hours, $validated['hours']);
+
         $event->desk_opening_hours = $hours === [] ? null : $hours;
         $event->save();
+
+        $reminders = count(array_filter($hours, fn (array $row) => $row['reminds_at'] !== null));
 
         Toast::flashSuccess(
             'Opening hours saved',
             $hours === []
                 ? $event->name.' now publishes no desk hours.'
                 : count($hours).' day'.(count($hours) === 1 ? '' : 's').' for '.$event->name.'.'
+                    .($reminders === 0
+                        ? ' No pickup reminders are scheduled.'
+                        : ' '.$reminders.' day'.($reminders === 1 ? '' : 's').' send a pickup reminder.')
         );
 
         return $this->back();
+    }
+
+    /**
+     * The reminder times, checked against the day they belong to.
+     *
+     * Two refusals. The first published day may not carry one at all: that is the day the desk
+     * opens, everybody is collecting for the first time, and "you have not picked it up yet" is
+     * both untrue and aimed at the longest queue of the convention. And a time outside the day's
+     * own hours would send people to a counter that is shut, which is the one thing this mail
+     * must never do.
+     *
+     * Errors are addressed to the row the operator typed, not to the sorted row the fault was
+     * found on: normalize() puts the days in date order, and an operator who added Saturday after
+     * Sunday would otherwise see the message under the wrong input.
+     *
+     * @param  list<array{date: string, opens: string, closes: string, note: string|null, reminds_at: string|null}>  $hours
+     * @param  array<int, array<string, mixed>>  $submitted
+     *
+     * @throws ValidationException
+     */
+    private function validateReminders(array $hours, array $submitted): void
+    {
+        $slots = [];
+
+        foreach ($submitted as $index => $row) {
+            $date = is_array($row) && is_string($row['date'] ?? null) ? trim($row['date']) : null;
+
+            if ($date !== null && ! isset($slots[$date])) {
+                $slots[$date] = $index;
+            }
+        }
+
+        $errors = [];
+
+        foreach ($hours as $index => $row) {
+            $slot = $slots[$row['date']] ?? $index;
+            if ($row['reminds_at'] === null) {
+                continue;
+            }
+
+            if ($index === 0) {
+                $errors['hours.'.$slot.'.reminds_at'] = 'The first desk day does not send reminders: everybody is collecting for the first time.';
+
+                continue;
+            }
+
+            if ($row['reminds_at'] < $row['opens'] || $row['reminds_at'] >= $row['closes']) {
+                $errors['hours.'.$slot.'.reminds_at'] = 'Send the reminder while the desk is open, between '.$row['opens'].' and '.$row['closes'].'.';
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     public function updateBooths(Request $request, EventScope $scope): RedirectResponse

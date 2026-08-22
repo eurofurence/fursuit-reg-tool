@@ -3,125 +3,156 @@
 namespace App\Console\Commands;
 
 use App\Models\Badge\Badge;
-use App\Models\Badge\State_Fulfillment\ReadyForPickup;
+use App\Models\BadgePickupReminderRun;
 use App\Models\Event;
-use App\Notifications\BadgePickupReminderNotification;
+use App\Services\BadgePickupReminderService;
+use App\Support\DeskOpeningHours;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Nudge attendees whose badge is printed and still sitting at the desk.
+ * Nudge attendees whose badge is still sitting at the desk.
  *
- * Deliberately **not** scheduled. The badge team has not settled when it should fire, and this is a
- * command that mails thousands of real people: it belongs in routes/console.php only once somebody has
- * decided the slot (the obvious one is the morning of the last full convention day, late enough to be
- * a real reminder and early enough to act on). Until then it is run by hand, and `--dry-run` shows
- * exactly who would hear from us.
+ * Scheduled every minute and does nothing on almost every run: `--scheduled` fires only inside the
+ * window after the "Remind at" time the desk set for today, on the On-Site Desk settings page. The
+ * schedule therefore lives in the panel, next to the opening hours it has to agree with, rather
+ * than in this file or in `routes/console.php` - the badge team retunes it between two convention
+ * days without a deploy. See DeskOpeningHours::dueReminder() for the three conditions, and
+ * DeskOpeningHours::remindableRows() for why the first desk day never sends.
  *
- * Four filters, and each one is here because sending without it would be worse than not sending:
+ * Who gets a mail is not decided here. BadgePickupReminderService owns that, because the badge
+ * list's "Send today's reminders" button sends the same run, and two callers with two answers would
+ * be an attendee mailed twice. This command decides only whether now is the moment.
  *
- *  - **Ready for Pickup only.** A badge that is not printed cannot be collected, and a picked-up badge
- *    needs no reminder.
- *  - **Once per badge.** `pickup_reminded_at` is stamped as we go, so a repeat run is a no-op rather
- *    than a second mail.
- *  - **During the convention.** A reminder to walk to a desk is noise before the doors open and after
- *    they close.
- *  - **Checked-in attendees only.** `event_users.valid_registration` is the closest thing we have to
- *    "this person is actually here"; without it we would chase people who never came.
+ * Both callers claim the day first, so whichever goes second sends nothing at all. `--force` skips
+ * that claim, which is the escape hatch for a desk that genuinely wants a second sweep - the
+ * per-attendee stamp still keeps anybody from hearing from us twice. `--dry-run` claims nothing and
+ * sends nothing.
  */
 class RemindBadgePickupCommand extends Command
 {
     protected $signature = 'badges:remind-pickup
                             {--dry-run : List who would be mailed and change nothing}
                             {--event= : Event id, defaults to the active event}
-                            {--force : Send even when the event is not currently running}';
+                            {--force : Send outside the convention, and even if today already ran}
+                            {--scheduled : Only send if the desk has a reminder due right now}';
 
-    protected $description = 'Remind attendees that their printed badge is still waiting at the desk';
+    protected $description = 'Remind attendees that their badge is still waiting at the desk';
 
-    public function handle(): int
+    public function handle(BadgePickupReminderService $reminders): int
     {
         $event = $this->option('event')
             ? Event::find($this->option('event'))
             : Event::getActiveEvent();
 
         if ($event === null) {
+            // Silent on the schedule: no active event is the normal state for fifty weeks a year,
+            // and an error a minute for fifty weeks is how a log stops being read.
+            if ($this->option('scheduled')) {
+                return self::SUCCESS;
+            }
+
             $this->error('No event to remind for.');
 
             return self::FAILURE;
         }
 
-        $running = $event->starts_at !== null
-            && $event->ends_at !== null
-            && now()->between($event->starts_at, $event->ends_at);
+        if ($this->option('scheduled')) {
+            $due = DeskOpeningHours::dueReminder($event);
 
-        if (! $running && ! $this->option('force')) {
+            if ($due === null) {
+                return self::SUCCESS;
+            }
+
+            $this->info('Desk reminder due at '.$due['reminds_at'].' on '.$due['date'].'.');
+        } elseif (! $this->running($event) && ! $this->option('force')) {
             $this->warn($event->name.' is not running right now, so nobody was reminded.');
             $this->line('Pass --force if you mean to send outside the convention.');
 
             return self::SUCCESS;
         }
 
-        $query = $this->pending($event);
-        $total = $query->count();
+        if ($this->option('dry-run')) {
+            return $this->dryRun($reminders, $event);
+        }
 
-        if ($total === 0) {
-            $this->info('Nothing to remind: every printed badge has been collected or already had its reminder.');
+        $run = $this->claim($reminders, $event);
 
+        if ($run === false) {
             return self::SUCCESS;
         }
 
-        $dryRun = $this->option('dry-run');
-        $sent = 0;
+        $result = $reminders->send($event, $run);
 
-        $query->with(['fursuit.user', 'fursuit.event'])->chunkById(200, function ($badges) use (&$sent, $dryRun) {
-            foreach ($badges as $badge) {
-                $user = $badge->fursuit?->user;
-
-                if ($user === null) {
-                    continue;
-                }
-
-                if ($dryRun) {
-                    $this->line(sprintf(
-                        '  would remind %s about %s (%s)',
-                        $user->name,
-                        $badge->custom_id ?? '#'.$badge->id,
-                        $badge->fursuit->name,
-                    ));
-                    $sent++;
-
-                    continue;
-                }
-
-                $user->notify(new BadgePickupReminderNotification($badge));
-
-                // Stamped per badge as we go rather than in one update at the end: a run that dies
-                // halfway must not re-mail the people it already reached.
-                $badge->forceFill(['pickup_reminded_at' => now()])->saveQuietly();
-                $sent++;
-            }
-        });
-
-        $this->info($dryRun
-            ? $sent.' attendee(s) would be reminded.'
-            : $sent.' attendee(s) reminded.');
+        $this->info($result['sent'].' attendee(s) reminded, '.$result['stamped'].' badge(s) stamped.');
 
         return self::SUCCESS;
     }
 
     /**
-     * Printed, uncollected, not yet reminded, and belonging to somebody who checked in.
+     * Take today, or report who already has it.
+     *
+     * Returns the run on success, null when `--force` deliberately skipped the claim, and false
+     * when the day is taken and there is nothing to do.
      */
-    private function pending(Event $event): Builder
+    private function claim(BadgePickupReminderService $reminders, Event $event): BadgePickupReminderRun|false|null
     {
-        return Badge::query()
-            ->whereState('status_fulfillment', ReadyForPickup::class)
-            ->whereNull('pickup_reminded_at')
-            ->whereHas('fursuit', fn (Builder $fursuit) => $fursuit
-                ->where('event_id', $event->id)
-                ->whereHas('user.eventUsers', fn (Builder $eventUser) => $eventUser
-                    ->where('event_id', $event->id)
-                    ->where('valid_registration', true)))
-            ->orderBy('id');
+        if ($this->option('force')) {
+            return null;
+        }
+
+        $source = $this->option('scheduled')
+            ? BadgePickupReminderRun::SOURCE_SCHEDULE
+            : BadgePickupReminderRun::SOURCE_CONSOLE;
+
+        $run = $reminders->claimToday($event, $source);
+
+        if ($run !== null) {
+            return $run;
+        }
+
+        $this->info($reminders->ranToday($event)?->describe() ?? 'Today has already been sent.');
+        $this->line('Pass --force to send again anyway; nobody who has already been reminded will hear from us twice.');
+
+        return false;
+    }
+
+    private function dryRun(BadgePickupReminderService $reminders, Event $event): int
+    {
+        $ran = $reminders->ranToday($event);
+
+        if ($ran !== null) {
+            $this->warn($ran->describe().' A real run would send nothing without --force.');
+        }
+
+        $badges = Badge::whereIn('id', $reminders->candidateIds($event))
+            ->with(['fursuit.user'])
+            ->orderBy('id')
+            ->get();
+
+        foreach ($badges as $badge) {
+            $user = $badge->fursuit?->user;
+
+            if ($user === null) {
+                continue;
+            }
+
+            $this->line(sprintf(
+                '  would remind %s about %s (%s)',
+                $user->name,
+                $badge->custom_id ?? '#'.$badge->id,
+                $badge->fursuit->name,
+            ));
+        }
+
+        $this->info($badges->count().' attendee(s) would be reminded.');
+
+        return self::SUCCESS;
+    }
+
+    private function running(Event $event): bool
+    {
+        return $event->starts_at !== null
+            && $event->ends_at !== null
+            && now()->between($event->starts_at, $event->ends_at);
     }
 }

@@ -18,10 +18,11 @@
         on demand at the desk, so neither is reliably true.
 
     @param string      $greeting  "Hi {name}!"
-    @param string      $band      Short status, e.g. "Approved"
+    @param string|null $band      Short status, e.g. "Approved"; null prints no band at all
     @param string      $tone      ok | warn | stop | info
     @param string      $headline  One sentence, plain words
-    @param array       $answers   [['q' => ..., 'a' => ...], ...]
+    @param array       $answers   [['q' => ..., 'a' => ...], ...]; an entry may also carry 'hours',
+                                  which prints the desk's opening days as a list under its answer
     @param string|null $finding   The reviewer's own sentence, quoted apart from the prose
     @param array|null  $action    ['label' => ..., 'url' => ...]
     @param string|null $note      Optional closing line above the footer
@@ -29,7 +30,9 @@
     @param string|null $eventName For the footer's "why am I getting this"
 --}}
 <x-mail::message>
+@if ($band)
 <x-mail::band :tone="$tone">{{ $band }}</x-mail::band>
+@endif
 
 {{ $greeting }}
 
@@ -37,7 +40,17 @@
 
 @foreach ($answers as $answer)
 **{{ $answer['q'] }}**
+@if (!empty($answer['a']))
 {{ $answer['a'] }}
+@endif
+@if (!empty($answer['hours']))
+
+@foreach ($answer['hours'] as $row)
+- {{ \Carbon\CarbonImmutable::parse($row['date'])->format('D, j M') }}@if (!empty($row['today'])) (today)@endif: {{ $row['opens'] }} &ndash; {{ $row['closes'] }}@if ($row['note']) &mdash; {{ $row['note'] }}@endif
+
+@endforeach
+
+@endif
 
 @endforeach
 @if ($finding)

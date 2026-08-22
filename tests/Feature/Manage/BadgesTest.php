@@ -605,10 +605,10 @@ test('the list is scoped by the global event selector through the fursuit', func
 
 test('the table offers Edit and Print Badge and nothing else, and no create action at all', function () {
     // the old badge list passes bulkActions() an explicit array, so there is no bulk delete,
-    // no export and no dissociate. Its one bulk action is printBadgeBulk, which shipped in
-    // phase 7 with the rest of the print pipeline alongside the printBadge row action;
-    // both are covered in full by BadgePrintTest, and asserted here only as the shape of
-    // this table.
+    // no export and no dissociate. Its bulk actions are printBadgeBulk, which shipped in
+    // phase 7 with the rest of the print pipeline alongside the printBadge row action, the
+    // pickup reminder mail, and the fulfillment write; each is covered in full by its own
+    // test, and asserted here only as the shape of this table.
     ($this->badge)();
 
     ($this->scoped)(null)->get(route('admin.badges.index'))
@@ -617,9 +617,10 @@ test('the table offers Edit and Print Badge and nothing else, and no create acti
             ->where('rows.0.actions.0.name', 'edit')
             ->where('rows.0.actions.0.label', 'Edit')
             ->where('rows.0.actions.1.name', 'printBadge')
-            ->count('bulkActions', 2)
+            ->count('bulkActions', 3)
             ->where('bulkActions.0.name', 'printBadgeBulk')
-            ->where('bulkActions.1.name', 'setFulfillmentStatus')
+            ->where('bulkActions.1.name', 'remindPickupBulk')
+            ->where('bulkActions.2.name', 'setFulfillmentStatus')
             // The Create page is not ported: it has never been able to save.
             ->where('pageActions', fn ($actions) => ! collect($actions)->contains(fn ($action) => $action['name'] === 'create'))
         );
@@ -793,11 +794,15 @@ test('a badge is soft deleted from the edit page with the old panel default copy
         ->and(Badge::withTrashed()->whereKey($badge->id)->exists())->toBeTrue();
 });
 
-test('the list offers no page actions', function () {
+test('the only page action is the day\'s pickup reminder, and a reviewer gets none', function () {
+    // ListBadges' CreateAction is not ported - the page it opens has never been able to save - so
+    // the day's reminder is the whole set. It is admin work, like every other write on this list.
     ($this->badge)();
 
     ($this->scoped)(null)->get(route('admin.badges.index'))
-        ->assertInertia(fn (Assert $page) => $page->count('pageActions', 0));
+        ->assertInertia(fn (Assert $page) => $page
+            ->count('pageActions', 1)
+            ->where('pageActions.0.name', 'remindPickupToday'));
 
     actingAs($this->reviewer)->get(route('admin.badges.index'))
         ->assertInertia(fn (Assert $page) => $page->count('pageActions', 0));

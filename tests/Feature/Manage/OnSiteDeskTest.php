@@ -214,8 +214,8 @@ test('an admin can publish, edit and clear the opening hours', function () {
     ])->assertRedirect(route('admin.settings.on-site-desk'));
 
     expect($this->event->fresh()->desk_opening_hours)->toBe([
-        ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => 'Busiest day'],
-        ['date' => '2026-09-03', 'opens' => '09:00', 'closes' => '17:00', 'note' => null],
+        ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => 'Busiest day', 'reminds_at' => null],
+        ['date' => '2026-09-03', 'opens' => '09:00', 'closes' => '17:00', 'note' => null, 'reminds_at' => null],
     ]);
 
     // Clearing every row is a save, not a no-op: the column goes back to null so it reads
@@ -270,8 +270,8 @@ test('the first and last day of the event are themselves allowed', function () {
         ->assertSessionHasNoErrors();
 
     expect($this->event->fresh()->desk_opening_hours)->toBe([
-        ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => null],
-        ['date' => '2026-09-06', 'opens' => '10:00', 'closes' => '14:00', 'note' => null],
+        ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => null, 'reminds_at' => null],
+        ['date' => '2026-09-06', 'opens' => '10:00', 'closes' => '14:00', 'note' => null, 'reminds_at' => null],
     ]);
 });
 
@@ -408,4 +408,79 @@ test('the booth split stops being published after the desk first day', function 
     get(route('info.pickup'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('boothsActive', false));
+});
+
+/*
+ * The per-day pickup reminder, set on the same rows.
+ *
+ * This is the only field on this page that sends mail to attendees, so what it refuses matters more
+ * than what it stores: a time on the first desk day, or a time when the desk is shut, are both a
+ * mail telling several thousand people to walk to a counter that cannot serve them.
+ */
+
+test('a reminder time is stored on the day it belongs to', function () {
+    actingAs($this->admin);
+
+    withSession($this->session)->put(route('admin.settings.on-site-desk.hours'), [
+        'hours' => [
+            ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => ''],
+            ['date' => '2026-09-03', 'opens' => '10:00', 'closes' => '18:00', 'note' => '', 'reminds_at' => '15:00'],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect($this->event->fresh()->desk_opening_hours)->toBe([
+        ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => null, 'reminds_at' => null],
+        ['date' => '2026-09-03', 'opens' => '10:00', 'closes' => '18:00', 'note' => null, 'reminds_at' => '15:00'],
+    ]);
+});
+
+test('the first desk day may not carry a reminder time', function () {
+    actingAs($this->admin);
+
+    withSession($this->session)
+        ->put(route('admin.settings.on-site-desk.hours'), [
+            'hours' => [
+                ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => '', 'reminds_at' => '15:00'],
+                ['date' => '2026-09-03', 'opens' => '10:00', 'closes' => '18:00', 'note' => ''],
+            ],
+        ])
+        ->assertSessionHasErrors('hours.0.reminds_at');
+
+    expect($this->event->fresh()->desk_opening_hours)->toBeNull();
+});
+
+test('a reminder outside the desk hours is refused', function (string $remindsAt) {
+    actingAs($this->admin);
+
+    withSession($this->session)
+        ->put(route('admin.settings.on-site-desk.hours'), [
+            'hours' => [
+                ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => ''],
+                ['date' => '2026-09-03', 'opens' => '10:00', 'closes' => '18:00', 'note' => '', 'reminds_at' => $remindsAt],
+            ],
+        ])
+        ->assertSessionHasErrors('hours.1.reminds_at');
+
+    expect($this->event->fresh()->desk_opening_hours)->toBeNull();
+})->with([
+    'before the desk opens' => ['09:59'],
+    // The closing minute counts as shut: a mail sent as the shutters come down is the same
+    // wasted walk as one sent an hour later.
+    'as the desk closes' => ['18:00'],
+    'after the desk closes' => ['19:00'],
+]);
+
+test('the error lands on the row the operator typed, not the row it sorted into', function () {
+    actingAs($this->admin);
+
+    // Sunday typed first, Saturday second. The fault is on Saturday, which sorts first and is
+    // therefore the day that may not remind - but the input to point at is the second one.
+    withSession($this->session)
+        ->put(route('admin.settings.on-site-desk.hours'), [
+            'hours' => [
+                ['date' => '2026-09-03', 'opens' => '10:00', 'closes' => '18:00', 'note' => ''],
+                ['date' => '2026-09-02', 'opens' => '10:00', 'closes' => '18:00', 'note' => '', 'reminds_at' => '15:00'],
+            ],
+        ])
+        ->assertSessionHasErrors('hours.1.reminds_at');
 });

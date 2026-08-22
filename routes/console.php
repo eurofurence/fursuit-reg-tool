@@ -30,3 +30,12 @@ Schedule::command('fursuits:deliver-review-decisions')
     ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground();
+
+// The desk's own pickup reminder. Every minute, and a no-op on almost every one: the command
+// sends only inside the window after the "Remind at" time set for today on the On-Site Desk
+// settings page, so the schedule is the badge team's to retune between convention days without
+// a deploy. The first desk day never sends. See RemindBadgePickupCommand.
+Schedule::command('badges:remind-pickup --scheduled')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();

@@ -348,11 +348,15 @@ class BadgeController extends Controller
             // App\Support\Manage\Table::requestedIds.
             ->bulkActions(array_values(array_filter([
                 BadgePrintController::bulkAction(),
+                BadgePickupReminderController::bulkAction(),
                 self::bulkStatusAction(),
             ])))
-            // ListBadges offers a CreateAction labelled `New badge`. It is not ported: the
-            // page it opens has never been able to save.
-            ->pageActions([])
+            // ListBadges offers a CreateAction labelled `New badge`. It is not ported: the page it
+            // opens has never been able to save. The one page action is the day's pickup reminder,
+            // which is a page action precisely because it is not about the selection.
+            ->pageActions(array_values(array_filter([
+                BadgePickupReminderController::pageAction(),
+            ])))
             ->toArray($request);
     }
 

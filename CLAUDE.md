@@ -62,7 +62,7 @@ php artisan event:state closed            # Orders closed
 php artisan badges:print                      # Print all unprinted badges
 php artisan badges:unprint                    # Revert badges to unprinted
 php artisan badges:generate-print-files       # (Re)render the print-ready badge files
-php artisan badges:remind-pickup              # Notify attendees with badges waiting at the desk
+php artisan badges:remind-pickup              # Notify attendees with uncollected badges (--scheduled fires only at the desk's own "Remind at" time; once a day, --force overrides)
 php artisan printing:check-stuck-jobs         # Detect stuck print jobs (scheduled every 3 min)
 php artisan printing:reap-leases              # Requeue jobs on expired agent leases (scheduled every minute)
 php artisan print-agent:token                 # Issue/rotate a print agent bearer token
@@ -168,8 +168,14 @@ state properties directly.
 - Background jobs handle printing, ranking updates, and receipt generation. Laravel Horizon manages
   queue processing; the default queue/cache/session driver is `database`
 - A scheduler (`routes/console.php`) runs token refresh (daily), FCEA ranking refresh
-  (every 15 min), stuck-print-job checks (every 3 min), print-job lease reaping (every minute) and
-  fursuit review-decision delivery (every minute)
+  (every 15 min), stuck-print-job checks (every 3 min), print-job lease reaping (every minute),
+  fursuit review-decision delivery (every minute) and the badge pickup reminder (every minute, and a
+  no-op unless the desk's "Remind at" time for today has just passed, and never twice a day - the
+  scheduler and the badge list's "Send Today's Reminders" button claim the day in
+  `badge_pickup_reminder_runs`)
+- Every delivered notification is logged to `sent_notifications` by
+  `App\Listeners\LogSentNotification`, which Laravel auto-discovers from `app/Listeners`; the admin
+  account page reads it back. Never also register it explicitly - that logs everything twice
 
 ### Database Design Notes
 
@@ -221,6 +227,7 @@ Read the file for the area you are changing; each records decisions that were re
 | [`docs/desk-corrections.md`](docs/desk-corrections.md) | POS badge edits, the manager gate, or repricing an open checkout |
 | [`docs/prepaid-badges.md`](docs/prepaid-badges.md) | `BadgePolicy::create()`, `getPrepaidBadgesLeft()`, badge pricing |
 | [`docs/badge-generation.md`](docs/badge-generation.md) | badge artwork classes in `app/Badges/` |
+| [`docs/pickup-reminders.md`](docs/pickup-reminders.md) | the pickup reminder mail, its per-day schedule on the desk hours, or the sent-mail log |
 | [`docs/printing.md`](docs/printing.md) | print batches, jobs, leases, verification, the print agent (build/debug companion: [`docs/printing-implementation.md`](docs/printing-implementation.md)) |
 | [`docs/fiscal-compliance.md`](docs/fiscal-compliance.md) | SumUp, Fiskaly TSE signing, DSFinV-K exports |
 | [`docs/migrations.md`](docs/migrations.md) | writing any migration |

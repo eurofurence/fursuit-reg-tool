@@ -430,8 +430,8 @@ test('the list declares the bulk print action with its modal copy and printer se
 
     $props = ($this->scoped)()->get(route('admin.badges.index'))->viewData('page')['props'];
 
-    // Two: the print run, and the bulk fulfillment write beside it.
-    expect($props['bulkActions'])->toHaveCount(2);
+    // Three: the print run, the pickup reminder mail, and the bulk fulfillment write beside them.
+    expect($props['bulkActions'])->toHaveCount(3);
 
     $action = $props['bulkActions'][0];
 
