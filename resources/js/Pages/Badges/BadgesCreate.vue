@@ -4,7 +4,7 @@ import {Head, usePage} from '@inertiajs/vue3'
 import InputText from "primevue/inputtext";
 import Dropdown from "primevue/dropdown";
 import Dialog from 'primevue/dialog';
-import {useForm} from 'laravel-precognition-vue-inertia'
+import {useForm} from '@inertiajs/vue3'
 import InputSwitch from 'primevue/inputswitch';
 import {computed, ref} from "vue";
 import Button from '@/Components/UI/UiButton.vue';

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
-import { useForm } from 'laravel-precognition-vue-inertia';
+import { useForm } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
 
 import POSLayout from '@/Layouts/POSLayout.vue';
@@ -146,12 +146,12 @@ function askPrint(badge) {
 // Instant: handing out is the move the desk makes hundreds of times an hour,
 // and the same row can undo it.
 function handoutNow(badge) {
-    useForm('POST', route('pos.badges.handout', { badge: badge.id }), {})
+    useForm('post', route('pos.badges.handout', { badge: badge.id }), {})
         .submit({ preserveScroll: true });
 }
 
 function undoNow(badge) {
-    useForm('POST', route('pos.badges.handout.undo', { badge: badge.id }), {})
+    useForm('post', route('pos.badges.handout.undo', { badge: badge.id }), {})
         .submit({ preserveScroll: true });
 }
 
@@ -160,7 +160,7 @@ function handoutAll() {
         return;
     }
 
-    useForm('POST', route('pos.badges.handout.bulk'), {
+    useForm('post', route('pos.badges.handout.bulk'), {
         badge_ids: handoutTargets.value.map((badge) => badge.id),
     }).submit({ preserveScroll: true });
 
@@ -192,7 +192,7 @@ function runConfirm() {
         return;
     }
 
-    useForm('POST', route('pos.badges.print', { badge: pending.badge.id }), {})
+    useForm('post', route('pos.badges.print', { badge: pending.badge.id }), {})
         .submit({
             preserveScroll: true,
             // Keeps `justQueued` across the redirect back, which is the only

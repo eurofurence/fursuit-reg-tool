@@ -7,7 +7,7 @@
     "build": "vite build"
   },
   "devDependencies": {
-    "@inertiajs/vue3": "^2.0.0",
+    "@inertiajs/vue3": "^3.11.0",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/vite": "^4.3.5",
     "@vitejs/plugin-vue": "^6.0.11",
@@ -22,11 +22,11 @@
     "@fontsource-variable/inter": "^5.3.0",
     "@lucide/vue": "^1.82.0",
     "@vueuse/core": "^15.1.0",
+    "axios": "^1.21.1",
     "chart.js": "^4.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.11",
-    "laravel-precognition-vue-inertia": "^0.8.0",
     "primeicons": "^7.0.0",
     "primevue": "^3.52.0",
     "qr-code-styling": "^1.9.2",

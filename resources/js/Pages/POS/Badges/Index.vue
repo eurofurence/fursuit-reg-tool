@@ -12,7 +12,7 @@ import { posDialogPt } from "@/Components/POS/posDialog.js";
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import {ref, computed, onMounted, onUnmounted} from "vue";
-import {useForm} from "laravel-precognition-vue-inertia";
+import {useForm} from "@inertiajs/vue3";
 import {router} from "@inertiajs/vue3";
 import {formatEuroFromCents} from "@/helpers.js";
 import dayjs from "dayjs";
@@ -88,7 +88,7 @@ function getTabIndex() {
 
 // Print single badge
 function printBadge() {
-    const form = useForm('POST', route('pos.badges.print', {badge: badgeIdToPrint.value}), {});
+    const form = useForm('post', route('pos.badges.print', {badge: badgeIdToPrint.value}), {});
     form.submit();
     showPrintConfirmModal.value = false;
     badgeIdToPrint.value = null;
@@ -103,7 +103,7 @@ function printAllBadgesAction() {
         formData.printer_id = selectedPrinter.value;
     }
 
-    const form = useForm('POST', route('pos.badges.print.bulk'), formData);
+    const form = useForm('post', route('pos.badges.print.bulk'), formData);
     form.submit();
     showPrintAllConfirmModal.value = false;
     selectedPrinter.value = null;

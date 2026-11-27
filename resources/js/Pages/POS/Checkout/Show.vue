@@ -6,7 +6,7 @@ import Button from 'primevue/button';
 import Card from 'primevue/card';
 import CashSVG from "@/Components/POS/Checkout/CashSVG.vue";
 import {formatEuroFromCents} from "@/helpers.js";
-import {useForm} from "laravel-precognition-vue-inertia";
+import {useForm} from "@inertiajs/vue3";
 import Message from 'primevue/message'
 import {router} from "@inertiajs/vue3";
 import {usePage} from '@inertiajs/vue3';
@@ -178,14 +178,14 @@ function payWithCash() {
         console.log('Insufficient amount');
         return;
     }
-    useForm('POST', route('pos.checkout.payWithCash', {'checkout': props.checkout.id}), {amount: given.value}).submit();
+    useForm('post', route('pos.checkout.payWithCash', {'checkout': props.checkout.id}), {amount: given.value}).submit();
 }
 
 function cancel() {
-    useForm('DELETE', route('pos.checkout.destroy', {'checkout': props.checkout.id}),{}).submit();
+    useForm('delete', route('pos.checkout.destroy', {'checkout': props.checkout.id}),{}).submit();
 }
 
-const startCardPaymentForm = useForm('POST', route('pos.checkout.startCardPayment', {'checkout': props.checkout.id}),{})
+const startCardPaymentForm = useForm('post', route('pos.checkout.startCardPayment', {'checkout': props.checkout.id}),{})
 
 function startCardPayment() {
     startCardPaymentForm.submit();
@@ -299,8 +299,8 @@ const overrideItems = computed(() => props.checkout.items.map((item) => ({
 const canOverride = computed(() => props.checkout.status !== 'FINISHED'
     && ! (props.transaction && (props.transaction.status === 'SUCCESSFUL' || props.transaction.status === 'PENDING')));
 
-const emailReceiptForm = useForm('POST', route('pos.checkout.receipt.email', {'checkout': props.checkout.id}), {});
-const printReceiptForm = useForm('POST', route('pos.checkout.receipt.print', {'checkout': props.checkout.id}), {});
+const emailReceiptForm = useForm('post', route('pos.checkout.receipt.email', {'checkout': props.checkout.id}), {});
+const printReceiptForm = useForm('post', route('pos.checkout.receipt.print', {'checkout': props.checkout.id}), {});
 
 function receiptForm(via) {
     if (via === 'email') {

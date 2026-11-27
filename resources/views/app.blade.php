@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title inertia>Eurofurence Fursuit Badges</title>
+        <title data-inertia>Eurofurence Fursuit Badges</title>
 
         @if(request()->getHost() === config('fcea.domain'))
         <!-- PWA Meta Tags for Catch-Em-All -->

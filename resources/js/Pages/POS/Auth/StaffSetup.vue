@@ -1,6 +1,6 @@
 <script setup>
 import POSLayout from "@/Layouts/POSLayout.vue";
-import { useForm } from "laravel-precognition-vue-inertia";
+import { useForm } from "@inertiajs/vue3";
 import { ref } from 'vue';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
@@ -21,7 +21,7 @@ const rfidTag = ref('');
 const rfidBuffer = ref(''); // Buffer to accumulate RFID input
 const rfidTimeout = ref(null); // Timer for RFID input completion
 
-const form = useForm('POST', route('pos.auth.setup.complete'), {
+const form = useForm('post', route('pos.auth.setup.complete'), {
     pin_code: '',
     pin_code_confirmation: '',
     rfid_tag: '',

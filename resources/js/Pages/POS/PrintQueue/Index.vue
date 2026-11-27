@@ -6,7 +6,7 @@ import Column from 'primevue/column';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import Card from 'primevue/card';
-import { useForm } from 'laravel-precognition-vue-inertia';
+import { useForm } from '@inertiajs/vue3';
 import { useToast } from 'primevue/usetoast';
 import dayjs from 'dayjs';
 
@@ -21,7 +21,7 @@ const props = defineProps({
 const toast = useToast();
 
 function markAsPrinted(printJobId) {
-    useForm('POST', route('pos.print-queue.mark-printed', { printJob: printJobId }), {})
+    useForm('post', route('pos.print-queue.mark-printed', { printJob: printJobId }), {})
         .submit({
             onSuccess: () => {
                 toast.add({
@@ -43,7 +43,7 @@ function markAsPrinted(printJobId) {
 }
 
 function retryPrintJob(printJobId) {
-    useForm('POST', route('pos.print-queue.retry', { printJob: printJobId }), {})
+    useForm('post', route('pos.print-queue.retry', { printJob: printJobId }), {})
         .submit({
             onSuccess: () => {
                 toast.add({
@@ -66,7 +66,7 @@ function retryPrintJob(printJobId) {
 
 function deletePrintJob(printJobId) {
     if (confirm('Are you sure you want to delete this print job?')) {
-        useForm('DELETE', route('pos.print-queue.delete', { printJob: printJobId }), {})
+        useForm('delete', route('pos.print-queue.delete', { printJob: printJobId }), {})
             .submit({
                 onSuccess: () => {
                     toast.add({

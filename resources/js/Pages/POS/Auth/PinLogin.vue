@@ -4,7 +4,7 @@ import Button from 'primevue/button';
 import InputOtp from 'primevue/inputotp';
 import SimpleKeyboard from "@/Components/SimpleKeyboard.vue";
 import Message from 'primevue/message';
-import {useForm} from "laravel-precognition-vue-inertia";
+import {useForm} from "@inertiajs/vue3";
 import {ref, watch, onMounted, onUnmounted, nextTick} from "vue";
 import sjcl from 'sjcl';
 import POSLayout from "@/Layouts/POSLayout.vue";
@@ -20,7 +20,7 @@ const props = defineProps({
     }
 });
 
-const form = useForm('POST', route('pos.auth.user.pin.submit'), {
+const form = useForm('post', route('pos.auth.user.pin.submit'), {
     code: '',
     is_rfid: false
 });
