@@ -201,8 +201,8 @@ audit trails, and activity logging tracks all important changes.
 - **Tailwind CSS 4** (`@tailwindcss/vite`, theme in `resources/css/app.css`, no `tailwind.config.js`) with
   the Eurofurence palette (`brand-1-*` teal, `brand-2-*` navy, `brand-3-*` coral, `grays-*`) and Inter
 - **shadcn-vue** kit (reka-ui) in `resources/js/Components/UI/<name>/` (exact casing `UI`; macOS hides a
-  wrong case that breaks the Linux build), `cn()` in `resources/js/lib/utils.js`. **PrimeVue** is being
-  replaced page by page; `primary-*`/`surface-*` classes still work and map onto the EF palette.
+  wrong case that breaks the Linux build), `cn()` in `resources/js/lib/utils.js`. PrimeVue is gone; the `Ui*.vue` wrappers keep its
+  props API on top of the kit, and `primary-*`/`surface-*` classes map onto the EF palette.
   Icons come from `@lucide/vue`
 
 ## Migrations must be idempotent

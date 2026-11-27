@@ -1,5 +1,6 @@
 <script setup>
 import { computed, useAttrs } from 'vue';
+import { LoaderCircle } from '@lucide/vue';
 import { Button } from '@/Components/UI/button';
 import { cn } from '@/lib/utils';
 import { OUTLINED, SOLID, TEXT, severityClass } from './severity.js';
@@ -14,14 +15,14 @@ defineOptions({ inheritAttrs: false });
 
 const props = defineProps({
     label: { type: String, default: null },
-    icon: { type: String, default: null },
+    /** A lucide icon component. */
+    icon: { type: [Object, Function], default: null },
     iconPos: { type: String, default: 'left' },
     /** null | 'small' | 'large' */
     size: { type: String, default: null },
     severity: { type: String, default: null },
     disabled: { type: Boolean, default: false },
     loading: { type: Boolean, default: false },
-    loadingIcon: { type: String, default: 'pi pi-spinner' },
     text: { type: Boolean, default: false },
     outlined: { type: Boolean, default: false },
     rounded: { type: Boolean, default: false },
@@ -111,8 +112,8 @@ const iconClass = computed(() => (['right', 'bottom'].includes(props.iconPos) ? 
         v-bind="{ ...attrs, class: undefined }"
     >
         <slot>
-            <span v-if="loading" :class="[iconClass, 'animate-spin', loadingIcon]" aria-hidden="true" />
-            <span v-else-if="icon" :class="[iconClass, icon]" aria-hidden="true" />
+            <LoaderCircle v-if="loading" :class="[iconClass, 'animate-spin']" aria-hidden="true" />
+            <component :is="icon" v-else-if="icon" :class="iconClass" aria-hidden="true" />
 
             <span v-if="label != null" :class="link ? 'hover:underline' : ''">{{ label }}</span>
 

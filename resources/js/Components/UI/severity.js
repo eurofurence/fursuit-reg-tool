@@ -1,3 +1,5 @@
+import { Check, CircleX, Info, TriangleAlert } from '@lucide/vue';
+
 /*
  * The severity ramp, once.
  *
@@ -88,12 +90,12 @@ const MESSAGE_ALIASES = { warning: 'warn', danger: 'error' };
 
 /** Default icons, matching what PrimeVue's Message shipped per severity. */
 export const MESSAGE_ICONS = {
-    info: 'pi pi-info-circle',
-    success: 'pi pi-check',
-    warn: 'pi pi-exclamation-triangle',
-    error: 'pi pi-times-circle',
-    secondary: 'pi pi-info-circle',
-    contrast: 'pi pi-info-circle',
+    info: Info,
+    success: Check,
+    warn: TriangleAlert,
+    error: CircleX,
+    secondary: Info,
+    contrast: Info,
 };
 
 /*

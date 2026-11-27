@@ -18,11 +18,12 @@ import { MESSAGE, MESSAGE_ICONS, severityClass } from './severity.js';
 const props = defineProps({
     severity: { type: String, default: 'info' },
     closable: { type: Boolean, default: true },
-    icon: { type: String, default: null },
+    /** A lucide icon component; an empty string hides the severity default. */
+    icon: { type: [Object, Function, String], default: null },
     /** ms until it dismisses itself; 0 keeps it up. Ignored when `sticky`. */
     life: { type: Number, default: 0 },
     sticky: { type: Boolean, default: true },
-    /** Compact, borderless, never closable — the old InlineMessage. */
+    /** Compact, borderless and never closable, like the old InlineMessage. */
     inline: { type: Boolean, default: false },
 });
 
@@ -70,7 +71,7 @@ onBeforeUnmount(() => clearTimeout(timer));
         leave-to-class="max-h-0 opacity-0 m-0!"
     >
         <Alert v-if="visible" :class="rootClass" aria-live="assertive" aria-atomic="true">
-            <span v-if="resolvedIcon" :class="[inline ? 'text-lg' : 'w-6 h-6 text-lg', 'leading-none shrink-0', resolvedIcon]" aria-hidden="true" />
+            <component :is="resolvedIcon" v-if="resolvedIcon" :class="[inline ? 'size-5' : 'size-6', 'shrink-0']" aria-hidden="true" />
             <span class="text-base leading-none font-medium">
                 <slot />
             </span>

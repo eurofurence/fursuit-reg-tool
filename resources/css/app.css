@@ -98,7 +98,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* PrimeVue-era ramp, kept for the Lara preset and the pages not yet migrated. */
+  /* Legacy primary/surface ramp, still used by page classes. */
   --color-primary-inverse: rgb(var(--primary-inverse));
   --color-primary-hover: rgb(var(--primary-hover));
   --color-primary-active-color: rgb(var(--primary-active-color));

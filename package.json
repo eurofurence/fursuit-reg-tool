@@ -27,8 +27,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.11",
-    "primeicons": "^7.0.0",
-    "primevue": "^3.52.0",
     "qr-code-styling": "^1.9.2",
     "reka-ui": "^2.12.0",
     "simple-keyboard": "^3.7.83",

@@ -14,7 +14,8 @@ import { TAG, severityClass } from './severity.js';
 const props = defineProps({
     value: { type: [String, Number], default: null },
     severity: { type: String, default: null },
-    icon: { type: String, default: null },
+    /** A lucide icon component. */
+    icon: { type: [Object, Function], default: null },
     rounded: { type: Boolean, default: false },
 });
 
@@ -27,7 +28,7 @@ const rootClass = computed(() => [
 
 <template>
     <Badge :class="rootClass">
-        <span v-if="icon" :class="['text-sm', icon]" aria-hidden="true" />
+        <component :is="icon" v-if="icon" class="size-3.5" aria-hidden="true" />
         <span class="leading-normal">
             <slot>{{ value }}</slot>
         </span>
