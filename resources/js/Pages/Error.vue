@@ -1,7 +1,8 @@
 <script setup>
 import { computed } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
-import Button from '@/Components/UI/UiButton.vue';
+import { ArrowLeft, Ban, CircleAlert, Clock, FileX, Hourglass, House, Lock, LogIn, RefreshCw, Search, Server, Trash2, TriangleAlert, Wrench } from '@lucide/vue';
+import { Button } from '@/Components/UI/button';
 import Layout from '@/Layouts/Layout.vue';
 
 /*
@@ -31,74 +32,74 @@ const catalog = {
     401: {
         title: 'Not Signed In',
         description: 'You need to sign in before you can view this page.',
-        icon: 'pi pi-sign-in',
+        icon: LogIn,
     },
     403: {
         title: 'Access Forbidden',
         description: 'You do not have permission to view this page.',
-        icon: 'pi pi-lock',
+        icon: Lock,
     },
     404: {
         title: 'Page Not Found',
         description: 'The page you are looking for does not exist, or it has moved.',
-        icon: 'pi pi-search',
+        icon: Search,
     },
     405: {
         title: 'Not Allowed',
         description: 'That action is not available on this page.',
-        icon: 'pi pi-ban',
+        icon: Ban,
     },
     408: {
         title: 'Request Timed Out',
         description: 'The request took too long. Please try again.',
-        icon: 'pi pi-clock',
+        icon: Clock,
     },
     410: {
         title: 'No Longer Available',
         description: 'This page is gone and will not come back.',
-        icon: 'pi pi-trash',
+        icon: Trash2,
     },
     413: {
         title: 'Upload Too Large',
         description: 'The file you tried to upload is bigger than we accept.',
-        icon: 'pi pi-file-excel',
+        icon: FileX,
     },
     419: {
         title: 'Session Expired',
         description: 'Your session expired for security reasons. Refresh the page and try again.',
-        icon: 'pi pi-clock',
+        icon: Clock,
     },
     429: {
         title: 'Too Many Requests',
         description: 'You have made too many requests in a short time. Wait a moment, then try again.',
-        icon: 'pi pi-hourglass',
+        icon: Hourglass,
     },
     500: {
         title: 'Server Error',
         description: 'Something went wrong on our side. The team has been notified.',
-        icon: 'pi pi-exclamation-triangle',
+        icon: TriangleAlert,
     },
     502: {
         title: 'Bad Gateway',
         description: 'We could not reach part of the system. Please try again in a moment.',
-        icon: 'pi pi-server',
+        icon: Server,
     },
     503: {
         title: 'Down for Maintenance',
         description: 'The badge system is being updated and will be back shortly.',
-        icon: 'pi pi-wrench',
+        icon: Wrench,
     },
     504: {
         title: 'Gateway Timeout',
         description: 'A part of the system took too long to answer. Please try again.',
-        icon: 'pi pi-hourglass',
+        icon: Hourglass,
     },
 };
 
 const fallback = {
     title: 'Something Went Wrong',
     description: 'An unexpected error occurred.',
-    icon: 'pi pi-exclamation-circle',
+    icon: CircleAlert,
 };
 
 const error = computed(() => catalog[props.status] ?? fallback);
@@ -152,7 +153,7 @@ function reload() {
             :class="usesSiteChrome ? 'px-6 py-16 text-center' : 'text-center'"
         >
             <div class="rounded-2xl bg-white p-8 shadow-lg">
-                <i :class="error.icon" class="text-5xl text-gray-400"></i>
+                <component :is="error.icon" class="mx-auto size-12 text-gray-400" />
 
                 <p class="mt-6 font-main text-6xl font-bold text-gray-900">{{ status }}</p>
 
@@ -161,29 +162,17 @@ function reload() {
                 <p class="mt-4 text-gray-600">{{ description }}</p>
 
                 <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-                    <Link :href="home" class="flex-1">
-                        <Button icon="pi pi-home" :label="homeLabel" size="large" class="w-full" />
-                    </Link>
+                    <Button as-child size="lg" class="flex-1">
+                        <Link :href="home"><House /> {{ homeLabel }}</Link>
+                    </Button>
 
-                    <Button
-                        v-if="canRetry"
-                        icon="pi pi-refresh"
-                        label="Try Again"
-                        size="large"
-                        outlined
-                        class="flex-1"
-                        @click="reload"
-                    />
+                    <Button v-if="canRetry" size="lg" variant="outline" class="flex-1" @click="reload">
+                        <RefreshCw /> Try Again
+                    </Button>
 
-                    <Button
-                        v-else
-                        icon="pi pi-arrow-left"
-                        label="Go Back"
-                        size="large"
-                        outlined
-                        class="flex-1"
-                        @click="goBack"
-                    />
+                    <Button v-else size="lg" variant="outline" class="flex-1" @click="goBack">
+                        <ArrowLeft /> Go Back
+                    </Button>
                 </div>
 
                 <p v-if="status >= 500" class="mt-6 text-sm text-gray-500">

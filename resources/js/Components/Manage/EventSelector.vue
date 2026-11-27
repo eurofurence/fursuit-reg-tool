@@ -228,7 +228,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown,
     <button
       ref="trigger"
       type="button"
-      class="flex h-6 max-w-[11rem] items-center gap-1 rounded border border-hairline bg-mg-surface-2 px-1.5 text-[11px] font-medium text-fg-1 outline-none transition-colors hover:border-state-live/40 focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:opacity-50"
+      class="flex h-6 max-w-44 items-center gap-1 rounded-sm border border-hairline bg-mg-surface-2 px-1.5 text-[11px] font-medium text-fg-1 outline-hidden transition-colors hover:border-state-live/40 focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:opacity-50"
       :disabled="processing"
       aria-haspopup="listbox"
       :aria-expanded="open"
@@ -249,7 +249,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown,
     <ul
       v-if="open"
       ref="listbox"
-      class="absolute right-0 top-full z-30 mt-1 max-h-72 min-w-[13rem] overflow-y-auto rounded border border-hairline bg-mg-surface-3 py-1 shadow-lg shadow-black/40 outline-none"
+      class="absolute right-0 top-full z-30 mt-1 max-h-72 min-w-52 overflow-y-auto rounded-sm border border-hairline bg-mg-surface-3 py-1 shadow-lg shadow-black/40 outline-hidden"
       role="listbox"
       tabindex="-1"
       aria-label="Event filter"

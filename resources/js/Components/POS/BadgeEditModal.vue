@@ -13,9 +13,9 @@
  * different things depending on which field was touched.
  */
 import { ref, watch } from 'vue';
-import Dialog from 'primevue/dialog';
+import UiDialog from '@/Components/UI/UiDialog.vue';
 import { useForm } from '@inertiajs/vue3';
-import { posDialogPt } from '@/Components/POS/posDialog.js';
+import { posDialog } from '@/Components/POS/posDialog.js';
 import { formatEuroFromCents } from '@/helpers.js';
 
 const props = defineProps({
@@ -64,14 +64,14 @@ function submit() {
 </script>
 
 <template>
-    <Dialog
+    <UiDialog
         v-if="badge"
+        v-bind="posDialog"
         :visible="show"
         modal
         :closable="false"
         :header="`Edit ${badge.custom_id || `#${badge.id}`}`"
-        :style="{ width: '34rem' }"
-        :pt="posDialogPt"
+        width="34rem"
     >
         <div class="flex flex-col gap-3">
             <div class="pos-card">
@@ -157,5 +157,5 @@ function submit() {
                 </button>
             </div>
         </template>
-    </Dialog>
+    </UiDialog>
 </template>

@@ -119,7 +119,7 @@ onBeforeUnmount(() => query?.removeEventListener('change', syncNarrow));
     -->
     <Link
       :href="route('admin.dashboard')"
-      class="flex h-mg-strip shrink-0 items-center border-b border-hairline px-4 text-[13px] font-semibold tracking-wide text-fg-1 outline-none transition-colors hover:text-state-live focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
+      class="flex h-mg-strip shrink-0 items-center border-b border-hairline px-4 text-[13px] font-semibold tracking-wide text-fg-1 outline-hidden transition-colors hover:text-state-live focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
       @click="emit('close')"
     >
       Fursuit Badges
@@ -131,7 +131,7 @@ onBeforeUnmount(() => query?.removeEventListener('change', syncNarrow));
     -->
     <button
       type="button"
-      class="absolute top-0 right-0 flex h-mg-strip w-10 items-center justify-center text-fg-3 outline-none transition-colors hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40 md:hidden"
+      class="absolute top-0 right-0 flex h-mg-strip w-10 items-center justify-center text-fg-3 outline-hidden transition-colors hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40 md:hidden"
       aria-label="Close navigation"
       @click="emit('close')"
     >
@@ -173,7 +173,7 @@ onBeforeUnmount(() => query?.removeEventListener('change', syncNarrow));
           <span class="flex-1 truncate">{{ item.label }}</span>
           <span
             v-if="item.badge"
-            class="rounded px-1 text-[10px] font-medium ring-1 ring-inset"
+            class="rounded-sm px-1 text-[10px] font-medium ring-1 ring-inset"
             :class="resolve(toneBadge, item.badge.tone)"
           >{{ item.badge.label }}</span>
         </Link>

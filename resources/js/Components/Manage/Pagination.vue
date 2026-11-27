@@ -58,7 +58,7 @@ const pages = computed(() => {
       <span class="text-fg-3">per page</span>
       <select
         :value="meta.perPage"
-        class="h-7 rounded border border-hairline bg-mg-surface-2 px-2 text-[12px] text-fg-1 outline-none transition-colors focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40"
+        class="h-7 rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[12px] text-fg-1 outline-hidden transition-colors focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40"
         @change="setPerPage(Number($event.target.value))"
       >
         <option v-for="option in meta.perPageOptions" :key="option" :value="option">{{ option }}</option>
@@ -72,7 +72,7 @@ const pages = computed(() => {
     <div v-if="meta.lastPage > 1" class="ml-auto flex items-center gap-0.5">
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded text-fg-2 outline-none transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:pointer-events-none disabled:opacity-30"
+        class="inline-flex size-7 items-center justify-center rounded-sm text-fg-2 outline-hidden transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:pointer-events-none disabled:opacity-30"
         :disabled="meta.page <= 1"
         aria-label="Previous page"
         @click="setPage(meta.page - 1)"
@@ -88,7 +88,7 @@ const pages = computed(() => {
         v-for="page in pages"
         :key="page"
         type="button"
-        class="inline-flex h-7 min-w-7 items-center justify-center rounded px-1.5 tabular-nums outline-none transition-colors focus-visible:ring-1 focus-visible:ring-state-live/40"
+        class="inline-flex h-7 min-w-7 items-center justify-center rounded-sm px-1.5 tabular-nums outline-hidden transition-colors focus-visible:ring-1 focus-visible:ring-state-live/40"
         :class="page === meta.page
           ? 'bg-state-live/15 font-medium text-state-live'
           : 'text-fg-2 hover:bg-mg-surface-3 hover:text-fg-1'"
@@ -100,7 +100,7 @@ const pages = computed(() => {
 
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded text-fg-2 outline-none transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:pointer-events-none disabled:opacity-30"
+        class="inline-flex size-7 items-center justify-center rounded-sm text-fg-2 outline-hidden transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:pointer-events-none disabled:opacity-30"
         :disabled="meta.page >= meta.lastPage"
         aria-label="Next page"
         @click="setPage(meta.page + 1)"

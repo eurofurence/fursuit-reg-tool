@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import dayjs from 'dayjs';
+import { Check, Image as ImageIcon, Loader2 } from '@lucide/vue';
 import { formatEuroFromCents } from '@/helpers.js';
 import { ACTION_LABELS, approvalNote, badgeAction, statusPill } from '@/Components/POS/Attendee/badgeAction.js';
 
@@ -84,7 +85,7 @@ const extras = computed(() => {
             @click="canSelect && emit('toggle', badge)"
         >
             <span v-if="canSelect" class="pos-badge__check" aria-hidden="true">
-                <i class="pi pi-check text-sm"></i>
+                <Check class="size-3.5" />
             </span>
 
             <img
@@ -95,7 +96,7 @@ const extras = computed(() => {
                 loading="lazy"
             />
             <span v-else class="pos-badge__img pos-badge__img--empty">
-                <i class="pi pi-image text-xl"></i>
+                <ImageIcon class="size-5" />
             </span>
 
             <span class="pos-badge__body">
@@ -131,7 +132,7 @@ const extras = computed(() => {
                         which is the whole reason duplicates get made.
                     -->
                     <span v-if="isPrinting" class="text-pos-accent font-semibold">
-                        <i class="pi pi-spin pi-spinner text-xs"></i>
+                        <Loader2 class="inline size-3 animate-spin" aria-hidden="true" />
                         {{ badge.status_fulfillment === 'processing' ? 'on the printer' : 'sent to the printer' }}
                     </span>
                     <span v-else-if="badge.printed_at" class="text-pos-muted">

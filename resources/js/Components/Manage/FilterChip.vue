@@ -116,7 +116,7 @@ const pill =
         v-if="filter.type !== 'boolean'"
         ref="trigger"
         type="button"
-        class="flex min-w-0 items-center gap-1.5 rounded-full py-1 pl-2.5 pr-1.5 outline-none focus-visible:ring-1 focus-visible:ring-state-live/60"
+        class="flex min-w-0 items-center gap-1.5 rounded-full py-1 pl-2.5 pr-1.5 outline-hidden focus-visible:ring-1 focus-visible:ring-state-live/60"
         aria-haspopup="dialog"
         :aria-expanded="open"
         :aria-label="description"
@@ -146,7 +146,7 @@ const pill =
       <button
         v-if="!filter.pinned || filter.type === 'boolean'"
         type="button"
-        class="mr-1 flex size-5 shrink-0 items-center justify-center rounded-full outline-none transition-colors hover:bg-state-live/20 focus-visible:ring-1 focus-visible:ring-state-live/60"
+        class="mr-1 flex size-5 shrink-0 items-center justify-center rounded-full outline-hidden transition-colors hover:bg-state-live/20 focus-visible:ring-1 focus-visible:ring-state-live/60"
         :aria-label="`Remove ${filter.label} filter`"
         :title="`Remove ${filter.label} filter`"
         @click="emit('remove')"
@@ -158,7 +158,7 @@ const pill =
     <div
       v-if="open"
       ref="panel"
-      class="absolute top-full z-30 mt-1 max-h-72 w-56 max-w-[calc(100vw-2rem)] overflow-y-auto rounded border border-hairline bg-mg-surface-3 p-2 shadow-lg shadow-black/40"
+      class="absolute top-full z-30 mt-1 max-h-72 w-56 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-sm border border-hairline bg-mg-surface-3 p-2 shadow-lg shadow-black/40"
       :class="alignRight ? 'right-0' : 'left-0'"
       role="dialog"
       :aria-label="`Filter by ${filter.label}`"
@@ -174,7 +174,7 @@ const pill =
       <button
         v-if="applied"
         type="button"
-        class="mt-1.5 w-full rounded px-2 py-1 text-left text-[11px] leading-none text-fg-3 outline-none transition-colors hover:bg-mg-surface-2 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40"
+        class="mt-1.5 w-full rounded-sm px-2 py-1 text-left text-[11px] leading-none text-fg-3 outline-hidden transition-colors hover:bg-mg-surface-2 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40"
         @click="onUpdate(emptyValue(filter))"
       >
         Clear

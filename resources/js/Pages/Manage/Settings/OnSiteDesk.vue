@@ -219,7 +219,7 @@ const scope = computed(() => (props.event
   : 'No event is selected in the header. The desk is configured per event, so pick one before editing it.'));
 
 const control =
-  'h-8 w-full rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-none transition-colors focus:border-state-live/50 disabled:cursor-not-allowed disabled:opacity-50';
+  'h-8 w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-hidden transition-colors focus:border-state-live/50 disabled:cursor-not-allowed disabled:opacity-50';
 </script>
 
 <template>
@@ -324,7 +324,7 @@ const control =
             <button
               v-if="canEdit"
               type="button"
-              class="flex size-8 items-center justify-center rounded border border-hairline text-fg-3 transition-colors hover:bg-mg-surface-2 hover:text-state-danger"
+              class="flex size-8 items-center justify-center rounded-sm border border-hairline text-fg-3 transition-colors hover:bg-mg-surface-2 hover:text-state-danger"
               :aria-label="`Remove ${row.date || 'this row'}`"
               @click="removeHourRow(index)"
             >
@@ -354,7 +354,7 @@ const control =
           <button
             type="button"
             :disabled="!canAddHourRow"
-            class="inline-flex h-8 items-center gap-1.5 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2 disabled:opacity-50"
+            class="inline-flex h-8 items-center gap-1.5 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2 disabled:opacity-50"
             @click="addHourRow"
           >
             <ManageIcon name="plus" :size="14" />
@@ -385,7 +385,7 @@ const control =
       <template #actions>
         <button
           type="button"
-          class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2.5 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-2 hover:text-fg-1"
+          class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2.5 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-2 hover:text-fg-1"
           @click="showingSplit = true"
         >
           <ManageIcon name="bar-chart" :size="14" />
@@ -460,7 +460,7 @@ const control =
             <button
               v-if="canEdit"
               type="button"
-              class="flex size-8 items-center justify-center rounded border border-hairline text-fg-3 transition-colors hover:bg-mg-surface-2 hover:text-state-danger"
+              class="flex size-8 items-center justify-center rounded-sm border border-hairline text-fg-3 transition-colors hover:bg-mg-surface-2 hover:text-state-danger"
               :aria-label="`Remove booth ${index + 1}`"
               @click="removeBoothRow(index)"
             >
@@ -479,7 +479,7 @@ const control =
         <div v-if="canEdit" class="pt-1">
           <button
             type="button"
-            class="inline-flex h-8 items-center gap-1.5 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
+            class="inline-flex h-8 items-center gap-1.5 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
             @click="addBoothRow"
           >
             <ManageIcon name="plus" :size="14" />
@@ -497,7 +497,7 @@ const control =
           <template #secondary>
             <button
               type="button"
-              class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
+              class="h-8 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
               @click="loadDefaultsIntoEditor"
             >
               Load defaults into editor
@@ -505,7 +505,7 @@ const control =
             <button
               v-if="isConfigured"
               type="button"
-              class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
+              class="h-8 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
               @click="confirmingReset = true"
             >
               Reset event to defaults
@@ -529,7 +529,7 @@ const control =
         <div
           v-for="(booth, index) in boothRows"
           :key="index"
-          class="rounded border border-hairline bg-mg-surface-2 px-3 py-2"
+          class="rounded-sm border border-hairline bg-mg-surface-2 px-3 py-2"
         >
           <div class="flex items-baseline gap-3">
             <span class="text-[11px] font-medium uppercase tracking-wide text-fg-3">
@@ -547,8 +547,8 @@ const control =
               {{ deviation(booth.attendees) > 0 ? '+' : '' }}{{ deviation(booth.attendees) }}%
             </span>
           </div>
-          <div class="mt-1.5 h-1.5 w-full rounded bg-mg-surface-1">
-            <div class="h-1.5 rounded bg-state-info" :style="{ width: barWidth(booth.attendees) }"></div>
+          <div class="mt-1.5 h-1.5 w-full rounded-sm bg-mg-surface-1">
+            <div class="h-1.5 rounded-sm bg-state-info" :style="{ width: barWidth(booth.attendees) }"></div>
           </div>
         </div>
 
@@ -564,7 +564,7 @@ const control =
       <template #footer>
         <button
           type="button"
-          class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
+          class="h-8 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
           @click="showingSplit = false"
         >
           Close
@@ -583,14 +583,14 @@ const control =
       <template #footer>
         <button
           type="button"
-          class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
+          class="h-8 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-2"
           @click="confirmingReset = false"
         >
           Cancel
         </button>
         <button
           type="button"
-          class="h-8 rounded bg-state-danger px-3 text-[13px] font-medium text-mg-surface-0"
+          class="h-8 rounded-sm bg-state-danger px-3 text-[13px] font-medium text-mg-surface-0"
           @click="resetToDefaults"
         >
           Reset to defaults

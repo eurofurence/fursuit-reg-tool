@@ -37,7 +37,7 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 | composer require tightenco/ziggy:^2 --ignore-pl
 ######################################################
 FROM node:20-alpine as vite
 WORKDIR /app
-COPY package.json package-lock.json tailwind.config.js vite.config.js postcss.config.js ./
+COPY package.json package-lock.json vite.config.js components.json jsconfig.json ./
 RUN npm install --force
 COPY ./resources /app/resources
 COPY ./.env.build /app/.env

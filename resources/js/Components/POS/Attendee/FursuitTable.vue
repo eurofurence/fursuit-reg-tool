@@ -1,10 +1,6 @@
 <script setup>
-
-import Column from "primevue/column";
-import DataTable from "primevue/datatable";
-import Checkbox from "primevue/checkbox";
-import {ref} from "vue";
-import Avatar from "primevue/avatar";
+import { Checkbox } from "@/Components/UI/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/Components/UI/table";
 
 defineProps({
     attendee: Object,
@@ -13,25 +9,35 @@ defineProps({
 </script>
 
 <template>
-    <DataTable dataKey="id" :value="fursuits" scrollable scrollHeight="400px" class="-m-5" tableStyle="min-width: 50rem">
-        <Column field="image_url" header="Icon">
-            <template #body="slotProps">
-                <img 
-                    :src="slotProps.data.image_url" 
-                    :alt="`${slotProps.data.name} fursuit image`"
-                    class="w-16 h-16 object-contain rounded-pos"
-                    loading="lazy"
-                />
-            </template>
-        </Column>
-        <Column field="name" header="Name" />
-        <Column field="status" header="Status" />
-        <Column field="species.name" header="Species" />
-        <Column field="catch_em_all" header="Catch em all">
-            <template #body="slotProps">
-                <Checkbox :modelValue="slotProps.data.catch_em_all" :binary="true" />
-            </template>
-        </Column>
-    </DataTable>
+    <div class="max-h-[400px] overflow-auto">
+        <Table class="min-w-[50rem] text-base">
+            <TableHeader class="bg-pos-panel-2">
+                <TableRow>
+                    <TableHead>Icon</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Species</TableHead>
+                    <TableHead>Catch em all</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                <TableRow v-for="fursuit in fursuits" :key="fursuit.id">
+                    <TableCell>
+                        <img
+                            :src="fursuit.image_url"
+                            :alt="`${fursuit.name} fursuit image`"
+                            class="w-16 h-16 object-contain rounded-pos"
+                            loading="lazy"
+                        />
+                    </TableCell>
+                    <TableCell>{{ fursuit.name }}</TableCell>
+                    <TableCell>{{ fursuit.status }}</TableCell>
+                    <TableCell>{{ fursuit.species?.name }}</TableCell>
+                    <TableCell>
+                        <Checkbox :model-value="Boolean(fursuit.catch_em_all)" disabled class="size-5 disabled:opacity-100" />
+                    </TableCell>
+                </TableRow>
+            </TableBody>
+        </Table>
+    </div>
 </template>
-

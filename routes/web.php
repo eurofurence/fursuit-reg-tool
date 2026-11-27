@@ -52,11 +52,7 @@ Route::middleware(EventEndedMiddleware::class)->group(function () {
 // Kept for one release so bookmarked deep links land on the new panel instead of a 404.
 Route::redirect('/admin-legacy/{path?}', '/admin', 301)->where('path', '.*');
 
-// TEMPORARY: side-by-side parity harness for the PrimeVue -> Components/UI
-// migration. Delete together with resources/js/Pages/Dev/UiParity.vue.
 if (app()->environment('local')) {
-    Route::get('/dev-ui-parity', fn () => inertia('Dev/UiParity'))->name('dev.ui.parity');
-
     // APP_DEBUG=true means a real 404 never reaches Pages/Error.vue locally,
     // so the migrated page is rendered directly.
     Route::get('/dev-ui-error', fn () => inertia('Error', ['status' => 419, 'message' => 'Session expired']))->name('dev.ui.error');

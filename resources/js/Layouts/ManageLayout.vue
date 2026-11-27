@@ -90,7 +90,7 @@ watch(() => page.url, () => {
           -->
           <button
             type="button"
-            class="-ml-1 flex size-8 shrink-0 items-center justify-center rounded text-fg-2 outline-none transition-colors hover:bg-mg-surface-2 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/60 md:hidden"
+            class="-ml-1 flex size-8 shrink-0 items-center justify-center rounded-sm text-fg-2 outline-hidden transition-colors hover:bg-mg-surface-2 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/60 md:hidden"
             :aria-expanded="navOpen"
             aria-controls="manage-nav"
             aria-label="Open navigation"

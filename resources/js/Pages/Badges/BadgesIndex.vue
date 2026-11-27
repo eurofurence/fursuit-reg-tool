@@ -3,10 +3,11 @@
 import {Head, router} from "@inertiajs/vue3";
 import Layout from "@/Layouts/Layout.vue";
 import BadgeListItem from "@/Components/BadgeListItem.vue";
-import Button from "@/Components/UI/UiButton.vue"
-import Message from "@/Components/UI/UiMessage.vue"
 import BadgePickupInfo from "@/Components/BadgePickupInfo.vue";
-import Card from "@/Components/UI/UiCard.vue";
+import { Inbox, Info, Loader2, Plus, RefreshCw, Star, TriangleAlert } from "@lucide/vue";
+import { Button } from "@/Components/UI/button";
+import { Alert, AlertDescription } from "@/Components/UI/alert";
+import { Card, CardTitle } from "@/Components/UI/card";
 import { computed, ref } from "vue";
 import axios from "axios";
 
@@ -74,78 +75,75 @@ const showPickupInfo = computed(() =>
                     <Button
                         v-if="prepaidBadgesLeft > 0"
                         @click="router.visit(route('badges.create'))"
-                        size="small"
-                        severity="success"
-                        icon="pi pi-star"
-                        class="w-full sm:w-auto"
-                        :label="`Customize Prepaid Badge${prepaidBadgesLeft > 1 ? `s (${prepaidBadgesLeft})` : ''}`"
-                    />
+                        size="sm"
+                        class="w-full sm:w-auto bg-success text-white hover:bg-success/90"
+                    >
+                        <Star/> {{ `Customize Prepaid Badge${prepaidBadgesLeft > 1 ? `s (${prepaidBadgesLeft})` : ''}` }}
+                    </Button>
 
                     <!-- Purchase Badge Button -->
                     <Button
                         v-else-if="canCreate && event && event.allowsOrders"
                         @click="router.visit(route('badges.create'))"
-                        size="small"
-                        icon="pi pi-plus"
+                        size="sm"
                         class="w-full sm:w-auto"
-                        label="Purchase Badge (5€)"
-                    />
+                    >
+                        <Plus/> Purchase Badge (5€)
+                    </Button>
                 </div>
             </div>
 
             <!-- Orders Not Yet Open Message - Full width block with margin -->
-            <Message
+            <Alert
                 v-if="event && event.orderStartsAt && new Date(event.orderStartsAt) > new Date()"
-                severity="info"
-                :closable="false"
+                variant="info"
                 class="mt-6"
             >
-                You may order additional badges starting {{ new Date(event.orderStartsAt).toLocaleDateString('de-DE') }}. If you have ordered additional badges trough your ticket, you may need to logout and log back in to customize them.
-            </Message>
+                <Info/>
+                <AlertDescription>
+                    You may order additional badges starting {{ new Date(event.orderStartsAt).toLocaleDateString('de-DE') }}. If you have ordered additional badges trough your ticket, you may need to logout and log back in to customize them.
+                </AlertDescription>
+            </Alert>
 
         </div>
 
         <!-- Badge List -->
-        <Card v-if="badges.length > 0" class="mt-6">
-            <template #content>
-                <div class="divide-y divide-gray-200">
-                    <div
-                        v-for="badge in badges"
-                        :key="badge.id"
-                        @click="router.visit(route('badges.show', {badge: badge.id}))"
-                        class="cursor-pointer rounded-lg px-2 -mx-2 hover:bg-gray-50 transition-colors duration-150"
-                    >
-                        <BadgeListItem :badge="badge" />
-                    </div>
+        <Card v-if="badges.length > 0" class="mt-6 gap-0 p-5">
+            <div class="divide-y divide-gray-200">
+                <div
+                    v-for="badge in badges"
+                    :key="badge.id"
+                    @click="router.visit(route('badges.show', {badge: badge.id}))"
+                    class="cursor-pointer rounded-lg px-2 -mx-2 hover:bg-gray-50 transition-colors duration-150"
+                >
+                    <BadgeListItem :badge="badge" />
                 </div>
-            </template>
+            </div>
         </Card>
 
         <!-- No Badges Message -->
-        <Card v-else class="mt-6">
-            <template #content>
-                <div class="text-center py-8">
-                    <i class="pi pi-inbox text-4xl text-gray-400 mb-4"></i>
-                    <h3 class="text-lg font-semibold mb-2">No badges yet</h3>
-                    <p class="text-gray-600 mb-4">
-                        You haven't created any fursuit badges for this event yet.
-                    </p>
-                    <Button
-                        v-if="canCreate && event && event.allowsOrders"
-                        @click="router.visit(route('badges.create'))"
-                        icon="pi pi-plus"
-                        :label="prepaidBadgesLeft > 0 ? 'Customize Prepaid Badge' : 'Purchase Badge (5€)'"
-                        :severity="prepaidBadgesLeft > 0 ? 'success' : 'primary'"
-                    />
-                    <Button
-                        v-else-if="prepaidBadgesLeft > 0"
-                        @click="router.visit(route('badges.create'))"
-                        icon="pi pi-star"
-                        label="Customize Prepaid Badge"
-                        severity="success"
-                    />
-                </div>
-            </template>
+        <Card v-else class="mt-6 gap-0 p-5">
+            <div class="text-center py-8">
+                <Inbox class="size-10 text-muted-foreground mb-4 mx-auto"/>
+                <h3 class="text-lg font-semibold mb-2">No badges yet</h3>
+                <p class="text-gray-600 mb-4">
+                    You haven't created any fursuit badges for this event yet.
+                </p>
+                <Button
+                    v-if="canCreate && event && event.allowsOrders"
+                    @click="router.visit(route('badges.create'))"
+                    :class="prepaidBadgesLeft > 0 ? 'bg-success text-white hover:bg-success/90' : ''"
+                >
+                    <Plus/> {{ prepaidBadgesLeft > 0 ? 'Customize Prepaid Badge' : 'Purchase Badge (5€)' }}
+                </Button>
+                <Button
+                    v-else-if="prepaidBadgesLeft > 0"
+                    @click="router.visit(route('badges.create'))"
+                    class="bg-success text-white hover:bg-success/90"
+                >
+                    <Star/> Customize Prepaid Badge
+                </Button>
+            </div>
         </Card>
 
         <!-- Pickup Info. Booth split and opening hours are deliberately not repeated
@@ -160,41 +158,39 @@ const showPickupInfo = computed(() =>
             <button
                 @click="refreshPrepaidBadges"
                 :disabled="isRefreshing"
-                class="text-blue-600 hover:text-blue-800 underline text-sm transition-colors duration-200"
+                class="text-primary hover:text-primary/80 underline text-sm transition-colors duration-200"
             >
-                <i v-if="isRefreshing" class="pi pi-spin pi-spinner mr-1"></i>
-                <i v-else class="pi pi-refresh mr-1"></i>
+                <Loader2 v-if="isRefreshing" class="inline size-3.5 mr-1 animate-spin"/>
+                <RefreshCw v-else class="inline size-3.5 mr-1"/>
                 {{ isRefreshing ? 'Refreshing...' : 'Refresh Now' }}
             </button>
         </div>
 
         <!-- Unpicked Badges from Previous Years -->
-        <Card v-if="unpickedBadges && unpickedBadges.length > 0" class="mt-6">
-            <template #title>
-                <div class="flex items-center gap-2">
-                    <i class="pi pi-exclamation-triangle text-orange-500"></i>
-                    <span>Unpicked Badges from Previous Years</span>
-                </div>
-            </template>
-            <template #content>
-                <Message severity="warn" :closable="false" class="mb-4">
-                    <strong>Important:</strong> You have badges from previous years that have not been picked up yet.
-                    Collect them at the badge desk in the Fursuit Lounge.
-                </Message>
+        <Card v-if="unpickedBadges && unpickedBadges.length > 0" class="mt-6 gap-0 p-5">
+            <CardTitle class="text-xl font-bold leading-tight mb-2 flex items-center gap-2">
+                <TriangleAlert class="size-5 text-warning"/>
+                <span>Unpicked Badges from Previous Years</span>
+            </CardTitle>
+            <Alert variant="warning" class="mb-4">
+                <TriangleAlert/>
+                <AlertDescription>
+                    <p>
+                        <strong>Important:</strong> You have badges from previous years that have not been picked up yet.
+                        Collect them at the badge desk in the Fursuit Lounge.
+                    </p>
+                </AlertDescription>
+            </Alert>
 
-                <div class="divide-y divide-gray-200">
-                    <BadgeListItem
-                        v-for="badge in unpickedBadges"
-                        :key="badge.id"
-                        :badge="badge"
-                        archived
-                    />
-                </div>
-            </template>
+            <div class="divide-y divide-gray-200">
+                <BadgeListItem
+                    v-for="badge in unpickedBadges"
+                    :key="badge.id"
+                    :badge="badge"
+                    archived
+                />
+            </div>
         </Card>
     </div>
 </template>
 
-<style scoped>
-
-</style>

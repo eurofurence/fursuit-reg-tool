@@ -376,7 +376,7 @@ const submitTag = () => {
         type="button"
         role="tab"
         :aria-selected="tab === panel.key"
-        class="-mb-px inline-flex h-8 shrink-0 items-center whitespace-nowrap border-b-2 text-[13px] leading-none outline-none transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
+        class="-mb-px inline-flex h-8 shrink-0 items-center whitespace-nowrap border-b-2 text-[13px] leading-none outline-hidden transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
         :class="
           tab === panel.key
             ? 'border-state-live text-fg-1'
@@ -421,13 +421,13 @@ const submitTag = () => {
                 v-model="form.setup_code"
                 type="text"
                 maxlength="6"
-                class="h-8 w-40 rounded border border-hairline bg-mg-surface-2 px-2 font-mono text-[13px] uppercase text-fg-1 outline-none transition-colors focus:border-state-live/50"
+                class="h-8 w-40 rounded-sm border border-hairline bg-mg-surface-2 px-2 font-mono text-[13px] uppercase text-fg-1 outline-hidden transition-colors focus:border-state-live/50"
               />
 
               <button
                 v-if="canGenerate"
                 type="button"
-                class="inline-flex h-8 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3 disabled:opacity-50"
+                class="inline-flex h-8 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3 disabled:opacity-50"
                 :disabled="generating"
                 @click="generate"
               >
@@ -473,13 +473,13 @@ const submitTag = () => {
 
     <!-- Edit only: a member with no record yet has nothing to count. -->
     <section v-if="stats" v-show="tab === 'statistics'" class="px-4 pt-4 pb-4">
-      <div class="rounded border border-hairline bg-mg-surface-1">
+      <div class="rounded-sm border border-hairline bg-mg-surface-1">
         <header class="flex h-10 flex-wrap items-center gap-2 border-b border-hairline px-3">
           <h2 class="text-[12px] font-semibold uppercase tracking-wide text-fg-1">Performance</h2>
 
           <select
             :value="eventChoice"
-            class="ml-auto h-7 rounded border border-hairline bg-mg-surface-2 px-2 text-[12px] text-fg-1 outline-none transition-colors focus:border-state-live/50"
+            class="ml-auto h-7 rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[12px] text-fg-1 outline-hidden transition-colors focus:border-state-live/50"
             aria-label="Event"
             @change="pickEvent"
           >
@@ -501,7 +501,7 @@ const submitTag = () => {
             worked. A transaction is the interval between two consecutive actions in one shift.
           </p>
 
-          <div v-if="stats.perDay.length" class="mt-3 overflow-x-auto rounded border border-hairline">
+          <div v-if="stats.perDay.length" class="mt-3 overflow-x-auto rounded-sm border border-hairline">
             <table class="w-full border-collapse text-[13px]">
               <thead>
                 <tr class="border-b border-hairline bg-mg-surface-2 text-[11px] uppercase tracking-wide text-fg-2">
@@ -538,14 +538,14 @@ const submitTag = () => {
 
     <!-- The relation manager, as a card under the form. Edit only: a tag needs a member. -->
     <section v-if="rows" v-show="tab === 'details'" class="px-4 pb-4">
-      <div class="rounded border border-hairline bg-mg-surface-1">
+      <div class="rounded-sm border border-hairline bg-mg-surface-1">
         <header class="flex h-10 items-center gap-2 border-b border-hairline px-3">
           <h2 class="text-[12px] font-semibold uppercase tracking-wide text-fg-1">Rfid tags</h2>
 
           <button
             v-if="canCreateRfidTag"
             type="button"
-            class="ml-auto inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3"
+            class="ml-auto inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3"
             @click="openTag()"
           >
             <ManageIcon name="plus" :size="13" />
@@ -679,7 +679,7 @@ const submitTag = () => {
                   <div class="flex justify-end gap-1">
                     <button
                       type="button"
-                      class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-2 transition-colors hover:bg-mg-surface-3"
+                      class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-2 transition-colors hover:bg-mg-surface-3"
                       @click="openTag(row)"
                     >
                       <ManageIcon name="pencil" :size="13" />
@@ -760,7 +760,7 @@ const submitTag = () => {
       <template #footer>
         <button
           type="button"
-          class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
+          class="h-8 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
           @click="closeTag"
         >
           Cancel
@@ -768,7 +768,7 @@ const submitTag = () => {
         <button
           type="submit"
           form="rfid-tag-form"
-          class="h-8 rounded bg-state-live px-3 text-[13px] font-medium text-mg-surface-0 transition-opacity disabled:opacity-50"
+          class="h-8 rounded-sm bg-state-live px-3 text-[13px] font-medium text-mg-surface-0 transition-opacity disabled:opacity-50"
           :disabled="tagForm.processing"
         >
           {{ tag?.id ? 'Save changes' : 'Create' }}

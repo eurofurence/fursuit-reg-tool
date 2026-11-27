@@ -10,7 +10,7 @@
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
-import { Check, Info, TriangleAlert, X } from 'lucide-vue-next'
+import { Check, Info, TriangleAlert, X } from '@lucide/vue'
 
 const props = defineProps<{
     flash?: { message?: string | null; error?: string | null; success?: string | null } | null

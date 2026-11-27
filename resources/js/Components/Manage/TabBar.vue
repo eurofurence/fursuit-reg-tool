@@ -150,7 +150,7 @@ const onKeydown = (tab, index, event) => {
       :aria-selected="tab.key === activeKey"
       :aria-controls="panelId"
       :tabindex="tab.key === activeKey ? 0 : -1"
-      class="-mb-px inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 text-[13px] leading-none outline-none transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
+      class="-mb-px inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 text-[13px] leading-none outline-hidden transition-colors focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-state-live/40"
       :class="
         tab.key === activeKey
           ? 'border-state-live text-fg-1'
@@ -168,7 +168,7 @@ const onKeydown = (tab, index, event) => {
       -->
       <span
         v-if="tab.count !== null && tab.count !== undefined"
-        class="rounded bg-mg-surface-2 px-1 py-0.5 text-[11px] tabular-nums text-fg-3"
+        class="rounded-sm bg-mg-surface-2 px-1 py-0.5 text-[11px] tabular-nums text-fg-3"
       >{{ tab.count }}</span>
     </a>
   </div>

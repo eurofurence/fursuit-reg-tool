@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import Dialog from 'primevue/dialog';
-import RadioButton from 'primevue/radiobutton';
-import { posDialogPt } from '@/Components/POS/posDialog.js';
+import { Check, Loader2 } from '@lucide/vue';
+import UiDialog from '@/Components/UI/UiDialog.vue';
+import { RadioGroup, RadioGroupItem } from '@/Components/UI/radio-group';
+import { posDialog } from '@/Components/POS/posDialog.js';
 
 const props = defineProps({
     visible: {
@@ -92,18 +93,25 @@ const currentTimeout = computed(() => {
 });
 
 const hasChanges = computed(() => form.auto_logout_timeout !== currentTimeout.value);
+
+// Radio values as strings, so "Off" (null) stays a selectable value.
+const selectedTimeout = computed({
+    get: () => String(form.auto_logout_timeout),
+    set: (value) => {
+        form.auto_logout_timeout = value === 'null' ? null : Number(value);
+    },
+});
 </script>
 
 <template>
-    <Dialog
+    <UiDialog
         v-model:visible="localVisible"
+        v-bind="posDialog"
         modal
         :closable="true"
         class="mx-4"
-        :style="{ width: '28rem' }"
+        width="28rem"
         header="Auto Logout Settings"
-        :draggable="false"
-        :pt="posDialogPt"
     >
         <div class="flex flex-col gap-3">
             <p class="text-sm text-pos-muted">
@@ -115,16 +123,16 @@ const hasChanges = computed(() => form.auto_logout_timeout !== currentTimeout.va
                 choice and the "current" pill marks what is saved. A separate
                 "current setting" panel above it only restated the same thing.
             -->
-            <div class="pos-block pos-block--rows">
+            <RadioGroup v-model="selectedTimeout" class="pos-block pos-block--rows gap-0">
                 <div
                     v-for="option in timeoutOptions"
                     :key="String(option.value)"
                     class="flex items-center gap-3 px-3 min-h-pos-touch"
                 >
-                    <RadioButton
-                        v-model="form.auto_logout_timeout"
-                        :inputId="`timeout_${option.value}`"
-                        :value="option.value"
+                    <RadioGroupItem
+                        :id="`timeout_${option.value}`"
+                        :value="String(option.value)"
+                        class="size-5"
                     />
                     <label
                         :for="`timeout_${option.value}`"
@@ -137,7 +145,7 @@ const hasChanges = computed(() => form.auto_logout_timeout !== currentTimeout.va
                     </label>
                     <span v-if="option.value === currentTimeout" class="pos-pill">Current</span>
                 </div>
-            </div>
+            </RadioGroup>
 
             <!-- Error Display -->
             <div v-if="form.errors.auto_logout_timeout" class="px-3 py-2 rounded-pos border border-pos-bad text-pos-bad text-sm font-semibold">
@@ -160,9 +168,10 @@ const hasChanges = computed(() => form.auto_logout_timeout !== currentTimeout.va
                 :disabled="form.processing || ! hasChanges"
                 @click="saveTimeout"
             >
-                <i class="pi" :class="form.processing ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+                <Loader2 v-if="form.processing" class="size-4 animate-spin" aria-hidden="true" />
+                <Check v-else class="size-4" aria-hidden="true" />
                 Save
             </button>
         </template>
-    </Dialog>
+    </UiDialog>
 </template>

@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
-import { Clock, MapPin, Users } from 'lucide-vue-next';
+import { Clock, MapPin, Users } from '@lucide/vue';
 import Layout from '@/Layouts/Layout.vue';
 
 defineOptions({ layout: Layout });
@@ -109,7 +109,7 @@ const dateRange = computed(() => {
                         <li
                             v-for="(booth, index) in booths"
                             :key="booth.label"
-                            class="flex-1 basis-0 min-w-0 rounded-lg bg-white px-1 py-3 text-center shadow-sm"
+                            class="flex-1 basis-0 min-w-0 rounded-lg bg-white px-1 py-3 text-center shadow-xs"
                             :class="index === myBoothIndex ? 'ring-2 ring-primary-500' : ''"
                         >
                             <div
@@ -172,7 +172,7 @@ const dateRange = computed(() => {
                     When is the desk open?
                 </h2>
 
-                <ul class="mt-3 divide-y divide-gray-100 rounded-lg bg-white shadow-sm">
+                <ul class="mt-3 divide-y divide-gray-100 rounded-lg bg-white shadow-xs">
                     <li
                         v-for="(row, index) in openingHours"
                         :key="index"

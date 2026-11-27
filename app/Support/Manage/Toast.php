@@ -3,7 +3,6 @@
 namespace App\Support\Manage;
 
 use Inertia\Inertia;
-use Inertia\SessionKey;
 
 /**
  * Flash payload for the toast host in ManageLayout.
@@ -61,21 +60,10 @@ final class Toast
      * Writes into Inertia's own flash bag, so the payload arrives as the top-level `flash`
      * prop and stays out of the browser's history state (a back navigation must not replay
      * a toast).
-     *
-     * It is written for the *next* request rather than through Inertia::flash(), which uses
-     * session()->now(). On inertia-laravel 2.0.25 a now() value cannot survive the redirect
-     * an action performs: the key sits in `_flash.old`, and ageFlashData() forgets old keys
-     * on save before the middleware's re-flash can take effect. Since every manage mutation
-     * redirects, flashing forward is both correct and simpler.
-     *
-     * Revisit when the package flashes forward itself.
      */
     public static function put(string $key, mixed $value): void
     {
-        session()->flash(SessionKey::FlashData->value, [
-            ...Inertia::getFlashed(),
-            $key => $value,
-        ]);
+        Inertia::flash($key, $value);
     }
 
     public static function flashSuccess(string $title, ?string $body = null): void

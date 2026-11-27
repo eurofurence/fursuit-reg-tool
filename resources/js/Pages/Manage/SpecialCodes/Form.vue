@@ -244,7 +244,7 @@ const submit = () => {
                         :value="catchUrl"
                         type="text"
                         readonly
-                        class="h-8 w-full rounded border border-hairline bg-mg-surface-2 px-2 font-mono text-[13px] text-fg-2 outline-none"
+                        class="h-8 w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 font-mono text-[13px] text-fg-2 outline-hidden"
                     />
                 </FormField>
             </FormSection>
@@ -281,7 +281,7 @@ const submit = () => {
                     helper="Keys the selected type does not declare. They are kept on save unless you change the type."
                 >
                     <pre
-                        class="overflow-x-auto rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 font-mono text-[12px] text-fg-2"
+                        class="overflow-x-auto rounded-sm border border-hairline bg-mg-surface-2 px-2 py-1.5 font-mono text-[12px] text-fg-2"
                         >{{ specialCode.unmanagedData }}</pre
                     >
                 </FormField>
@@ -301,7 +301,7 @@ const submit = () => {
                     </button>
                     <pre
                         v-else
-                        class="overflow-x-auto rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 font-mono text-[12px] text-fg-2"
+                        class="overflow-x-auto rounded-sm border border-hairline bg-mg-surface-2 px-2 py-1.5 font-mono text-[12px] text-fg-2"
                         >{{ specialCode.storedData }}</pre
                     >
                 </FormField>
@@ -324,7 +324,7 @@ const submit = () => {
                     :error="form.errors.event_user_ids"
                 >
                     <div
-                        class="max-h-64 overflow-y-auto rounded border border-hairline bg-mg-surface-2"
+                        class="max-h-64 overflow-y-auto rounded-sm border border-hairline bg-mg-surface-2"
                     >
                         <label
                             v-for="option in filteredEventUsers"

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LogOut, ShieldCheck, User } from 'lucide-vue-next';
+import { LogOut, ShieldCheck, User } from '@lucide/vue';
 
 const page = usePage();
 
@@ -59,7 +59,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <header class="bg-primary-500 text-white relative z-30 shadow">
+    <header class="bg-primary-500 text-white relative z-30 shadow-sm">
         <div class="site-container h-14 flex items-center gap-3">
             <Link :href="route('welcome')" class="flex items-center gap-2.5 min-w-0">
                 <img src="../../../assets/ef.svg" class="h-8 w-8 shrink-0" alt="Eurofurence">
@@ -74,7 +74,7 @@ onBeforeUnmount(() => {
                 <button
                     v-if="user"
                     type="button"
-                    class="flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white py-1 pl-1 pr-1 sm:pr-3 text-sm font-semibold transition-colors"
+                    class="flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white py-1 pl-1 pr-1 sm:pr-3 text-sm font-semibold transition-colors"
                     :aria-expanded="open"
                     aria-haspopup="menu"
                     @click="open = !open"

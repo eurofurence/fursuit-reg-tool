@@ -94,7 +94,7 @@ const isActive = (item) => item.key === active.value?.key;
             v-for="item in items"
             :key="item.key"
             :href="item.url"
-            class="relative flex gap-2.5 overflow-hidden rounded px-3 py-2.5 transition-colors"
+            class="relative flex gap-2.5 overflow-hidden rounded-sm px-3 py-2.5 transition-colors"
             :class="isActive(item)
               ? 'bg-state-live/10 text-state-live'
               : 'text-fg-2 hover:bg-mg-surface-2'"

@@ -1,19 +1,26 @@
 <script setup>
 import Layout from "@/Layouts/Layout.vue";
 import { Link, Head, router } from '@inertiajs/vue3'
-import InputText from "primevue/inputtext";
-import Dropdown from "primevue/dropdown";
-import Dialog from 'primevue/dialog';
-import { useForm } from 'laravel-precognition-vue-inertia'
-import InputSwitch from 'primevue/inputswitch';
-import { computed, onMounted, reactive, ref } from "vue";
-import Button from '@/Components/UI/UiButton.vue';
+import { useForm } from '@inertiajs/vue3'
+import { computed, onMounted, ref } from "vue";
+import {
+    ArrowLeft, Camera, Check, CircleAlert, CirclePlus, CircleX, Info, Loader2, Pencil, Save, Settings,
+    ShoppingCart, Trash2, TriangleAlert, User,
+} from '@lucide/vue';
+import { Button, buttonVariants } from '@/Components/UI/button';
+import { Alert, AlertDescription } from '@/Components/UI/alert';
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/Components/UI/alert-dialog';
+import { Badge } from '@/Components/UI/badge';
+import { Card, CardTitle } from '@/Components/UI/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/UI/dialog';
+import { Input } from '@/Components/UI/input';
+import { Separator } from '@/Components/UI/separator';
+import { Switch } from '@/Components/UI/switch';
 import ImageUpload from "@/Components/BadgeCreator/ImageUpload.vue";
 import InputError from "@/Components/InputError.vue";
-import Message from '@/Components/UI/UiMessage.vue';
-import Card from '@/Components/UI/UiCard.vue';
-import Divider from 'primevue/divider';
-import Tag from '@/Components/UI/UiTag.vue';
 import { usePage } from '@inertiajs/vue3';
 import { formatPrintDate, massPrintRunIsOver } from '@/helpers.js';
 
@@ -45,7 +52,7 @@ const previewImage = ref(null);
 // Set while the preview shows an uncropped original: {x, y, width, height, naturalWidth}.
 // Null means the src is already the stored, cropped image.
 const previewCrop = ref(null);
-const imageSource = reactive({});
+const imageSource = ref({});
 const consentDialogOpen = ref(false);
 const consentType = ref(''); // 'catchEmAll' or 'gallery'
 const galleryDataDialogOpen = ref(false);
@@ -229,112 +236,125 @@ const canEditFields = computed(() => {
     <Head :title="pageTitle"/>
     
     <!-- Image Upload Dialog -->
-    <Dialog v-model:visible="imageModalOpen" :dismissableMask="false" modal header="Upload Fursuit Picture"
-            :style="{ width: '28rem' }">
-        <span class="text-surface-600 dark:text-surface-0/70 block mb-5">
-            Please upload a picture, you can crop the image after you uploaded it.
-        </span>
-        <ImageUpload @update-image="imageUpdatedEvent" @update-source="args => imageSource = args" :image-source="imageSource"/>
+    <Dialog v-model:open="imageModalOpen">
+        <DialogContent class="sm:max-w-md max-h-[90vh] overflow-y-auto grid-cols-[minmax(0,1fr)]" @interact-outside.prevent>
+            <DialogHeader>
+                <DialogTitle>Upload Fursuit Picture</DialogTitle>
+                <DialogDescription>
+                    Please upload a picture, you can crop the image after you uploaded it.
+                </DialogDescription>
+            </DialogHeader>
+            <ImageUpload @update-image="imageUpdatedEvent" @update-source="args => imageSource = args" :image-source="imageSource"/>
+        </DialogContent>
     </Dialog>
-    
+
     <!-- Consent Dialog -->
-    <Dialog v-model:visible="consentDialogOpen" :dismissableMask="false" modal 
-            :header="consentType === 'catchEmAll' ? 'Catch-Em-All Game Consent' : 'Fursuit Gallery Consent'"
-            :style="{ width: '35rem' }">
-        <div class="mb-4">
-            <p class="mb-4">
-                Please ensure that your Fursuit Badge contains:
-            </p>
-            <ul class="list-disc pl-6 mb-4 space-y-1">
-                <li>Pictures of real fursuiters only</li>
-                <li>No AI-generated content</li>
-                <li>No digital art</li>
-            </ul>
-            <div v-if="consentType === 'gallery'">
-                <p class="mb-2">
-                    <strong>Data Usage:</strong> By publishing to the gallery, your identity username, badge image, fursuit name, and species will be published to our online fursuiters database, visible and searchable publicly for anyone to see.
-                </p>
-                <p class="mb-4">
-                    If you participate in the catch-em-all game, we will also display how many times you have been caught.
-                </p>
-                <Button 
-                    link 
-                    label="Learn more about data usage" 
-                    @click="showDataUsageInfo()"
-                    class="p-0 text-sm mb-3"
-                />
+    <Dialog v-model:open="consentDialogOpen">
+        <DialogContent class="sm:max-w-[35rem] max-h-[90vh] overflow-y-auto" @interact-outside.prevent>
+            <DialogHeader>
+                <DialogTitle>{{ consentType === 'catchEmAll' ? 'Catch-Em-All Game Consent' : 'Fursuit Gallery Consent' }}</DialogTitle>
+                <DialogDescription class="text-foreground text-base">
+                    Please ensure that your Fursuit Badge contains:
+                </DialogDescription>
+            </DialogHeader>
+            <div>
+                <ul class="list-disc pl-6 mb-4 space-y-1">
+                    <li>Pictures of real fursuiters only</li>
+                    <li>No AI-generated content</li>
+                    <li>No digital art</li>
+                </ul>
+                <div v-if="consentType === 'gallery'">
+                    <p class="mb-2">
+                        <strong>Data Usage:</strong> By publishing to the gallery, your identity username, badge image, fursuit name, and species will be published to our online fursuiters database, visible and searchable publicly for anyone to see.
+                    </p>
+                    <p class="mb-4">
+                        If you participate in the catch-em-all game, we will also display how many times you have been caught.
+                    </p>
+                    <Button variant="link" class="p-0 h-auto text-sm mb-3" @click="showDataUsageInfo()">
+                        Learn more about data usage
+                    </Button>
+                </div>
+                <div v-if="consentType === 'catchEmAll'">
+                    <p class="mb-4">
+                        <strong>Leaderboard Visibility:</strong> In the catch-em-all game, your fursuit name, species, and identity username will be visible on the leaderboard.
+                    </p>
+                </div>
             </div>
-            <div v-if="consentType === 'catchEmAll'">
-                <p class="mb-4">
-                    <strong>Leaderboard Visibility:</strong> In the catch-em-all game, your fursuit name, species, and identity username will be visible on the leaderboard.
-                </p>
-            </div>
-        </div>
-        <div class="flex justify-end gap-3">
-            <Button label="Decline" @click="declineConsent()" severity="secondary" />
-            <Button label="Accept" @click="acceptConsent()" />
-        </div>
+            <DialogFooter>
+                <Button variant="secondary" @click="declineConsent()">Decline</Button>
+                <Button @click="acceptConsent()">Accept</Button>
+            </DialogFooter>
+        </DialogContent>
     </Dialog>
-    
+
     <!-- Data Usage Information Dialog -->
-    <Dialog v-model:visible="galleryDataDialogOpen" modal header="How We Store Your Data"
-            :style="{ width: '40rem' }">
-        <div class="space-y-4">
-            <h3 class="font-semibold text-lg">Fursuit Gallery Data Storage</h3>
-            <p>
-                When you choose to publish your fursuit to our gallery, we collect and display the following information publicly:
-            </p>
-            <ul class="list-disc pl-6 space-y-2">
-                <li><strong>Identity Username:</strong> Your registered username will be visible</li>
-                <li><strong>Badge Image:</strong> The photo you upload will be displayed</li>
-                <li><strong>Fursuit Name:</strong> The name you give your fursuit</li>
-                <li><strong>Species:</strong> The species classification of your fursuit</li>
-            </ul>
-            
-            <h4 class="font-semibold">Catch-Em-All Game Integration</h4>
-            <p>
-                If you also participate in the Catch-Em-All game, we will additionally display:
-            </p>
-            <ul class="list-disc pl-6 space-y-2">
-                <li><strong>Catch Count:</strong> How many times other participants have caught you</li>
-                <li><strong>Leaderboard Position:</strong> Your ranking in the game</li>
-            </ul>
-            
-            <h4 class="font-semibold">Public Visibility</h4>
-            <p>
-                This information will be:
-            </p>
-            <ul class="list-disc pl-6 space-y-2">
-                <li>Visible to anyone visiting our website</li>
-                <li>Searchable by name, species, or username</li>
-                <li>Available without requiring login or registration</li>
-            </ul>
-            
-            <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mt-4">
-                <p class="text-sm">
-                    <strong>Note:</strong> You can withdraw consent at any time by contacting our support team.
+    <Dialog v-model:open="galleryDataDialogOpen">
+        <DialogContent class="sm:max-w-[40rem] max-h-[90vh] overflow-y-auto" @interact-outside.prevent>
+            <DialogHeader>
+                <DialogTitle>How We Store Your Data</DialogTitle>
+            </DialogHeader>
+            <div class="space-y-4">
+                <h3 class="font-semibold text-lg">Fursuit Gallery Data Storage</h3>
+                <DialogDescription class="text-foreground text-base">
+                    When you choose to publish your fursuit to our gallery, we collect and display the following information publicly:
+                </DialogDescription>
+                <ul class="list-disc pl-6 space-y-2">
+                    <li><strong>Identity Username:</strong> Your registered username will be visible</li>
+                    <li><strong>Badge Image:</strong> The photo you upload will be displayed</li>
+                    <li><strong>Fursuit Name:</strong> The name you give your fursuit</li>
+                    <li><strong>Species:</strong> The species classification of your fursuit</li>
+                </ul>
+
+                <h4 class="font-semibold">Catch-Em-All Game Integration</h4>
+                <p>
+                    If you also participate in the Catch-Em-All game, we will additionally display:
                 </p>
+                <ul class="list-disc pl-6 space-y-2">
+                    <li><strong>Catch Count:</strong> How many times other participants have caught you</li>
+                    <li><strong>Leaderboard Position:</strong> Your ranking in the game</li>
+                </ul>
+
+                <h4 class="font-semibold">Public Visibility</h4>
+                <p>
+                    This information will be:
+                </p>
+                <ul class="list-disc pl-6 space-y-2">
+                    <li>Visible to anyone visiting our website</li>
+                    <li>Searchable by name, species, or username</li>
+                    <li>Available without requiring login or registration</li>
+                </ul>
+
+                <Alert variant="warning">
+                    <AlertDescription>
+                        <p><strong>Note:</strong> You can withdraw consent at any time by contacting our support team.</p>
+                    </AlertDescription>
+                </Alert>
             </div>
-        </div>
-        <div class="flex justify-end mt-6">
-            <Button label="Close" @click="galleryDataDialogOpen = false" />
-        </div>
+            <DialogFooter>
+                <Button @click="galleryDataDialogOpen = false">Close</Button>
+            </DialogFooter>
+        </DialogContent>
     </Dialog>
 
     <!-- Delete Confirmation Dialog -->
-    <Dialog v-if="isEditMode" v-model:visible="deleteModalOpen" :dismissableMask="false" modal header="Delete Badge"
-            style="max-width: 40rem;min-width:18rem;">
-        <span class="text-surface-600 dark:text-surface-0/70 block mb-5">
-            Are you sure you want to delete your badge?
-        </span>
-        <Message :closable="false" v-if="hasExtraCopies" severity="error">
-            You have extra copies of this badge, they will be deleted too.
-        </Message>
-        <div class="flex justify-end gap-4 mt-4">
-            <Button label="Cancel" @click="deleteModalOpen = false" severity="secondary"/>
-            <Button label="Delete" @click="deleteBadge" icon="pi pi-trash" severity="danger"/>
-        </div>
-    </Dialog>
+    <AlertDialog v-if="isEditMode" v-model:open="deleteModalOpen">
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Delete Badge</AlertDialogTitle>
+                <AlertDialogDescription>Are you sure you want to delete your badge?</AlertDialogDescription>
+            </AlertDialogHeader>
+            <Alert v-if="hasExtraCopies" variant="destructive">
+                <CircleX/>
+                <AlertDescription>You have extra copies of this badge, they will be deleted too.</AlertDescription>
+            </Alert>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction :class="buttonVariants({ variant: 'destructive' })" @click="deleteBadge">
+                    <Trash2/> Delete
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
 
     <!-- Main Content -->
     <div class="min-h-screen py-8">
@@ -352,33 +372,43 @@ const canEditFields = computed(() => {
 
             <!-- Status Messages -->
             <div class="mb-6">
-                <Message v-if="isEditMode && canEdit && !badge.extra_copy_of" 
-                         icon="pi pi-info-circle" severity="info" class="mb-4">
-                    You can edit your badge until we start processing it.
-                </Message>
-                
-                <Message v-else-if="isEditMode && badge.extra_copy_of" 
-                         icon="pi pi-exclamation-triangle" severity="warn" class="mb-4">
-                    Discounted Badge Clones cannot be edited. To make modifications, please edit the 
-                    <Link class="underline" :href="route('badges.edit', {badge: badge.extra_copy_of})">Master Badge</Link>.
-                </Message>
-                
-                <Message v-else-if="isEditMode && !canEdit" 
-                         icon="pi pi-exclamation-triangle" severity="error" class="mb-4">
-                    You can no longer edit your badge. Please contact our 
-                    <a class="underline" target="_blank" href="https://help.eurofurence.org">support</a> if you need help.
-                </Message>
+                <Alert v-if="isEditMode && canEdit && !badge.extra_copy_of" variant="info" class="mb-4">
+                    <Info/>
+                    <AlertDescription>You can edit your badge until we start processing it.</AlertDescription>
+                </Alert>
 
-                <Message v-if="!isEditMode && massPrintRunIsOver(usePage().props.event)"
-                         severity="info" :closable="false" class="mb-4">
-                    <template v-if="new Date() >= new Date(new Date(usePage().props.event.starts_at).getTime() + 24 * 60 * 60 * 1000)">
-                        We will send you an email once your badge is ready. Processing usually takes ~30 minutes.
-                    </template>
-                    <template v-else>
-                        The printing deadline ({{ formatPrintDate(usePage().props.event.mass_printed_at) }})
-                        has passed, so you can collect this badge from the second convention day.
-                    </template>
-                </Message>
+                <Alert v-else-if="isEditMode && badge.extra_copy_of" variant="warning" class="mb-4">
+                    <TriangleAlert/>
+                    <AlertDescription>
+                        <p>
+                            Discounted Badge Clones cannot be edited. To make modifications, please edit the
+                            <Link class="underline" :href="route('badges.edit', {badge: badge.extra_copy_of})">Master Badge</Link>.
+                        </p>
+                    </AlertDescription>
+                </Alert>
+
+                <Alert v-else-if="isEditMode && !canEdit" variant="destructive" class="mb-4">
+                    <TriangleAlert/>
+                    <AlertDescription>
+                        <p>
+                            You can no longer edit your badge. Please contact our
+                            <a class="underline" target="_blank" href="https://help.eurofurence.org">support</a> if you need help.
+                        </p>
+                    </AlertDescription>
+                </Alert>
+
+                <Alert v-if="!isEditMode && massPrintRunIsOver(usePage().props.event)" variant="info" class="mb-4">
+                    <Info/>
+                    <AlertDescription>
+                        <template v-if="new Date() >= new Date(new Date(usePage().props.event.starts_at).getTime() + 24 * 60 * 60 * 1000)">
+                            We will send you an email once your badge is ready. Processing usually takes ~30 minutes.
+                        </template>
+                        <template v-else>
+                            The printing deadline ({{ formatPrintDate(usePage().props.event.mass_printed_at) }})
+                            has passed, so you can collect this badge from the second convention day.
+                        </template>
+                    </AlertDescription>
+                </Alert>
             </div>
 
             <!-- Main Form Grid -->
@@ -388,24 +418,21 @@ const canEditFields = computed(() => {
                 <div class="lg:col-span-2 space-y-6">
                     
                     <!-- Fursuit Details Card -->
-                    <Card class="shadow-lg">
-                        <template #title>
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-user text-primary-600"></i>
-                                <span>Fursuit Details</span>
-                            </div>
-                        </template>
-                        
-                        <template #content>
+                    <Card class="gap-3 p-5 shadow-lg">
+                        <CardTitle class="text-xl font-bold leading-tight flex items-center gap-2">
+                            <User class="size-5 text-primary"/>
+                            <span>Fursuit Details</span>
+                        </CardTitle>
+                        <div>
                             <div class="flex flex-col md:flex-row gap-6">
                                 
                                 <!-- Image Upload Section -->
                                 <div class="flex flex-col items-center">
                                     <div class="relative group">
                                         <div v-if="!previewImage" @click="openImageModal"
-                                             class="w-48 h-64 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl shadow-lg cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center justify-center">
+                                             class="w-48 h-64 bg-linear-to-br from-primary-400 to-primary-600 rounded-xl shadow-lg cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center justify-center">
                                             <div class="text-white text-center px-4 flex flex-col">
-                                                <i class="pi pi-camera text-3xl mb-2 block"></i>
+                                                <Camera class="size-8 mb-2 mx-auto"/>
                                                 <span class="text-sm font-medium">Upload Fursuit Photo</span>
                                             </div>
                                         </div>
@@ -417,9 +444,9 @@ const canEditFields = computed(() => {
                                                      :class="previewCropStyle ? '' : 'w-full h-full object-cover'">
                                             </div>
                                             <div v-if="canEditFields" @click="openImageModal"
-                                                 class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
+                                                 class="absolute inset-0 bg-black/0 hover:bg-black/50 rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
                                                 <div class="text-white text-center">
-                                                    <i class="pi pi-pencil text-2xl mb-1 block"></i>
+                                                    <Pencil class="size-6 mb-1 mx-auto"/>
                                                     <span class="text-sm font-medium">Edit Image</span>
                                                 </div>
                                             </div>
@@ -440,12 +467,10 @@ const canEditFields = computed(() => {
                                         <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
                                             Fursuit Name
                                         </label>
-                                        <InputText 
-                                            id="name" 
-                                            v-model="form.name" 
+                                        <Input
+                                            id="name"
+                                            v-model="form.name"
                                             :disabled="!canEditFields"
-                                            class="w-full"
-                                            fluid
                                             placeholder="Enter your fursuit's name"
                                         />
                                         <InputError :error="form.errors.name" class="mt-1"/>
@@ -459,18 +484,17 @@ const canEditFields = computed(() => {
                                         <label for="species" class="block text-sm font-medium text-gray-700 mb-2">
                                             Species
                                         </label>
-                                        <Dropdown 
-                                            v-model="form.species" 
-                                            id="species" 
+                                        <Input
+                                            v-model="form.species"
+                                            id="species"
+                                            list="species-options"
+                                            autocomplete="off"
                                             :disabled="!canEditFields"
-                                            editable
-                                            :options="species" 
-                                            optionLabel="name" 
-                                            fluid
-                                            optionValue="name"
                                             placeholder="Select or enter a species"
-                                            class="w-full"
                                         />
+                                        <datalist id="species-options">
+                                            <option v-for="option in species" :key="option.name" :value="option.name"/>
+                                        </datalist>
                                         <InputError :error="form.errors.species" class="mt-1"/>
                                         <small class="text-gray-500 mt-1 block">
                                             Choose from existing species or create a new one
@@ -478,26 +502,23 @@ const canEditFields = computed(() => {
                                     </div>
                                 </div>
                             </div>
-                        </template>
+                        </div>
                     </Card>
                     
                     <!-- Preferences Card -->
-                    <Card class="shadow-lg">
-                        <template #title>
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-cog text-primary-600"></i>
-                                <span>Badge Preferences</span>
-                            </div>
-                        </template>
-                        
-                        <template #content>
+                    <Card class="gap-3 p-5 shadow-lg">
+                        <CardTitle class="text-xl font-bold leading-tight flex items-center gap-2">
+                            <Settings class="size-5 text-primary"/>
+                            <span>Badge Preferences</span>
+                        </CardTitle>
+                        <div>
                             <div class="grid sm:grid-cols-2 gap-6">
                                 
                                 <!-- Catch-Em-All -->
                                 <div class="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors">
                                     <div class="flex items-start gap-3">
-                                        <InputSwitch 
-                                            :model-value="form.catchEmAll" 
+                                        <Switch
+                                            :model-value="form.catchEmAll"
                                             @update:model-value="handleCatchEmAllChange"
                                             :disabled="!canEditFields"
                                             id="catchEmAll"
@@ -517,8 +538,8 @@ const canEditFields = computed(() => {
                                 <!-- Gallery Publishing -->
                                 <div class="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors">
                                     <div class="flex items-start gap-3">
-                                        <InputSwitch 
-                                            :model-value="form.publish" 
+                                        <Switch
+                                            :model-value="form.publish"
                                             @update:model-value="handleGalleryChange"
                                             :disabled="!canEditFields"
                                             id="publish"
@@ -535,32 +556,25 @@ const canEditFields = computed(() => {
                                     </div>
                                 </div>
                             </div>
-                        </template>
+                        </div>
                     </Card>
                     
                     <!-- Upgrades Card (Create mode only) -->
-                    <Card v-if="canShowUpgrades" class="shadow-lg">
-                        <template #title>
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-plus-circle text-primary-600"></i>
-                                <span>Upgrades</span>
-                            </div>
-                        </template>
-                        
-                        <template #content>
+                    <Card v-if="canShowUpgrades" class="gap-3 p-5 shadow-lg">
+                        <CardTitle class="text-xl font-bold leading-tight flex items-center gap-2">
+                            <CirclePlus class="size-5 text-primary"/>
+                            <span>Upgrades</span>
+                        </CardTitle>
+                        <div>
                             <div class="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors">
                                 <div class="flex items-start gap-3">
-                                    <InputSwitch 
-                                        v-model="form.upgrades.spareCopy" 
-                                        id="spareCopy"
-                                        :disabled="false"
-                                    />
+                                    <Switch v-model="form.upgrades.spareCopy" id="spareCopy"/>
                                     <div class="flex-1">
                                         <div class="flex items-center gap-2 mb-1">
                                             <label for="spareCopy" class="font-medium text-gray-900 cursor-pointer">
                                                 Spare Copy
                                             </label>
-                                            <Tag value="+5,00 €" severity="success"/>
+                                            <Badge variant="success">+5,00 €</Badge>
                                         </div>
                                         <p class="text-sm text-gray-600">
                                             Get an additional copy of your badge. Perfect as a backup or to share with friends.
@@ -568,7 +582,7 @@ const canEditFields = computed(() => {
                                     </div>
                                 </div>
                             </div>
-                        </template>
+                        </div>
                     </Card>
                 </div>
                 
@@ -576,15 +590,12 @@ const canEditFields = computed(() => {
                 <div class="space-y-6">
                     
                     <!-- Order Summary Card -->
-                    <Card class="shadow-lg sticky top-8">
-                        <template #title>
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-shopping-cart text-primary-600"></i>
-                                <span>{{ isEditMode ? 'Badge Summary' : 'Order Summary' }}</span>
-                            </div>
-                        </template>
-                        
-                        <template #content>
+                    <Card class="gap-3 p-5 shadow-lg sticky top-8">
+                        <CardTitle class="text-xl font-bold leading-tight flex items-center gap-2">
+                            <ShoppingCart class="size-5 text-primary"/>
+                            <span>{{ isEditMode ? 'Badge Summary' : 'Order Summary' }}</span>
+                        </CardTitle>
+                        <div>
                             <div class="space-y-4">
                                 
                                 <!-- Price Breakdown -->
@@ -611,7 +622,7 @@ const canEditFields = computed(() => {
                                     </div>
                                 </div>
                                 
-                                <Divider class="my-4"/>
+                                <Separator class="my-4"/>
                                 
                                 <!-- Total -->
                                 <div class="flex justify-between items-center py-2">
@@ -622,7 +633,7 @@ const canEditFields = computed(() => {
                                 <!-- Terms Acceptance (Create mode only) -->
                                 <div v-if="!isEditMode" class="pt-4">
                                     <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                                        <InputSwitch v-model="form.tos" id="tos"/>
+                                        <Switch v-model="form.tos" id="tos"/>
                                         <div class="flex-1">
                                             <label for="tos" :class="{'text-red-600 font-medium': form.errors.tos}" class="cursor-pointer text-sm">
                                                 I confirm that the information I have supplied is correct.
@@ -634,38 +645,37 @@ const canEditFields = computed(() => {
                                 
                                 <!-- Action Buttons -->
                                 <div class="pt-4 space-y-3">
-                                    <Button 
-                                        :label="isEditMode ? 'Save Changes' : 'Confirm Badge Order'" 
-                                        :icon="isEditMode ? 'pi pi-save' : 'pi pi-check'"
+                                    <Button
                                         @click="submit()"
-                                        :loading="form.processing" 
-                                        :disabled="!isEditMode && !form.tos"
+                                        :disabled="form.processing || (!isEditMode && !form.tos)"
                                         class="w-full"
-                                        size="large"
-                                    />
-                                    
-                                    <Button v-if="isEditMode && canDelete" 
-                                        label="Delete Badge"
-                                        icon="pi pi-trash"
+                                        size="lg"
+                                    >
+                                        <Loader2 v-if="form.processing" class="animate-spin"/>
+                                        <Save v-else-if="isEditMode"/>
+                                        <Check v-else/>
+                                        {{ isEditMode ? 'Save Changes' : 'Confirm Badge Order' }}
+                                    </Button>
+
+                                    <Button v-if="isEditMode && canDelete"
                                         @click="deleteModalOpen = true"
-                                        severity="danger"
-                                        outlined
-                                        class="w-full"
-                                    />
+                                        variant="outline"
+                                        class="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                        <Trash2/> Delete Badge
+                                    </Button>
                                 </div>
                             </div>
-                        </template>
+                        </div>
                     </Card>
                     
                     <!-- Having Issues Card -->
-                    <Card class="shadow-lg">
-                        <template #title>
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-exclamation-circle text-primary-600"></i>
-                                <span>Having issues?</span>
-                            </div>
-                        </template>
-                        <template #content>
+                    <Card class="gap-3 p-5 shadow-lg">
+                        <CardTitle class="text-xl font-bold leading-tight flex items-center gap-2">
+                            <CircleAlert class="size-5 text-primary"/>
+                            <span>Having issues?</span>
+                        </CardTitle>
+                        <div>
                             <div class="space-y-3 text-sm text-gray-600">
                                 <p>
                                     Your photo is uploaded as you picked it and cropped on our servers, so the result does not depend on your browser. If the upload fails, check that the file is a JPG or PNG under 8 MB.
@@ -674,7 +684,7 @@ const canEditFields = computed(() => {
                                     Very large photos take longer to upload on convention WiFi. If an upload stalls, try again on a better connection or use a smaller file.
                                 </p>
                             </div>
-                        </template>
+                        </div>
                     </Card>
 
                 </div>
@@ -682,14 +692,8 @@ const canEditFields = computed(() => {
 
             <!-- Back Button (Edit mode only) -->
             <div v-if="isEditMode" class="mt-6 text-center">
-                <Button
-                    @click="router.visit(route('badges.show', {badge: badge.id}))"
-                    class="p-button-secondary"
-                >
-                    <template #icon>
-                        <i class="pi pi-arrow-left mr-2"></i>
-                    </template>
-                    Back to Badge Details
+                <Button variant="secondary" @click="router.visit(route('badges.show', {badge: badge.id}))">
+                    <ArrowLeft/> Back to Badge Details
                 </Button>
             </div>
         </div>
@@ -697,27 +701,8 @@ const canEditFields = computed(() => {
 </template>
 
 <style scoped>
-/* Custom styles for better visual hierarchy */
-.p-card {
-    @apply border-0 bg-white/80 backdrop-blur-sm;
-}
-
-.p-card .p-card-title {
-    @apply text-gray-900;
-}
-
-.p-card .p-card-content {
-    @apply pt-0;
-}
-
 /* Smooth transitions for interactive elements */
 .group:hover .transition-all {
     transform: translateY(-2px);
-}
-
-/* Better focus styles */
-.p-inputtext:focus,
-.p-dropdown:focus {
-    @apply ring-2 ring-primary-500 ring-offset-2;
 }
 </style>

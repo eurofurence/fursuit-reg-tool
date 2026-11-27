@@ -202,7 +202,7 @@ function verifiedTime(row) {
                     lands here, newest first, with an Undo beside it.
                 </p>
 
-                <div v-else class="pos-block pos-block--rows w-full flex-1 max-h-[34rem] overflow-y-auto">
+                <div v-else class="pos-block pos-block--rows w-full flex-1 max-h-136 overflow-y-auto">
                     <div v-for="row in recent" :key="row.id" class="pos-row">
                         <div class="pos-row__body">
                             <span class="pos-row__title pos-num text-lg">{{ row.custom_id }}</span>
@@ -267,7 +267,7 @@ function verifiedTime(row) {
 
                 <!-- Half the dashboard keypad's size: the desk numpad does the typing,
                      and this is the fallback for a touchscreen. -->
-                <div class="pos-keypad w-full max-w-[15rem] mx-auto mt-3">
+                <div class="pos-keypad w-full max-w-60 mx-auto mt-3">
                     <button v-for="n in ['7','8','9','4','5','6','1','2','3']" :key="n"
                             type="button" class="pos-key" @click="keyPress(n)">{{ n }}</button>
                     <button type="button" class="pos-key" @click="keyPress('-')">-</button>

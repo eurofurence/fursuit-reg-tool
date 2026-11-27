@@ -160,7 +160,7 @@ const onSearch = () => {
     column toggle onto a line of its own instead of crushing the search box, and flex-wrap
     here is what lets the chips stack inside that width rather than push the page sideways.
   -->
-  <div class="flex min-w-[12rem] flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+  <div class="flex min-w-48 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
     <label v-if="searchable" class="flex h-7 min-w-0 flex-none items-center gap-1.5">
       <span class="sr-only">Search this list</span>
 
@@ -170,7 +170,7 @@ const onSearch = () => {
         v-model="term"
         type="search"
         placeholder="Search"
-        class="h-7 w-40 min-w-0 rounded border border-hairline bg-mg-surface-2 px-2 text-[12px] text-fg-1 outline-none transition-colors focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40 sm:w-52"
+        class="h-7 w-40 min-w-0 rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[12px] text-fg-1 outline-hidden transition-colors focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40 sm:w-52"
         @input="onSearch"
       />
     </label>
@@ -202,7 +202,7 @@ const onSearch = () => {
     <button
       v-if="removable.length > 0"
       type="button"
-      class="inline-flex h-7 shrink-0 items-center rounded px-2 text-[11px] leading-none text-fg-3 outline-none transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40"
+      class="inline-flex h-7 shrink-0 items-center rounded-sm px-2 text-[11px] leading-none text-fg-3 outline-hidden transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40"
       @click="clearAll"
     >
       Clear all

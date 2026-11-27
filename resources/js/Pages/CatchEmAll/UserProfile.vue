@@ -13,7 +13,7 @@ import {
     Ticket,
     Trash2,
     X,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 
 type Fursuit = {
     id: number;

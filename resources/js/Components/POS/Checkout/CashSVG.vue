@@ -66,7 +66,7 @@ const displayValue = computed(() => {
             <img 
                 :src="svgPath" 
                 :alt="displayValue"
-                class="w-full h-full object-contain drop-shadow-sm"
+                class="w-full h-full object-contain drop-shadow-xs"
             />
         </div>
         <div v-else class="fallback-cash" :denomination="denomination" :class="sizeClasses">
@@ -76,6 +76,7 @@ const displayValue = computed(() => {
 </template>
 
 <style scoped>
+@reference "../../../../css/app.css";
 .fallback-cash {
     @apply flex items-center justify-center rounded border-2 border-gray-400 bg-gray-200 text-gray-800;
 }

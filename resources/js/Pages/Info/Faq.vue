@@ -91,7 +91,7 @@ const entries = computed(() => [
             <article
                 v-for="entry in entries"
                 :key="entry.q"
-                class="rounded-lg bg-white shadow-sm p-5 mb-3 break-inside-avoid"
+                class="rounded-lg bg-white shadow-xs p-5 mb-3 break-inside-avoid"
             >
                 <h2 class="flex gap-2.5 font-bold">
                     <span class="text-primary-500 shrink-0" aria-hidden="true">Q:</span>

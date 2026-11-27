@@ -129,10 +129,10 @@ const submitNotify = () => {
 };
 
 const control =
-  'h-8 w-full rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-none focus:border-state-live/50';
+  'h-8 w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-hidden focus:border-state-live/50';
 
 const textarea =
-  'w-full rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[13px] text-fg-1 outline-none focus:border-state-live/50';
+  'w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[13px] text-fg-1 outline-hidden focus:border-state-live/50';
 </script>
 
 <template>
@@ -146,7 +146,7 @@ const textarea =
         <button
           v-if="notifyAction"
           type="button"
-          class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+          class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
           @click="notifyOpen = true"
         >
           <ManageIcon :name="notifyAction.icon" />
@@ -163,7 +163,7 @@ const textarea =
       -->
       <div
         v-if="presenceLabel"
-        class="flex items-center gap-2 rounded border border-state-warn/40 bg-state-warn/10 px-3 py-2 text-[12px] text-state-warn"
+        class="flex items-center gap-2 rounded-sm border border-state-warn/40 bg-state-warn/10 px-3 py-2 text-[12px] text-state-warn"
       >
         <ManageIcon name="users" />
         <span>{{ presenceLabel }}.</span>
@@ -176,7 +176,7 @@ const textarea =
       -->
       <div
         v-if="revisions > 0"
-        class="flex items-center gap-2 rounded border border-hairline bg-mg-surface-1 px-3 py-2 text-[12px] text-fg-2"
+        class="flex items-center gap-2 rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2 text-[12px] text-fg-2"
       >
         <ManageIcon name="rotate-ccw" :size="14" />
         <span>
@@ -191,7 +191,7 @@ const textarea =
       -->
       <section class="grid grid-cols-1 gap-3 md:grid-cols-12">
         <div class="md:col-span-3">
-          <div class="flex items-center justify-center rounded border border-hairline bg-mg-surface-1 p-2">
+          <div class="flex items-center justify-center rounded-sm border border-hairline bg-mg-surface-1 p-2">
             <!--
               A photo whose gallery render is still queued shows this rather than the
               archival master: the master is a print file, and a preview box is not worth
@@ -209,14 +209,14 @@ const textarea =
               v-else-if="fursuit.image"
               :src="fursuit.image"
               :alt="fursuit.name ?? ''"
-              class="w-full rounded object-contain"
+              class="w-full rounded-sm object-contain"
             />
             <span v-else class="flex h-40 items-center text-[12px] text-fg-3">No image</span>
           </div>
         </div>
 
         <div class="flex flex-col gap-3 md:col-span-9">
-          <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+          <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
             <div class="flex items-baseline justify-between gap-3">
               <span class="text-[12px] font-medium text-fg-2">Name</span>
               <span class="text-[11px] text-fg-3">Name of the fursuit on the Badge</span>
@@ -225,7 +225,7 @@ const textarea =
             <p class="text-[11px] text-fg-3">Should not contain profanities.</p>
           </div>
 
-          <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+          <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
             <div class="flex items-baseline justify-between gap-3">
               <span class="text-[12px] font-medium text-fg-2">Species</span>
               <span class="text-[11px] text-fg-3">Name of the species on the Badge</span>
@@ -235,7 +235,7 @@ const textarea =
           </div>
 
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+            <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
               <span class="text-[12px] font-medium text-fg-2">Published</span>
               <p class="py-1">
                 <ManageIcon
@@ -249,7 +249,7 @@ const textarea =
               </p>
             </div>
 
-            <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+            <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
               <span class="text-[12px] font-medium text-fg-2">Catch em all</span>
               <p class="py-1">
                 <ManageIcon
@@ -264,7 +264,7 @@ const textarea =
             </div>
           </div>
 
-          <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+          <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
             <div class="flex items-center justify-between gap-3">
               <span class="text-[12px] font-medium text-fg-2">Status</span>
               <span class="text-[11px] text-fg-3">Current status of the fursuit.</span>
@@ -282,7 +282,7 @@ const textarea =
           -->
           <div
             v-if="fursuit.publication.blocked"
-            class="rounded border border-state-warn/40 bg-state-warn/10 px-3 py-2"
+            class="rounded-sm border border-state-warn/40 bg-state-warn/10 px-3 py-2"
           >
             <div class="flex items-center gap-2">
               <ManageIcon name="eye-off" :size="16" class="text-state-warn" />
@@ -336,14 +336,14 @@ const textarea =
       <template #footer>
         <button
           type="button"
-          class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
+          class="h-8 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
           @click="notifyOpen = false"
         >
           Cancel
         </button>
         <button
           type="button"
-          class="h-8 rounded bg-state-live px-3 text-[13px] font-medium text-mg-surface-0"
+          class="h-8 rounded-sm bg-state-live px-3 text-[13px] font-medium text-mg-surface-0"
           :disabled="notifyForm.processing"
           @click="submitNotify"
         >

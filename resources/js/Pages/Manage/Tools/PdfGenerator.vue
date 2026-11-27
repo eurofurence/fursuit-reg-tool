@@ -64,7 +64,7 @@ const boxLabelsUrl = computed(() =>
 );
 
 const button =
-  'inline-flex h-7 items-center gap-1.5 rounded border px-2 text-[12px] font-medium transition-colors';
+  'inline-flex h-7 items-center gap-1.5 rounded-sm border px-2 text-[12px] font-medium transition-colors';
 </script>
 
 <template>
@@ -95,7 +95,7 @@ const button =
 
     <div class="flex-1 space-y-3 p-4">
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div class="rounded border border-state-info/30 bg-state-info/10 px-3 py-2">
+        <div class="rounded-sm border border-state-info/30 bg-state-info/10 px-3 py-2">
           <h3 class="text-[12px] font-semibold text-fg-1">Badge List PDF</h3>
           <p class="mt-1 text-[12px] text-fg-2">
             Generates a list of the selected event's badges, grouped by ranges (0-999,
@@ -104,7 +104,7 @@ const button =
           </p>
         </div>
 
-        <div class="rounded border border-state-ok/30 bg-state-ok/10 px-3 py-2">
+        <div class="rounded-sm border border-state-ok/30 bg-state-ok/10 px-3 py-2">
           <h3 class="text-[12px] font-semibold text-fg-1">Box Labels PDF</h3>
           <p class="mt-1 text-[12px] text-fg-2">
             Generates one label per page for badge boxes, on a 210x94mm page (a third of

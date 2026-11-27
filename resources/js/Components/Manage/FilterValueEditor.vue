@@ -131,10 +131,10 @@ const ternaryOptions = computed(() => [
 ]);
 
 const row =
-  'flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[12px] leading-none text-fg-2 hover:bg-mg-surface-2 has-[:checked]:text-fg-1';
+  'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-[12px] leading-none text-fg-2 hover:bg-mg-surface-2 has-checked:text-fg-1';
 
 const field =
-  'h-7 w-full rounded border border-hairline bg-mg-surface-2 px-2 text-[12px] text-fg-1 outline-none focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40';
+  'h-7 w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[12px] text-fg-1 outline-hidden focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40';
 </script>
 
 <template>

@@ -1,10 +1,13 @@
 <script setup>
-import Button from "@/Components/UI/UiButton.vue";
-import Menu from "primevue/menu";
-import { posMenuPt } from "@/Components/POS/posDialog.js";
 import { Link, router } from "@inertiajs/vue3";
+import { ArrowLeft, Clock, CreditCard, Keyboard, Menu as MenuIcon, Monitor, User } from "@lucide/vue";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/Components/UI/dropdown-menu";
 import DigitalClock from "@/Components/POS/DigitalClock.vue";
-import Badge from "primevue/badge";
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { usePosKeyboard } from '@/composables/usePosKeyboard';
 
@@ -40,19 +43,17 @@ onUnmounted(() => {
     window.removeEventListener('resize', checkBreakpoint);
 });
 
-const userMenu = ref();
 const showShortcutsDialog = ref(false);
 const showAutoLogoutModal = ref(false);
 const showSumUpReaderModal = ref(false);
 
 // Auto logout modal is now handled by the modal component
 
-// Build the user menu
-const userMenuItems = ref([
-    { label: 'Switch User', icon: 'pi pi-user', route: route('pos.auth.user.logout'), method: 'POST' },
-    { label: 'Keyboard Shortcuts', icon: 'pi pi-keyboard', command: () => showShortcutsDialog.value = true },
-    { label: 'Auto Logout Settings', icon: 'pi pi-clock', command: () => showAutoLogoutModal.value = true },
-]);
+const userMenuItems = [
+    { label: 'Switch User', icon: User, command: () => router.post(route('pos.auth.user.logout')) },
+    { label: 'Keyboard Shortcuts', icon: Keyboard, command: () => showShortcutsDialog.value = true },
+    { label: 'Auto Logout Settings', icon: Clock, command: () => showAutoLogoutModal.value = true },
+];
 
 // Use the centralized keyboard handler composable
 usePosKeyboard({
@@ -129,10 +130,6 @@ onUnmounted(() => {
     resetBackspaceCount(); // Clean up backspace timer
 });
 
-const toggleUserMenu = (event) => {
-    userMenu.value.toggle(event);
-};
-
 const props = defineProps({
     attendee: Object || undefined, // from backend
     eventUser: Object || undefined, // event-specific user data
@@ -176,7 +173,7 @@ const backRoute = computed(() => {
                 <div class="flex items-center space-x-2">
                     <Link :href="route(backRoute)" v-if="shouldShowBackArrow" title="Back to Dashboard"
                           class="flex items-center gap-1 hover:text-pos-text">
-                        <i class="pi pi-arrow-left cursor-pointer transition-colors"></i>
+                        <ArrowLeft class="size-3.5" aria-hidden="true" />
                         <span class="pos-kcap">−</span>
                     </Link>
                     <span v-if="attendee" class="text-pos-text font-semibold">
@@ -191,10 +188,10 @@ const backRoute = computed(() => {
 
                 <!-- Right: Machine | Cashier | Card Reader | Printers | Menu -->
                 <div class="flex items-center space-x-1">
-                    <i class="pi pi-desktop text-xs"></i>
+                    <Monitor class="size-3" aria-hidden="true" />
                     <span class="font-medium">{{ machine?.name || 'Unknown' }}</span>
                     <span class="text-pos-line-strong">|</span>
-                    <i class="pi pi-user text-xs"></i>
+                    <User class="size-3" aria-hidden="true" />
                     <span class="font-medium text-pos-text">{{ cashier?.name || 'Unknown' }}</span>
                     <!--
                         Always shown, and always a button: a till with no reader
@@ -208,7 +205,7 @@ const backRoute = computed(() => {
                         title="Choose the card reader for this till"
                         @click="showSumUpReaderModal = true"
                     >
-                        <i class="pi pi-credit-card text-xs"></i>
+                        <CreditCard class="size-3" aria-hidden="true" />
                         <span class="font-medium" :class="machine?.sumup_reader ? '' : 'text-pos-warn'">
                             {{ machine?.sumup_reader?.name || 'No reader' }}
                         </span>
@@ -216,21 +213,24 @@ const backRoute = computed(() => {
                     <span class="text-pos-line-strong">|</span>
                     <PrinterStatusIndicator />
                     <span class="text-pos-line-strong">|</span>
-                    <i class="pi pi-bars cursor-pointer hover:text-pos-text p-1" @click="toggleUserMenu"></i>
-                    <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" class="mt-2" :pt="posMenuPt">
-                        <template #item="{ item }">
-                            <Link v-if="item.route" :href="item.route" :method="item.method" class="w-full">
-                                <div class="flex items-center px-4 py-3 hover:bg-pos-panel-2 transition-colors">
-                                    <span :class="item.icon" class="text-pos-muted"></span>
-                                    <span class="ml-3 font-medium">{{ item.label }}</span>
-                                </div>
-                            </Link>
-                            <a v-else @click="item.command" class="flex items-center px-4 py-3 hover:bg-pos-panel-2 transition-colors cursor-pointer">
-                                <span :class="item.icon" class="text-pos-muted"></span>
-                                <span class="ml-3 font-medium">{{ item.label }}</span>
-                            </a>
-                        </template>
-                    </Menu>
+                    <DropdownMenu :modal="false">
+                        <DropdownMenuTrigger as-child>
+                            <button type="button" class="flex items-center p-1 hover:text-pos-text" aria-label="Menu">
+                                <MenuIcon class="size-3.5" aria-hidden="true" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="pos-surface min-w-56 p-0">
+                            <DropdownMenuItem
+                                v-for="item in userMenuItems"
+                                :key="item.label"
+                                class="min-h-pos-touch gap-3 rounded-none border-pos-line px-4 text-sm font-medium not-first:border-t"
+                                @select="item.command"
+                            >
+                                <component :is="item.icon" class="text-pos-muted" aria-hidden="true" />
+                                {{ item.label }}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
         </header>
@@ -245,36 +245,3 @@ const backRoute = computed(() => {
         </main>
     </div>
 </template>
-<style scoped>
-/* Modern POS Layout Styles */
-.pos-container {
-    min-height: 100vh;
-    font-size: 1rem;
-}
-
-/* Responsive text sizing for touch devices */
-@media (max-width: 768px) {
-    :deep(.p-button) {
-        font-size: 1.1rem;
-        min-height: 3rem;
-        min-width: 3rem;
-    }
-}
-
-/* Large touch targets for tablets */
-@media (min-width: 768px) and (max-width: 1024px) {
-    :deep(.p-button) {
-        font-size: 1.2rem;
-        min-height: 3.5rem;
-        padding: 0.75rem 1.5rem;
-    }
-}
-
-/* Desktop optimization */
-@media (min-width: 1024px) {
-    :deep(.p-button) {
-        font-size: 1rem;
-        min-height: 2.75rem;
-    }
-}
-</style>

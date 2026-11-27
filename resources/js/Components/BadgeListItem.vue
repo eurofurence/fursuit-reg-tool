@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
-import Tag from '@/Components/UI/UiTag.vue';
+import { ChevronRight } from '@lucide/vue';
+import { Badge } from '@/Components/UI/badge';
 import { formatEuroFromCents } from '../helpers.js';
 import { badgeStatusTags } from '../badgeStatus.js';
 
@@ -27,7 +28,7 @@ const statuses = computed(() => badgeStatusTags(props.badge));
             :src="badge.fursuit.image_url"
             :alt="`${badge.fursuit.name} badge`"
             :class="[
-                'w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border flex-shrink-0',
+                'w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border shrink-0',
                 archived ? 'opacity-75' : '',
             ]"
             loading="lazy"
@@ -43,21 +44,22 @@ const statuses = computed(() => badgeStatusTags(props.badge));
             </div>
 
             <div class="mt-2 flex flex-wrap gap-1">
-                <Tag
+                <Badge
                     v-for="status in statuses"
                     :key="status.value"
-                    :severity="status.severity"
-                    :value="status.value"
-                />
-                <Tag v-if="badge.extra_copy" severity="secondary" value="Extra Copy" />
+                    :variant="status.severity === 'danger' ? 'destructive' : status.severity"
+                >
+                    {{ status.value }}
+                </Badge>
+                <Badge v-if="badge.extra_copy" variant="secondary">Extra Copy</Badge>
             </div>
         </div>
 
-        <div class="flex items-center gap-3 flex-shrink-0">
+        <div class="flex items-center gap-3 shrink-0">
             <div class="text-right">
                 <div class="font-semibold">{{ formatEuroFromCents(badge.total) }}</div>
             </div>
-            <i v-if="!archived" class="pi pi-chevron-right text-gray-400 text-sm"></i>
+            <ChevronRight v-if="!archived" class="size-4 text-muted-foreground" />
         </div>
     </div>
 </template>

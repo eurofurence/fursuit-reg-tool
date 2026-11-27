@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model:visible="visible" modal header="Keyboard Shortcuts" :style="{ width: '500px' }" :pt="posDialogPt">
+  <UiDialog v-model:visible="visible" v-bind="posDialog" modal header="Keyboard Shortcuts" width="500px" @open-auto-focus="focusAutofocus">
     <div class="space-y-3">
       <h4 class="pos-label mb-2">Numpad</h4>
       <div><b>Attendee ID:</b> <kbd>0</kbd>–<kbd>9</kbd> (always types into the lookup field)</div>
@@ -28,14 +28,23 @@
         Close <span class="pos-kcap">Esc</span>
       </button>
     </template>
-  </Dialog>
+  </UiDialog>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
-import Dialog from 'primevue/dialog';
-import { posDialogPt } from '@/Components/POS/posDialog.js';
+import UiDialog from '@/Components/UI/UiDialog.vue';
+import { posDialog } from '@/Components/POS/posDialog.js';
+
 const visible = defineModel('visible', { type: Boolean, default: false });
+
+// reka focuses the first tabbable (the close button); keep focus on [autofocus].
+function focusAutofocus(event) {
+    const target = event.target.querySelector('[autofocus]');
+    if (target) {
+        event.preventDefault();
+        target.focus();
+    }
+}
 </script>
 
 <style scoped>

@@ -1,8 +1,7 @@
 <script setup>
-import Dialog from 'primevue/dialog';
-import TabView from 'primevue/tabview';
-import TabPanel from 'primevue/tabpanel';
-import { posDialogPt } from '@/Components/POS/posDialog.js';
+import UiDialog from '@/Components/UI/UiDialog.vue';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/UI/tabs';
+import { posDialog } from '@/Components/POS/posDialog.js';
 import FursuitTable from '@/Components/POS/Attendee/FursuitTable.vue';
 import CheckoutsTable from '@/Components/POS/Attendee/CheckoutsTable.vue';
 
@@ -23,25 +22,29 @@ const emit = defineEmits(['close']);
 </script>
 
 <template>
-    <Dialog
+    <UiDialog
+        v-bind="posDialog"
         :visible="show"
         modal
-        :header="`${attendee?.name || 'Attendee'} — details`"
-        :style="{ width: '72rem' }"
-        :pt="posDialogPt"
+        :header="`Details: ${attendee?.name || 'Attendee'}`"
+        width="72rem"
         @update:visible="emit('close')"
     >
-        <TabView>
-            <TabPanel :header="`Fursuits (${fursuits?.length || 0})`">
+        <Tabs default-value="fursuits">
+            <TabsList class="h-12">
+                <TabsTrigger value="fursuits" class="px-4 text-base">Fursuits ({{ fursuits?.length || 0 }})</TabsTrigger>
+                <TabsTrigger value="checkouts" class="px-4 text-base">Checkouts ({{ checkouts?.length || 0 }})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="fursuits">
                 <FursuitTable :fursuits="fursuits" :attendee="attendee" />
-            </TabPanel>
-            <TabPanel :header="`Checkouts (${checkouts?.length || 0})`">
+            </TabsContent>
+            <TabsContent value="checkouts">
                 <CheckoutsTable :checkouts="checkouts" />
-            </TabPanel>
-        </TabView>
+            </TabsContent>
+        </Tabs>
 
         <template #footer>
             <button type="button" class="pos-btn pos-btn--commit" @click="emit('close')">Close</button>
         </template>
-    </Dialog>
+    </UiDialog>
 </template>

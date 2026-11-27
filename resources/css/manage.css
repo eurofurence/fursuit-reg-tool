@@ -9,9 +9,9 @@
  * hairline and state-* are unused names in this repo and keep theirs.
  *
  * Values are re-authored, not copied. Streaming declares these as oklch() under
- * a Tailwind 4 @theme; this repo is Tailwind 3 and consumes them as
- * rgb(var(--x) / <alpha-value>), which cannot parse an oklch() string, so each
- * colour is converted once to space-separated sRGB channels, the same shape as
+ * a Tailwind 4 @theme; this repo consumes them as rgb(var(--x)), which cannot
+ * parse an oklch() string, so each colour is converted once to space-separated
+ * sRGB channels, the same shape as
  * --pos-canvas: 233 237 244. The perceptual intent is unchanged: a dark-first
  * control room, surfaces stacked deepest to raised with a faint 200-hue chroma
  * so they read as cool neutral rather than dead grey, and state colour as the

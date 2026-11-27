@@ -1,3 +1,5 @@
+import { Check, CircleX, Info, TriangleAlert } from '@lucide/vue';
+
 /*
  * The severity ramp, once.
  *
@@ -11,40 +13,46 @@
  * simply not be generated.
  */
 
+/*
+ * Colours come from the EF tokens in resources/css/app.css. The semantic ones
+ * (primary, secondary, destructive, foreground) are re-pointed inside .manage,
+ * so the same class string fits the dark admin panel.
+ */
+
 /** Solid fill. Buttons, and the block a Tag paints. */
 export const SOLID = {
-    primary: 'text-primary-inverse bg-primary border-primary hover:bg-primary-hover hover:border-primary-hover focus:ring-primary',
-    secondary: 'text-white dark:text-surface-900 bg-surface-500 dark:bg-surface-400 border-surface-500 dark:border-surface-400 hover:bg-surface-600 dark:hover:bg-surface-300 hover:border-surface-600 dark:hover:border-surface-300 focus:ring-surface-400/50 dark:focus:ring-surface-300/50',
-    success: 'text-white dark:text-green-900 bg-green-500 dark:bg-green-400 border-green-500 dark:border-green-400 hover:bg-green-600 dark:hover:bg-green-300 hover:border-green-600 dark:hover:border-green-300 focus:ring-green-400/50 dark:focus:ring-green-300/50',
-    info: 'text-white dark:text-surface-900 bg-blue-500 dark:bg-blue-400 border-blue-500 dark:border-blue-400 hover:bg-blue-600 dark:hover:bg-blue-300 hover:border-blue-600 dark:hover:border-blue-300 focus:ring-blue-400/50 dark:focus:ring-blue-300/50',
-    warning: 'text-white dark:text-surface-900 bg-orange-500 dark:bg-orange-400 border-orange-500 dark:border-orange-400 hover:bg-orange-600 dark:hover:bg-orange-300 hover:border-orange-600 dark:hover:border-orange-300 focus:ring-orange-400/50 dark:focus:ring-orange-300/50',
-    help: 'text-white dark:text-surface-900 bg-purple-500 dark:bg-purple-400 border-purple-500 dark:border-purple-400 hover:bg-purple-600 dark:hover:bg-purple-300 hover:border-purple-600 dark:hover:border-purple-300 focus:ring-purple-400/50 dark:focus:ring-purple-300/50',
-    danger: 'text-white dark:text-surface-900 bg-red-500 dark:bg-red-400 border-red-500 dark:border-red-400 hover:bg-red-600 dark:hover:bg-red-300 hover:border-red-600 dark:hover:border-red-300 focus:ring-red-400/50 dark:focus:ring-red-300/50',
-    contrast: 'text-white dark:text-surface-900 bg-surface-900 dark:bg-surface-0 border-surface-900 dark:border-surface-0 hover:bg-surface-800 dark:hover:bg-surface-100 hover:border-surface-800 dark:hover:border-surface-100 focus:ring-surface-500 dark:focus:ring-surface-400',
+    primary: 'text-primary-foreground bg-primary border-primary hover:bg-primary/90 hover:border-primary/90 focus-visible:ring-primary/40',
+    secondary: 'text-secondary-foreground bg-secondary border-secondary hover:bg-secondary/80 hover:border-secondary/80 focus-visible:ring-ring/40',
+    success: 'text-white bg-success border-success hover:bg-success/90 hover:border-success/90 focus-visible:ring-success/40',
+    info: 'text-white bg-info border-info hover:bg-info/90 hover:border-info/90 focus-visible:ring-info/40',
+    warning: 'text-grays-900 bg-warning border-warning hover:bg-warning/90 hover:border-warning/90 focus-visible:ring-warning/40',
+    help: 'text-white bg-brand-1-500 border-brand-1-500 hover:bg-brand-1-600 hover:border-brand-1-600 focus-visible:ring-brand-1-500/40',
+    danger: 'text-destructive-foreground bg-destructive border-destructive hover:bg-destructive/90 hover:border-destructive/90 focus-visible:ring-destructive/40',
+    contrast: 'text-background bg-foreground border-foreground hover:bg-foreground/90 hover:border-foreground/90 focus-visible:ring-ring/40',
 };
 
 /** No fill, no border. */
 export const TEXT = {
-    primary: 'text-primary hover:bg-primary-300/20 focus:ring-primary',
-    secondary: 'text-surface-500 dark:text-surface-300 hover:bg-surface-300/20 focus:ring-surface-400/50 dark:focus:ring-surface-300/50',
-    success: 'text-green-500 dark:text-green-400 hover:bg-green-300/20 focus:ring-green-400/50 dark:focus:ring-green-300/50',
-    info: 'text-blue-500 dark:text-blue-400 hover:bg-blue-300/20 focus:ring-blue-400/50 dark:focus:ring-blue-300/50',
-    warning: 'text-orange-500 dark:text-orange-400 hover:bg-orange-300/20 focus:ring-orange-400/50 dark:focus:ring-orange-300/50',
-    help: 'text-purple-500 dark:text-purple-400 hover:bg-purple-300/20 focus:ring-purple-400/50 dark:focus:ring-purple-300/50',
-    danger: 'text-red-500 dark:text-red-400 hover:bg-red-300/20 focus:ring-red-400/50 dark:focus:ring-red-300/50',
-    contrast: 'text-surface-900 dark:text-surface-0 hover:bg-surface-900/10 dark:hover:bg-[rgba(255,255,255,0.03)] focus:ring-surface-500 dark:focus:ring-surface-400',
+    primary: 'text-primary hover:bg-primary/10 focus-visible:ring-primary/40',
+    secondary: 'text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring/40',
+    success: 'text-success hover:bg-success/10 focus-visible:ring-success/40',
+    info: 'text-info hover:bg-info/10 focus-visible:ring-info/40',
+    warning: 'text-warning hover:bg-warning/10 focus-visible:ring-warning/40',
+    help: 'text-brand-1-500 hover:bg-brand-1-500/10 focus-visible:ring-brand-1-500/40',
+    danger: 'text-destructive hover:bg-destructive/10 focus-visible:ring-destructive/40',
+    contrast: 'text-foreground hover:bg-foreground/10 focus-visible:ring-ring/40',
 };
 
 /** Border only. */
 export const OUTLINED = {
-    primary: 'text-primary border-primary hover:bg-primary-300/20 focus:ring-primary',
-    secondary: 'text-surface-500 dark:text-surface-300 border-surface-500 hover:bg-surface-300/20 focus:ring-surface-400/50 dark:focus:ring-surface-300/50',
-    success: 'text-green-500 border-green-500 hover:bg-green-300/20 focus:ring-green-400/50 dark:focus:ring-green-300/50',
-    info: 'text-blue-500 border-blue-500 hover:bg-blue-300/20 focus:ring-blue-400/50 dark:focus:ring-blue-300/50',
-    warning: 'text-orange-500 border-orange-500 hover:bg-orange-300/20 focus:ring-orange-400/50 dark:focus:ring-orange-300/50',
-    help: 'text-purple-500 border-purple-500 hover:bg-purple-300/20 focus:ring-purple-400/50 dark:focus:ring-purple-300/50',
-    danger: 'text-red-500 border-red-500 hover:bg-red-300/20 focus:ring-red-400/50 dark:focus:ring-red-300/50',
-    contrast: 'text-surface-900 dark:text-surface-0 border-surface-900 dark:border-surface-0 hover:bg-surface-900/10 dark:hover:bg-[rgba(255,255,255,0.03)] focus:ring-surface-500 dark:focus:ring-surface-400',
+    primary: 'text-primary border-primary hover:bg-primary/10 focus-visible:ring-primary/40',
+    secondary: 'text-muted-foreground border-input hover:bg-muted hover:text-foreground focus-visible:ring-ring/40',
+    success: 'text-success border-success hover:bg-success/10 focus-visible:ring-success/40',
+    info: 'text-info border-info hover:bg-info/10 focus-visible:ring-info/40',
+    warning: 'text-warning border-warning hover:bg-warning/10 focus-visible:ring-warning/40',
+    help: 'text-brand-1-500 border-brand-1-500 hover:bg-brand-1-500/10 focus-visible:ring-brand-1-500/40',
+    danger: 'text-destructive border-destructive hover:bg-destructive/10 focus-visible:ring-destructive/40',
+    contrast: 'text-foreground border-foreground hover:bg-foreground/10 focus-visible:ring-ring/40',
 };
 
 /*
@@ -54,14 +62,14 @@ export const OUTLINED = {
  * here is the one intentional behaviour change in this set.
  */
 export const TAG = {
-    primary: 'bg-primary dark:bg-primary text-primary-inverse',
-    secondary: 'bg-surface-500 dark:bg-surface-400 text-white dark:text-surface-900',
-    success: 'bg-green-500 dark:bg-green-400 text-white dark:text-green-900',
-    info: 'bg-blue-500 dark:bg-blue-400 text-white dark:text-surface-900',
-    warning: 'bg-orange-500 dark:bg-orange-400 text-white dark:text-surface-900',
-    help: 'bg-purple-500 dark:bg-purple-400 text-white dark:text-surface-900',
-    danger: 'bg-red-500 dark:bg-red-400 text-white dark:text-surface-900',
-    contrast: 'bg-surface-900 dark:bg-surface-0 text-white dark:text-surface-900',
+    primary: 'bg-primary text-primary-foreground',
+    secondary: 'bg-secondary text-secondary-foreground',
+    success: 'bg-success text-white',
+    info: 'bg-info text-white',
+    warning: 'bg-warning text-grays-900',
+    help: 'bg-brand-1-500 text-white',
+    danger: 'bg-destructive text-destructive-foreground',
+    contrast: 'bg-foreground text-background',
 };
 
 /*
@@ -70,24 +78,24 @@ export const TAG = {
  * works keeps working.
  */
 export const MESSAGE = {
-    info: 'bg-blue-100/70 dark:bg-blue-500/20 border-blue-500 dark:border-blue-400 text-blue-700 dark:text-blue-300',
-    success: 'bg-green-100/70 dark:bg-green-500/20 border-green-500 dark:border-green-400 text-green-700 dark:text-green-300',
-    warn: 'bg-orange-100/70 dark:bg-orange-500/20 border-orange-500 dark:border-orange-400 text-orange-700 dark:text-orange-300',
-    error: 'bg-red-100/70 dark:bg-red-500/20 border-red-500 dark:border-red-400 text-red-700 dark:text-red-300',
-    secondary: 'bg-surface-100 dark:bg-surface-800 border-surface-500 dark:border-surface-400 text-surface-700 dark:text-surface-300',
-    contrast: 'bg-surface-900 dark:bg-surface-0 border-surface-900 dark:border-surface-0 text-white dark:text-surface-900',
+    info: 'bg-info/10 border-info text-info',
+    success: 'bg-success/10 border-success text-success',
+    warn: 'bg-warning/10 border-warning text-grays-600',
+    error: 'bg-error/10 border-error text-error',
+    secondary: 'bg-secondary border-grays-400 text-secondary-foreground',
+    contrast: 'bg-foreground border-foreground text-background',
 };
 
 const MESSAGE_ALIASES = { warning: 'warn', danger: 'error' };
 
 /** Default icons, matching what PrimeVue's Message shipped per severity. */
 export const MESSAGE_ICONS = {
-    info: 'pi pi-info-circle',
-    success: 'pi pi-check',
-    warn: 'pi pi-exclamation-triangle',
-    error: 'pi pi-times-circle',
-    secondary: 'pi pi-info-circle',
-    contrast: 'pi pi-info-circle',
+    info: Info,
+    success: Check,
+    warn: TriangleAlert,
+    error: CircleX,
+    secondary: Info,
+    contrast: Info,
 };
 
 /*

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
-import { Medal } from 'lucide-vue-next'
+import { Medal } from '@lucide/vue'
 
 type Row = {
     event_user_id: number

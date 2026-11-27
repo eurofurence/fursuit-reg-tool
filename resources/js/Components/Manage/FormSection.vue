@@ -31,7 +31,7 @@ const gridClass = {
 </script>
 
 <template>
-  <section class="rounded border border-hairline bg-mg-surface-1">
+  <section class="rounded-sm border border-hairline bg-mg-surface-1">
     <header
       class="flex items-center gap-2 border-b border-hairline px-3 py-2"
       :class="collapsible ? 'cursor-pointer select-none' : ''"

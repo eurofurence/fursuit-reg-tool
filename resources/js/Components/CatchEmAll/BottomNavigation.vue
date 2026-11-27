@@ -6,7 +6,7 @@
  */
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import { Trophy, Medal, Target, LayoutGrid, User } from 'lucide-vue-next'
+import { Trophy, Medal, Target, LayoutGrid, User } from '@lucide/vue'
 
 const props = withDefaults(defineProps<{
     isEventActive: boolean

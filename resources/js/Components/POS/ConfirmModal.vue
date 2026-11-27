@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import Dialog from 'primevue/dialog';
-import { posDialogPt } from '@/Components/POS/posDialog.js';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/Components/UI/alert-dialog';
 
 const props = defineProps({
     title: String,
@@ -42,15 +41,23 @@ const rejectClass = computed(() => (props.rejectSeverity === 'danger' ? 'pos-btn
 </script>
 
 <template>
-    <Dialog :closable="false" :visible="show" modal :header="title" :pt="posDialogPt" style="width:25rem;">
-        <p class="mb-3">{{ message }}</p>
-        <div class="grid grid-cols-2 gap-2">
-            <button type="button" class="pos-btn pos-btn--commit w-full" :class="rejectClass" @click="emit('cancel')">
-                {{ rejectLabel }}
-            </button>
-            <button type="button" class="pos-btn pos-btn--commit w-full" :class="acceptClass" @click="emit('confirm')">
-                {{ acceptLabel }} <span v-if="showEnterHint" class="pos-kcap">Enter</span>
-            </button>
-        </div>
-    </Dialog>
+    <!-- Controlled by `show` alone: Escape and the backdrop leave the answer to the buttons. -->
+    <AlertDialog :open="show">
+        <AlertDialogContent class="pos-dialog pos-surface z-1102 gap-0 p-0 shadow-none sm:max-w-[25rem]">
+            <div class="pos-dialog__head">
+                <AlertDialogTitle class="pos-dialog__title">{{ title }}</AlertDialogTitle>
+            </div>
+            <div class="pos-dialog__body">
+                <AlertDialogDescription class="mb-3 text-base text-pos-text">{{ message }}</AlertDialogDescription>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" class="pos-btn pos-btn--commit w-full" :class="rejectClass" @click="emit('cancel')">
+                        {{ rejectLabel }}
+                    </button>
+                    <button type="button" class="pos-btn pos-btn--commit w-full" :class="acceptClass" @click="emit('confirm')">
+                        {{ acceptLabel }} <span v-if="showEnterHint" class="pos-kcap">Enter</span>
+                    </button>
+                </div>
+            </div>
+        </AlertDialogContent>
+    </AlertDialog>
 </template>

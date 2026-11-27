@@ -49,7 +49,7 @@ defineEmits(['update:visible']);
     panel-class="m-0 flex max-h-[90vh] max-w-full flex-col rounded-md border border-hairline bg-mg-surface-1 text-fg-1 shadow-xl"
     header-class="flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-4 py-3"
     title-class="text-base font-medium text-fg-1"
-    close-class="inline-flex size-6 items-center justify-center rounded text-fg-3 transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-state-live"
+    close-class="inline-flex size-6 items-center justify-center rounded-sm text-fg-3 transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:outline-solid focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-state-live"
     content-class="flex flex-col gap-3 px-4 py-3"
     footer-class="flex shrink-0 items-center justify-end gap-2 border-t border-hairline px-4 py-3"
     @update:visible="$emit('update:visible', $event)"

@@ -1,9 +1,12 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { X } from '@lucide/vue';
+import { Alert } from '@/Components/UI/alert';
 import { MESSAGE, MESSAGE_ICONS, severityClass } from './severity.js';
 
 /*
  * Drop-in for primevue/message, and for primevue/inlinemessage via `inline`.
+ * Rendered by the kit's Alert.
  *
  * PrimeVue split these into two components that differed only in padding and in
  * whether a close button existed. They are one component here.
@@ -15,11 +18,12 @@ import { MESSAGE, MESSAGE_ICONS, severityClass } from './severity.js';
 const props = defineProps({
     severity: { type: String, default: 'info' },
     closable: { type: Boolean, default: true },
-    icon: { type: String, default: null },
+    /** A lucide icon component; an empty string hides the severity default. */
+    icon: { type: [Object, Function, String], default: null },
     /** ms until it dismisses itself; 0 keeps it up. Ignored when `sticky`. */
     life: { type: Number, default: 0 },
     sticky: { type: Boolean, default: true },
-    /** Compact, borderless, never closable — the old InlineMessage. */
+    /** Compact, borderless and never closable, like the old InlineMessage. */
     inline: { type: Boolean, default: false },
 });
 
@@ -35,8 +39,8 @@ const rootClass = computed(() => [
     // The MESSAGE table supplies border *colours*, so the inline variant has to
     // declare a border width or it renders borderless where the preset did not.
     props.inline
-        ? 'inline-flex items-center justify-center align-top rounded-md p-3 gap-2 border-0 dark:border dark:border-solid'
-        : 'my-4 mx-0 rounded-md border-solid border-0 border-l-[6px]',
+        ? 'inline-flex w-auto items-center justify-center align-top rounded-md p-3 gap-2 border-0'
+        : 'flex items-center gap-2 my-4 mx-0 py-5 px-7 rounded-md border-0 border-l-[6px] text-base',
 ]);
 
 // PrimeVue auto-dismisses only when explicitly told to; `sticky` defaults on so
@@ -64,32 +68,23 @@ onBeforeUnmount(() => clearTimeout(timer));
         enter-active-class="transition-opacity duration-300"
         leave-from-class="max-h-40"
         leave-active-class="overflow-hidden transition-all duration-300 ease-in"
-        leave-to-class="max-h-0 opacity-0 !m-0"
+        leave-to-class="max-h-0 opacity-0 m-0!"
     >
-        <div v-if="visible" :class="rootClass" role="alert" aria-live="assertive" aria-atomic="true">
-            <div v-if="inline" class="contents">
-                <span v-if="resolvedIcon" :class="['text-lg leading-none shrink-0', resolvedIcon]" aria-hidden="true" />
-                <span class="text-base leading-none font-medium">
-                    <slot />
-                </span>
-            </div>
+        <Alert v-if="visible" :class="rootClass" aria-live="assertive" aria-atomic="true">
+            <component :is="resolvedIcon" v-if="resolvedIcon" :class="[inline ? 'size-5' : 'size-6', 'shrink-0']" aria-hidden="true" />
+            <span class="text-base leading-none font-medium">
+                <slot />
+            </span>
 
-            <div v-else class="flex items-center py-5 px-7">
-                <span v-if="resolvedIcon" :class="['w-6 h-6 text-lg leading-none mr-2 shrink-0', resolvedIcon]" aria-hidden="true" />
-                <span class="text-base leading-none font-medium">
-                    <slot />
-                </span>
-
-                <button
-                    v-if="closable"
-                    type="button"
-                    class="flex items-center justify-center w-8 h-8 ml-auto relative rounded-full bg-transparent transition duration-200 ease-in-out hover:bg-surface-0/50 dark:hover:bg-surface-0/10 overflow-hidden"
-                    aria-label="Close"
-                    @click="close"
-                >
-                    <span class="pi pi-times" aria-hidden="true" />
-                </button>
-            </div>
-        </div>
+            <button
+                v-if="closable && !inline"
+                type="button"
+                class="flex items-center justify-center w-8 h-8 ml-auto shrink-0 rounded-full bg-transparent transition duration-200 ease-in-out hover:bg-background/50"
+                aria-label="Close"
+                @click="close"
+            >
+                <X :size="16" aria-hidden="true" />
+            </button>
+        </Alert>
     </transition>
 </template>

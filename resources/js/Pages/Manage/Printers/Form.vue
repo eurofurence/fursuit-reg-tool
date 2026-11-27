@@ -139,7 +139,7 @@ const submit = () => {
               <li
                 v-for="(size, index) in reportedPaperSizes"
                 :key="index"
-                class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded border border-hairline bg-mg-surface-2 px-2 py-1.5"
+                class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded-sm border border-hairline bg-mg-surface-2 px-2 py-1.5"
               >
                 <span class="text-[13px] text-fg-1">{{ size.name }}</span>
                 <span v-if="size.detail" class="text-[12px] text-fg-3">{{ size.detail }}</span>

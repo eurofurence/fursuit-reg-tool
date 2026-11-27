@@ -3,6 +3,7 @@ import { Head, Link, router } from "@inertiajs/vue3";
 import { computed, onMounted, onUnmounted } from "vue";
 import POSLayout from "@/Layouts/POSLayout.vue";
 import dayjs from "dayjs";
+import { CircleCheck, CircleX, IdCard, Printer } from "@lucide/vue";
 
 defineOptions({
     layout: POSLayout,
@@ -79,7 +80,7 @@ function when(batch) {
                     <h2 class="pos-label mb-1">Still printing</h2>
                     <div class="pos-block pos-block--rows w-full">
                         <div v-for="batch in openBatches" :key="batch.id" class="pos-row" :class="toneClass(batch)">
-                            <span class="pos-row__glyph"><i class="pi pi-print"></i></span>
+                            <span class="pos-row__glyph"><Printer class="size-4" aria-hidden="true" /></span>
                             <span class="pos-row__body">
                                 <span class="pos-row__title">{{ batch.headline }}</span>
                                 <span class="pos-row__sub">
@@ -105,7 +106,7 @@ function when(batch) {
                             :class="[toneClass(batch), batch.dismissed ? 'pos-row--done' : '']"
                         >
                             <span class="pos-row__glyph">
-                                <i :class="batch.tone === 'bad' ? 'pi pi-times-circle' : 'pi pi-check-circle'"></i>
+                                <component :is="batch.tone === 'bad' ? CircleX : CircleCheck" class="size-4" aria-hidden="true" />
                             </span>
                             <span class="pos-row__body">
                                 <span class="pos-row__title">{{ batch.headline }}</span>
@@ -136,7 +137,7 @@ function when(batch) {
                                 :href="badge.attendee_url || null"
                                 class="pos-row"
                             >
-                                <span class="pos-row__glyph"><i class="pi pi-id-card"></i></span>
+                                <span class="pos-row__glyph"><IdCard class="size-4" aria-hidden="true" /></span>
                                 <span class="pos-row__body">
                                     <span class="pos-row__title">
                                         {{ badge.custom_id || `Badge #${badge.id}` }}

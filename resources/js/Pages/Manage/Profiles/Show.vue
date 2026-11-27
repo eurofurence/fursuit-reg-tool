@@ -96,10 +96,10 @@ const submitReject = () => {
 };
 
 const control =
-  'h-8 w-full rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-none focus:border-state-live/50';
+  'h-8 w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-hidden focus:border-state-live/50';
 
 const textarea =
-  'w-full rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[13px] text-fg-1 outline-none focus:border-state-live/50';
+  'w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[13px] text-fg-1 outline-hidden focus:border-state-live/50';
 </script>
 
 <template>
@@ -113,7 +113,7 @@ const textarea =
         <button
           v-if="rejectAction"
           type="button"
-          class="inline-flex h-7 items-center gap-1.5 rounded border border-state-danger/40 px-2 text-[12px] font-medium text-state-danger transition-colors hover:bg-state-danger/10 disabled:cursor-not-allowed disabled:opacity-40"
+          class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-state-danger/40 px-2 text-[12px] font-medium text-state-danger transition-colors hover:bg-state-danger/10 disabled:cursor-not-allowed disabled:opacity-40"
           :disabled="Boolean(rejectAction.disabledReason)"
           :title="rejectAction.disabledReason ?? rejectAction.label"
           @click="rejectOpen = true"
@@ -132,7 +132,7 @@ const textarea =
       -->
       <div
         v-if="profile.claim.takenByOther"
-        class="flex items-center gap-2 rounded border border-state-warn/40 bg-state-warn/10 px-3 py-2 text-[12px] text-state-warn"
+        class="flex items-center gap-2 rounded-sm border border-state-warn/40 bg-state-warn/10 px-3 py-2 text-[12px] text-state-warn"
       >
         <ManageIcon name="users" />
         <span>
@@ -141,7 +141,7 @@ const textarea =
         </span>
       </div>
 
-      <div class="flex items-center gap-2 rounded border border-hairline bg-mg-surface-1 px-3 py-2 text-[12px] text-fg-2">
+      <div class="flex items-center gap-2 rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2 text-[12px] text-fg-2">
         <ManageIcon name="hourglass" :size="14" />
         <span>{{ queue.remaining }} profile{{ queue.remaining === 1 ? '' : 's' }} waiting for a verdict.</span>
         <a :href="profile.publicUrl" target="_blank" rel="noopener" class="ml-auto text-state-live underline">
@@ -151,7 +151,7 @@ const textarea =
 
       <section class="grid grid-cols-1 gap-3 md:grid-cols-12">
         <div class="md:col-span-3">
-          <div class="flex flex-col items-center gap-2 rounded border border-hairline bg-mg-surface-1 p-3">
+          <div class="flex flex-col items-center gap-2 rounded-sm border border-hairline bg-mg-surface-1 p-3">
             <img
               v-if="profile.avatar"
               :src="profile.avatar"
@@ -172,7 +172,7 @@ const textarea =
         </div>
 
         <div class="flex flex-col gap-3 md:col-span-9">
-          <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+          <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
             <div class="flex items-center justify-between gap-3">
               <span class="text-[12px] font-medium text-fg-2">Status</span>
               <span class="text-[11px] text-fg-3">Approving publishes the description and every link at once.</span>
@@ -185,7 +185,7 @@ const textarea =
 
           <div
             v-if="profile.rejectionReason"
-            class="rounded border border-state-danger/40 bg-state-danger/10 px-3 py-2"
+            class="rounded-sm border border-state-danger/40 bg-state-danger/10 px-3 py-2"
           >
             <div class="flex items-center gap-2">
               <ManageIcon name="circle-x" :size="16" class="text-state-danger" />
@@ -195,7 +195,7 @@ const textarea =
             <p class="text-[11px] text-fg-3">Shown to the profile owner.</p>
           </div>
 
-          <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+          <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
             <div class="flex items-baseline justify-between gap-3">
               <span class="text-[12px] font-medium text-fg-2">Description</span>
               <span class="text-[11px] text-fg-3">Shown publicly on the profile</span>
@@ -204,7 +204,7 @@ const textarea =
             <p class="text-[11px] text-fg-3">Should not contain profanities.</p>
           </div>
 
-          <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+          <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
             <div class="flex items-baseline justify-between gap-3">
               <span class="text-[12px] font-medium text-fg-2">Links</span>
               <span class="text-[11px] text-fg-3">Open each one and check where it leads</span>
@@ -266,14 +266,14 @@ const textarea =
       <template #footer>
         <button
           type="button"
-          class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
+          class="h-8 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
           @click="rejectOpen = false"
         >
           Cancel
         </button>
         <button
           type="button"
-          class="h-8 rounded bg-state-danger px-3 text-[13px] font-medium text-mg-surface-0"
+          class="h-8 rounded-sm bg-state-danger px-3 text-[13px] font-medium text-mg-surface-0"
           :disabled="rejectForm.processing"
           @click="submitReject"
         >

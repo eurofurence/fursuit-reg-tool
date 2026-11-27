@@ -38,7 +38,7 @@ function numberFormat(value: number): string {
         </h2>
 
         <ol class="flex items-end justify-center gap-2 sm:gap-4">
-            <li v-for="step in podium" :key="step.place" class="w-full max-w-[13rem]">
+            <li v-for="step in podium" :key="step.place" class="w-full max-w-52">
                 <div class="mb-1 text-center">
                     <p class="truncate text-sm font-semibold text-gray-900 sm:text-base">
                         {{ step.entry.user }}

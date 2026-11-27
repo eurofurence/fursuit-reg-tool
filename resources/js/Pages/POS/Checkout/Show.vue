@@ -2,12 +2,11 @@
 import {onMounted, onUnmounted, ref, watch, computed} from "vue";
 import { usePosKeyboard } from '@/composables/usePosKeyboard';
 import POSLayout from "@/Layouts/POSLayout.vue";
-import Button from 'primevue/button';
-import Card from 'primevue/card';
+import { AtSign, Banknote, CircleCheck, CreditCard, Image as ImageIcon, Loader2, Pencil, Printer, RefreshCw, X } from '@lucide/vue';
 import CashSVG from "@/Components/POS/Checkout/CashSVG.vue";
 import {formatEuroFromCents} from "@/helpers.js";
-import {useForm} from "laravel-precognition-vue-inertia";
-import Message from 'primevue/message'
+import {useForm} from "@inertiajs/vue3";
+import UiMessage from '@/Components/UI/UiMessage.vue';
 import {router} from "@inertiajs/vue3";
 import {usePage} from '@inertiajs/vue3';
 import PriceOverrideModal from '@/Components/POS/PriceOverrideModal.vue';
@@ -178,14 +177,14 @@ function payWithCash() {
         console.log('Insufficient amount');
         return;
     }
-    useForm('POST', route('pos.checkout.payWithCash', {'checkout': props.checkout.id}), {amount: given.value}).submit();
+    useForm('post', route('pos.checkout.payWithCash', {'checkout': props.checkout.id}), {amount: given.value}).submit();
 }
 
 function cancel() {
-    useForm('DELETE', route('pos.checkout.destroy', {'checkout': props.checkout.id}),{}).submit();
+    useForm('delete', route('pos.checkout.destroy', {'checkout': props.checkout.id}),{}).submit();
 }
 
-const startCardPaymentForm = useForm('POST', route('pos.checkout.startCardPayment', {'checkout': props.checkout.id}),{})
+const startCardPaymentForm = useForm('post', route('pos.checkout.startCardPayment', {'checkout': props.checkout.id}),{})
 
 function startCardPayment() {
     startCardPaymentForm.submit();
@@ -299,8 +298,8 @@ const overrideItems = computed(() => props.checkout.items.map((item) => ({
 const canOverride = computed(() => props.checkout.status !== 'FINISHED'
     && ! (props.transaction && (props.transaction.status === 'SUCCESSFUL' || props.transaction.status === 'PENDING')));
 
-const emailReceiptForm = useForm('POST', route('pos.checkout.receipt.email', {'checkout': props.checkout.id}), {});
-const printReceiptForm = useForm('POST', route('pos.checkout.receipt.print', {'checkout': props.checkout.id}), {});
+const emailReceiptForm = useForm('post', route('pos.checkout.receipt.email', {'checkout': props.checkout.id}), {});
+const printReceiptForm = useForm('post', route('pos.checkout.receipt.print', {'checkout': props.checkout.id}), {});
 
 function receiptForm(via) {
     if (via === 'email') {
@@ -324,13 +323,9 @@ function receiptForm(via) {
         <div class="flex-1 flex flex-row gap-2 mb-2">
             <!-- Left Side - Cash Calculator -->
             <div class="flex-1" v-if="checkout.status !== 'FINISHED'">
-                <!-- add flex-1 to content and make it flex-col with space-between -->
-                <Card class="h-full" :pt="{
-                    body: { class: 'p-5 flex-1 flex flex-col h-full'},
-                    content: { class: 'h-full flex-1' }
-                }">
-                    <template #title>Cash Register</template>
-                    <template #content>
+                <div class="pos-card h-full flex flex-col">
+                    <div class="pos-card__head"><h3>Cash Register</h3></div>
+                    <div class="h-full flex-1">
                         <!-- Vertical Grid: Amount Area / Banknotes+Coins Area -->
                         <div class="grid grid-rows-2 gap-4 h-full">
                             <!-- Top Half - Cash Input Display -->
@@ -388,7 +383,7 @@ function receiptForm(via) {
                                         <button v-for="denomination in cashDenominations.banknotes"
                                                 :key="denomination"
                                                 @click="addCash(denomination)"
-                                                class="aspect-[3/2] hover:bg-pos-accent/10 transition-colors rounded">
+                                                class="aspect-3/2 hover:bg-pos-accent/10 transition-colors rounded-sm">
                                             <CashSVG :denomination="denomination" size="large" />
                                         </button>
                                     </div>
@@ -398,63 +393,54 @@ function receiptForm(via) {
                                         <button v-for="denomination in cashDenominations.coins"
                                                 :key="denomination"
                                                 @click="addCash(denomination)"
-                                                class="flex-1 hover:bg-pos-accent/10 transition-colors rounded">
+                                                class="flex-1 hover:bg-pos-accent/10 transition-colors rounded-sm">
                                             <CashSVG :denomination="denomination" size="normal" />
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </template>
-                </Card>
+                    </div>
+                </div>
             </div>
 
             <!-- Receipt Options (when finished) - Left side -->
             <div class="flex-1" v-if="checkout.status === 'FINISHED'">
-                <Card class="h-full flex items-center justify-center">
-                    <template #content>
+                <div class="pos-card h-full flex items-center justify-center">
                         <div class="text-center">
                             <div class="text-pos-good mb-4">
-                                <i class="pi pi-check-circle text-4xl"></i>
+                                <CircleCheck class="inline-block size-9" aria-hidden="true" />
                                 <div class="text-xl font-bold mt-2">Transaction Complete</div>
                             </div>
                             <div class="flex gap-4 justify-center">
-                                <Button severity="contrast" size="large"
+                                <button type="button"
+                                        class="pos-btn pos-btn--primary pos-btn--commit min-w-[180px]"
                                         @click="receiptForm('email')"
-                                        :loading="emailReceiptForm.processing"
-                                        :disabled="emailReceiptForm.processing || printReceiptForm.processing"
-                                        class="min-w-[180px]">
-                                    <template #default>
-                                        <i class="pi pi-at mr-2"></i>
-                                        <span>E-Mail Receipt</span>
-                                        <span class="ml-2 text-xs opacity-75">[/]</span>
-                                    </template>
-                                </Button>
-                                <Button severity="contrast" size="large"
+                                        :disabled="emailReceiptForm.processing || printReceiptForm.processing">
+                                    <Loader2 v-if="emailReceiptForm.processing" class="size-4 animate-spin" aria-hidden="true" />
+                                    <AtSign v-else class="size-4" aria-hidden="true" />
+                                    <span>E-Mail Receipt</span>
+                                    <span class="text-xs opacity-75">[/]</span>
+                                </button>
+                                <button type="button"
+                                        class="pos-btn pos-btn--primary pos-btn--commit min-w-[180px]"
                                         @click="receiptForm('print')"
-                                        :loading="printReceiptForm.processing"
-                                        :disabled="emailReceiptForm.processing || printReceiptForm.processing"
-                                        class="min-w-[180px]">
-                                    <template #default>
-                                        <i class="pi pi-print mr-2"></i>
-                                        <span>Print Receipt</span>
-                                        <span class="ml-2 text-xs opacity-75">[*]</span>
-                                    </template>
-                                </Button>
+                                        :disabled="emailReceiptForm.processing || printReceiptForm.processing">
+                                    <Loader2 v-if="printReceiptForm.processing" class="size-4 animate-spin" aria-hidden="true" />
+                                    <Printer v-else class="size-4" aria-hidden="true" />
+                                    <span>Print Receipt</span>
+                                    <span class="text-xs opacity-75">[*]</span>
+                                </button>
                             </div>
                         </div>
-                    </template>
-                </Card>
+                </div>
             </div>
 
             <!-- Right Side - Transaction Overview -->
             <div class="flex-1">
-                <Card class="h-full" :pt="{
-                    body: { class: 'p-5 flex-1 flex flex-col h-full'},
-                    content: { class: 'h-full flex-1 flex justify-between flex-col' }
-                }">
-                    <template #title>Transaction #{{ checkout.id }}</template>
-                    <template #content>
+                <div class="pos-card h-full flex flex-col">
+                    <div class="pos-card__head"><h3>Transaction #{{ checkout.id }}</h3></div>
+                    <div class="h-full flex-1 flex justify-between flex-col">
                         <!-- Items List -->
                         <div class="flex-1 ">
                             <div class="mb-4 max-h-80 overflow-y-auto divide-y divide-pos-line">
@@ -467,7 +453,7 @@ function receiptForm(via) {
                                         loading="lazy"
                                     />
                                     <span v-else class="pos-badge__img pos-badge__img--empty">
-                                        <i class="pi pi-image text-xl"></i>
+                                        <ImageIcon class="size-5" aria-hidden="true" />
                                     </span>
 
                                     <div class="flex-1 min-w-0">
@@ -507,74 +493,71 @@ function receiptForm(via) {
                         <!-- Status -->
                         <div class="mt-4">
                             <!-- Card payment problems must not hide the cash fallback -->
-                            <Message v-if="flashError" :closable="false" severity="error" class="text-xs p-2 mb-2">
+                            <UiMessage v-if="flashError" :closable="false" icon="" severity="error" class="text-xs p-2 mb-2">
                                 {{ flashError }}
-                            </Message>
+                            </UiMessage>
                             <div v-if="transaction" class="mb-2">
                                 <div class="text-xs font-medium mb-1">Payment Status:</div>
-                                <Message :closable="false" :severity="getSeverityFromTransactionStatus(transaction.status)" class="text-xs p-2">
+                                <UiMessage :closable="false" icon="" :severity="getSeverityFromTransactionStatus(transaction.status)" class="text-xs p-2">
                                     {{ transaction.status }}
-                                </Message>
+                                </UiMessage>
                             </div>
                         </div>
-                    </template>
-                </Card>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Bottom Row - Action Buttons -->
         <div class="flex gap-2 h-12">
             <!-- Cash Payment Button -->
-            <Button v-if="checkout.status !== 'FINISHED'"
+            <button v-if="checkout.status !== 'FINISHED'"
+                type="button"
                 @click="payWithCash"
                 :disabled="given < (checkout.total / 100) || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))"
-                severity="success"
-                size="small"
-                class="pos-commit-accent flex-1 h-12 text-xs font-bold"
-                icon="pi pi-money-bill"
-                label="Complete Cash" />
+                class="pos-btn pos-commit-accent flex-1 h-12 text-xs font-bold">
+                <Banknote class="size-4" aria-hidden="true" />
+                Complete Cash
+            </button>
 
             <!-- Card Payment Button -->
-            <Button v-if="checkout.status !== 'FINISHED' && machine && machine.sumup_reader"
+            <button v-if="checkout.status !== 'FINISHED' && machine && machine.sumup_reader"
+                type="button"
                 @click="startCardPayment"
-                :disabled="transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING')"
-                :loading="startCardPaymentForm.processing"
-                severity="primary"
-                size="small"
-                class="pos-commit-accent flex-1 h-12 text-xs font-bold relative"
-                icon="pi pi-credit-card">
-                <template #default>
-                    <span>Pay Card</span>
-                    <span class="ml-2 text-xs opacity-75">[/]</span>
-                </template>
-            </Button>
+                :disabled="startCardPaymentForm.processing || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))"
+                class="pos-btn pos-commit-accent flex-1 h-12 text-xs font-bold relative">
+                <Loader2 v-if="startCardPaymentForm.processing" class="size-4 animate-spin" aria-hidden="true" />
+                <CreditCard v-else class="size-4" aria-hidden="true" />
+                <span>Pay Card</span>
+                <span class="text-xs opacity-75">[/]</span>
+            </button>
 
             <!-- Price Override Button -->
-            <Button v-if="canOverride"
+            <button v-if="canOverride"
+                type="button"
                 @click="showOverride = true"
-                severity="secondary"
-                size="small"
-                class="flex-1 h-12 text-xs font-bold"
-                icon="pi pi-pencil"
-                label="Override Price" />
+                class="pos-btn flex-1 h-12 text-xs font-bold">
+                <Pencil class="size-4" aria-hidden="true" />
+                Override Price
+            </button>
 
             <!-- Clear Cash Button -->
-            <Button v-if="checkout.status !== 'FINISHED'"
+            <button v-if="checkout.status !== 'FINISHED'"
+                type="button"
                 @click="clear"
-                severity="secondary"
-                size="small"
-                class="flex-1 h-12 text-xs font-bold"
-                icon="pi pi-refresh"
-                label="Clear" />
+                class="pos-btn flex-1 h-12 text-xs font-bold">
+                <RefreshCw class="size-4" aria-hidden="true" />
+                Clear
+            </button>
 
             <!-- Cancel Transaction Button -->
-            <Button @click="cancel"
+            <button type="button"
+                @click="cancel"
                 :disabled="checkout.status === 'FINISHED' || (transaction && (transaction.status === 'SUCCESSFUL' || transaction.status === 'PENDING'))"
-                severity="danger"
-                size="small"
-                class="flex-1 h-12 text-xs font-bold"
-                icon="pi pi-times"
-                label="Cancel" />
+                class="pos-btn flex-1 h-12 text-xs font-bold border-pos-bad! bg-pos-bad/10! text-pos-bad!">
+                <X class="size-4" aria-hidden="true" />
+                Cancel
+            </button>
         </div>
     </div>
 </template>

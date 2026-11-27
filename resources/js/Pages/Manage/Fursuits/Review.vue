@@ -353,7 +353,7 @@ const confirmBg = {
 };
 
 const textarea =
-  'w-full rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[12px] text-fg-1 outline-none focus:border-state-live/50';
+  'w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[12px] text-fg-1 outline-hidden focus:border-state-live/50';
 </script>
 
 <template>
@@ -364,7 +364,7 @@ const textarea =
       <template #actions>
         <a
           :href="queue.recordUrl"
-          class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+          class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
         >
           <ManageIcon name="eye" />
           Full record
@@ -376,7 +376,7 @@ const textarea =
         <button
           v-if="back"
           type="button"
-          class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+          class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
           :title="`${back.outcome} on ${back.fursuit ?? 'the previous fursuit'} - go back to undo it`"
           @click="goBack"
         >
@@ -386,7 +386,7 @@ const textarea =
 
         <button
           type="button"
-          class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+          class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
           @click="skip"
         >
           Skip
@@ -403,7 +403,7 @@ const textarea =
       -->
       <div
         v-if="othersLabel"
-        class="flex items-center gap-2 rounded border border-state-warn/40 bg-state-warn/10 px-3 py-2 text-[12px] text-state-warn"
+        class="flex items-center gap-2 rounded-sm border border-state-warn/40 bg-state-warn/10 px-3 py-2 text-[12px] text-state-warn"
       >
         <ManageIcon name="users" />
         <span>{{ othersLabel }}. Decide anyway, or skip to avoid doing the same work twice.</span>
@@ -412,7 +412,7 @@ const textarea =
       <section class="grid grid-cols-1 gap-3 lg:grid-cols-12">
         <!-- The photo and its history: the work, and what it looked like last time. -->
         <div class="flex flex-col gap-3 lg:col-span-8">
-          <div class="flex items-center justify-center rounded border border-hairline bg-mg-surface-1 p-2">
+          <div class="flex items-center justify-center rounded-sm border border-hairline bg-mg-surface-1 p-2">
             <!--
               The render is still queued. The queue itself holds these records back, so
               this is what a reviewer who arrived by link sees - or one sitting on a record
@@ -431,7 +431,7 @@ const textarea =
               v-else-if="fursuit.image"
               :src="fursuit.image"
               :alt="fursuit.name ?? ''"
-              class="max-h-[70vh] w-full rounded object-contain"
+              class="max-h-[70vh] w-full rounded-sm object-contain"
             />
             <span v-else class="flex h-60 items-center text-[12px] text-fg-3">No image</span>
           </div>
@@ -444,7 +444,7 @@ const textarea =
           -->
           <div
             v-if="resubmission"
-            class="rounded border px-3 py-2 text-[12px]"
+            class="rounded-sm border px-3 py-2 text-[12px]"
             :class="resubmission.imageChanged
               ? 'border-state-live/40 bg-state-live/10 text-state-live'
               : 'border-state-warn/40 bg-state-warn/10 text-state-warn'"
@@ -459,7 +459,7 @@ const textarea =
           </div>
 
           <!-- Earlier versions, newest first, so the two photos can be compared side by side. -->
-          <div v-if="history.length" class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+          <div v-if="history.length" class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
             <p class="text-[11px] font-medium uppercase tracking-wide text-fg-2">Earlier versions</p>
             <div class="mt-2 flex gap-3 overflow-x-auto pb-1">
               <figure
@@ -471,11 +471,11 @@ const textarea =
                   v-if="version.image"
                   :src="version.image"
                   :alt="version.name ?? ''"
-                  class="h-40 w-40 rounded border border-hairline object-cover"
+                  class="h-40 w-40 rounded-sm border border-hairline object-cover"
                 />
                 <div
                   v-else
-                  class="flex h-40 w-40 items-center justify-center rounded border border-dashed border-hairline text-center text-[11px] text-fg-3"
+                  class="flex h-40 w-40 items-center justify-center rounded-sm border border-dashed border-hairline text-center text-[11px] text-fg-3"
                 >
                   Photo no longer stored
                 </div>
@@ -496,7 +496,7 @@ const textarea =
 
         <!-- The decision column. -->
         <div class="flex flex-col gap-3 lg:col-span-4">
-          <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2">
+          <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2">
             <div class="flex items-center justify-between gap-3">
               <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">Name</span>
               <StatusBadge :status="fursuit.status" />
@@ -526,7 +526,7 @@ const textarea =
 
           <div
             v-if="fursuit.publication.blocked"
-            class="rounded border border-state-warn/40 bg-state-warn/10 px-3 py-2 text-[12px] text-state-warn"
+            class="rounded-sm border border-state-warn/40 bg-state-warn/10 px-3 py-2 text-[12px] text-state-warn"
           >
             <p class="font-medium">Blocked from the gallery and the game</p>
             <p v-if="fursuit.publication.reason" class="mt-0.5">{{ fursuit.publication.reason }}</p>
@@ -540,7 +540,7 @@ const textarea =
           <div
             v-for="outcome in outcomes"
             :key="outcome.value"
-            class="rounded border bg-mg-surface-1"
+            class="rounded-sm border bg-mg-surface-1"
             :class="[
               toneClasses[outcome.tone] ?? toneClasses.idle,
               chosen === outcome.value ? (chosenRing[outcome.tone] ?? chosenRing.idle) : '',
@@ -557,7 +557,7 @@ const textarea =
               <span class="flex items-center gap-2 text-[14px] font-semibold">
                 <ManageIcon :name="outcome.icon" :size="18" />
                 {{ outcome.label }}
-                <kbd class="ml-auto rounded border border-hairline px-1.5 py-0.5 text-[11px] uppercase text-fg-3">
+                <kbd class="ml-auto rounded-sm border border-hairline px-1.5 py-0.5 text-[11px] uppercase text-fg-3">
                   {{ outcome.shortcuts.join(' / ') }}
                 </kbd>
               </span>
@@ -580,7 +580,7 @@ const textarea =
                   v-for="(reason, index) in outcome.reasons"
                   :key="reason.value"
                   type="button"
-                  class="max-w-full rounded border px-2 py-1 text-left text-[11px] transition-colors"
+                  class="max-w-full rounded-sm border px-2 py-1 text-left text-[11px] transition-colors"
                   :class="form.reason === reason.value
                     ? 'border-state-live bg-state-live/15 text-fg-1'
                     : 'border-hairline text-fg-2 hover:bg-mg-surface-3'"
@@ -610,7 +610,7 @@ const textarea =
               <div class="flex items-center gap-2">
                 <button
                   type="button"
-                  class="h-7 rounded px-2.5 text-[12px] font-medium text-mg-surface-0 disabled:opacity-40"
+                  class="h-7 rounded-sm px-2.5 text-[12px] font-medium text-mg-surface-0 disabled:opacity-40"
                   :class="confirmBg[outcome.tone] ?? confirmBg.idle"
                   :disabled="!canConfirm || form.processing"
                   @click="confirm"
@@ -620,7 +620,7 @@ const textarea =
                 </button>
                 <button
                   type="button"
-                  class="h-7 rounded border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3"
+                  class="h-7 rounded-sm border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3"
                   @click="reset"
                 >
                   Cancel
@@ -635,11 +635,11 @@ const textarea =
           -->
           <div
             v-if="undo"
-            class="rounded border border-hairline bg-mg-surface-1 px-3 py-2"
+            class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2"
           >
             <button
               type="button"
-              class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+              class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
               @click="undoLast"
             >
               <ManageIcon name="rotate-ccw" />
@@ -651,7 +651,7 @@ const textarea =
             </p>
           </div>
 
-          <div class="rounded border border-hairline bg-mg-surface-1 px-3 py-2 text-[12px] text-fg-2">
+          <div class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2 text-[12px] text-fg-2">
             <div class="flex justify-between gap-3">
               <span class="text-fg-3">Attendee</span>
               <span class="text-fg-1">{{ fursuit.owner ?? 'unknown' }}</span>
@@ -673,7 +673,7 @@ const textarea =
           <!-- What was decided last time, so a resubmission is not judged blind. -->
           <div
             v-if="fursuit.lastDecision"
-            class="rounded border border-hairline bg-mg-surface-1 px-3 py-2 text-[12px]"
+            class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2 text-[12px]"
           >
             <p class="font-medium text-fg-2">
               Previously: {{ fursuit.lastDecision.outcome }}
@@ -685,13 +685,13 @@ const textarea =
           <p class="text-[11px] text-fg-3">
             <template v-for="(outcome, index) in outcomes" :key="outcome.value">
               <span v-if="index > 0"> &middot; </span>
-              <kbd class="rounded border border-hairline px-1 uppercase">{{ outcome.shortcuts.join('/') }}</kbd>
+              <kbd class="rounded-sm border border-hairline px-1 uppercase">{{ outcome.shortcuts.join('/') }}</kbd>
               {{ outcome.label }}
             </template>
-            &middot; <kbd class="rounded border border-hairline px-1">1-9</kbd> reason
-            &middot; <kbd class="rounded border border-hairline px-1">&crarr;</kbd> confirm
-            &middot; <kbd class="rounded border border-hairline px-1">&larr;</kbd> back to last
-            &middot; <kbd class="rounded border border-hairline px-1">&rarr;</kbd> skip
+            &middot; <kbd class="rounded-sm border border-hairline px-1">1-9</kbd> reason
+            &middot; <kbd class="rounded-sm border border-hairline px-1">&crarr;</kbd> confirm
+            &middot; <kbd class="rounded-sm border border-hairline px-1">&larr;</kbd> back to last
+            &middot; <kbd class="rounded-sm border border-hairline px-1">&rarr;</kbd> skip
           </p>
         </div>
       </section>

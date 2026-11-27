@@ -45,7 +45,7 @@ const formatSeconds = (value) => {
 
         <div class="flex flex-col gap-4 p-4">
             <div
-                class="flex flex-wrap items-center justify-between gap-3 rounded border border-hairline bg-mg-surface-1 p-3 text-[13px] text-fg-2"
+                class="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-hairline bg-mg-surface-1 p-3 text-[13px] text-fg-2"
             >
                 <div>
                     <div>
@@ -60,13 +60,13 @@ const formatSeconds = (value) => {
                     :href="route('admin.tools.catch-em-all-cache.forget-all')"
                     method="post"
                     as="button"
-                    class="rounded border border-state-danger/40 px-3 py-1.5 text-[12px] font-medium text-state-danger transition-colors hover:bg-mg-surface-2"
+                    class="rounded-sm border border-state-danger/40 px-3 py-1.5 text-[12px] font-medium text-state-danger transition-colors hover:bg-mg-surface-2"
                 >
                     Clear all listed
                 </Link>
             </div>
 
-            <div class="overflow-hidden rounded border border-hairline">
+            <div class="overflow-hidden rounded-sm border border-hairline">
                 <table
                     class="min-w-full divide-y divide-hairline bg-mg-surface-1 text-[13px]"
                 >

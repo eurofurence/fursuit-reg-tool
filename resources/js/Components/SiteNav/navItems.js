@@ -1,4 +1,4 @@
-import { CircleHelp, IdCard, Images, MapPin, Trophy } from 'lucide-vue-next';
+import { CircleHelp, IdCard, Images, MapPin, Trophy } from '@lucide/vue';
 
 /**
  * The public site's destinations, defined once and rendered three times: as the desktop

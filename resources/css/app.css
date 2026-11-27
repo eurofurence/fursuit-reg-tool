@@ -1,105 +1,293 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@plugin '@tailwindcss/forms';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/* Nothing sets .dark, so dark: utilities stay inert instead of following the OS. */
+@custom-variant dark (&:is(.dark *));
+
+/* Eurofurence palette, from reg-frontend-v2 src/stylesheets/colors.css. */
+@theme {
+  --color-brand-1-100: #c6f8df;
+  --color-brand-1-200: #90eeca;
+  --color-brand-1-300: #29a188;
+  --color-brand-1-400: #29a188;
+  --color-brand-1-500: #016257;
+  --color-brand-1-600: #005552;
+  --color-brand-1-700: #014248;
+  --color-brand-1-800: #00303a;
+  --color-brand-1-900: #01232f;
+
+  --color-brand-2-100: #c7cbf9;
+  --color-brand-2-200: #9398f3;
+  --color-brand-2-300: #5960db;
+  --color-brand-2-400: #2f36b7;
+  --color-brand-2-500: #020887;
+  --color-brand-2-600: #010674;
+  --color-brand-2-700: #010461;
+  --color-brand-2-800: #00034e;
+  --color-brand-2-900: #000240;
+
+  --color-brand-3-100: #fce3d9;
+  --color-brand-3-200: #fac2b4;
+  --color-brand-3-300: #f1978c;
+  --color-brand-3-400: #e46f6c;
+  --color-brand-3-500: #d33f49;
+  --color-brand-3-600: #b52e43;
+  --color-brand-3-700: #971f3d;
+  --color-brand-3-800: #7a1436;
+  --color-brand-3-900: #650c32;
+
+  --color-grays-000: #ffffff;
+  --color-grays-100: #e7edf5;
+  --color-grays-200: #d0dcec;
+  --color-grays-300: #a4b1c6;
+  --color-grays-400: #6f798d;
+  --color-grays-500: #2f3542;
+  --color-grays-600: #222838;
+  --color-grays-700: #171d2f;
+  --color-grays-800: #0e1426;
+  --color-grays-900: #090d1f;
+
+  --color-success: #158c28;
+  --color-info: #2952e8;
+  --color-warning: #ed9a00;
+  --color-error: #ce2621;
+  --color-blue-gray: #f6f6fe;
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-main: var(--font-sans);
+  --font-logo: Iris UPC, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  --breakpoint-xs: 370px;
+}
+
+/*
+ * Inline because these resolve per element: .pos and .manage re-point the
+ * --surface-* triplets in their own subtree, which a :root-resolved
+ * --color-* would never see.
+ */
+@theme inline {
+  /* shadcn-vue semantic tokens (Components/UI). */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* At --radius 0.5rem these equal Tailwind's own sm..xl, so existing rounded-* keep their size. */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Legacy primary/surface ramp, still used by page classes. */
+  --color-primary-inverse: rgb(var(--primary-inverse));
+  --color-primary-hover: rgb(var(--primary-hover));
+  --color-primary-active-color: rgb(var(--primary-active-color));
+  --color-primary-highlight: color-mix(in srgb, var(--primary) calc(var(--primary-highlight-opacity) * 100%), transparent);
+  --color-primary-highlight-inverse: rgb(var(--primary-highlight-inverse));
+  --color-primary-highlight-hover: color-mix(in srgb, var(--primary) calc(var(--primary-highlight-hover-opacity) * 100%), transparent);
+  --color-primary-50: rgb(var(--primary-50));
+  --color-primary-100: rgb(var(--primary-100));
+  --color-primary-200: rgb(var(--primary-200));
+  --color-primary-300: rgb(var(--primary-300));
+  --color-primary-400: rgb(var(--primary-400));
+  --color-primary-500: rgb(var(--primary-500));
+  --color-primary-600: rgb(var(--primary-600));
+  --color-primary-700: rgb(var(--primary-700));
+  --color-primary-800: rgb(var(--primary-800));
+  --color-primary-900: rgb(var(--primary-900));
+  --color-primary-950: rgb(var(--primary-950));
+  --color-surface-0: rgb(var(--surface-0));
+  --color-surface-50: rgb(var(--surface-50));
+  --color-surface-100: rgb(var(--surface-100));
+  --color-surface-200: rgb(var(--surface-200));
+  --color-surface-300: rgb(var(--surface-300));
+  --color-surface-400: rgb(var(--surface-400));
+  --color-surface-500: rgb(var(--surface-500));
+  --color-surface-600: rgb(var(--surface-600));
+  --color-surface-700: rgb(var(--surface-700));
+  --color-surface-800: rgb(var(--surface-800));
+  --color-surface-900: rgb(var(--surface-900));
+  --color-surface-950: rgb(var(--surface-950));
+
+  --color-pos-canvas: rgb(var(--pos-canvas));
+  --color-pos-panel: rgb(var(--pos-panel));
+  --color-pos-panel-2: rgb(var(--pos-panel-2));
+  --color-pos-line: rgb(var(--pos-line));
+  --color-pos-line-strong: rgb(var(--pos-line-strong));
+  --color-pos-text: rgb(var(--pos-text));
+  --color-pos-muted: rgb(var(--pos-muted));
+  --color-pos-accent: rgb(var(--pos-accent));
+  --color-pos-accent-ink: rgb(var(--pos-accent-ink));
+  --color-pos-good: rgb(var(--pos-good));
+  --color-pos-warn: rgb(var(--pos-warn));
+  --color-pos-bad: rgb(var(--pos-bad));
+  --color-mg-surface-0: rgb(var(--mg-surface-0));
+  --color-mg-surface-1: rgb(var(--mg-surface-1));
+  --color-mg-surface-2: rgb(var(--mg-surface-2));
+  --color-mg-surface-3: rgb(var(--mg-surface-3));
+  --color-fg-1: rgb(var(--fg-1));
+  --color-fg-2: rgb(var(--fg-2));
+  --color-fg-3: rgb(var(--fg-3));
+  --color-hairline: rgb(var(--hairline));
+  --color-state-live: rgb(var(--state-live));
+  --color-state-ok: rgb(var(--state-ok));
+  --color-state-warn: rgb(var(--state-warn));
+  --color-state-idle: rgb(var(--state-idle));
+  --color-state-danger: rgb(var(--state-danger));
+  --color-state-info: rgb(var(--state-info));
+
+  --radius-pos: var(--pos-radius);
+
+  --min-height-pos-touch: var(--pos-touch);
+  --min-height-pos-row: var(--pos-row);
+  --min-height-pos-commit: var(--pos-commit);
+
+  --spacing-mg-row: var(--mg-row);
+  --spacing-mg-row-head: var(--mg-row-head);
+  --spacing-mg-strip: var(--mg-strip);
+  --spacing-mg-rail: var(--mg-rail);
+}
+
 :root {
+  /*
+   * The PrimeVue ramp on the EF palette: primary is brand-2 navy, surface is
+   * the grays. Space-separated channels so .pos and .manage can re-point them.
+   * primary-50/950 and surface-300/600 are interpolated; surface-50 is blue-gray.
+   */
+  --primary-50: 227 229 252;
+  --primary-100: 199 203 249;
+  --primary-200: 147 152 243;
+  --primary-300: 89 96 219;
+  --primary-400: 47 54 183;
+  --primary-500: 2 8 135;
+  --primary-600: 1 6 116;
+  --primary-700: 1 4 97;
+  --primary-800: 0 3 78;
+  --primary-900: 0 2 64;
+  --primary-950: 0 1 42;
 
-    --primary-50: 236 253 245;
-    --primary-100: 209 250 229;
-    --primary-200: 167 243 208;
-    --primary-300: 110 231 183;
-    --primary-400: 0 130 121;
-    --primary-500: 31 60 134;
-    --primary-600: 19 37 83;
-    --primary-700: 4 120 87;
-    --primary-800: 6 95 70;
-    --primary-900: 4 78 56;
-    --primary-950: 2 44 34;
+  --surface-0: 255 255 255;
+  --surface-50: 246 246 254;
+  --surface-100: 231 237 245;
+  --surface-200: 208 220 236;
+  --surface-300: 186 198 217;
+  --surface-400: 164 177 198;
+  --surface-500: 111 121 141;
+  --surface-600: 79 87 104;
+  --surface-700: 47 53 66;
+  --surface-800: 34 40 56;
+  --surface-900: 23 29 47;
+  --surface-950: 9 13 31;
 
-    --surface-0: 255 255 255;
-    --surface-50: 250 250 250;
-    --surface-100: 244 244 245;
-    --surface-200: 228 228 231;
-    --surface-300: 212 212 216;
-    --surface-400: 161 161 170;
-    --surface-500: 113 113 122;
-    --surface-600: 82 82 91;
-    --surface-700: 63 63 70;
-    --surface-800: 39 39 42;
-    --surface-900: 24 24 27;
-    --surface-950: 9 9 11;
+  --primary-inverse: var(--surface-0);
+  --primary-hover: var(--primary-600);
+  --primary-active-color: var(--primary-600);
+  --primary-highlight-opacity: 0.1;
+  --primary-highlight-inverse: var(--primary-700);
+  --primary-highlight-hover-opacity: 0.2;
 
-    --primary: var(--primary-500);
-    --primary-inverse: var(--surface-0);
-    --primary-hover: var(--primary-600);
-    --primary-active-color: var(--primary-600);
-
-    --primary-highlight-opacity: 0.1;
-    --primary-highlight-inverse: var(--primary-700);
-    --primary-highlight-hover-opacity: 0.2;
+  --radius: 0.5rem;
+  --background: var(--color-grays-000);
+  --foreground: var(--color-grays-500);
+  --card: var(--color-grays-000);
+  --card-foreground: var(--color-grays-500);
+  --popover: var(--color-grays-000);
+  --popover-foreground: var(--color-grays-500);
+  --primary: var(--color-brand-2-500);
+  --primary-foreground: var(--color-grays-000);
+  --secondary: var(--color-grays-200);
+  --secondary-foreground: var(--color-brand-2-900);
+  --muted: var(--color-grays-100);
+  --muted-foreground: var(--color-grays-400);
+  --accent: var(--color-brand-1-100);
+  --accent-foreground: var(--color-brand-1-700);
+  --destructive: var(--color-error);
+  --destructive-foreground: var(--color-grays-000);
+  --border: var(--color-grays-200);
+  --input: var(--color-grays-300);
+  --ring: var(--color-info);
 }
 
-.dark {
-    --primary: var(--primary-400);
-    --primary-inverse: var(--surface-900);
-    --primary-hover: var(--primary-300);
-    --primary-active-color: var(--primary-300);
-
-    --primary-highlight-opacity: 0.2;
-    --primary-highlight-inverse: var(--surface-0);
-    --primary-highlight-hover-opacity: 0.3;
-}
-
-.customized-primary {
-    &:not(.dark) {
-        --primary: var(--primary-950);
-        --primary-inverse: var(--surface-0);
-        --primary-hover: var(--primary-800);
-        --primary-active-color: var(--primary-900);
-
-        --primary-highlight-opacity: 1;
-        --primary-highlight-inverse: var(--surface-0);
-        --primary-highlight-hover-opacity: 0.8;
-    }
-
-    &.dark {
-        --primary: var(--primary-50);
-        --primary-inverse: var(--surface-950);
-        --primary-hover: var(--primary-100);
-        --primary-active-color: var(--primary-100);
-
-        --primary-highlight-opacity: 0.1;
-        --primary-highlight-inverse: var(--surface-0);
-        --primary-highlight-hover-opacity: 0.2;
-
-    }
-}
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer components {
-    /**
-     * The one public-site container. Header, nav rail, footer and every page body
-     * share it so the chrome lines up with the content underneath it.
-     */
-    .site-container {
-        @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
-    }
+/* /admin ships dark only (manage.css), so the kit reads the control-room tokens there. */
+.manage,
+.manage-surface {
+  --background: rgb(var(--mg-surface-0));
+  --foreground: rgb(var(--fg-1));
+  --card: rgb(var(--mg-surface-1));
+  --card-foreground: rgb(var(--fg-1));
+  --popover: rgb(var(--mg-surface-2));
+  --popover-foreground: rgb(var(--fg-1));
+  --primary: rgb(var(--fg-1));
+  --primary-foreground: rgb(var(--mg-surface-0));
+  --secondary: rgb(var(--mg-surface-2));
+  --secondary-foreground: rgb(var(--fg-1));
+  --muted: rgb(var(--mg-surface-2));
+  --muted-foreground: rgb(var(--fg-2));
+  --accent: rgb(var(--mg-surface-3));
+  --accent-foreground: rgb(var(--fg-1));
+  --destructive: rgb(var(--state-danger));
+  --destructive-foreground: rgb(var(--fg-1));
+  --border: rgb(var(--hairline));
+  --input: rgb(var(--hairline));
+  --ring: rgb(var(--state-info));
 }
 
 @layer base {
-    /** add century gothic custom import ../assets/fonts/century_gothic.ttf */
-    @font-face {
-        font-family: 'Century Gothic';
-        src: url('../assets/fonts/century_gothic.TTF') format('truetype');
-    }
-    @font-face {
-        font-family: 'IricUPC Bold';
-        src: url('../assets/fonts/upcib.ttf') format('truetype');
-    }
+  /* Tailwind 4 defaults borders to currentColor and buttons to the arrow cursor; keep the v3 behaviour. */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentcolor);
+  }
 
-    @font-face {
-        font-family: 'IricUPC';
-        src: url('../assets/fonts/upcil.ttf') format('truetype');
-    }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
 
+  body {
+    color: var(--color-foreground);
+  }
 }
 
+@utility site-container {
+  /**
+     * The one public-site container. Header, nav rail, footer and every page body
+     * share it so the chrome lines up with the content underneath it.
+     */
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+@layer base {
+  @font-face {
+    font-family: 'IricUPC Bold';
+    src: url('../assets/fonts/upcib.ttf') format('truetype');
+  }
+
+  @font-face {
+    font-family: 'IricUPC';
+    src: url('../assets/fonts/upcil.ttf') format('truetype');
+  }
+}

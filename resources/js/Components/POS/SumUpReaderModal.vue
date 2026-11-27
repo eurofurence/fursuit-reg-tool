@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import Dialog from 'primevue/dialog';
-import RadioButton from 'primevue/radiobutton';
-import { posDialogPt } from '@/Components/POS/posDialog.js';
+import { Check, Loader2 } from '@lucide/vue';
+import UiDialog from '@/Components/UI/UiDialog.vue';
+import { RadioGroup, RadioGroupItem } from '@/Components/UI/radio-group';
+import { posDialog } from '@/Components/POS/posDialog.js';
 
 const props = defineProps({
     visible: {
@@ -71,6 +72,14 @@ watch(localVisible, (open) => emit('update:visible', open));
 
 const hasChanges = computed(() => form.sumup_reader_id !== currentReaderId.value);
 
+// Radio values as strings, so "No card reader" (null) stays a selectable value.
+const selectedReader = computed({
+    get: () => (form.sumup_reader_id === null ? 'none' : String(form.sumup_reader_id)),
+    set: (value) => {
+        form.sumup_reader_id = readers.value.find((reader) => String(reader.id) === value)?.id ?? null;
+    },
+});
+
 function save() {
     form.put(route('pos.machine.sumup-reader'), {
         preserveScroll: true,
@@ -82,15 +91,14 @@ function save() {
 </script>
 
 <template>
-    <Dialog
+    <UiDialog
         v-model:visible="localVisible"
+        v-bind="posDialog"
         modal
         :closable="true"
         class="mx-4"
-        :style="{ width: '28rem' }"
+        width="28rem"
         header="Card Reader"
-        :draggable="false"
-        :pt="posDialogPt"
     >
         <div class="flex flex-col gap-3">
             <p class="text-sm text-pos-muted">
@@ -98,7 +106,7 @@ function save() {
             </p>
 
             <div v-if="loading" class="flex items-center gap-2 px-3 py-6 text-pos-muted">
-                <i class="pi pi-spin pi-spinner"></i> Loading readers...
+                <Loader2 class="size-4 animate-spin" aria-hidden="true" /> Loading readers...
             </div>
 
             <div
@@ -108,16 +116,16 @@ function save() {
                 {{ loadError }}
             </div>
 
-            <div v-else class="pos-block pos-block--rows max-h-80 overflow-y-auto">
+            <RadioGroup v-else v-model="selectedReader" class="pos-block pos-block--rows max-h-80 overflow-y-auto gap-0">
                 <div
                     v-for="reader in readers"
                     :key="reader.id"
                     class="flex items-center gap-3 px-3 min-h-pos-touch"
                 >
-                    <RadioButton
-                        v-model="form.sumup_reader_id"
-                        :inputId="`reader_${reader.id}`"
-                        :value="reader.id"
+                    <RadioGroupItem
+                        :id="`reader_${reader.id}`"
+                        :value="String(reader.id)"
+                        class="size-5"
                     />
                     <label
                         :for="`reader_${reader.id}`"
@@ -137,18 +145,14 @@ function save() {
                 </div>
 
                 <div class="flex items-center gap-3 px-3 min-h-pos-touch">
-                    <RadioButton
-                        v-model="form.sumup_reader_id"
-                        inputId="reader_none"
-                        :value="null"
-                    />
+                    <RadioGroupItem id="reader_none" value="none" class="size-5" />
                     <label for="reader_none" class="flex-1 cursor-pointer font-medium text-pos-text py-2">
                         No card reader
                         <span class="block text-xs font-normal text-pos-muted">cash only at this till</span>
                     </label>
                     <span v-if="currentReaderId === null" class="pos-pill">Current</span>
                 </div>
-            </div>
+            </RadioGroup>
 
             <div
                 v-if="form.errors.sumup_reader_id"
@@ -173,9 +177,10 @@ function save() {
                 :disabled="form.processing || loading || ! hasChanges"
                 @click="save"
             >
-                <i class="pi" :class="form.processing ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+                <Loader2 v-if="form.processing" class="size-4 animate-spin" aria-hidden="true" />
+                <Check v-else class="size-4" aria-hidden="true" />
                 Save
             </button>
         </template>
-    </Dialog>
+    </UiDialog>
 </template>

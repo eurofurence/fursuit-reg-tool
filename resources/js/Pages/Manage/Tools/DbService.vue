@@ -100,7 +100,7 @@ const onImageError = (event) => {
         <div v-if="result" class="space-y-2 py-1">
           <div
             v-if="result.success"
-            class="rounded border border-state-ok/35 bg-state-ok/10 px-3 py-2 text-[13px] text-fg-1"
+            class="rounded-sm border border-state-ok/35 bg-state-ok/10 px-3 py-2 text-[13px] text-fg-1"
           >
             <p class="font-medium text-state-ok">Fix applied successfully.</p>
             <ul class="mt-1 list-inside list-disc text-fg-2">
@@ -112,7 +112,7 @@ const onImageError = (event) => {
 
           <div
             v-else
-            class="rounded border border-state-danger/35 bg-state-danger/10 px-3 py-2 text-[13px] text-fg-1"
+            class="rounded-sm border border-state-danger/35 bg-state-danger/10 px-3 py-2 text-[13px] text-fg-1"
           >
             <p class="font-medium text-state-danger">Fix failed.</p>
             <p class="mt-1 text-fg-2">{{ result.error }}</p>
@@ -125,7 +125,7 @@ const onImageError = (event) => {
             <div
               v-for="stat in stats"
               :key="stat.key"
-              class="rounded border border-hairline bg-mg-surface-2 px-3 py-2"
+              class="rounded-sm border border-hairline bg-mg-surface-2 px-3 py-2"
             >
               <p class="text-[11px] font-medium uppercase tracking-wide text-fg-3">{{ stat.label }}</p>
               <p class="text-[17px] font-semibold text-fg-1">{{ stat.value }}</p>

@@ -146,7 +146,7 @@ watch(
 </script>
 
 <template>
-  <section class="flex min-w-0 flex-col rounded border border-hairline bg-mg-surface-2">
+  <section class="flex min-w-0 flex-col rounded-sm border border-hairline bg-mg-surface-2">
     <h2 v-if="heading" class="border-b border-hairline px-3 py-2 text-[13px] font-medium text-fg-1">
       {{ heading }}
     </h2>
