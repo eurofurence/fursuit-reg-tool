@@ -2,7 +2,7 @@ export default {
     root: ({ props }) => ({
         class: [
             // Sizing and Shape
-            'min-w-[12rem]',
+            'min-w-48',
             'rounded-md',
 
             // Colors
@@ -22,7 +22,7 @@ export default {
         ]
     },
     list: {
-        class: 'py-3 list-none m-0 outline-none'
+        class: 'py-3 list-none m-0 outline-hidden'
     },
     item: ({ context }) => ({
         class: [
@@ -54,7 +54,7 @@ export default {
             //States
             { 'hover:bg-surface-100 dark:hover:bg-surface-600/80': !context.focused && !context.selected },
             { 'hover:bg-primary-highlight-hover': context.selected },
-            'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring focus-visible:ring-inset focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
 
             // Transitions
             'transition-shadow',
@@ -129,7 +129,7 @@ export default {
 
             // States
             'hover:border-primary',
-            'focus:ring focus:outline-none focus:outline-offset-0',
+            'focus:ring-3 focus:outline-hidden focus:outline-offset-0',
             'focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
             // Misc

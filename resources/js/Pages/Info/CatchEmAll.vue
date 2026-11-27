@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
-import { QrCode, Sparkles, Trophy } from 'lucide-vue-next';
+import { QrCode, Sparkles, Trophy } from '@lucide/vue';
 import Layout from '@/Layouts/Layout.vue';
 
 defineOptions({ layout: Layout });
@@ -60,7 +60,7 @@ const steps = [
             <template v-else>the convention</template>.
         </p>
 
-        <div class="mt-5 rounded-lg bg-white shadow-sm p-5">
+        <div class="mt-5 rounded-lg bg-white shadow-xs p-5">
             <p v-if="isActive" class="font-semibold">The game is running right now.</p>
             <p v-else class="font-semibold">The game is not running at the moment.</p>
             <p v-if="playWindow" class="text-sm text-gray-600 mt-1">Play window: {{ playWindow }}.</p>
@@ -82,7 +82,7 @@ const steps = [
         </div>
 
         <section class="mt-8 grid gap-4 sm:grid-cols-3">
-            <div v-for="step in steps" :key="step.title" class="rounded-lg bg-white shadow-sm p-5">
+            <div v-for="step in steps" :key="step.title" class="rounded-lg bg-white shadow-xs p-5">
                 <span class="grid place-items-center h-9 w-9 rounded-lg bg-primary-500/10 text-primary-500">
                     <component :is="step.icon" class="h-5 w-5"/>
                 </span>

@@ -4,7 +4,7 @@
  * Navigation items) to lucide components. Named imports keep this tree-shakeable, and
  * an unknown name renders nothing rather than throwing.
  *
- * Every name below was checked against the installed lucide-vue-next 0.536.0, which is
+ * Every name below was checked against the installed @lucide/vue 0.536.0, which is
  * older than the 0.542.0 the ef-streaming original was written against.
  */
 import { computed } from "vue";
@@ -97,7 +97,7 @@ import {
     UsersRound,
     Wrench,
     X,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 
 const icons = {
     archive: Archive,

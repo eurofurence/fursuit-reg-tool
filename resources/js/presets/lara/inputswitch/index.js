@@ -24,7 +24,7 @@ export default {
             'before:h-5 before:w-5',
             'before:rounded-full',
             'before:duration-200',
-            'before:bg-surface-0 before:dark:bg-surface-900',
+            'before:bg-surface-0 dark:before:bg-surface-900',
 
             // Colors
             'border',
@@ -41,7 +41,7 @@ export default {
             // States
             { 'peer-hover:bg-surface-300 dark:peer-hover:bg-surface-600 ': !(props.modelValue == props.trueValue) && !props.disabled },
             { 'peer-hover:bg-primary-hover ': props.modelValue == props.trueValue && !props.disabled },
-            'peer-focus-visible:ring peer-focus-visible:ring-primary-400/50 dark:peer-focus-visible:ring-primary-300/50',
+            'peer-focus-visible:ring-3 peer-focus-visible:ring-primary-400/50 dark:peer-focus-visible:ring-primary-300/50',
 
             // Transition
             'transition-colors duration-200',
@@ -70,7 +70,7 @@ export default {
             // Shape
             'opacity-0',
             'rounded-[2.5rem]',
-            'outline-none',
+            'outline-hidden',
 
             // Misc
             'appearance-none',

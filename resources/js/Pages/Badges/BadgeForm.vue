@@ -6,7 +6,7 @@ import Dropdown from "primevue/dropdown";
 import Dialog from 'primevue/dialog';
 import { useForm } from 'laravel-precognition-vue-inertia'
 import InputSwitch from 'primevue/inputswitch';
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import Button from '@/Components/UI/UiButton.vue';
 import ImageUpload from "@/Components/BadgeCreator/ImageUpload.vue";
 import InputError from "@/Components/InputError.vue";
@@ -45,7 +45,7 @@ const previewImage = ref(null);
 // Set while the preview shows an uncropped original: {x, y, width, height, naturalWidth}.
 // Null means the src is already the stored, cropped image.
 const previewCrop = ref(null);
-const imageSource = reactive({});
+const imageSource = ref({});
 const consentDialogOpen = ref(false);
 const consentType = ref(''); // 'catchEmAll' or 'gallery'
 const galleryDataDialogOpen = ref(false);
@@ -310,7 +310,7 @@ const canEditFields = computed(() => {
                 <li>Available without requiring login or registration</li>
             </ul>
             
-            <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mt-4">
+            <div class="bg-yellow-50 border border-yellow-200 rounded-sm p-3 mt-4">
                 <p class="text-sm">
                     <strong>Note:</strong> You can withdraw consent at any time by contacting our support team.
                 </p>
@@ -403,7 +403,7 @@ const canEditFields = computed(() => {
                                 <div class="flex flex-col items-center">
                                     <div class="relative group">
                                         <div v-if="!previewImage" @click="openImageModal"
-                                             class="w-48 h-64 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl shadow-lg cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center justify-center">
+                                             class="w-48 h-64 bg-linear-to-br from-primary-400 to-primary-600 rounded-xl shadow-lg cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 flex items-center justify-center">
                                             <div class="text-white text-center px-4 flex flex-col">
                                                 <i class="pi pi-camera text-3xl mb-2 block"></i>
                                                 <span class="text-sm font-medium">Upload Fursuit Photo</span>
@@ -697,6 +697,7 @@ const canEditFields = computed(() => {
 </template>
 
 <style scoped>
+@reference "../../../css/app.css";
 /* Custom styles for better visual hierarchy */
 .p-card {
     @apply border-0 bg-white/80 backdrop-blur-sm;

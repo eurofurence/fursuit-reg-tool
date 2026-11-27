@@ -30,7 +30,7 @@ const numeric = computed(() => typeof props.stat.value === 'number');
   <component
     :is="stat.url ? Link : 'div'"
     :href="stat.url"
-    class="flex flex-col gap-1 rounded border border-hairline bg-mg-surface-2 p-3"
+    class="flex flex-col gap-1 rounded-sm border border-hairline bg-mg-surface-2 p-3"
     :class="stat.url ? 'transition-colors hover:bg-mg-surface-3' : ''"
   >
     <span class="text-[11px] font-medium uppercase tracking-wide text-fg-3">

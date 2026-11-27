@@ -117,7 +117,7 @@ const segment
       <EventSelector :event="event" />
 
       <!-- Identity is the first thing worth dropping when there is no room for it. -->
-      <span v-if="user" class="hidden max-w-[10rem] truncate text-[11px] text-fg-3 sm:inline">
+      <span v-if="user" class="hidden max-w-40 truncate text-[11px] text-fg-3 sm:inline">
         {{ user.name }}
       </span>
 

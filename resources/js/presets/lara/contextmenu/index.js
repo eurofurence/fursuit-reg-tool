@@ -2,7 +2,7 @@ export default {
     root: {
         class: [
             // Sizing and Shape
-            'min-w-[12rem]',
+            'min-w-48',
             'rounded-md',
             'shadow-md',
 
@@ -21,7 +21,7 @@ export default {
             'list-none',
             'm-0',
             'p-0',
-            'outline-none'
+            'outline-hidden'
         ]
     },
     menuitem: {

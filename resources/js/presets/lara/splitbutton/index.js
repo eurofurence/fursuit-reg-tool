@@ -140,7 +140,7 @@ export default {
                 // Contrast Outlined Button
                 { 'text-surface-900 dark:text-surface-0 border border-surface-900 dark:border-surface-0': props.outlined && props.severity === 'contrast' && !props.plain },
                 // --- Severity Button States ---
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
 
                 // Link
                 { 'focus:ring-primary/50': parent.props.link },
@@ -339,7 +339,7 @@ export default {
                 // Contrast Outlined Button
                 { 'text-surface-900 dark:text-surface-0 border border-surface-900 dark:border-surface-0': props.outlined && props.severity === 'contrast' && !props.plain },
                 // --- Severity Button States ---
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
 
                 // Link
                 { 'focus:ring-primary/50': parent.props.link },
@@ -415,7 +415,7 @@ export default {
                 'rounded-md',
 
                 // Size
-                'min-w-[12rem]',
+                'min-w-48',
                 'py-1',
 
                 // Colors
@@ -429,7 +429,7 @@ export default {
                 'list-none',
                 'm-0',
                 'p-0',
-                'outline-none'
+                'outline-hidden'
             ]
         },
         menuitem: {

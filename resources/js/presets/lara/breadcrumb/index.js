@@ -36,8 +36,8 @@ export default {
             'text-surface-600 dark:text-white/70',
 
             // States
-            'focus-visible:outline-none focus-visible:outline-offset-0',
-            'focus-visible:ring focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
+            'focus-visible:outline-hidden focus-visible:outline-offset-0',
+            'focus-visible:ring-3 focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
 
             // Transitions
             'transition-shadow duration-200',

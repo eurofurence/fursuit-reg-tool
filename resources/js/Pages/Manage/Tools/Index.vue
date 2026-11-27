@@ -38,7 +38,7 @@ defineProps({
           v-for="tool in tools"
           :key="tool.key"
           :href="tool.url"
-          class="flex gap-3 rounded border p-4 transition-colors"
+          class="flex gap-3 rounded-sm border p-4 transition-colors"
           :class="tool.danger
             ? 'border-state-danger/40 bg-mg-surface-1 hover:bg-mg-surface-2'
             : 'border-hairline bg-mg-surface-1 hover:bg-mg-surface-2'"

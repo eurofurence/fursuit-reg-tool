@@ -1,9 +1,10 @@
 <script setup>
 import { computed } from 'vue';
+import { Badge } from '@/Components/UI/badge';
 import { TAG, severityClass } from './severity.js';
 
 /*
- * Drop-in for primevue/tag.
+ * Drop-in for primevue/tag, rendered by the kit's Badge.
  *
  * One deliberate difference: PrimeVue's Tag preset defined only primary,
  * success, info, warning and danger, so `severity="secondary"` — which
@@ -18,17 +19,17 @@ const props = defineProps({
 });
 
 const rootClass = computed(() => [
-    'text-xs font-bold inline-flex items-center justify-center px-2 py-1',
+    'border-transparent font-bold px-2 py-1',
     props.rounded ? 'rounded-full' : 'rounded-md',
     severityClass(TAG, props.severity),
 ]);
 </script>
 
 <template>
-    <span :class="rootClass">
-        <span v-if="icon" :class="['mr-1 text-sm', icon]" aria-hidden="true" />
+    <Badge :class="rootClass">
+        <span v-if="icon" :class="['text-sm', icon]" aria-hidden="true" />
         <span class="leading-normal">
             <slot>{{ value }}</slot>
         </span>
-    </span>
+    </Badge>
 </template>

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LogOut, User, X } from 'lucide-vue-next';
+import { LogOut, User, X } from '@lucide/vue';
 import { legalLinks } from './navItems';
 import { useSiteNav } from './useSiteNav';
 

@@ -23,7 +23,7 @@ export default {
             'flex items-center justify-center',
 
             // Position
-            '!absolute',
+            'absolute!',
             'top-0 left-0',
             'z-20',
 
@@ -43,7 +43,7 @@ export default {
             'flex items-center justify-center',
 
             // Position
-            '!absolute',
+            'absolute!',
             'top-0 right-0',
             'z-20',
 
@@ -96,7 +96,7 @@ export default {
 
                 // Spacing
                 'p-5',
-                '-mb-[2px]',
+                'mb-[-2px]',
 
                 // Shape
                 'border-b-2',
@@ -114,7 +114,7 @@ export default {
                 },
 
                 // States
-                'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring focus-visible:ring-inset',
+                'focus-visible:outline-hidden focus-visible:outline-offset-0 focus-visible:ring-3 focus-visible:ring-inset',
                 'focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
                 {
                     'hover:bg-surface-0 dark:hover:bg-surface-800/80': parent.state.d_activeIndex !== context.index,

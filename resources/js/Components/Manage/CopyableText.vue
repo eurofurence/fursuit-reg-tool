@@ -36,7 +36,7 @@ const button = 'text-fg-3 transition-colors hover:text-fg-1';
 </script>
 
 <template>
-  <div v-if="value" class="flex h-8 items-center gap-2 rounded border border-hairline bg-mg-surface-2 px-2">
+  <div v-if="value" class="flex h-8 items-center gap-2 rounded-sm border border-hairline bg-mg-surface-2 px-2">
     <code class="min-w-0 flex-1 truncate font-mono text-[12px] text-fg-1">
       {{ revealed ? value : '•'.repeat(Math.min(value.length, 32)) }}
     </code>

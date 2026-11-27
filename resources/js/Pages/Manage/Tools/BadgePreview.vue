@@ -72,14 +72,14 @@ const submit = () => form.post(route('admin.tools.badge-preview.lookup'), { pres
               type="text"
               maxlength="255"
               placeholder="Enter badge custom ID (e.g., ABC123)"
-              class="h-8 w-full rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-none transition-colors focus:border-state-live/50"
+              class="h-8 w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-hidden transition-colors focus:border-state-live/50"
             />
           </FormField>
 
           <div class="flex justify-end pt-1.5">
             <button
               type="submit"
-              class="h-8 rounded bg-state-live px-3 text-[13px] font-medium text-mg-surface-0 transition-opacity disabled:opacity-50"
+              class="h-8 rounded-sm bg-state-live px-3 text-[13px] font-medium text-mg-surface-0 transition-opacity disabled:opacity-50"
               :disabled="form.processing"
             >
               <!-- The blade's label, unchanged while submitting: the old panel's button kept

@@ -1,8 +1,8 @@
 <script setup>
 /*
- * Drop-in for primevue/card.
+ * Drop-in for primevue/card, rendered by the kit's Card.
  *
- * Same five slots, same classes as the vendored Lara preset. Each optional
+ * Same five slots as PrimeVue's. Each optional
  * section is omitted entirely when its slot is unused, so a card with only
  * #content carries no empty padded divs.
  *
@@ -13,6 +13,7 @@
  * and Transaction cards collapse to content height instead of filling the row.
  */
 import { useSlots } from 'vue';
+import { Card, CardDescription, CardTitle } from '@/Components/UI/card';
 
 defineProps({
     bodyClass: { type: [String, Array, Object], default: 'p-5' },
@@ -23,18 +24,18 @@ const slots = useSlots();
 </script>
 
 <template>
-    <div class="rounded-md shadow-md bg-surface-0 dark:bg-surface-900 text-surface-700 dark:text-surface-0">
+    <Card class="gap-0 py-0 overflow-hidden">
         <!-- #header sits outside the padded body: it is where call sites put a
              full-bleed image, which must not be inset by the body padding. -->
         <slot name="header" />
 
         <div :class="bodyClass">
-            <div v-if="slots.title" class="text-xl font-bold mb-2">
+            <CardTitle v-if="slots.title" class="text-xl font-bold leading-tight mb-2">
                 <slot name="title" />
-            </div>
-            <div v-if="slots.subtitle" class="font-normal mb-2 text-surface-600 dark:text-surface-0/60">
+            </CardTitle>
+            <CardDescription v-if="slots.subtitle" class="text-base mb-2">
                 <slot name="subtitle" />
-            </div>
+            </CardDescription>
 
             <div :class="contentClass">
                 <slot name="content" />
@@ -44,5 +45,5 @@ const slots = useSlots();
                 <slot name="footer" />
             </div>
         </div>
-    </div>
+    </Card>
 </template>

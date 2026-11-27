@@ -27,7 +27,7 @@ const statuses = computed(() => badgeStatusTags(props.badge));
             :src="badge.fursuit.image_url"
             :alt="`${badge.fursuit.name} badge`"
             :class="[
-                'w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border flex-shrink-0',
+                'w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border shrink-0',
                 archived ? 'opacity-75' : '',
             ]"
             loading="lazy"
@@ -53,7 +53,7 @@ const statuses = computed(() => badgeStatusTags(props.badge));
             </div>
         </div>
 
-        <div class="flex items-center gap-3 flex-shrink-0">
+        <div class="flex items-center gap-3 shrink-0">
             <div class="text-right">
                 <div class="font-semibold">{{ formatEuroFromCents(badge.total) }}</div>
             </div>

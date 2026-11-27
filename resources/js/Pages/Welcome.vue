@@ -349,7 +349,7 @@ const shouldShowRegMessage = computed(() => {
       of the banner - the hero has to come first, this comes immediately after.
     -->
     <div v-if="user && (badgeStatusLine || amountDue > 0)" class="max-w-3xl mx-auto mb-6">
-        <div class="rounded-lg bg-white shadow-sm divide-y divide-gray-100">
+        <div class="rounded-lg bg-white shadow-xs divide-y divide-gray-100">
             <Link v-if="badgeStatusLine" :href="route('badges.index')" class="flex items-center gap-3 p-4">
                 <i class="pi pi-id-card text-xl text-primary-500"></i>
                 <span class="flex-1">

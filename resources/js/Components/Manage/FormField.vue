@@ -40,7 +40,7 @@ defineEmits(['update:modelValue']);
  * the fight back at the call site.
  */
 const control =
-  'h-8 w-full rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-none transition-colors focus:border-state-live/50 disabled:cursor-not-allowed disabled:opacity-50';
+  'h-8 w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-hidden transition-colors focus:border-state-live/50 disabled:cursor-not-allowed disabled:opacity-50';
 </script>
 
 <template>
@@ -111,7 +111,7 @@ const control =
             />
             <span
               aria-hidden="true"
-              class="pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full bg-mg-surface-0 shadow transition-transform peer-checked:translate-x-4"
+              class="pointer-events-none absolute left-0.5 top-0.5 size-4 rounded-full bg-mg-surface-0 shadow-sm transition-transform peer-checked:translate-x-4"
             />
           </span>
         </span>
@@ -120,7 +120,7 @@ const control =
           v-else-if="type === 'textarea'"
           :value="modelValue"
           rows="3"
-          class="w-full rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[13px] text-fg-1 outline-none focus:border-state-live/50"
+          class="w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[13px] text-fg-1 outline-hidden focus:border-state-live/50"
           :disabled="disabled"
           :placeholder="placeholder"
           @input="$emit('update:modelValue', $event.target.value)"

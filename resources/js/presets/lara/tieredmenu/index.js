@@ -5,7 +5,7 @@ export default {
             'rounded-md',
 
             // Size
-            'min-w-[12rem]',
+            'min-w-48',
             'py-1',
 
             // Colors
@@ -19,7 +19,7 @@ export default {
             'list-none',
             'm-0',
             'p-0',
-            'outline-none'
+            'outline-hidden'
         ]
     },
     menuitem: {

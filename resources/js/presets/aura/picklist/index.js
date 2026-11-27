@@ -11,7 +11,7 @@ export default {
             'flex xl:flex-col justify-center gap-2',
 
             // Spacing
-            'p-[1.125rem]'
+            'p-4.5'
         ]
     },
     sourcemoveupbutton: {
@@ -38,7 +38,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -83,7 +83,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -128,7 +128,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -173,7 +173,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -205,7 +205,7 @@ export default {
             // Color
             'bg-surface-0 dark:bg-surface-900',
             'border border-surface-200 dark:border-surface-700',
-            'outline-none'
+            'outline-hidden'
         ]
     },
     sourceheader: {
@@ -230,7 +230,7 @@ export default {
             'p-1',
 
             // Size
-            'min-h-[12rem] max-h-[24rem]',
+            'min-h-48 max-h-96',
 
             // Shape
             'rounded-b-md',
@@ -240,7 +240,7 @@ export default {
             'bg-surface-0 dark:bg-surface-900',
 
             // Focus & Outline
-            'outline-none',
+            'outline-hidden',
 
             // Misc
             'overflow-auto'
@@ -281,7 +281,7 @@ export default {
             'flex xl:flex-col justify-center gap-2',
 
             // Spacing
-            'p-[1.125rem]'
+            'p-4.5'
         ]
     },
     movetotargetbutton: {
@@ -308,7 +308,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -353,7 +353,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -398,7 +398,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -443,7 +443,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -470,7 +470,7 @@ export default {
             'flex xl:flex-col justify-center gap-2',
 
             // Spacing
-            'p-[1.125rem]'
+            'p-4.5'
         ]
     },
     targetmoveupbutton: {
@@ -497,7 +497,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -542,7 +542,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -587,7 +587,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -632,7 +632,7 @@ export default {
 
                 // State
                 'hover:bg-surface-200 dark:hover:bg-[rgba(255,255,255,0.03)] hover:border-surface-200 dark:hover:border-surface-700',
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
                 'focus:ring-primary-500 dark:focus:ring-primary-400',
                 { 'cursor-default pointer-events-none opacity-60': context.disabled },
 
@@ -664,7 +664,7 @@ export default {
             // Color
             'bg-surface-0 dark:bg-surface-900',
             'border border-surface-200 dark:border-surface-700',
-            'outline-none'
+            'outline-hidden'
         ]
     },
     targetheader: {
@@ -689,7 +689,7 @@ export default {
             'p-1',
 
             // Size
-            'min-h-[12rem] max-h-[24rem]',
+            'min-h-48 max-h-96',
 
             // Shape
             'rounded-b-md',
@@ -699,16 +699,16 @@ export default {
             'bg-surface-0 dark:bg-surface-900',
 
             // Focus & Outline
-            'outline-none',
+            'outline-hidden',
 
             // Misc
             'overflow-auto'
         ]
     },
     transition: {
-        enterFromClass: '!transition-none',
-        enterActiveClass: '!transition-none',
-        leaveActiveClass: '!transition-none',
-        leaveToClass: '!transition-none'
+        enterFromClass: 'transition-none!',
+        enterActiveClass: 'transition-none!',
+        leaveActiveClass: 'transition-none!',
+        leaveToClass: 'transition-none!'
     }
 };

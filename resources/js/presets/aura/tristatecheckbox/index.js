@@ -28,7 +28,7 @@ export default {
             'h-5',
 
             // Shape
-            'rounded',
+            'rounded-sm',
             'border',
 
             // Colors
@@ -47,7 +47,7 @@ export default {
             {
                 'peer-hover:border-surface-400 dark:peer-hover:border-surface-600': !props.disabled && !context.checked && !props.invalid,
                 'peer-hover:bg-primary-hover peer-hover:border-primary-hover': !props.disabled && context.checked,
-                'peer-focus-visible:z-10 peer-focus-visible:outline-none peer-focus-visible:outline-offset-0 peer-focus-visible:ring-1 peer-focus-visible:ring-primary-500 dark:peer-focus-visible:ring-primary-400': !props.disabled,
+                'peer-focus-visible:z-10 peer-focus-visible:outline-hidden peer-focus-visible:outline-offset-0 peer-focus-visible:ring-1 peer-focus-visible:ring-primary-500 dark:peer-focus-visible:ring-primary-400': !props.disabled,
                 'bg-surface-200 dark:bg-surface-700 select-none pointer-events-none cursor-default': props.disabled
             },
 
@@ -75,8 +75,8 @@ export default {
 
             // Shape
             'opacity-0',
-            'rounded',
-            'outline-none',
+            'rounded-sm',
+            'outline-hidden',
             'border border-surface-300 dark:border-surface-700',
 
             // Misc
@@ -87,8 +87,8 @@ export default {
     checkicon: {
         class: [
             // Size
-            'w-[0.875rem]',
-            'h-[0.875rem]',
+            'w-3.5',
+            'h-3.5',
 
             // Colors
             'text-white dark:text-surface-950',
@@ -101,8 +101,8 @@ export default {
     uncheckicon: {
         class: [
             // Size
-            'w-[0.875rem]',
-            'h-[0.875rem]',
+            'w-3.5',
+            'h-3.5',
 
             // Colors
             'text-white dark:text-surface-950',

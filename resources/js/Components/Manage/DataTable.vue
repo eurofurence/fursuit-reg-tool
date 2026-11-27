@@ -371,7 +371,7 @@ const open = (row, event) => {
       <button
         v-if="canSelectAll"
         type="button"
-        class="rounded px-1.5 py-0.5 text-[12px] text-state-live underline decoration-state-live/40 underline-offset-2 outline-none transition-colors hover:bg-state-live/10 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:opacity-50"
+        class="rounded-sm px-1.5 py-0.5 text-[12px] text-state-live underline decoration-state-live/40 underline-offset-2 outline-hidden transition-colors hover:bg-state-live/10 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:opacity-50"
         :disabled="selectingAll"
         @click="selectAllMatching"
       >
@@ -565,7 +565,7 @@ const open = (row, event) => {
                   :src="cell(row, column.key)"
                   alt=""
                   class="border border-hairline object-cover"
-                  :class="column.circular ? 'size-7 rounded-full' : 'h-6 w-10 rounded-sm'"
+                  :class="column.circular ? 'size-7 rounded-full' : 'h-6 w-10 rounded-xs'"
                 />
                 <span v-else class="text-fg-3">—</span>
               </template>
@@ -591,7 +591,7 @@ const open = (row, event) => {
               <template v-else-if="column.type === 'color'">
                 <span class="inline-flex items-center gap-1.5">
                   <span
-                    class="inline-block size-3.5 rounded-sm border border-hairline"
+                    class="inline-block size-3.5 rounded-xs border border-hairline"
                     :style="{ backgroundColor: cell(row, column.key) }"
                   />
                   <span class="font-mono text-[12px] text-fg-2">{{ cell(row, column.key) }}</span>

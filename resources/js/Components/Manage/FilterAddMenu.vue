@@ -84,7 +84,7 @@ const onMenuKeydown = (event) => {
     <button
       ref="trigger"
       type="button"
-      class="inline-flex h-7 items-center gap-1.5 rounded-full border border-dashed border-hairline bg-transparent px-2.5 text-[12px] leading-none text-fg-2 outline-none transition-colors hover:border-state-live/40 hover:text-fg-1 focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:opacity-40"
+      class="inline-flex h-7 items-center gap-1.5 rounded-full border border-dashed border-hairline bg-transparent px-2.5 text-[12px] leading-none text-fg-2 outline-hidden transition-colors hover:border-state-live/40 hover:text-fg-1 focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40 disabled:opacity-40"
       :disabled="empty"
       aria-haspopup="menu"
       :aria-expanded="open"
@@ -99,7 +99,7 @@ const onMenuKeydown = (event) => {
     <div
       v-if="open"
       ref="menu"
-      class="absolute top-full z-30 mt-1 max-h-72 w-52 max-w-[calc(100vw-2rem)] overflow-y-auto rounded border border-hairline bg-mg-surface-3 p-1 shadow-lg shadow-black/40"
+      class="absolute top-full z-30 mt-1 max-h-72 w-52 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-sm border border-hairline bg-mg-surface-3 p-1 shadow-lg shadow-black/40"
       :class="alignRight ? 'right-0' : 'left-0'"
       role="menu"
       aria-label="Add a filter"
@@ -110,7 +110,7 @@ const onMenuKeydown = (event) => {
         :key="filter.key"
         type="button"
         role="menuitem"
-        class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[12px] leading-none text-fg-2 outline-none transition-colors hover:bg-mg-surface-2 hover:text-fg-1 focus-visible:bg-mg-surface-2 focus-visible:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40"
+        class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[12px] leading-none text-fg-2 outline-hidden transition-colors hover:bg-mg-surface-2 hover:text-fg-1 focus-visible:bg-mg-surface-2 focus-visible:text-fg-1 focus-visible:ring-1 focus-visible:ring-state-live/40"
         @click="choose(filter)"
       >
         <span class="min-w-0 flex-1 truncate">{{ filter.label }}</span>

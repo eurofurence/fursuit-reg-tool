@@ -43,7 +43,7 @@ export default {
 
             // States
             { 'hover:border-primary-hover': !props.invalid },
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-500/50 dark:focus:ring-primary-400/50',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-500/50 dark:focus:ring-primary-400/50',
 
             // Filled State *for FloatLabel
             { filled: parent.instance?.$name == 'FloatLabel' && props.modelValue !== null }
@@ -72,7 +72,7 @@ export default {
                 'border border-primary',
 
                 // States
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'hover:bg-primary-hover hover:border-primary-hover',
                 'focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
             ]
@@ -297,7 +297,7 @@ export default {
             },
 
             // States
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
             {
                 'hover:bg-surface-100 dark:hover:bg-surface-800/80': !context.selected && !context.disabled,
                 'hover:bg-primary-highlight-hover': context.selected && !context.disabled
@@ -327,7 +327,7 @@ export default {
             },
 
             // States
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
             {
                 'hover:bg-surface-100 dark:hover:bg-surface-600/80': !context.selected && !context.disabled,
                 'hover:bg-primary-highlight-hover': context.selected && !context.disabled
@@ -363,7 +363,7 @@ export default {
             },
 
             // States
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
             {
                 'hover:bg-surface-100 dark:hover:bg-surface-600/80': !context.selected && !context.disabled,
                 'hover:bg-primary-highlight-hover': context.selected && !context.disabled
@@ -398,7 +398,7 @@ export default {
             },
 
             // States
-            'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
+            'focus:outline-hidden focus:outline-offset-0 focus:ring-3 focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
             {
                 'hover:bg-surface-100 dark:hover:bg-surface-600/80': !context.selected && !context.disabled,
                 'hover:bg-primary-highlight-hover': context.selected && !context.disabled
@@ -415,7 +415,7 @@ export default {
             'justify-center items-center',
 
             // Borders
-            'border-t-1',
+            'border-t',
             'border-solid border-surface-200',
 
             // Spacing
@@ -601,7 +601,7 @@ export default {
                 'transition-colors duration-200 ease-in-out',
 
                 // States
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'hover:bg-primary-300/20',
 
                 // Misc
@@ -629,7 +629,7 @@ export default {
                 'transition-colors duration-200 ease-in-out',
 
                 // States
-                'focus:outline-none focus:outline-offset-0 focus:ring',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-3',
                 'hover:bg-primary-300/20',
 
                 // Misc
@@ -639,7 +639,7 @@ export default {
     },
     transition: {
         enterFromClass: 'opacity-0 scale-y-[0.8]',
-        enterActiveClass: 'transition-[transform,opacity] duration-[120ms] ease-[cubic-bezier(0,0,0.2,1)]',
+        enterActiveClass: 'transition-[transform,opacity] duration-120 ease-out',
         leaveActiveClass: 'transition-opacity duration-100 ease-linear',
         leaveToClass: 'opacity-0'
     }

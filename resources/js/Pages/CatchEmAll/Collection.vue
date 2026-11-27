@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import CatchEmAllLayout from '@/Layouts/CatchEmAllLayout.vue'
 import FursuitPhoto from '@/Components/CatchEmAll/FursuitPhoto.vue'
-import { Circle, Gem, LayoutGrid, List, Medal, Sparkles, Star } from 'lucide-vue-next'
+import { Circle, Gem, LayoutGrid, List, Medal, Sparkles, Star } from '@lucide/vue'
 
 type Suit = {
     species: string

@@ -152,13 +152,13 @@ const submit = () => form.put(route('admin.fursuits.update', props.fursuit.id));
               v-if="preview"
               :src="preview"
               alt=""
-              class="h-20 w-20 rounded border border-hairline object-cover"
+              class="h-20 w-20 rounded-sm border border-hairline object-cover"
             />
             <div class="flex flex-col gap-1">
               <input
                 type="file"
                 accept="image/jpeg,image/png"
-                class="text-[12px] text-fg-2 file:mr-2 file:h-7 file:rounded file:border file:border-hairline file:bg-mg-surface-2 file:px-2 file:text-[12px] file:text-fg-1"
+                class="text-[12px] text-fg-2 file:mr-2 file:h-7 file:rounded-sm file:border file:border-hairline file:bg-mg-surface-2 file:px-2 file:text-[12px] file:text-fg-1"
                 :disabled="uploading"
                 @change="upload"
               />

@@ -14,7 +14,7 @@ import {
     ArrowLeft,
     Check,
     X
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 
 defineOptions({
     layout: Layout
@@ -176,7 +176,7 @@ function cancelBadge() {
                     <template #content>
                         <div class="flex gap-6">
                             <!-- Badge Image - Left Side -->
-                            <div class="flex-shrink-0">
+                            <div class="shrink-0">
                                 <img
                                     :src="badge.fursuit.image_url || '/images/placeholder.png'"
                                     :alt="badge.fursuit.name"

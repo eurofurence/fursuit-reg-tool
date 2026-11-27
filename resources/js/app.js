@@ -1,4 +1,5 @@
 import './bootstrap';
+import '@fontsource-variable/inter';
 import '../css/app.css';
 import '../css/pos.css';
 import 'primeicons/primeicons.css'
@@ -21,10 +22,6 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
-
-import.meta.glob([
-    '../assets/**',
-]);
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,

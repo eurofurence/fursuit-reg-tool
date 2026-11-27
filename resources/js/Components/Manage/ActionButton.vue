@@ -84,7 +84,7 @@ const activate = () => {
 };
 
 const base =
-  'inline-flex h-7 items-center gap-1.5 rounded border px-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex h-7 items-center gap-1.5 rounded-sm border px-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40';
 </script>
 
 <template>
@@ -137,7 +137,7 @@ const base =
         <select
           v-if="field.type === 'select'"
           v-model="form[field.key]"
-          class="h-8 rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1"
+          class="h-8 rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1"
           :required="field.required"
         >
           <option v-for="option in field.options" :key="option.value" :value="option.value">
@@ -153,7 +153,7 @@ const base =
           v-else-if="field.type === 'textarea'"
           v-model="form[field.key]"
           rows="3"
-          class="rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[13px] text-fg-1"
+          class="rounded-sm border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[13px] text-fg-1"
           :required="field.required"
           :maxlength="field.maxLength"
         />
@@ -162,7 +162,7 @@ const base =
           v-else
           v-model="form[field.key]"
           :type="field.type === 'number' ? 'number' : 'text'"
-          class="h-8 rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1"
+          class="h-8 rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1"
           :required="field.required"
           :maxlength="field.maxLength"
         />
@@ -174,14 +174,14 @@ const base =
     <template #footer>
       <button
         type="button"
-        class="h-8 rounded border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
+        class="h-8 rounded-sm border border-hairline px-3 text-[13px] text-fg-2 transition-colors hover:bg-mg-surface-3"
         @click="open = false"
       >
         Cancel
       </button>
       <button
         type="button"
-        class="h-8 rounded px-3 text-[13px] font-medium text-mg-surface-0"
+        class="h-8 rounded-sm px-3 text-[13px] font-medium text-mg-surface-0"
         :class="action.tone === 'danger' ? 'bg-state-danger' : 'bg-state-live'"
         :disabled="processing"
         @click="submit"

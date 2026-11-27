@@ -92,7 +92,7 @@ const onMenuKeydown = (event) => {
     <button
       ref="trigger"
       type="button"
-      class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] leading-none text-fg-2 outline-none transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40"
+      class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] leading-none text-fg-2 outline-hidden transition-colors hover:bg-mg-surface-3 hover:text-fg-1 focus-visible:border-state-live/60 focus-visible:ring-1 focus-visible:ring-state-live/40"
       aria-haspopup="true"
       :aria-expanded="open"
       title="Show or hide columns"
@@ -112,7 +112,7 @@ const onMenuKeydown = (event) => {
     <div
       v-if="open"
       ref="menu"
-      class="absolute top-full z-30 mt-1 max-h-72 w-56 max-w-[calc(100vw-2rem)] overflow-y-auto rounded border border-hairline bg-mg-surface-3 p-1 shadow-lg shadow-black/40"
+      class="absolute top-full z-30 mt-1 max-h-72 w-56 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-sm border border-hairline bg-mg-surface-3 p-1 shadow-lg shadow-black/40"
       :class="alignRight ? 'right-0' : 'left-0'"
       role="group"
       aria-label="Show or hide columns"
@@ -121,12 +121,12 @@ const onMenuKeydown = (event) => {
       <label
         v-for="column in columns"
         :key="column.key"
-        class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[12px] leading-none text-fg-2 transition-colors hover:bg-mg-surface-2 hover:text-fg-1 focus-within:bg-mg-surface-2 focus-within:text-fg-1"
+        class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-[12px] leading-none text-fg-2 transition-colors hover:bg-mg-surface-2 hover:text-fg-1 focus-within:bg-mg-surface-2 focus-within:text-fg-1"
       >
         <input
           type="checkbox"
           :checked="!hidden.includes(column.key)"
-          class="cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-state-live/40"
+          class="cursor-pointer outline-hidden focus-visible:ring-1 focus-visible:ring-state-live/40"
           @change="emit('toggle', column.key)"
         />
         <span class="min-w-0 flex-1 truncate">{{ column.label }}</span>

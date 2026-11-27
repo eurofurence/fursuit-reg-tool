@@ -7,7 +7,7 @@ import {
     Flag,
     Lock,
     FlagTriangleRight,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 
 type Achievement = {
     id: string;

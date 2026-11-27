@@ -191,13 +191,13 @@ const submit = () => {
               <input
                 type="datetime-local"
                 :value="form.mass_printed_at"
-                class="h-8 w-full max-w-56 rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-none transition-colors focus:border-state-live/50"
+                class="h-8 w-full max-w-56 rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-hidden transition-colors focus:border-state-live/50"
                 @input="form.mass_printed_at = $event.target.value"
               />
 
               <button
                 type="button"
-                class="inline-flex h-7 shrink-0 items-center rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+                class="inline-flex h-7 shrink-0 items-center rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
                 @click="form.mass_printed_at = localNow()"
               >
                 Set to now
@@ -206,7 +206,7 @@ const submit = () => {
               <button
                 v-if="form.mass_printed_at"
                 type="button"
-                class="inline-flex h-7 shrink-0 items-center rounded border border-hairline px-2 text-[12px] font-medium text-fg-2 transition-colors hover:bg-mg-surface-3 hover:text-fg-1"
+                class="inline-flex h-7 shrink-0 items-center rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-2 transition-colors hover:bg-mg-surface-3 hover:text-fg-1"
                 @click="form.mass_printed_at = ''"
               >
                 Clear

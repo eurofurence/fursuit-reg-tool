@@ -287,7 +287,7 @@ onUnmounted(() => {
             <!-- Archival Notice -->
             <div v-if="selected_event?.archival_notice" class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-8">
                 <div class="flex items-start">
-                    <div class="flex-shrink-0">
+                    <div class="shrink-0">
                         <svg class="h-5 w-5 text-amber-600 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -301,7 +301,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Search and Filter Section -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div class="bg-white rounded-lg shadow-xs border border-gray-200 p-6 mb-8">
                 <div class="flex flex-col lg:flex-row gap-4">
                     <!-- Search Bar -->
                     <div class="flex-1">
@@ -437,7 +437,7 @@ onUnmounted(() => {
         <div
             v-if="imageViewIsOpen"
             @click="toggleImageView"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm transition-all"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-xs transition-all"
         >
             <div @click.stop class="relative max-w-4xl max-h-[90vh] mx-4">
                 <button

@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { MoreHorizontal } from 'lucide-vue-next';
+import { MoreHorizontal } from '@lucide/vue';
 import SiteMoreSheet from './SiteMoreSheet.vue';
 import { useSiteNav } from './useSiteNav';
 

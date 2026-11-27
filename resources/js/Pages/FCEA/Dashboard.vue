@@ -108,12 +108,12 @@ const getRankIcon = (rank: number) => {
 <template>
     <Head title="Catch'em All! - Dashboard" />
     
-    <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div class="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100">
         <!-- Success Message for Caught Fursuit -->
         <div v-if="showCaughtMessage && caughtFursuit" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
             <Card class="w-full max-w-sm mx-auto animate-bounce-in">
                 <template #header>
-                    <div class="text-center py-6 bg-gradient-to-r from-green-400 to-green-600">
+                    <div class="text-center py-6 bg-linear-to-r from-green-400 to-green-600">
                         <div class="text-6xl mb-2">🎉</div>
                         <h2 class="text-2xl font-bold text-white">Amazing!</h2>
                     </div>
@@ -141,7 +141,7 @@ const getRankIcon = (rank: number) => {
             <!-- Progress Header -->
             <Card class="mb-6 shadow-lg">
                 <template #header>
-                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-t-lg">
+                    <div class="bg-linear-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-t-lg">
                         <div class="text-center">
                             <div class="text-4xl mb-2">🦊</div>
                             <h1 class="text-2xl font-bold mb-1">Catch'em All!</h1>
@@ -153,15 +153,15 @@ const getRankIcon = (rank: number) => {
                     <div class="space-y-6">
                         <!-- Stats Grid -->
                         <div class="grid grid-cols-3 gap-4 text-center">
-                            <div class="bg-gradient-to-b from-blue-50 to-blue-100 rounded-lg p-4">
+                            <div class="bg-linear-to-b from-blue-50 to-blue-100 rounded-lg p-4">
                                 <div class="text-2xl font-bold text-blue-600">{{ myUserInfo.rank }}</div>
                                 <div class="text-xs text-blue-500 uppercase tracking-wide">Your Rank</div>
                             </div>
-                            <div class="bg-gradient-to-b from-green-50 to-green-100 rounded-lg p-4">
+                            <div class="bg-linear-to-b from-green-50 to-green-100 rounded-lg p-4">
                                 <div class="text-2xl font-bold text-green-600">{{ myUserInfo.score }}</div>
                                 <div class="text-xs text-green-500 uppercase tracking-wide">Caught</div>
                             </div>
-                            <div class="bg-gradient-to-b from-purple-50 to-purple-100 rounded-lg p-4">
+                            <div class="bg-linear-to-b from-purple-50 to-purple-100 rounded-lg p-4">
                                 <div class="text-2xl font-bold text-purple-600">{{ myUserInfo.remaining }}</div>
                                 <div class="text-xs text-purple-500 uppercase tracking-wide">Remaining</div>
                             </div>
@@ -197,7 +197,7 @@ const getRankIcon = (rank: number) => {
             <!-- Catch Code Input -->
             <Card class="mb-6 shadow-lg">
                 <template #header>
-                    <div class="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 rounded-t-lg">
+                    <div class="bg-linear-to-r from-orange-500 to-red-500 text-white p-4 rounded-t-lg">
                         <div class="text-center">
                             <div class="text-3xl mb-2">🎯</div>
                             <h2 class="text-lg font-bold">Enter Catch Code</h2>
@@ -240,7 +240,7 @@ const getRankIcon = (rank: number) => {
             <!-- Leaderboards -->
             <Card class="shadow-lg">
                 <template #header>
-                    <div class="bg-gradient-to-r from-gray-700 to-gray-900 text-white p-4 rounded-t-lg">
+                    <div class="bg-linear-to-r from-gray-700 to-gray-900 text-white p-4 rounded-t-lg">
                         <div class="text-center">
                             <div class="text-3xl mb-2">🏆</div>
                             <h2 class="text-lg font-bold">Leaderboards</h2>
@@ -334,7 +334,7 @@ const getRankIcon = (rank: number) => {
             <!-- How It Works -->
             <Card class="mt-6 shadow-lg">
                 <template #header>
-                    <div class="bg-gradient-to-r from-teal-500 to-cyan-500 text-white p-4 rounded-t-lg">
+                    <div class="bg-linear-to-r from-teal-500 to-cyan-500 text-white p-4 rounded-t-lg">
                         <div class="text-center">
                             <div class="text-3xl mb-2">❓</div>
                             <h2 class="text-lg font-bold">How It Works</h2>

@@ -408,7 +408,7 @@ function notificationSub(notification) {
                 </form>
 
                 <div class="flex-1 flex items-center justify-center mt-2">
-                    <div class="pos-keypad w-full max-w-md h-full max-h-[24rem]">
+                    <div class="pos-keypad w-full max-w-md h-full max-h-96">
                         <button v-for="n in ['7','8','9','4','5','6','1','2','3','0']" :key="n"
                                 type="button" class="pos-key" @click="keyPress(n)">{{ n }}</button>
                         <button type="button" class="pos-key pos-key--wide" @click="keyPress('delete')">Delete</button>

@@ -125,7 +125,7 @@ export default {
                 { 'text-surface-900 dark:text-surface-0 border border-surface-900 dark:border-surface-0': props.outlined && props.severity === 'contrast' && !props.plain },
 
                 // --- Severity Button States ---
-                'focus:outline-none focus:outline-offset-0 focus:ring-1',
+                'focus:outline-hidden focus:outline-offset-0 focus:ring-1',
 
                 // Link
                 { 'focus:ring-primary': props.link },

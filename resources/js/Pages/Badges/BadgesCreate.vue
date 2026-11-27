@@ -6,7 +6,7 @@ import Dropdown from "primevue/dropdown";
 import Dialog from 'primevue/dialog';
 import {useForm} from 'laravel-precognition-vue-inertia'
 import InputSwitch from 'primevue/inputswitch';
-import {computed, reactive, ref} from "vue";
+import {computed, ref} from "vue";
 import Button from '@/Components/UI/UiButton.vue';
 import ImageUpload from "@/Components/BadgeCreator/ImageUpload.vue";
 import Panel from 'primevue/panel';
@@ -27,7 +27,7 @@ const props = defineProps({
 
 const imageModalOpen = ref(false)
 const previewImage = ref(null);
-const imageSource = reactive({});
+const imageSource = ref({});
 const consentDialogOpen = ref(false);
 const consentType = ref(''); // 'catchEmAll' or 'gallery'
 const galleryDataDialogOpen = ref(false);
@@ -207,7 +207,7 @@ const total = computed(() => {
                 <li>Available without requiring login or registration</li>
             </ul>
             
-            <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mt-4">
+            <div class="bg-yellow-50 border border-yellow-200 rounded-sm p-3 mt-4">
                 <p class="text-sm">
                     <strong>Note:</strong> You can withdraw consent at any time by contacting our support team.
                 </p>
@@ -232,7 +232,7 @@ const total = computed(() => {
         </Message>
         <!-- Group 1 -- Fursuit Details -->
         <div class="space-y-8">
-            <div class="md:border-2 md:shadow md:bg-white md:rounded-lg md:p-8">
+            <div class="md:border-2 md:shadow-sm md:bg-white md:rounded-lg md:p-8">
                 <div class="mb-8 ">
                     <h2 class="text-lg font-semibold">Your Eurofurence Fursuit Badge</h2>
                     <p>Please enter the Information below, this will be displayed on your Fursuit Badge.</p>
@@ -242,7 +242,7 @@ const total = computed(() => {
                     <div class="w-48 mx-auto shrink-0">
                         <div class="block md:flex gap-6 justify-center mb-1">
                             <div v-if="!previewImage" @click="imageModalOpen = true"
-                                 class="bg-primary-600 h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 flex items-center justify-center cursor-pointer">
+                                 class="bg-primary-600 h-64 w-48 rounded-lg drop-shadow-sm mx-auto md:mx-0 flex items-center justify-center cursor-pointer">
                                 <div class="text-primary-100 text-center text-sm px-4">
                                     Click/Tap here to upload a photo of your fursuit
                                 </div>
@@ -253,7 +253,7 @@ const total = computed(() => {
                                     <div class="text-white mb-2">Edit Image</div>
                                 </div>
                                 <img :src="previewImage" alt=""
-                                     class="h-64 w-48 rounded-lg drop-shadow mx-auto md:mx-0 block z-25">
+                                     class="h-64 w-48 rounded-lg drop-shadow-sm mx-auto md:mx-0 block z-25">
                             </div>
                         </div>
                         <div class="text-center text-xs text-gray-500">

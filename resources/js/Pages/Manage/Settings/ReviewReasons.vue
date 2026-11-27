@@ -135,10 +135,10 @@ const toneText = {
 };
 
 const control =
-  'h-8 w-full rounded border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-none focus:border-state-live/50 disabled:opacity-60';
+  'h-8 w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 text-[13px] text-fg-1 outline-hidden focus:border-state-live/50 disabled:opacity-60';
 
 const textarea =
-  'w-full rounded border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[12px] leading-[17px] text-fg-1 outline-none focus:border-state-live/50 disabled:opacity-60';
+  'w-full rounded-sm border border-hairline bg-mg-surface-2 px-2 py-1.5 text-[12px] leading-[17px] text-fg-1 outline-hidden focus:border-state-live/50 disabled:opacity-60';
 </script>
 
 <template>
@@ -149,7 +149,7 @@ const textarea =
       <button
         v-if="canEdit"
         type="button"
-        class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+        class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
         @click="restoreDefaults"
       >
         <ManageIcon name="rotate-ccw" />
@@ -172,7 +172,7 @@ const textarea =
         <article
           v-for="reason in outcome.reasons"
           :key="reason.id"
-          class="rounded border border-hairline bg-mg-surface-1 px-3 py-2"
+          class="rounded-sm border border-hairline bg-mg-surface-1 px-3 py-2"
           :class="reason.isActive ? '' : 'opacity-60'"
         >
           <div class="flex flex-wrap items-center gap-2">
@@ -230,7 +230,7 @@ const textarea =
           <div v-if="canEdit" class="mt-2 flex items-center gap-2">
             <button
               type="button"
-              class="h-7 rounded bg-state-live px-2.5 text-[12px] font-medium text-mg-surface-0 disabled:opacity-40"
+              class="h-7 rounded-sm bg-state-live px-2.5 text-[12px] font-medium text-mg-surface-0 disabled:opacity-40"
               :disabled="!dirty(reason) || draftFor(reason).saving"
               @click="save(reason)"
             >
@@ -238,7 +238,7 @@ const textarea =
             </button>
             <button
               type="button"
-              class="h-7 rounded border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3 disabled:opacity-40"
+              class="h-7 rounded-sm border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3 disabled:opacity-40"
               :disabled="!dirty(reason)"
               @click="revert(reason)"
             >
@@ -246,7 +246,7 @@ const textarea =
             </button>
             <button
               type="button"
-              class="ml-auto h-7 rounded border border-state-danger/35 px-2 text-[12px] text-state-danger transition-colors hover:bg-state-danger/12"
+              class="ml-auto h-7 rounded-sm border border-state-danger/35 px-2 text-[12px] text-state-danger transition-colors hover:bg-state-danger/12"
               @click="remove(reason)"
             >
               Delete
@@ -259,14 +259,14 @@ const textarea =
           <button
             v-if="adding !== outcome.value"
             type="button"
-            class="inline-flex h-7 items-center gap-1.5 rounded border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
+            class="inline-flex h-7 items-center gap-1.5 rounded-sm border border-hairline px-2 text-[12px] font-medium text-fg-1 transition-colors hover:bg-mg-surface-3"
             @click="startAdd(outcome)"
           >
             <ManageIcon name="plus" />
             Add a reason
           </button>
 
-          <div v-else class="rounded border border-state-live/40 bg-mg-surface-1 px-3 py-2">
+          <div v-else class="rounded-sm border border-state-live/40 bg-mg-surface-1 px-3 py-2">
             <label class="flex flex-col gap-1">
               <span class="text-[11px] font-medium uppercase tracking-wide text-fg-2">Keyword</span>
               <input v-model="addForm.keyword" type="text" maxlength="60" :class="control" />
@@ -288,7 +288,7 @@ const textarea =
             <div class="mt-2 flex items-center gap-2">
               <button
                 type="button"
-                class="h-7 rounded bg-state-live px-2.5 text-[12px] font-medium text-mg-surface-0"
+                class="h-7 rounded-sm bg-state-live px-2.5 text-[12px] font-medium text-mg-surface-0"
                 :disabled="addForm.processing"
                 @click="submitAdd"
               >
@@ -296,7 +296,7 @@ const textarea =
               </button>
               <button
                 type="button"
-                class="h-7 rounded border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3"
+                class="h-7 rounded-sm border border-hairline px-2 text-[12px] text-fg-2 transition-colors hover:bg-mg-surface-3"
                 @click="adding = null"
               >
                 Cancel

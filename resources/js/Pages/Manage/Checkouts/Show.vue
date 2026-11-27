@@ -127,7 +127,7 @@ const items = computed(() => ({
         <FormField label="Updated At" :model-value="checkout.updated_at" readonly />
       </FormSection>
 
-      <section class="rounded border border-hairline bg-mg-surface-1">
+      <section class="rounded-sm border border-hairline bg-mg-surface-1">
         <header class="flex items-center gap-2 border-b border-hairline px-3 py-2">
           <h2 class="text-[12px] font-semibold uppercase tracking-wide text-fg-1">Checkout Items</h2>
         </header>
