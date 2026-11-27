@@ -501,6 +501,10 @@ test('a user who cannot see badges is offered no print action at all', function 
 });
 
 test('the bulk action leaves the list filters exactly as it found them', function () {
+    // The approval updates below bump fursuit.updated_at, which is part of the print file
+    // hash; a second ticking over mid-test would send the job off to re-render.
+    $this->freezeTime();
+
     $early = ($this->badge)('0100-1');
     $late = ($this->badge)('0200-1');
 
