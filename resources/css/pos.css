@@ -47,18 +47,37 @@
 }
 
 /*
- * PrimeVue runs unstyled with the local Lara preset, so its widgets carry
- * Tailwind utilities (bg-surface-100, border-surface-200, …) rather than
- * p-* hooks. Re-pointing the surface ramp inside .pos re-skins every
- * widget at once: the zinc greys become the ledger's cool blue-greys.
- * The public site keeps the ramp defined in app.css; /admin has its own in
- * manage.css.
+ * Re-pointing the surface ramp and the kit's semantic tokens inside .pos
+ * re-skins every widget at once: the zinc greys become the ledger's cool
+ * blue-greys and the kit's primary becomes the ledger accent. The public site
+ * keeps the values defined in app.css; /admin has its own in manage.css.
  *
- * .pos-surface carries the same ramp for the overlays PrimeVue teleports to
- * <body> — dialog masks, dropdown panels — which render outside .pos.
+ * .pos-surface carries the same values for overlays teleported to <body>
+ * (dialog masks, menus, toasts), which render outside .pos.
  */
 .pos,
 .pos-surface {
+    --background: rgb(var(--pos-canvas));
+    --foreground: rgb(var(--pos-text));
+    --card: rgb(var(--pos-panel));
+    --card-foreground: rgb(var(--pos-text));
+    --popover: rgb(var(--pos-panel));
+    --popover-foreground: rgb(var(--pos-text));
+    --primary: rgb(var(--pos-accent));
+    --primary-foreground: rgb(var(--pos-accent-ink));
+    --secondary: rgb(var(--pos-panel-2));
+    --secondary-foreground: rgb(var(--pos-text));
+    --muted: rgb(var(--pos-panel-2));
+    --muted-foreground: rgb(var(--pos-muted));
+    --accent: rgb(var(--pos-panel-2));
+    --accent-foreground: rgb(var(--pos-text));
+    --destructive: rgb(var(--pos-bad));
+    --destructive-foreground: rgb(var(--pos-accent-ink));
+    --border: rgb(var(--pos-line));
+    --input: rgb(var(--pos-line-strong));
+    --ring: rgb(var(--pos-accent));
+    --radius: var(--pos-radius);
+
     --surface-0: 255 255 255;
     --surface-50: 248 250 253;
     --surface-100: 244 246 250;
@@ -910,4 +929,29 @@ button.pos-row:active,
 .pos .simple-keyboard .hg-button[data-skbtn="{backspace}"] {
     font-family: inherit;
     font-size: 0.95rem;
+}
+
+/* ------------------------------------------------------------------
+   Toasts. Rich colours re-pointed onto the status palette, so a
+   success toast and a green row agree. (0,3,0) beats vue-sonner's
+   theme block regardless of stylesheet order.
+   ------------------------------------------------------------------ */
+.pos-surface[data-sonner-toaster][data-sonner-theme] {
+    --success-bg: color-mix(in srgb, rgb(var(--pos-good)) 8%, #fff);
+    --success-border: rgb(var(--pos-good));
+    --success-text: rgb(var(--pos-good));
+    --error-bg: color-mix(in srgb, rgb(var(--pos-bad)) 8%, #fff);
+    --error-border: rgb(var(--pos-bad));
+    --error-text: rgb(var(--pos-bad));
+    --warning-bg: color-mix(in srgb, rgb(var(--pos-warn)) 9%, #fff);
+    --warning-border: rgb(var(--pos-warn));
+    --warning-text: rgb(var(--pos-warn));
+    --info-bg: rgb(var(--pos-panel));
+    --info-border: rgb(var(--pos-accent));
+    --info-text: rgb(var(--pos-accent));
+}
+
+.pos-surface [data-sonner-toast] {
+    font-size: 0.95rem;
+    font-weight: 600;
 }

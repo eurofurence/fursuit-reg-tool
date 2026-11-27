@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
+import { List } from '@lucide/vue';
 
 import POSLayout from '@/Layouts/POSLayout.vue';
 import ConfirmModal from '@/Components/POS/ConfirmModal.vue';
@@ -566,7 +567,7 @@ usePosKeyboard({
                 Edit badge
             </button>
             <button type="button" class="pos-btn pos-btn--commit" @click="showDetails = true">
-                <i class="pi pi-list"></i> Details
+                <List class="size-4" aria-hidden="true" /> Details
             </button>
             <Link :href="route('pos.dashboard')" class="pos-btn pos-btn--commit">
                 Next attendee <span class="pos-kcap">⌫</span>

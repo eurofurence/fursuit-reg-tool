@@ -1,19 +1,14 @@
 <script setup>
-import Toast from 'primevue/toast';
-import { useToast } from 'primevue/usetoast';
-import {onMounted, watch} from "vue";
-import {usePage} from "@inertiajs/vue3";
+import { onMounted, watch } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+import { toast } from 'vue-sonner';
+import { Toaster } from '@/Components/UI/sonner';
 
-const toast = useToast();
+const page = usePage();
 
-// watch page props for flash messages and add them to the toast
-onMounted(() => {
-    checkToast();
-});
+onMounted(checkToast);
 
-watch(() => usePage().props.flash, () => {
-    checkToast();
-});
+watch(() => page.props.flash, checkToast);
 
 /*
  * Both used to sit at 1000ms. A clerk who presses Print and then looks down at
@@ -26,20 +21,16 @@ const SUCCESS_LIFE = 2500;
 const ERROR_LIFE = 8000;
 
 function checkToast() {
-    const page = usePage();
-    if (page.props.flash.success) {
-        toast.add({severity: 'success', summary: 'Success', detail: page.props.flash.success, life: SUCCESS_LIFE});
+    const flash = page.props.flash ?? {};
+    if (flash.success) {
+        toast.success(flash.success, { duration: SUCCESS_LIFE });
     }
-    if (page.props.flash.error) {
-        toast.add({severity: 'error', summary: 'Error', detail: page.props.flash.error, life: ERROR_LIFE});
+    if (flash.error) {
+        toast.error(flash.error, { duration: ERROR_LIFE });
     }
 }
 </script>
 
 <template>
-    <Toast position="top-center" />
+    <Toaster position="top-center" rich-colors class="pos-surface" />
 </template>
-
-<style scoped>
-
-</style>

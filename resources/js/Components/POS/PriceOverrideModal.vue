@@ -12,9 +12,9 @@
  * says "four fifty" and nobody at a counter thinks in cents.
  */
 import { computed, ref, watch } from 'vue';
-import Dialog from 'primevue/dialog';
+import UiDialog from '@/Components/UI/UiDialog.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { posDialogPt } from '@/Components/POS/posDialog.js';
+import { posDialog } from '@/Components/POS/posDialog.js';
 import ManagerApprovalField from '@/Components/POS/ManagerApprovalField.vue';
 import { formatEuroFromCents } from '@/helpers.js';
 
@@ -111,13 +111,13 @@ function submit() {
 </script>
 
 <template>
-    <Dialog
+    <UiDialog
+        v-bind="posDialog"
         :visible="show"
         modal
         :closable="false"
         header="Override price"
-        :style="{ width: '34rem' }"
-        :pt="posDialogPt"
+        width="34rem"
     >
         <div class="flex flex-col gap-3">
             <div v-for="item in items" :key="item.id" class="pos-card">
@@ -204,5 +204,5 @@ function submit() {
                 </button>
             </div>
         </template>
-    </Dialog>
+    </UiDialog>
 </template>

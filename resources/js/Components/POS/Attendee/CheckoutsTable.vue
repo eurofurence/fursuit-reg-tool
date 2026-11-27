@@ -1,9 +1,7 @@
 <script setup>
-
-import Column from "primevue/column";
-import DataTable from "primevue/datatable";
 import dayjs from "dayjs";
-import Chip from 'primevue/chip';
+import { Badge } from "@/Components/UI/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/Components/UI/table";
 
 defineProps({
     checkouts: Array
@@ -11,24 +9,30 @@ defineProps({
 </script>
 
 <template>
-    <DataTable dataKey="id" :value="checkouts" scrollable scrollHeight="400px" class="-m-5" tableStyle="min-width: 50rem">
-        <Column field="created_at" header="Date">
-            <template #body="slotProps">
-                {{ (slotProps.data.created_at) ? dayjs(slotProps.data.created_at).format('DD.MM.YY HH:mm') : '-' }}
-            </template>
-        </Column>
-        <Column field="status" header="Status" />
-        <Column field="payment_method" header="Method" />
-        <Column field="items" header="Items" class="flex flex-wrap gap-2">
-            <template #body="slotProps">
-                <Chip v-for="item in slotProps.data.items" :label="item.name" />
-            </template>
-        </Column>
-        <Column field="total" header="Total">
-            <template #body="slotProps">
-                {{ (parseInt(slotProps.data.total) / 100.0).toFixed(2) }} €
-            </template>
-        </Column>
-    </DataTable>
+    <div class="max-h-[400px] overflow-auto">
+        <Table class="min-w-[50rem] text-base">
+            <TableHeader class="bg-pos-panel-2">
+                <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Items</TableHead>
+                    <TableHead>Total</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                <TableRow v-for="checkout in checkouts" :key="checkout.id">
+                    <TableCell>{{ checkout.created_at ? dayjs(checkout.created_at).format('DD.MM.YY HH:mm') : '-' }}</TableCell>
+                    <TableCell>{{ checkout.status }}</TableCell>
+                    <TableCell>{{ checkout.payment_method }}</TableCell>
+                    <TableCell class="whitespace-normal">
+                        <div class="flex flex-wrap gap-2">
+                            <Badge v-for="item in checkout.items" :key="item.id ?? item.name" variant="secondary" class="text-sm">{{ item.name }}</Badge>
+                        </div>
+                    </TableCell>
+                    <TableCell class="pos-num">{{ (parseInt(checkout.total) / 100.0).toFixed(2) }} €</TableCell>
+                </TableRow>
+            </TableBody>
+        </Table>
+    </div>
 </template>
-

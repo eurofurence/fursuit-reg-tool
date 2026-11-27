@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
-import Tag from '@/Components/UI/UiTag.vue';
+import { ChevronRight } from '@lucide/vue';
+import { Badge } from '@/Components/UI/badge';
 import { formatEuroFromCents } from '../helpers.js';
 import { badgeStatusTags } from '../badgeStatus.js';
 
@@ -43,13 +44,14 @@ const statuses = computed(() => badgeStatusTags(props.badge));
             </div>
 
             <div class="mt-2 flex flex-wrap gap-1">
-                <Tag
+                <Badge
                     v-for="status in statuses"
                     :key="status.value"
-                    :severity="status.severity"
-                    :value="status.value"
-                />
-                <Tag v-if="badge.extra_copy" severity="secondary" value="Extra Copy" />
+                    :variant="status.severity === 'danger' ? 'destructive' : status.severity"
+                >
+                    {{ status.value }}
+                </Badge>
+                <Badge v-if="badge.extra_copy" variant="secondary">Extra Copy</Badge>
             </div>
         </div>
 
@@ -57,7 +59,7 @@ const statuses = computed(() => badgeStatusTags(props.badge));
             <div class="text-right">
                 <div class="font-semibold">{{ formatEuroFromCents(badge.total) }}</div>
             </div>
-            <i v-if="!archived" class="pi pi-chevron-right text-gray-400 text-sm"></i>
+            <ChevronRight v-if="!archived" class="size-4 text-muted-foreground" />
         </div>
     </div>
 </template>

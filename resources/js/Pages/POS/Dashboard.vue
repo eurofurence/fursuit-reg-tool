@@ -3,8 +3,9 @@ import { Head, Link, router, useForm, usePage } from "@inertiajs/vue3";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import POSLayout from "@/Layouts/POSLayout.vue";
 import { usePosKeyboard } from "@/composables/usePosKeyboard";
-import Dialog from "primevue/dialog";
-import { posDialogPt } from "@/Components/POS/posDialog.js";
+import { CircleCheck, History, IdCard, Printer, SlidersHorizontal, SquareCheck, ChartColumn, TriangleAlert, X } from "@lucide/vue";
+import UiDialog from "@/Components/UI/UiDialog.vue";
+import { posDialog } from "@/Components/POS/posDialog.js";
 
 defineOptions({
     layout: POSLayout,
@@ -195,7 +196,7 @@ const actions = computed(() => [
         label: 'Badge Management',
         subtitle: 'View & print badges',
         route: route('pos.badges.index'),
-        icon: 'pi pi-id-card',
+        icon: IdCard,
         key: 'F3',
     },
     {
@@ -204,7 +205,7 @@ const actions = computed(() => [
             ? `${props.stats?.pending_print ?? 0} pending · ${props.stats?.active_print ?? 0} active`
             : 'Nothing queued',
         route: route('pos.print-queue.index'),
-        icon: 'pi pi-print',
+        icon: Printer,
         key: 'F4',
         count: printQueueTotal.value || null,
     },
@@ -214,7 +215,7 @@ const actions = computed(() => [
             ? `${props.stats.my_print_batches_running} of yours still printing`
             : 'Runs you started',
         route: route('pos.my-prints.index'),
-        icon: 'pi pi-history',
+        icon: History,
         key: 'F7',
         count: props.printNotifications.length || null,
     },
@@ -222,14 +223,14 @@ const actions = computed(() => [
         label: 'Badge Verification',
         subtitle: 'Check a printed box off',
         route: route('pos.verification.index'),
-        icon: 'pi pi-check-square',
+        icon: SquareCheck,
         key: 'F8',
     },
     {
         label: 'Statistics',
         subtitle: 'Reports & totals',
         route: route('pos.statistics'),
-        icon: 'pi pi-chart-bar',
+        icon: ChartColumn,
         key: 'F6',
     },
 ]);
@@ -303,7 +304,7 @@ function notificationSub(notification) {
             >
                 <span class="pos-stat__k flex items-center gap-2">
                     {{ tile.label }}
-                    <i v-if="tile.action" class="pi pi-sliders-h text-[0.7rem]"></i>
+                    <SlidersHorizontal v-if="tile.action" class="size-3" aria-hidden="true" />
                 </span>
                 <span class="pos-stat__v">{{ tile.value }}</span>
                 <span class="pos-stat__sub" :class="tile.action && hasBadgeRange ? 'font-semibold' : ''">{{ tile.sub }}</span>
@@ -314,12 +315,12 @@ function notificationSub(notification) {
         </div>
 
         <!-- Which crate of badges this desk holds -->
-        <Dialog
+        <UiDialog
             v-model:visible="showRangeDialog"
+            v-bind="posDialog"
             modal
             header="Badges at this desk"
-            :style="{ width: '30rem' }"
-            :pt="posDialogPt"
+            width="30rem"
         >
             <p class="text-sm text-pos-muted mb-3">
                 Count only badges whose attendee ID falls in this range. Leave both
@@ -368,7 +369,7 @@ function notificationSub(notification) {
                     Save
                 </button>
             </template>
-        </Dialog>
+        </UiDialog>
 
         <!-- Work surface: lookup left, navigation right -->
         <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-2">
@@ -427,7 +428,7 @@ function notificationSub(notification) {
                     class="pos-row"
                     :class="action.alert ? 'pos-row--bad' : ''"
                 >
-                    <span class="pos-row__glyph"><i :class="action.icon"></i></span>
+                    <span class="pos-row__glyph"><component :is="action.icon" class="size-4" aria-hidden="true" /></span>
                     <span class="pos-row__body">
                         <span class="pos-row__title">{{ action.label }}</span>
                         <span class="pos-row__sub" :class="action.alert ? 'text-pos-bad font-semibold' : ''">
@@ -463,7 +464,7 @@ function notificationSub(notification) {
                             @click="openNotification(notification)"
                         >
                             <span class="pos-row__glyph">
-                                <i :class="notification.tone === 'bad' ? 'pi pi-exclamation-triangle' : 'pi pi-check-circle'"></i>
+                                <component :is="notification.tone === 'bad' ? TriangleAlert : CircleCheck" class="size-4" aria-hidden="true" />
                             </span>
                             <span class="pos-row__body">
                                 <span class="pos-row__title">{{ notification.headline }}</span>
@@ -482,7 +483,7 @@ function notificationSub(notification) {
                             aria-label="Dismiss notification"
                             @click="dismissNotification(notification)"
                         >
-                            <i class="pi pi-times"></i>
+                            <X class="size-4" aria-hidden="true" />
                         </button>
                     </div>
                 </div>

@@ -1,10 +1,14 @@
 <script setup>
 import { Head, router, usePage } from "@inertiajs/vue3";
 import { computed } from 'vue';
-import Button from '@/Components/UI/UiButton.vue';
-import Card from '@/Components/UI/UiCard.vue';
-import Tag from '@/Components/UI/UiTag.vue';
-import Message from '@/Components/UI/UiMessage.vue';
+import { Button, buttonVariants } from '@/Components/UI/button';
+import { Card, CardTitle } from '@/Components/UI/card';
+import { Badge } from '@/Components/UI/badge';
+import { Alert, AlertDescription } from '@/Components/UI/alert';
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/Components/UI/alert-dialog';
 import Layout from "@/Layouts/Layout.vue";
 import BadgePickupInfo from '@/Components/BadgePickupInfo.vue';
 import { badgeStatusTags } from '@/badgeStatus.js';
@@ -13,6 +17,12 @@ import {
     AlertCircle,
     ArrowLeft,
     Check,
+    CircleCheck,
+    CircleX,
+    Info,
+    Pencil,
+    Trash2,
+    TriangleAlert,
     X
 } from '@lucide/vue';
 
@@ -116,7 +126,9 @@ function getNextStepExplanation() {
     return 'Processing your badge request...';
 }
 
-function getMessageSeverity() {
+const MESSAGE_ICONS = { success: CircleCheck, info: Info, destructive: CircleX, warning: TriangleAlert };
+
+function getMessageVariant() {
     const badge = props.badge;
 
     if (badge.status_fulfillment === 'picked_up') {
@@ -132,21 +144,19 @@ function getMessageSeverity() {
     }
 
     if (badge.fursuit.status === 'rejected') {
-        return 'error';
+        return 'destructive';
     }
 
     // Default for pending/approved states
-    return 'warn';
+    return 'warning';
 }
 
 function cancelBadge() {
-    if (confirm('Are you sure you want to cancel this badge? This action cannot be undone.')) {
-        router.delete(route('badges.destroy', { badge: props.badge.id }), {
-            onSuccess: () => {
-                router.visit(route('badges.index'));
-            }
-        });
-    }
+    router.delete(route('badges.destroy', { badge: props.badge.id }), {
+        onSuccess: () => {
+            router.visit(route('badges.index'));
+        }
+    });
 }
 </script>
 
@@ -156,12 +166,15 @@ function cancelBadge() {
     <div class="site-container py-12">
         <!-- Status Message -->
         <div class="mb-6" v-if="getNextStepExplanation()">
-            <Message :severity="getMessageSeverity()" class="text-sm" :closable="false">
-                <span v-html="getNextStepExplanation()"></span>
-                <p v-if="rejectionReason" class="mt-2 border-l-2 border-current/40 pl-3 whitespace-pre-line">
-                    {{ rejectionReason }}
-                </p>
-            </Message>
+            <Alert :variant="getMessageVariant()">
+                <component :is="MESSAGE_ICONS[getMessageVariant()]"/>
+                <AlertDescription>
+                    <span v-html="getNextStepExplanation()"></span>
+                    <p v-if="rejectionReason" class="mt-2 border-l-2 border-current/40 pl-3 whitespace-pre-line">
+                        {{ rejectionReason }}
+                    </p>
+                </AlertDescription>
+            </Alert>
         </div>
 
         <!-- Main Content -->
@@ -169,11 +182,11 @@ function cancelBadge() {
             <!-- Left Column - Badge Details -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Badge Details Card -->
-                <Card>
-                    <template #title>
+                <Card class="gap-0 p-5">
+                    <CardTitle class="mb-2">
                         <h2 class="text-2xl font-bold">{{ badge.fursuit.name }}</h2>
-                    </template>
-                    <template #content>
+                    </CardTitle>
+                    <div>
                         <div class="flex gap-6">
                             <!-- Badge Image - Left Side -->
                             <div class="shrink-0">
@@ -190,17 +203,16 @@ function cancelBadge() {
                                 <div>
                                     <h3 class="font-semibold text-lg mb-2">Current Status</h3>
                                     <div class="flex flex-wrap gap-2">
-                                        <Tag
+                                        <Badge
                                             v-for="status in getActionableStatuses(badge)"
                                             :key="status.value"
-                                            :severity="status.severity"
-                                            :value="status.value"
-                                        />
-                                        <Tag
-                                            v-if="getActionableStatuses(badge).length === 0"
-                                            severity="success"
-                                            value="All Good!"
-                                        />
+                                            :variant="status.severity === 'danger' ? 'destructive' : status.severity"
+                                        >
+                                            {{ status.value }}
+                                        </Badge>
+                                        <Badge v-if="getActionableStatuses(badge).length === 0" variant="success">
+                                            All Good!
+                                        </Badge>
                                     </div>
                                 </div>
 
@@ -218,7 +230,7 @@ function cancelBadge() {
                                         </div>
                                         <div v-if="badge.extra_copy" class="flex justify-between">
                                             <span class="font-medium">Type:</span>
-                                            <Tag severity="secondary" value="Extra Copy" size="small" />
+                                            <Badge variant="secondary">Extra Copy</Badge>
                                         </div>
                                     </div>
                                 </div>
@@ -279,7 +291,7 @@ function cancelBadge() {
                                 </div>
                             </div>
                         </div>
-                    </template>
+                    </div>
                 </Card>
             </div>
 
@@ -292,54 +304,60 @@ function cancelBadge() {
                 <!-- Action Buttons -->
                 <div class="space-y-3" v-if="canEdit">
                     <Button
-                        label="Edit Badge"
-                        icon="pi pi-pencil"
                         @click="router.visit(route('badges.edit', {badge: badge.id}))"
                         class="w-full"
-                        size="large"
-                    />
-                    <Button
-                        label="Cancel Badge"
-                        icon="pi pi-trash"
-                        @click="cancelBadge"
-                        severity="danger"
-                        outlined
-                        class="w-full"
-                    />
+                        size="lg"
+                    >
+                        <Pencil/> Edit Badge
+                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger as-child>
+                            <Button
+                                variant="outline"
+                                class="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                                <Trash2/> Cancel Badge
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Cancel Badge</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to cancel this badge? This action cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Keep Badge</AlertDialogCancel>
+                                <AlertDialogAction :class="buttonVariants({ variant: 'destructive' })" @click="cancelBadge">
+                                    Cancel Badge
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
 
                 <!-- Having Issues Card -->
-                <Card class="shadow-lg">
-                    <template #title>
-                        <div class="flex items-center gap-2">
-                            <AlertCircle :size="20" class="text-primary-600" />
-                            <span>Having issues?</span>
-                        </div>
-                    </template>
-                    <template #content>
-                        <div class="space-y-3 text-sm text-gray-600">
-                            <p>
-                                If you have any questions about your badge status or pickup process, please visit the Fursuit Lounge during convention hours or contact our staff.
-                            </p>
-                            <p>
-                                For technical issues with the badge system, please report them to our support team.
-                            </p>
-                        </div>
-                    </template>
+                <Card class="gap-0 p-5 shadow-lg">
+                    <CardTitle class="text-xl font-bold leading-tight mb-2 flex items-center gap-2">
+                        <AlertCircle :size="20" class="text-primary" />
+                        <span>Having issues?</span>
+                    </CardTitle>
+                    <div class="space-y-3 text-sm text-gray-600">
+                        <p>
+                            If you have any questions about your badge status or pickup process, please visit the Fursuit Lounge during convention hours or contact our staff.
+                        </p>
+                        <p>
+                            For technical issues with the badge system, please report them to our support team.
+                        </p>
+                    </div>
                 </Card>
             </div>
         </div>
 
         <!-- Action Buttons -->
         <div class="mt-6 text-center">
-            <Button
-                @click="router.visit(route('badges.index'))"
-                class="p-button-secondary"
-            >
-                <template #icon>
-                    <ArrowLeft :size="16" class="mr-2 text-current" />
-                </template>
-                Back to Badges
+            <Button variant="secondary" @click="router.visit(route('badges.index'))">
+                <ArrowLeft/> Back to Badges
             </Button>
         </div>
     </div>

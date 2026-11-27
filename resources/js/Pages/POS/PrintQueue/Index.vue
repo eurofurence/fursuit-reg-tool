@@ -1,14 +1,19 @@
 <script setup>
 import { Head, Link, router } from "@inertiajs/vue3";
 import POSLayout from "@/Layouts/POSLayout.vue";
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import Button from 'primevue/button';
-import Tag from 'primevue/tag';
-import Card from 'primevue/card';
 import { useForm } from '@inertiajs/vue3';
-import { useToast } from 'primevue/usetoast';
+import { toast } from 'vue-sonner';
 import dayjs from 'dayjs';
+import UiTag from '@/Components/UI/UiTag.vue';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/UI/table';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/Components/UI/pagination';
 
 defineOptions({
     layout: POSLayout,
@@ -18,26 +23,14 @@ const props = defineProps({
     printJobs: Object,
 });
 
-const toast = useToast();
-
 function markAsPrinted(printJobId) {
     useForm('post', route('pos.print-queue.mark-printed', { printJob: printJobId }), {})
         .submit({
             onSuccess: () => {
-                toast.add({
-                    severity: 'success',
-                    summary: 'Success',
-                    detail: `Print job #${printJobId} marked as printed`,
-                    life: 3000
-                });
+                toast.success(`Print job #${printJobId} marked as printed`, { duration: 3000 });
             },
             onError: () => {
-                toast.add({
-                    severity: 'error',
-                    summary: 'Error',
-                    detail: `Failed to mark print job #${printJobId} as printed`,
-                    life: 5000
-                });
+                toast.error(`Failed to mark print job #${printJobId} as printed`, { duration: 5000 });
             }
         });
 }
@@ -46,20 +39,10 @@ function retryPrintJob(printJobId) {
     useForm('post', route('pos.print-queue.retry', { printJob: printJobId }), {})
         .submit({
             onSuccess: () => {
-                toast.add({
-                    severity: 'info',
-                    summary: 'Retry Queued',
-                    detail: `Print job #${printJobId} queued for retry`,
-                    life: 3000
-                });
+                toast.info('Retry Queued', { description: `Print job #${printJobId} queued for retry`, duration: 3000 });
             },
             onError: () => {
-                toast.add({
-                    severity: 'error',
-                    summary: 'Retry Failed',
-                    detail: `Failed to retry print job #${printJobId}`,
-                    life: 5000
-                });
+                toast.error('Retry Failed', { description: `Failed to retry print job #${printJobId}`, duration: 5000 });
             }
         });
 }
@@ -69,20 +52,10 @@ function deletePrintJob(printJobId) {
         useForm('delete', route('pos.print-queue.delete', { printJob: printJobId }), {})
             .submit({
                 onSuccess: () => {
-                    toast.add({
-                        severity: 'success',
-                        summary: 'Deleted',
-                        detail: `Print job #${printJobId} deleted successfully`,
-                        life: 3000
-                    });
+                    toast.success('Deleted', { description: `Print job #${printJobId} deleted successfully`, duration: 3000 });
                 },
                 onError: () => {
-                    toast.add({
-                        severity: 'error',
-                        summary: 'Delete Failed',
-                        detail: `Failed to delete print job #${printJobId}`,
-                        life: 5000
-                    });
+                    toast.error('Delete Failed', { description: `Failed to delete print job #${printJobId}`, duration: 5000 });
                 }
             });
     }
@@ -109,9 +82,9 @@ function getTypeSeverity(type) {
     }
 }
 
-function onPageChange(event) {
+function onPageChange(page) {
     router.get(route('pos.print-queue.index'), {
-        page: event.page + 1  // PrimeVue pages are 0-indexed, Laravel expects 1-indexed
+        page,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -136,117 +109,111 @@ function onPageChange(event) {
             </Link>
         </div>
 
-        <!-- Print Jobs Table -->
-        <Card>
-            <template #content>
-                <DataTable
-                    :value="printJobs.data"
-                    :paginator="true"
-                    :rows="printJobs.per_page"
-                    :totalRecords="printJobs.total"
-                    :lazy="true"
-                    :first="(printJobs.current_page - 1) * printJobs.per_page"
-                    @page="onPageChange"
-                    tableStyle="min-width: 50rem"
-                    class="p-datatable-sm"
-                >
-                    <Column field="id" header="ID" style="width: 80px">
-                        <template #body="slotProps">
-                            <span class="font-mono text-sm">#{{ slotProps.data.id }}</span>
-                        </template>
-                    </Column>
-
-                    <Column field="type" header="Type" style="width: 100px">
-                        <template #body="slotProps">
-                            <Tag
-                                :value="slotProps.data.type"
-                                :severity="getTypeSeverity(slotProps.data.type)"
-                                class="text-xs"
-                            />
-                        </template>
-                    </Column>
-
-                    <Column field="printable" header="Item">
-                        <template #body="slotProps">
-                            <div v-if="slotProps.data.printable_type === 'App\\Models\\Badge\\Badge'">
-                                <div class="font-semibold">Badge #{{ slotProps.data.printable?.custom_id }}</div>
-                                <div class="text-sm text-pos-muted">{{ slotProps.data.printable?.fursuit?.name }}</div>
+        <div class="pos-card">
+            <Table class="min-w-[50rem]">
+                <TableHeader>
+                    <TableRow>
+                        <TableHead class="w-[80px]">ID</TableHead>
+                        <TableHead class="w-[100px]">Type</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Printer</TableHead>
+                        <TableHead class="w-[120px]">Status</TableHead>
+                        <TableHead class="w-[120px]">Queued</TableHead>
+                        <TableHead class="w-[120px]">Printed</TableHead>
+                        <TableHead class="w-[200px]">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <TableRow v-for="job in printJobs.data" :key="job.id">
+                        <TableCell>
+                            <span class="font-mono text-sm">#{{ job.id }}</span>
+                        </TableCell>
+                        <TableCell>
+                            <UiTag :value="job.type" :severity="getTypeSeverity(job.type)" class="text-xs" />
+                        </TableCell>
+                        <TableCell>
+                            <div v-if="job.printable_type === 'App\\Models\\Badge\\Badge'">
+                                <div class="font-semibold">Badge #{{ job.printable?.custom_id }}</div>
+                                <div class="text-sm text-pos-muted">{{ job.printable?.fursuit?.name }}</div>
                             </div>
-                            <div v-else-if="slotProps.data.printable_type === 'App\\Domain\\Checkout\\Models\\Checkout\\Checkout'">
-                                <div class="font-semibold">Receipt #{{ slotProps.data.printable?.id }}</div>
+                            <div v-else-if="job.printable_type === 'App\\Domain\\Checkout\\Models\\Checkout\\Checkout'">
+                                <div class="font-semibold">Receipt #{{ job.printable?.id }}</div>
                                 <div class="text-sm text-pos-muted">Checkout receipt</div>
                             </div>
                             <div v-else class="text-pos-muted">Unknown item</div>
-                        </template>
-                    </Column>
-
-                    <Column field="printer.name" header="Printer">
-                        <template #body="slotProps">
-                            <div>
-                                <div class="font-semibold">{{ slotProps.data.printer?.name || 'Unknown' }}</div>
-                                <div class="text-sm text-pos-muted">{{ slotProps.data.printer?.type }}</div>
-                            </div>
-                        </template>
-                    </Column>
-
-                    <Column field="status" header="Status" style="width: 120px">
-                        <template #body="slotProps">
-                            <Tag
-                                :value="slotProps.data.status"
-                                :severity="getStatusSeverity(slotProps.data.status)"
-                            />
-                        </template>
-                    </Column>
-
-                    <Column field="created_at" header="Queued" style="width: 120px">
-                        <template #body="slotProps">
+                        </TableCell>
+                        <TableCell>
+                            <div class="font-semibold">{{ job.printer?.name || 'Unknown' }}</div>
+                            <div class="text-sm text-pos-muted">{{ job.printer?.type }}</div>
+                        </TableCell>
+                        <TableCell>
+                            <UiTag :value="job.status" :severity="getStatusSeverity(job.status)" />
+                        </TableCell>
+                        <TableCell>
                             <div class="text-sm">
-                                <div>{{ dayjs(slotProps.data.created_at).format('DD.MM.YY') }}</div>
-                                <div class="text-pos-muted">{{ dayjs(slotProps.data.created_at).format('HH:mm') }}</div>
+                                <div>{{ dayjs(job.created_at).format('DD.MM.YY') }}</div>
+                                <div class="text-pos-muted">{{ dayjs(job.created_at).format('HH:mm') }}</div>
                             </div>
-                        </template>
-                    </Column>
-
-                    <Column field="printed_at" header="Printed" style="width: 120px">
-                        <template #body="slotProps">
-                            <div v-if="slotProps.data.printed_at" class="text-sm">
-                                <div>{{ dayjs(slotProps.data.printed_at).format('DD.MM.YY') }}</div>
-                                <div class="text-pos-muted">{{ dayjs(slotProps.data.printed_at).format('HH:mm') }}</div>
+                        </TableCell>
+                        <TableCell>
+                            <div v-if="job.printed_at" class="text-sm">
+                                <div>{{ dayjs(job.printed_at).format('DD.MM.YY') }}</div>
+                                <div class="text-pos-muted">{{ dayjs(job.printed_at).format('HH:mm') }}</div>
                             </div>
                             <span v-else class="text-pos-muted">-</span>
-                        </template>
-                    </Column>
-
-                    <Column header="Actions" style="width: 200px">
-                        <template #body="slotProps">
+                        </TableCell>
+                        <TableCell>
                             <div class="flex gap-2">
-                                <Button
-                                    v-if="slotProps.data.status === 'pending' || slotProps.data.status === 'queued'"
-                                    label="Mark Printed"
-                                    size="small"
-                                    severity="success"
-                                    @click="markAsPrinted(slotProps.data.id)"
-                                />
-                                <Button
-                                    v-if="slotProps.data.status === 'failed' || slotProps.data.status === 'printed'"
-                                    label="Retry"
-                                    size="small"
-                                    severity="warning"
-                                    @click="retryPrintJob(slotProps.data.id)"
-                                />
-                                <Button
-                                    v-if="slotProps.data.status !== 'cancelled' && slotProps.data.status !== 'printed'"
-                                    label="Delete"
-                                    size="small"
-                                    severity="danger"
-                                    outlined
-                                    @click="deletePrintJob(slotProps.data.id)"
-                                />
+                                <button
+                                    v-if="job.status === 'pending' || job.status === 'queued'"
+                                    type="button"
+                                    class="pos-btn pos-btn--sm pos-btn--primary"
+                                    @click="markAsPrinted(job.id)"
+                                >
+                                    Mark Printed
+                                </button>
+                                <button
+                                    v-if="job.status === 'failed' || job.status === 'printed'"
+                                    type="button"
+                                    class="pos-btn pos-btn--sm"
+                                    @click="retryPrintJob(job.id)"
+                                >
+                                    Retry
+                                </button>
+                                <button
+                                    v-if="job.status !== 'cancelled' && job.status !== 'printed'"
+                                    type="button"
+                                    class="pos-btn pos-btn--sm pos-btn--danger"
+                                    @click="deletePrintJob(job.id)"
+                                >
+                                    Delete
+                                </button>
                             </div>
-                        </template>
-                    </Column>
-                </DataTable>
-            </template>
-        </Card>
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+
+            <Pagination
+                v-if="printJobs.total > printJobs.per_page"
+                v-slot="{ page }"
+                :page="printJobs.current_page"
+                :items-per-page="printJobs.per_page"
+                :total="printJobs.total"
+                class="mt-2"
+                @update:page="onPageChange"
+            >
+                <PaginationContent v-slot="{ items }">
+                    <PaginationPrevious class="h-12" />
+                    <template v-for="(item, index) in items" :key="index">
+                        <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page" class="size-12 text-base">
+                            {{ item.value }}
+                        </PaginationItem>
+                        <PaginationEllipsis v-else />
+                    </template>
+                    <PaginationNext class="h-12" />
+                </PaginationContent>
+            </Pagination>
+        </div>
     </div>
 </template>

@@ -1,16 +1,21 @@
 <script setup>
 import POSLayout from "@/Layouts/POSLayout.vue";
-import TabView from 'primevue/tabview';
-import TabPanel from 'primevue/tabpanel';
-import DataTable from "primevue/datatable";
-import Column from "primevue/column";
-import Button from 'primevue/button';
-import Tag from 'primevue/tag';
-import Paginator from 'primevue/paginator';
 import ConfirmModal from "@/Components/POS/ConfirmModal.vue";
-import { posDialogPt } from "@/Components/POS/posDialog.js";
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
+import { posDialog } from "@/Components/POS/posDialog.js";
+import UiDialog from "@/Components/UI/UiDialog.vue";
+import UiTag from "@/Components/UI/UiTag.vue";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/UI/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/Components/UI/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/UI/select";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/Components/UI/pagination";
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, Info, Printer } from "@lucide/vue";
 import {ref, computed, onMounted, onUnmounted} from "vue";
 import {useForm} from "@inertiajs/vue3";
 import {router} from "@inertiajs/vue3";
@@ -46,8 +51,41 @@ const badges = computed(() => {
 
 // Get pagination info from server response
 const totalRecords = computed(() => props.badges?.total || 0);
-const currentPageFromServer = computed(() => (props.badges?.current_page || 1) - 1); // Convert to 0-based
-const lastPage = computed(() => props.badges?.last_page || 1);
+const currentPageFromServer = computed(() => props.badges?.current_page || 1);
+
+// Client-side sort of the current page, cycling asc then desc per column.
+const sortField = ref(null);
+const sortOrder = ref(1);
+
+function toggleSort(field) {
+    sortOrder.value = sortField.value === field ? -sortOrder.value : 1;
+    sortField.value = field;
+}
+
+const sortedBadges = computed(() => {
+    if (!sortField.value) {
+        return badges.value;
+    }
+
+    const field = sortField.value;
+
+    return [...badges.value].sort((a, b) =>
+        String(a[field] ?? '').localeCompare(String(b[field] ?? ''), undefined, { numeric: true }) * sortOrder.value
+    );
+});
+
+const sortableColumns = [
+    { field: 'custom_id', header: 'Badge ID' },
+    { field: 'fursuit_name', header: 'Fursuit' },
+    { field: 'owner_name', header: 'Owner' },
+];
+
+const tabs = computed(() => [
+    { value: 'unprinted', label: `Unprinted (${props.tabCounts?.unprinted || 0})`, text: 'unprinted badge(s) displayed' },
+    { value: 'processing', label: `Processing (${props.tabCounts?.processing || 0})`, text: 'processing badge(s) displayed' },
+    { value: 'printed', label: `Printed (${props.tabCounts?.printed || 0})`, text: 'printed badge(s) displayed' },
+    { value: 'all', label: `All (${props.tabCounts?.all || 0})`, text: 'total badge(s) displayed' },
+]);
 
 // Check if there are any unprinted badges (used to show/hide the Print All button)
 const hasUnprintedBadges = computed(() => {
@@ -55,10 +93,7 @@ const hasUnprintedBadges = computed(() => {
 });
 
 // Handle tab change with Inertia navigation
-function onTabChange(event) {
-    const tabNames = ['unprinted', 'processing', 'printed', 'all'];
-    const selectedTab = tabNames[event.index];
-
+function onTabChange(selectedTab) {
     // Navigate to new URL with updated tab parameter
     router.get(route('pos.badges.index'), {
         tab: selectedTab,
@@ -70,20 +105,14 @@ function onTabChange(event) {
 }
 
 // Handle pagination with Inertia navigation
-function onPageChange(event) {
+function onPageChange(page) {
     router.get(route('pos.badges.index'), {
         tab: currentTab.value,
-        page: event.page + 1 // Convert from 0-based to 1-based
+        page,
     }, {
         preserveState: true,
         preserveScroll: true
     });
-}
-
-// Get tab index for TabView active state
-function getTabIndex() {
-    const tabNames = ['unprinted', 'processing', 'printed', 'all'];
-    return tabNames.indexOf(currentTab.value);
 }
 
 // Print single badge
@@ -152,12 +181,12 @@ onUnmounted(() => {
             />
 
             <!-- Print All Badges Dialog -->
-            <Dialog
+            <UiDialog
                 v-model:visible="showPrintAllConfirmModal"
+                v-bind="posDialog"
                 modal
                 header="Print Unprinted Badges"
-                :style="{ width: '30rem' }"
-                :pt="posDialogPt"
+                width="30rem"
             >
                 <div class="space-y-4">
                     <p class="text-sm text-pos-muted">
@@ -166,7 +195,7 @@ onUnmounted(() => {
                     </p>
                     <div class="bg-pos-accent/10 border border-pos-accent/30 rounded-pos p-3">
                         <div class="flex items-start">
-                            <i class="pi pi-info-circle text-pos-accent mt-0.5 mr-2"></i>
+                            <Info class="size-4 shrink-0 text-pos-accent mt-0.5 mr-2" aria-hidden="true" />
                             <div class="text-sm text-pos-accent">
                                 <strong>Note:</strong> Maximum of <span class="pos-num font-bold">50</span> badges will be printed per batch.
                                 Badges are selected by lowest attendee ID first.
@@ -176,16 +205,21 @@ onUnmounted(() => {
 
                     <div class="space-y-2">
                         <label class="pos-label block">Printer</label>
-                        <Dropdown
-                            v-model="selectedPrinter"
-                            :options="props.printers"
-                            optionLabel="name"
-                            optionValue="id"
-                            placeholder="Use default assignment"
-                            class="w-full"
-                            panelClass="pos-surface"
-                            :clearable="true"
-                        />
+                        <Select v-model="selectedPrinter">
+                            <SelectTrigger class="w-full text-base data-[size=default]:h-12">
+                                <SelectValue placeholder="Use default assignment" />
+                            </SelectTrigger>
+                            <SelectContent class="pos-surface z-1102">
+                                <SelectItem
+                                    v-for="printer in props.printers"
+                                    :key="printer.id"
+                                    :value="printer.id"
+                                    class="min-h-pos-touch text-base"
+                                >
+                                    {{ printer.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
                         <p class="text-xs text-pos-muted">Leave empty for automatic printer assignment</p>
                     </div>
                 </div>
@@ -203,11 +237,11 @@ onUnmounted(() => {
                         class="pos-btn pos-btn--primary"
                         @click="printAllBadgesAction()"
                     >
-                        <i class="pi pi-print"></i>
+                        <Printer class="size-4" aria-hidden="true" />
                         Print All <span class="pos-kcap">Enter</span>
                     </button>
                 </template>
-            </Dialog>
+            </UiDialog>
         </div>
 
         <div class="flex flex-col gap-2">
@@ -220,113 +254,127 @@ onUnmounted(() => {
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <Button
+                        <button
                             v-if="hasUnprintedBadges"
-                            label="Print All Unprinted"
-                            icon="pi pi-print"
+                            type="button"
+                            class="pos-btn pos-btn--primary"
                             @click="showPrintAllConfirmModal = true"
-                            class="p-button-warning"
-                        />
-                        <Button
-                            label="Back to Dashboard"
-                            icon="pi pi-arrow-left"
-                            severity="secondary"
-                            @click="$inertia.visit(route('pos.dashboard'))"
-                        />
+                        >
+                            <Printer class="size-4" aria-hidden="true" />
+                            Print All Unprinted
+                        </button>
+                        <button
+                            type="button"
+                            class="pos-btn"
+                            @click="router.visit(route('pos.dashboard'))"
+                        >
+                            <ArrowLeft class="size-4" aria-hidden="true" />
+                            Back to Dashboard
+                        </button>
                     </div>
                 </div>
             </div>
 
             <div class="pos-card py-3">
-                <TabView @tab-change="onTabChange" :activeIndex="getTabIndex()">
-                    <TabPanel :header="`Unprinted (${tabCounts?.unprinted || 0})`">
+                <Tabs :model-value="currentTab" activation-mode="manual" @update:model-value="onTabChange">
+                    <TabsList class="h-12">
+                        <TabsTrigger v-for="tab in tabs" :key="tab.value" :value="tab.value" class="px-4 text-base">
+                            {{ tab.label }}
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent v-for="tab in tabs" :key="tab.value" :value="tab.value">
                         <div class="mb-4 text-sm text-pos-muted">
-                            {{ totalRecords }} unprinted badge(s) displayed
+                            {{ totalRecords }} {{ tab.text }}
                         </div>
-                    </TabPanel>
-                    <TabPanel :header="`Processing (${tabCounts?.processing || 0})`">
-                        <div class="mb-4 text-sm text-pos-muted">
-                            {{ totalRecords }} processing badge(s) displayed
-                        </div>
-                    </TabPanel>
-                    <TabPanel :header="`Printed (${tabCounts?.printed || 0})`">
-                        <div class="mb-4 text-sm text-pos-muted">
-                            {{ totalRecords }} printed badge(s) displayed
-                        </div>
-                    </TabPanel>
-                    <TabPanel :header="`All (${tabCounts?.all || 0})`">
-                        <div class="mb-4 text-sm text-pos-muted">
-                            {{ totalRecords }} total badge(s) displayed
-                        </div>
-                    </TabPanel>
-                </TabView>
+                    </TabsContent>
+                </Tabs>
 
-                <!-- Badges Table -->
-                <DataTable
-                    :value="badges"
-                    class="mt-2"
-                    tableStyle="min-width: 50rem"
-                    dataKey="id"
-                >
-                    <Column field="custom_id" header="Badge ID" sortable></Column>
-                    <Column field="fursuit_name" header="Fursuit" sortable>
-                        <template #body="slotProps">
-                            <div class="font-medium">{{ slotProps.data.fursuit_name }}</div>
-                            <div class="text-sm text-pos-muted">{{ slotProps.data.species_name }}</div>
-                        </template>
-                    </Column>
-                    <Column field="owner_name" header="Owner" sortable></Column>
-                    <Column field="status_fulfillment" header="Status">
-                        <template #body="slotProps">
-                            <div class="flex flex-col gap-1">
-                                <Tag
-                                    :severity="slotProps.data.status_fulfillment === 'pending' ? 'warning' :
-                                          slotProps.data.status_fulfillment === 'processing' ? 'info' :
-                                          slotProps.data.status_fulfillment === 'ready_for_pickup' ? 'success' :
-                                          slotProps.data.status_fulfillment === 'picked_up' ? 'secondary' : 'info'"
-                                    :value="slotProps.data.status_fulfillment === 'pending' ? 'Pending' :
-                                       slotProps.data.status_fulfillment === 'processing' ? 'Processing' :
-                                       slotProps.data.status_fulfillment === 'ready_for_pickup' ? 'Ready for Pickup' :
-                                       slotProps.data.status_fulfillment === 'picked_up' ? 'Picked Up' :
-                                       slotProps.data.status_fulfillment"
-                                />
-                                <div class="flex items-center gap-2 text-sm">
-                                    <div
-                                        :class="slotProps.data.status_payment === 'unpaid' ? 'w-2 h-2 bg-pos-bad rounded-full' : 'w-2 h-2 bg-pos-good rounded-full'"
+                <Table class="mt-2 min-w-[50rem]">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead v-for="column in sortableColumns" :key="column.field" :aria-sort="sortField === column.field ? (sortOrder === 1 ? 'ascending' : 'descending') : 'none'">
+                                <button type="button" class="inline-flex min-h-pos-touch items-center gap-2 font-medium" @click="toggleSort(column.field)">
+                                    {{ column.header }}
+                                    <component
+                                        :is="sortField !== column.field ? ArrowUpDown : (sortOrder === 1 ? ArrowUp : ArrowDown)"
+                                        class="size-4 text-pos-muted"
+                                        aria-hidden="true"
                                     />
-                                    {{ formatEuroFromCents(slotProps.data.total) }}
+                                </button>
+                            </TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Printed At</TableHead>
+                            <TableHead>Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow v-for="badge in sortedBadges" :key="badge.id">
+                            <TableCell>{{ badge.custom_id }}</TableCell>
+                            <TableCell>
+                                <div class="font-medium">{{ badge.fursuit_name }}</div>
+                                <div class="text-sm text-pos-muted">{{ badge.species_name }}</div>
+                            </TableCell>
+                            <TableCell>{{ badge.owner_name }}</TableCell>
+                            <TableCell>
+                                <div class="flex flex-col items-start gap-1">
+                                    <UiTag
+                                        :severity="badge.status_fulfillment === 'pending' ? 'warning' :
+                                              badge.status_fulfillment === 'processing' ? 'info' :
+                                              badge.status_fulfillment === 'ready_for_pickup' ? 'success' :
+                                              badge.status_fulfillment === 'picked_up' ? 'secondary' : 'info'"
+                                        :value="badge.status_fulfillment === 'pending' ? 'Pending' :
+                                           badge.status_fulfillment === 'processing' ? 'Processing' :
+                                           badge.status_fulfillment === 'ready_for_pickup' ? 'Ready for Pickup' :
+                                           badge.status_fulfillment === 'picked_up' ? 'Picked Up' :
+                                           badge.status_fulfillment"
+                                    />
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <div
+                                            :class="badge.status_payment === 'unpaid' ? 'w-2 h-2 bg-pos-bad rounded-full' : 'w-2 h-2 bg-pos-good rounded-full'"
+                                        />
+                                        {{ formatEuroFromCents(badge.total) }}
+                                    </div>
                                 </div>
-                            </div>
-                        </template>
-                    </Column>
-                    <Column field="printed_at" header="Printed At">
-                        <template #body="slotProps">
-                            {{ slotProps.data.printed_at ? dayjs(slotProps.data.printed_at).format('DD.MM.YY HH:mm') : '-' }}
-                        </template>
-                    </Column>
-                    <Column header="Actions">
-                        <template #body="slotProps">
-                            <div class="flex gap-2">
-                                <Button
-                                    :label="slotProps.data.status_fulfillment === 'pending' ? 'Print' : 'Reprint'"
-                                    :severity="slotProps.data.status_fulfillment === 'pending' ? 'primary' : 'secondary'"
-                                    size="small"
-                                    icon="pi pi-print"
-                                    @click="triggerPrint(slotProps.data.id)"
-                                />
-                            </div>
-                        </template>
-                    </Column>
-                </DataTable>
+                            </TableCell>
+                            <TableCell>
+                                {{ badge.printed_at ? dayjs(badge.printed_at).format('DD.MM.YY HH:mm') : '-' }}
+                            </TableCell>
+                            <TableCell>
+                                <div class="flex gap-2">
+                                    <button
+                                        type="button"
+                                        class="pos-btn pos-btn--sm"
+                                        :class="badge.status_fulfillment === 'pending' ? 'pos-btn--primary' : ''"
+                                        @click="triggerPrint(badge.id)"
+                                    >
+                                        <Printer class="size-4" aria-hidden="true" />
+                                        {{ badge.status_fulfillment === 'pending' ? 'Print' : 'Reprint' }}
+                                    </button>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
 
-                <!-- Pagination -->
                 <div class="mt-4" v-if="totalRecords > 0">
-                    <Paginator
-                        :first="(currentPageFromServer * 50)"
-                        :rows="50"
-                        :totalRecords="totalRecords"
-                        @page="onPageChange"
-                    />
+                    <Pagination
+                        v-slot="{ page }"
+                        :page="currentPageFromServer"
+                        :items-per-page="50"
+                        :total="totalRecords"
+                        @update:page="onPageChange"
+                    >
+                        <PaginationContent v-slot="{ items }">
+                            <PaginationPrevious class="h-12" />
+                            <template v-for="(item, index) in items" :key="index">
+                                <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page" class="size-12 text-base">
+                                    {{ item.value }}
+                                </PaginationItem>
+                                <PaginationEllipsis v-else />
+                            </template>
+                            <PaginationNext class="h-12" />
+                        </PaginationContent>
+                    </Pagination>
                 </div>
             </div>
         </div>

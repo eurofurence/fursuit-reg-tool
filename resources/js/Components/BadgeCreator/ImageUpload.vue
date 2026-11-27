@@ -1,10 +1,10 @@
 <script setup>
-import FileUpload from 'primevue/fileupload';
 import {computed, reactive, ref} from "vue";
 import {Cropper} from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css';
-import Button from '@/Components/UI/UiButton.vue';
-import InlineMessage from "@/Components/UI/UiMessage.vue";
+import {Check, Plus, TriangleAlert, X, ZoomIn, ZoomOut} from '@lucide/vue';
+import {Button} from '@/Components/UI/button';
+import {Alert, AlertDescription} from '@/Components/UI/alert';
 
 const props = defineProps({
     imageSource: {
@@ -26,6 +26,7 @@ const file = ref(null);
 const coordinates = ref(null);
 const naturalSize = ref(null);
 const cropper = ref(null);
+const fileInput = ref(null);
 
 // Smallest crop the badge can be printed from, mirrored from FursuitImageService.
 const MIN_CROP_WIDTH = 240;
@@ -34,7 +35,7 @@ const MIN_CROP_HEIGHT = 320;
 const emits = defineEmits(['updateImage', 'updateSource'])
 
 const onSelectFile = (event) => {
-    const {files} = event;
+    const {files} = event.target;
     if (files && files[0]) {
         // Revoke the previous object URL so the garbage collector can drop it.
         if (image.src) {
@@ -124,15 +125,18 @@ function confirmImage() {
         />
 
         <div class="flex items-center justify-center gap-2 mb-3">
-            <Button severity="secondary" icon="pi pi-search-minus" aria-label="Zoom out" @click="zoom(0.8)"/>
-            <span class="text-xs text-gray-500">Drag the photo to position it, pinch or use the buttons to zoom</span>
-            <Button severity="secondary" icon="pi pi-search-plus" aria-label="Zoom in" @click="zoom(1.25)"/>
+            <Button variant="secondary" size="icon" aria-label="Zoom out" @click="zoom(0.8)"><ZoomOut/></Button>
+            <span class="text-xs text-muted-foreground">Drag the photo to position it, pinch or use the buttons to zoom</span>
+            <Button variant="secondary" size="icon" aria-label="Zoom in" @click="zoom(1.25)"><ZoomIn/></Button>
         </div>
 
-        <InlineMessage v-if="cropTooSmall" severity="warn" class="mb-3">
-            You have zoomed in too far. The selected area must be at least {{ MIN_CROP_WIDTH }}x{{ MIN_CROP_HEIGHT }}
-            pixels of the original photo, otherwise it will print blurry.
-        </InlineMessage>
+        <Alert v-if="cropTooSmall" variant="warning" class="mb-3">
+            <TriangleAlert/>
+            <AlertDescription>
+                You have zoomed in too far. The selected area must be at least {{ MIN_CROP_WIDTH }}x{{ MIN_CROP_HEIGHT }}
+                pixels of the original photo, otherwise it will print blurry.
+            </AlertDescription>
+        </Alert>
     </template>
 
     <!-- Rules -->
@@ -143,18 +147,17 @@ function confirmImage() {
 
     <div :class="{'grid grid-cols-2 gap-3': image.src}">
         <div v-if="image.src" class="w-full">
-            <Button severity="success" label="Confirm" icon="pi pi-check" class="w-full" :disabled="cropTooSmall"
-                    @click="confirmImage()"/>
+            <Button class="w-full bg-success text-white hover:bg-success/90" :disabled="cropTooSmall"
+                    @click="confirmImage()"><Check/> Confirm</Button>
         </div>
 
-        <FileUpload mode="basic" accept="image/*" :auto="false" class="w-full" :maxFileSize="8000000"
-                    @select="onSelectFile"
-                    v-if="!image.src"
-                    choose-label="Choose Image">
-        </FileUpload>
+        <template v-if="!image.src">
+            <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onSelectFile">
+            <Button class="w-full" @click="fileInput.click()"><Plus/> Choose Image</Button>
+        </template>
 
         <div v-if="image.src" class="w-full">
-            <Button severity="danger" label="Cancel" icon="pi pi-times" class="w-full" @click="image.src = null"/>
+            <Button variant="destructive" class="w-full" @click="image.src = null"><X/> Cancel</Button>
         </div>
     </div>
 </template>

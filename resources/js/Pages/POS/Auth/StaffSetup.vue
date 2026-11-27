@@ -2,11 +2,9 @@
 import POSLayout from "@/Layouts/POSLayout.vue";
 import { useForm } from "@inertiajs/vue3";
 import { ref } from 'vue';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Password from 'primevue/password';
-import Card from 'primevue/card';
-import Message from 'primevue/message';
+import { Check, CircleCheck, Eye, EyeOff, Loader2, QrCode, RefreshCw } from '@lucide/vue';
+import { Input } from '@/Components/UI/input';
+import UiMessage from '@/Components/UI/UiMessage.vue';
 
 defineOptions({
     layout: POSLayout,
@@ -16,6 +14,8 @@ const props = defineProps({
     staff_name: String,
 });
 
+const showPin = ref(false);
+const showPinConfirmation = ref(false);
 const isScanning = ref(false);
 const rfidTag = ref('');
 const rfidBuffer = ref(''); // Buffer to accumulate RFID input
@@ -148,29 +148,37 @@ function submitSetup() {
                 </p>
             </div>
 
-            <Card class="p-6">
-                <template #content>
+            <div class="pos-card">
                     <form @submit.prevent="submitSetup" class="space-y-6">
                         <!-- PIN Code Setup -->
                         <div>
                             <label for="pin_code" class="block text-sm font-medium text-pos-text mb-2">
                                 Set Your PIN Code (6 digits)
                             </label>
-                            <Password
-                                id="pin_code"
-                                v-model="form.pin_code"
-                                :feedback="false"
-                                :toggleMask="true"
-                                :invalid="form.invalid('pin_code')"
-                                inputClass="w-full"
-                                class="w-full"
-                                placeholder="Enter 6-digit PIN"
-                                maxlength="6"
-                            />
+                            <div class="relative">
+                                <Input
+                                    id="pin_code"
+                                    v-model="form.pin_code"
+                                    :type="showPin ? 'text' : 'password'"
+                                    :aria-invalid="form.invalid('pin_code') || undefined"
+                                    class="h-12 pr-14 text-base"
+                                    placeholder="Enter 6-digit PIN"
+                                    maxlength="6"
+                                />
+                                <button
+                                    type="button"
+                                    class="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-pos-muted hover:text-pos-text"
+                                    :aria-label="showPin ? 'Hide PIN' : 'Show PIN'"
+                                    @click="showPin = !showPin"
+                                >
+                                    <EyeOff v-if="showPin" class="size-5" aria-hidden="true" />
+                                    <Eye v-else class="size-5" aria-hidden="true" />
+                                </button>
+                            </div>
                             <div v-if="form.errors.pin_code" class="mt-1">
-                                <Message severity="error" :closable="false">
+                                <UiMessage severity="error" :closable="false">
                                     {{ form.errors.pin_code }}
-                                </Message>
+                                </UiMessage>
                             </div>
                             <p class="mt-1 text-xs text-pos-muted">
                                 Choose a secure PIN. Avoid simple patterns like 123456 or 111111.
@@ -182,21 +190,30 @@ function submitSetup() {
                             <label for="pin_code_confirmation" class="block text-sm font-medium text-pos-text mb-2">
                                 Confirm PIN Code
                             </label>
-                            <Password
-                                id="pin_code_confirmation"
-                                v-model="form.pin_code_confirmation"
-                                :feedback="false"
-                                :toggleMask="true"
-                                :invalid="form.invalid('pin_code_confirmation')"
-                                inputClass="w-full"
-                                class="w-full"
-                                placeholder="Confirm 6-digit PIN"
-                                maxlength="6"
-                            />
+                            <div class="relative">
+                                <Input
+                                    id="pin_code_confirmation"
+                                    v-model="form.pin_code_confirmation"
+                                    :type="showPinConfirmation ? 'text' : 'password'"
+                                    :aria-invalid="form.invalid('pin_code_confirmation') || undefined"
+                                    class="h-12 pr-14 text-base"
+                                    placeholder="Confirm 6-digit PIN"
+                                    maxlength="6"
+                                />
+                                <button
+                                    type="button"
+                                    class="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-pos-muted hover:text-pos-text"
+                                    :aria-label="showPinConfirmation ? 'Hide PIN' : 'Show PIN'"
+                                    @click="showPinConfirmation = !showPinConfirmation"
+                                >
+                                    <EyeOff v-if="showPinConfirmation" class="size-5" aria-hidden="true" />
+                                    <Eye v-else class="size-5" aria-hidden="true" />
+                                </button>
+                            </div>
                             <div v-if="form.errors.pin_code_confirmation" class="mt-1">
-                                <Message severity="error" :closable="false">
+                                <UiMessage severity="error" :closable="false">
                                     {{ form.errors.pin_code_confirmation }}
-                                </Message>
+                                </UiMessage>
                             </div>
                         </div>
 
@@ -207,12 +224,10 @@ function submitSetup() {
                             </label>
                             
                             <div v-if="!rfidTag && !isScanning" class="text-center">
-                                <Button
-                                    @click="startRfidScan"
-                                    icon="pi pi-qrcode"
-                                    label="Scan RFID Tag"
-                                    class="p-button-outlined"
-                                />
+                                <button type="button" @click="startRfidScan" class="pos-btn">
+                                    <QrCode class="size-4" aria-hidden="true" />
+                                    Scan RFID Tag
+                                </button>
                                 <p class="mt-2 text-xs text-pos-muted">
                                     Click and then scan your RFID tag/badge (8-20 digits)
                                 </p>
@@ -220,32 +235,25 @@ function submitSetup() {
 
                             <div v-if="isScanning" class="text-center p-4 border-2 border-dashed border-pos-accent/30 rounded-pos bg-pos-accent/10">
                                 <div class="animate-pulse">
-                                    <i class="pi pi-qrcode text-3xl text-pos-accent mb-2"></i>
+                                    <QrCode class="size-8 mx-auto text-pos-accent mb-2" aria-hidden="true" />
                                     <p class="text-pos-accent font-medium">Scanning for RFID tag...</p>
                                     <p class="text-xs text-pos-accent mt-1">Hold your tag near the scanner</p>
                                 </div>
-                                <Button
-                                    @click="resetRfidScan"
-                                    label="Cancel"
-                                    severity="secondary"
-                                    size="small"
-                                    class="mt-3"
-                                />
+                                <button type="button" @click="resetRfidScan" class="pos-btn pos-btn--sm mt-3">
+                                    Cancel
+                                </button>
                             </div>
 
                             <div v-if="rfidTag" class="p-3 bg-pos-good/10 border border-pos-good/30 rounded-pos">
                                 <div class="flex items-center justify-between">
-                                    <div>
-                                        <i class="pi pi-check-circle text-pos-good mr-2"></i>
+                                    <div class="flex items-center">
+                                        <CircleCheck class="size-4 text-pos-good mr-2" aria-hidden="true" />
                                         <span class="text-pos-good font-medium">Tag Registered</span>
                                     </div>
-                                    <Button
-                                        @click="resetRfidScan"
-                                        icon="pi pi-refresh"
-                                        severity="secondary"
-                                        size="small"
-                                        label="Scan Different Tag"
-                                    />
+                                    <button type="button" @click="resetRfidScan" class="pos-btn pos-btn--sm">
+                                        <RefreshCw class="size-4" aria-hidden="true" />
+                                        Scan Different Tag
+                                    </button>
                                 </div>
                                 <p class="text-xs text-pos-good mt-1 font-mono">{{ rfidTag }}</p>
                             </div>
@@ -261,24 +269,24 @@ function submitSetup() {
                             />
 
                             <div v-if="form.errors.rfid_tag" class="mt-1">
-                                <Message severity="error" :closable="false">
+                                <UiMessage severity="error" :closable="false">
                                     {{ form.errors.rfid_tag }}
-                                </Message>
+                                </UiMessage>
                             </div>
                         </div>
 
                         <!-- Submit Button -->
-                        <Button
+                        <button
                             type="submit"
-                            :loading="form.processing"
-                            :disabled="!form.pin_code || !form.pin_code_confirmation || !form.rfid_tag"
-                            label="Complete Setup"
-                            icon="pi pi-check"
-                            class="w-full"
-                        />
+                            :disabled="form.processing || !form.pin_code || !form.pin_code_confirmation || !form.rfid_tag"
+                            class="pos-btn pos-btn--primary w-full"
+                        >
+                            <Loader2 v-if="form.processing" class="size-4 animate-spin" aria-hidden="true" />
+                            <Check v-else class="size-4" aria-hidden="true" />
+                            Complete Setup
+                        </button>
                     </form>
-                </template>
-            </Card>
+            </div>
         </div>
     </div>
 </template>

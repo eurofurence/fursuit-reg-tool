@@ -1,11 +1,10 @@
 <script setup>
-import Card from 'primevue/card';
-import Button from 'primevue/button';
-import InputOtp from 'primevue/inputotp';
+import { ArrowLeft, CircleCheck, QrCode } from '@lucide/vue';
 import SimpleKeyboard from "@/Components/SimpleKeyboard.vue";
-import Message from 'primevue/message';
+import UiMessage from '@/Components/UI/UiMessage.vue';
+import { PinInput, PinInputGroup, PinInputSlot } from '@/Components/UI/pin-input';
 import {useForm} from "@inertiajs/vue3";
-import {ref, watch, onMounted, onUnmounted, nextTick} from "vue";
+import {ref, computed, watch, onMounted, onUnmounted, nextTick} from "vue";
 import sjcl from 'sjcl';
 import POSLayout from "@/Layouts/POSLayout.vue";
 
@@ -31,6 +30,14 @@ const rfidCode = ref('');
 const pinCode = ref('');
 const isListening = ref(true);
 const pinInputRef = ref(null);
+
+// The pin input works on an array of characters; the form wants one string.
+const pinChars = computed({
+    get: () => pinCode.value.split(''),
+    set: (chars) => {
+        pinCode.value = chars.join('').toUpperCase().slice(0, 6);
+    },
+});
 
 // Keyboard configuration for PIN entry - NUMBERS ONLY
 // Numpad order (7-8-9 on top), same as the dashboard lookup and the physical
@@ -156,12 +163,7 @@ const switchToPin = () => {
     pinCode.value = '';
     // Focus the PIN input after switching
     nextTick(() => {
-        if (pinInputRef.value && pinInputRef.value.$el) {
-            const firstInput = pinInputRef.value.$el.querySelector('input');
-            if (firstInput) {
-                firstInput.focus();
-            }
-        }
+        pinInputRef.value?.querySelector('[data-slot="pin-input-slot"]')?.focus();
     });
 };
 
@@ -189,14 +191,13 @@ onUnmounted(() => {
     <div class="w-full min-h-full flex items-center justify-center">
         <div class="max-w-md w-full">
             <!-- Single Centered Card -->
-            <Card class="border-0">
-                <template #content>
+            <div class="pos-card">
                     <div class="p-8">
                         <!-- RFID Scanner Mode (Default) -->
                         <div v-if="authMode === 'rfid'" class="text-center">
                             <!-- Animated Icon -->
                             <div class="mb-6">
-                                <i class="pi pi-qrcode text-6xl text-pos-accent animate-pulse"></i>
+                                <QrCode class="size-16 mx-auto text-pos-accent animate-pulse" aria-hidden="true" />
                             </div>
                             
                             <!-- Title -->
@@ -204,13 +205,13 @@ onUnmounted(() => {
                             
                             <!-- Error Message -->
                             <div v-if="form.invalid('code')" class="mb-4">
-                                <Message severity="error">{{ form.errors.code }}</Message>
+                                <UiMessage severity="error" :closable="false">{{ form.errors.code }}</UiMessage>
                             </div>
                             
                             <!-- RFID Detection -->
                             <div v-if="rfidCode" class="mb-4 p-3 bg-pos-good/10 border border-pos-good/30 rounded-pos">
                                 <div class="flex items-center justify-center text-pos-good">
-                                    <i class="pi pi-check-circle mr-2"></i>
+                                    <CircleCheck class="size-4 mr-2" aria-hidden="true" />
                                     <span class="font-medium">Badge Detected</span>
                                 </div>
                             </div>
@@ -224,19 +225,16 @@ onUnmounted(() => {
                             </p>
                             
                             <!-- Alternative Login Button -->
-                            <Button 
-                                @click="switchToPin"
-                                label="Enter PIN Code"
-                                severity="secondary"
-                                class="w-full"
-                            />
+                            <button type="button" @click="switchToPin" class="pos-btn w-full">
+                                Enter PIN Code
+                            </button>
                         </div>
 
                         <!-- PIN Entry Mode -->
                         <div v-else-if="authMode === 'pin'">
                             <!-- Back Button -->
-                            <button @click="switchToRfid" class="mb-4 text-pos-muted hover:text-pos-text">
-                                <i class="pi pi-arrow-left mr-2"></i>Back
+                            <button type="button" @click="switchToRfid" class="mb-4 inline-flex items-center text-pos-muted hover:text-pos-text">
+                                <ArrowLeft class="size-4 mr-2" aria-hidden="true" />Back
                             </button>
                             
                             <div class="text-center">
@@ -245,21 +243,23 @@ onUnmounted(() => {
                                 
                                 <!-- Error Message -->
                                 <div v-if="form.invalid('code')" class="mb-4">
-                                    <Message severity="error">{{ form.errors.code }}</Message>
+                                    <UiMessage severity="error" :closable="false">{{ form.errors.code }}</UiMessage>
                                 </div>
                                 
                                 <!-- PIN Input -->
                                 <div class="mb-6">
-                                    <div class="flex justify-center">
-                                        <InputOtp 
-                                            ref="pinInputRef"
-                                            :invalid="form.invalid('code')" 
-                                            :autofocus="true" 
-                                            :length="6" 
-                                            mask 
-                                            v-model="pinCode"
-                                            class="pin-input"
-                                        />
+                                    <div ref="pinInputRef" class="flex justify-center">
+                                        <PinInput v-model="pinChars" mask class="pin-input">
+                                            <PinInputGroup class="gap-0">
+                                                <PinInputSlot
+                                                    v-for="index in 6"
+                                                    :key="index"
+                                                    :index="index - 1"
+                                                    :aria-invalid="form.invalid('code') || undefined"
+                                                    class="pin-slot"
+                                                />
+                                            </PinInputGroup>
+                                        </PinInput>
                                     </div>
                                 </div>
                                 
@@ -274,8 +274,7 @@ onUnmounted(() => {
                             </div>
                         </div>
                     </div>
-                </template>
-            </Card>
+            </div>
         </div>
     </div>
 </template>
@@ -286,7 +285,7 @@ onUnmounted(() => {
  * 3px shape, line borders, accent focus ring. The keypad itself is left to
  * resources/css/pos.css so both keypads stay identical by construction.
  */
-:deep(.pin-input .p-inputotp-input) {
+:deep(.pin-input .pin-slot) {
     width: 3.25rem;
     height: 3.5rem;
     font-family: var(--pos-num);
@@ -301,14 +300,14 @@ onUnmounted(() => {
     text-align: center;
 }
 
-:deep(.pin-input .p-inputotp-input:focus) {
+:deep(.pin-input .pin-slot:focus) {
     border-color: rgb(var(--pos-accent));
     outline: 3px solid rgb(var(--pos-accent));
     outline-offset: 2px;
     box-shadow: none;
 }
 
-:deep(.pin-input .p-inputotp-input.p-invalid) {
+:deep(.pin-input .pin-slot[aria-invalid="true"]) {
     border-color: rgb(var(--pos-bad));
     outline-color: rgb(var(--pos-bad));
 }
@@ -329,7 +328,7 @@ onUnmounted(() => {
 
 /* Phones: keep the six boxes on one line. */
 @media (max-width: 768px) {
-    :deep(.pin-input .p-inputotp-input) {
+    :deep(.pin-input .pin-slot) {
         width: 2.5rem;
         height: 3rem;
         font-size: 1.3rem;
@@ -339,7 +338,7 @@ onUnmounted(() => {
 
 /* Tablets are the main POS device: bigger targets, same shape. */
 @media (min-width: 768px) and (max-width: 1024px) {
-    :deep(.pin-input .p-inputotp-input) {
+    :deep(.pin-input .pin-slot) {
         width: 3.75rem;
         height: 4rem;
         font-size: 1.9rem;

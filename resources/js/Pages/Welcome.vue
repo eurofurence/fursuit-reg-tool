@@ -1,12 +1,13 @@
 <script setup>
 
 import { Head, router, usePage } from "@inertiajs/vue3";
-import Button from '@/Components/UI/UiButton.vue';
-import Card from '@/Components/UI/UiCard.vue';
+import { Calendar, ChevronRight, Euro, ExternalLink, Hash, IdCard, Info, List, LogIn, Star, Tag, Ticket, Trophy, Users, X } from '@lucide/vue';
+import { Alert, AlertDescription } from '@/Components/UI/alert';
+import { Button } from '@/Components/UI/button';
+import { Card, CardTitle } from '@/Components/UI/card';
 import dayjs from "dayjs";
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { Link } from "@inertiajs/vue3";
-import Message from '@/Components/UI/UiMessage.vue';
 import { computed, ref, onMounted, onUnmounted } from "vue";
 import Layout from "@/Layouts/Layout.vue";
 import { formatEuroFromCents, formatPrintDate, massPrintRunIsOver } from "@/helpers.js";
@@ -28,6 +29,7 @@ const props = defineProps({
 });
 
 const currentTime = ref(dayjs());
+const flashClosed = ref(false);
 
 // Update time every second
 let timeInterval;
@@ -201,22 +203,21 @@ const shouldShowRegMessage = computed(() => {
                             <!-- Prepaid Badge Button -->
                             <Button
                                 @click="router.visit(route('badges.create'))"
-                                icon="pi pi-star"
-                                class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-emerald-600 hover:bg-emerald-700 border-0 text-white"
-                                fluid
-                                size="large"
-                                :label="`Customize Prepaid Badge${prepaidBadgesLeft > 1 ? 's' : ''}`"
-                            />
+                                size="lg"
+                                class="w-full flex-1 h-12 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-emerald-600 hover:bg-emerald-700 border-0 text-white"
+                            >
+                                <Star /> Customize Prepaid Badge{{ prepaidBadgesLeft > 1 ? 's' : '' }}
+                            </Button>
 
                             <!-- Secondary Action Button -->
                             <Button
                                 v-if="currentEventBadgeCount > 0"
                                 @click="router.visit(route('badges.index'))"
-                                icon="pi pi-list"
-                                class="flex-1 font-semibold"
-                                size="large"
-                                label="Manage Badges"
-                            />
+                                size="lg"
+                                class="flex-1 h-12 font-semibold"
+                            >
+                                <List /> Manage Badges
+                            </Button>
                         </div>
                     </div>
 
@@ -226,38 +227,30 @@ const shouldShowRegMessage = computed(() => {
                             <!-- Primary Action Button -->
                             <Button
                                 @click="router.visit(route('badges.create'))"
-                                icon="pi pi-id-card"
-                                class="flex-1 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200 bg-blue-600 hover:bg-blue-700 border-0 text-white"
-                                fluid
-                                size="large"
-                                :label="userBadgeStatus?.action || 'Create Your Badge'"
-                            />
+                                size="lg"
+                                class="w-full flex-1 h-12 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-200"
+                            >
+                                <IdCard /> {{ userBadgeStatus?.action || 'Create Your Badge' }}
+                            </Button>
 
                             <!-- Secondary Action Button -->
                             <Button
                                 v-if="currentEventBadgeCount > 0"
                                 @click="router.visit(route('badges.index'))"
-                                icon="pi pi-list"
-                                class="flex-1 font-semibold"
-                                size="large"
-                                fluid
-                                label="Manage Badges"
-                            />
-                            <a
-                                v-else-if="shouldShowRegMessage"
-                                href="https://reglive.eurofurence.org/20250105-1445-r4v1/app/register"
-                                target="_blank"
-                                rel="noopener"
-                                class="flex-1 font-semibold"
+                                size="lg"
+                                class="w-full flex-1 h-12 font-semibold"
                             >
-                                <Button
-                                    icon="pi pi-external-link"
-                                    size="large"
-                                    class="w-full"
-                                    fluid
-                                    label="Order More"
-                                />
-                            </a>
+                                <List /> Manage Badges
+                            </Button>
+                            <Button v-else-if="shouldShowRegMessage" as-child size="lg" class="w-full flex-1 h-12 font-semibold">
+                                <a
+                                    href="https://reglive.eurofurence.org/20250105-1445-r4v1/app/register"
+                                    target="_blank"
+                                    rel="noopener"
+                                >
+                                    <ExternalLink /> Order More
+                                </a>
+                            </Button>
                         </div>
 
                     </div>
@@ -267,74 +260,41 @@ const shouldShowRegMessage = computed(() => {
                         <p class="text-2xl mb-6 opacity-90">
                             Login to customize your fursuit badge that you have bought with your ticket. Additional badges can be ordered at a fee from {{ dayjs(event.orderStartsAt).format('D.M.YYYY') }}.
                         </p>
-                        <Link
-                            v-if="currentEventBadgeCount > 0"
-                            :href="route('badges.index')"
-                            class="w-full">
-                            <Button
-                                icon="pi pi-list"
-                                class="flex-1 font-semibold text-xl"
-                                size="large"
-                                label="View My Badges"
-                            />
-                        </Link>
+                        <Button v-if="currentEventBadgeCount > 0" as-child size="lg" class="h-12 font-semibold text-xl">
+                            <Link :href="route('badges.index')"><List /> View My Badges</Link>
+                        </Button>
                     </div>
 
                     <!-- NoPreorder State -->
                     <div v-else-if="orderStatus.status === 'noPreorder'" class="text-center space-y-6">
                         <p class="text-2xl mb-6 opacity-90">You did not pre-order any fursuit badges with your registration.</p>
-                        <a
-                            href="https://reg.eurofurence.org"
-                            target="_blank"
-                            class="w-full">
-                            <Button
-                                icon="pi pi-ticket"
-                                class="flex-1 font-semibold text-xl"
-                                size="large"
-                                label="Check my Registration"
-                            />
-                        </a>
-                        <Link
-                            v-if="currentEventBadgeCount > 0"
-                            :href="route('badges.index')"
-                            class="w-full">
-                            <Button
-                                icon="pi pi-list"
-                                class="flex-1 font-semibold text-xl"
-                                size="large"
-                                label="View My Badges"
-                            />
-                        </Link>
+                        <Button as-child size="lg" class="h-12 font-semibold text-xl">
+                            <a href="https://reg.eurofurence.org" target="_blank"><Ticket /> Check my Registration</a>
+                        </Button>
+                        <Button v-if="currentEventBadgeCount > 0" as-child size="lg" class="h-12 font-semibold text-xl">
+                            <Link :href="route('badges.index')"><List /> View My Badges</Link>
+                        </Button>
                         <p class="mb-6 opacity-90">You may need to logout and log back in to make changes take effect.</p>
                     </div>
 
                     <!-- Closed State -->
                     <div v-else class="text-center space-y-6">
                         <p class="text-2xl mb-6 opacity-90">Badge orders are currently closed</p>
-                        <Link
-                            v-if="currentEventBadgeCount > 0"
-                            :href="route('badges.index')"
-                            class="w-full">
-                            <Button
-                                icon="pi pi-list"
-                                class="flex-1 font-semibold text-xl"
-                                size="large"
-                                label="View My Badges"
-                            />
-                        </Link>
+                        <Button v-if="currentEventBadgeCount > 0" as-child size="lg" class="h-12 font-semibold text-xl">
+                            <Link :href="route('badges.index')"><List /> View My Badges</Link>
+                        </Button>
                     </div>
                 </div>
 
                 <!-- Login Button -->
                 <div v-else class="w-full max-w-xl mx-auto">
-                    <Link method="POST" :href="route('auth.login.redirect')" class="w-full">
-                        <Button
-                            icon="pi pi-sign-in"
-                            class="w-full bg-blue-600 hover:bg-blue-700 border-0 text-white text-2xl py-4 px-8 font-bold shadow-2xl transform hover:scale-105 transition-all duration-200"
-                            size="large"
-                            label="Login with Eurofurence Identity"
-                        />
-                    </Link>
+                    <Button
+                        as-child
+                        size="lg"
+                        class="w-full h-auto whitespace-normal text-2xl py-4 px-8 font-bold shadow-2xl transform hover:scale-105 transition-all duration-200"
+                    >
+                        <Link method="POST" :href="route('auth.login.redirect')"><LogIn class="size-6" /> Login with Eurofurence Identity</Link>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -351,16 +311,16 @@ const shouldShowRegMessage = computed(() => {
     <div v-if="user && (badgeStatusLine || amountDue > 0)" class="max-w-3xl mx-auto mb-6">
         <div class="rounded-lg bg-white shadow-xs divide-y divide-gray-100">
             <Link v-if="badgeStatusLine" :href="route('badges.index')" class="flex items-center gap-3 p-4">
-                <i class="pi pi-id-card text-xl text-primary-500"></i>
+                <IdCard class="size-5 shrink-0 text-primary-500" />
                 <span class="flex-1">
                     <span class="block text-xs uppercase tracking-wide text-gray-500">Your badges</span>
                     <span class="font-semibold">{{ badgeStatusLine }}</span>
                 </span>
-                <i class="pi pi-chevron-right text-gray-400"></i>
+                <ChevronRight class="size-4 shrink-0 text-gray-400" />
             </Link>
 
             <div v-if="amountDue > 0" class="flex items-center gap-3 p-4">
-                <i class="pi pi-euro text-xl text-yellow-600"></i>
+                <Euro class="size-5 shrink-0 text-yellow-600" />
                 <span class="flex-1">
                     <span class="block text-xs uppercase tracking-wide text-gray-500">Still to pay at the desk</span>
                     <span class="text-2xl font-bold font-main">{{ formatEuroFromCents(amountDue) }}</span>
@@ -373,16 +333,20 @@ const shouldShowRegMessage = computed(() => {
     </div>
 
             <!-- Flash Messages -->
-            <Message v-if="usePage().props.flash.message" severity="error" :closable="true" class="mb-6">
-                {{ usePage().props.flash.message }}
-            </Message>
+            <Alert v-if="usePage().props.flash.message && !flashClosed" variant="destructive" class="mb-6 pr-10">
+                <AlertDescription>{{ usePage().props.flash.message }}</AlertDescription>
+                <button type="button" aria-label="Close" class="absolute top-3 right-3 opacity-70 hover:opacity-100" @click="flashClosed = true">
+                    <X class="size-4" />
+                </button>
+            </Alert>
 
-            <Message v-if="massPrintRunIsOver(event)" severity="info"
-                :closable="false" class="mb-6">
-                <i class="pi pi-info-circle mr-2"></i>
-                The printing deadline ({{ formatPrintDate(event.mass_printed_at) }}) has passed, so
-                badges ordered now can be collected from the second convention day.
-            </Message>
+            <Alert v-if="massPrintRunIsOver(event)" variant="info" class="mb-6">
+                <Info />
+                <AlertDescription>
+                    The printing deadline ({{ formatPrintDate(event.mass_printed_at) }}) has passed, so
+                    badges ordered now can be collected from the second convention day.
+                </AlertDescription>
+            </Alert>
 
             <!--
               The price and the free-badge deadline come from badgePrice and the event,
@@ -392,14 +356,15 @@ const shouldShowRegMessage = computed(() => {
             -->
             <div class="grid md:grid-cols-2 gap-8 mb-8 items-start">
                 <!-- About Fursuit Badges -->
-                <Card>
-                    <template #title>
+                <Card class="gap-0 py-0 overflow-hidden">
+                    <div class="p-5">
+                    <CardTitle class="text-xl font-bold leading-tight mb-2">
                         <div class="flex items-center gap-3">
-                            <i class="pi pi-id-card text-3xl text-primary-500"></i>
+                            <IdCard class="size-8 shrink-0 text-primary-500" />
                             <h2 class="text-2xl font-bold font-main">Fursuit Badges</h2>
                         </div>
-                    </template>
-                    <template #content>
+                    </CardTitle>
+                    <div>
                         <div class="space-y-4">
                             <p>
                                 Get your own custom keepsake: the <strong>Eurofurence Fursuit Badge</strong> for your
@@ -408,7 +373,7 @@ const shouldShowRegMessage = computed(() => {
 
                             <div class="border-t border-gray-200 divide-y divide-gray-200">
                                 <div class="flex items-start gap-4 py-4">
-                                    <i class="pi pi-tag text-xl text-gray-400 mt-1"></i>
+                                    <Tag class="size-5 shrink-0 text-gray-400 mt-1" />
                                     <div class="flex-1">
                                         <strong>Price</strong>
                                         <p class="mt-1 text-sm text-gray-600">
@@ -428,7 +393,7 @@ const shouldShowRegMessage = computed(() => {
                                 </div>
 
                                 <div class="flex items-start gap-4 py-4">
-                                    <i class="pi pi-calendar text-xl text-gray-400 mt-1"></i>
+                                    <Calendar class="size-5 shrink-0 text-gray-400 mt-1" />
                                     <div class="flex-1">
                                         <strong>Pickup</strong>
                                         <ul class="mt-1 space-y-1 text-sm text-gray-600 list-disc pl-5">
@@ -457,18 +422,20 @@ const shouldShowRegMessage = computed(() => {
                                 </Link>
                             </div>
                         </div>
-                    </template>
+                    </div>
+                    </div>
                 </Card>
 
                 <!-- Catch-Em-All Game -->
-                <Card>
-                    <template #title>
+                <Card class="gap-0 py-0 overflow-hidden">
+                    <div class="p-5">
+                    <CardTitle class="text-xl font-bold leading-tight mb-2">
                         <div class="flex items-center gap-3">
-                            <i class="pi pi-trophy text-3xl text-primary-500"></i>
+                            <Trophy class="size-8 shrink-0 text-primary-500" />
                             <h2 class="text-2xl font-bold font-main">Catch-Em-All Game</h2>
                         </div>
-                    </template>
-                    <template #content>
+                    </CardTitle>
+                    <div>
                         <div class="space-y-4">
                             <p>
                                 Join our community game and collect as many fursuit badges as you can. Meet fellow
@@ -477,7 +444,7 @@ const shouldShowRegMessage = computed(() => {
 
                             <div class="border-t border-gray-200 divide-y divide-gray-200">
                                 <div class="flex items-start gap-4 py-4">
-                                    <i class="pi pi-hashtag text-xl text-gray-400 mt-1"></i>
+                                    <Hash class="size-5 shrink-0 text-gray-400 mt-1" />
                                     <div class="flex-1">
                                         <strong>Scan the badges you meet</strong>
                                         <p class="mt-1 text-sm text-gray-600">
@@ -488,7 +455,7 @@ const shouldShowRegMessage = computed(() => {
                                 </div>
 
                                 <div class="flex items-start gap-4 py-4">
-                                    <i class="pi pi-users text-xl text-gray-400 mt-1"></i>
+                                    <Users class="size-5 shrink-0 text-gray-400 mt-1" />
                                     <div class="flex-1">
                                         <strong>Collect and unlock</strong>
                                         <p class="mt-1 text-sm text-gray-600">
@@ -499,7 +466,7 @@ const shouldShowRegMessage = computed(() => {
                                 </div>
 
                                 <div class="flex items-start gap-4 py-4">
-                                    <i class="pi pi-star text-xl text-gray-400 mt-1"></i>
+                                    <Star class="size-5 shrink-0 text-gray-400 mt-1" />
                                     <div class="flex-1">
                                         <strong>Climb the leaderboard</strong>
                                         <p class="mt-1 text-sm text-gray-600">
@@ -514,7 +481,8 @@ const shouldShowRegMessage = computed(() => {
                                 How Catch-Em-All works
                             </Link>
                         </div>
-                    </template>
+                    </div>
+                    </div>
                 </Card>
             </div>
         </div>

@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import { Head, useForm, usePage, router } from '@inertiajs/vue3'
 import CatchEmAllLayout from "@/Layouts/CatchEmAllLayout.vue"
-import Button from "@/Components/UI/UiButton.vue"
-import Message from "@/Components/UI/UiMessage.vue"
 import FlashMessages from "@/Components/FlashMessages.vue"
-import InputText from 'primevue/inputtext'
-import Card from '@/Components/UI/UiCard.vue'
-import ProgressBar from 'primevue/progressbar'
-import Badge from 'primevue/badge'
-import Divider from 'primevue/divider'
-import TabView from 'primevue/tabview'
-import TabPanel from 'primevue/tabpanel'
-import Avatar from 'primevue/avatar'
-import Dropdown from 'primevue/dropdown'
+import { Loader2, Zap } from '@lucide/vue'
+import { Badge } from '@/Components/UI/badge'
+import { Button } from '@/Components/UI/button'
+import { Card } from '@/Components/UI/card'
+import { Input } from '@/Components/UI/input'
+import { Progress } from '@/Components/UI/progress'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/UI/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/UI/tabs'
 import { ref, computed } from 'vue'
 
 defineOptions({ layout: CatchEmAllLayout })
@@ -65,9 +62,10 @@ const eventOptions = computed(() => {
 
 const selectedEventValue = ref(props.selectedEvent || (props.eventsWithEntries[0]?.id?.toString() || 'global'))
 
-const onEventChange = () => {
+const onEventChange = (value: string) => {
+    selectedEventValue.value = value
     router.get(route('fcea.dashboard'), {
-        event: selectedEventValue.value
+        event: value
     }, {
         preserveState: false,
         replace: true
@@ -111,14 +109,12 @@ const getRankIcon = (rank: number) => {
     <div class="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100">
         <!-- Success Message for Caught Fursuit -->
         <div v-if="showCaughtMessage && caughtFursuit" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-            <Card class="w-full max-w-sm mx-auto animate-bounce-in">
-                <template #header>
+            <Card class="gap-0 py-0 overflow-hidden w-full max-w-sm mx-auto animate-bounce-in">
                     <div class="text-center py-6 bg-linear-to-r from-green-400 to-green-600">
                         <div class="text-6xl mb-2">🎉</div>
                         <h2 class="text-2xl font-bold text-white">Amazing!</h2>
                     </div>
-                </template>
-                <template #content>
+                <div class="p-5">
                     <div class="text-center space-y-4">
                         <div class="text-xl font-bold text-green-600">
                             You caught a wild {{ caughtFursuit.species }}!
@@ -129,18 +125,17 @@ const getRankIcon = (rank: number) => {
                         <div class="text-sm text-gray-500">
                             owned by {{ caughtFursuit.user }}
                         </div>
-                        <Button @click="showCaughtMessage = false" class="w-full" severity="success">
+                        <Button @click="showCaughtMessage = false" class="w-full bg-success hover:bg-success/90 text-white">
                             Continue Catching!
                         </Button>
                     </div>
-                </template>
+                </div>
             </Card>
         </div>
 
         <div class="container mx-auto px-4 py-6 max-w-md">
             <!-- Progress Header -->
-            <Card class="mb-6 shadow-lg">
-                <template #header>
+            <Card class="gap-0 py-0 overflow-hidden mb-6 shadow-lg">
                     <div class="bg-linear-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-t-lg">
                         <div class="text-center">
                             <div class="text-4xl mb-2">🦊</div>
@@ -148,8 +143,7 @@ const getRankIcon = (rank: number) => {
                             <div class="text-indigo-200">Your Progress</div>
                         </div>
                     </div>
-                </template>
-                <template #content>
+                <div class="p-5">
                     <div class="space-y-6">
                         <!-- Stats Grid -->
                         <div class="grid grid-cols-3 gap-4 text-center">
@@ -173,7 +167,7 @@ const getRankIcon = (rank: number) => {
                                 <span>Progress</span>
                                 <span>{{ myUserInfo.percentage }}%</span>
                             </div>
-                            <ProgressBar :value="myUserInfo.percentage" class="h-3" />
+                            <Progress :model-value="myUserInfo.percentage" class="h-3 bg-gray-200" />
                             <div class="text-xs text-gray-500 text-center">
                                 {{ myUserInfo.score }} of {{ myUserInfo.total_available }} fursuiters caught
                             </div>
@@ -186,7 +180,7 @@ const getRankIcon = (rank: number) => {
                             </div>
                         </div>
                     </div>
-                </template>
+                </div>
             </Card>
 
             <!-- Flash Messages -->
@@ -195,8 +189,7 @@ const getRankIcon = (rank: number) => {
             </div>
 
             <!-- Catch Code Input -->
-            <Card class="mb-6 shadow-lg">
-                <template #header>
+            <Card class="gap-0 py-0 overflow-hidden mb-6 shadow-lg">
                     <div class="bg-linear-to-r from-orange-500 to-red-500 text-white p-4 rounded-t-lg">
                         <div class="text-center">
                             <div class="text-3xl mb-2">🎯</div>
@@ -204,67 +197,64 @@ const getRankIcon = (rank: number) => {
                             <div class="text-orange-100 text-sm">Found a fursuiter? Enter their code!</div>
                         </div>
                     </div>
-                </template>
-                <template #content>
+                <div class="p-5">
                     <form @submit.prevent="submit" class="space-y-4">
                         <div class="space-y-2">
                             <label class="block text-sm font-medium text-gray-700">5-Letter Code</label>
-                            <InputText 
-                                v-model="form.catch_code" 
+                            <Input
+                                v-model="form.catch_code"
                                 placeholder="ABCDE"
-                                class="w-full text-center text-2xl font-mono tracking-widest uppercase"
-                                :class="{ 'border-red-500': form.hasErrors }"
+                                :class="['w-full h-12 text-center text-2xl md:text-2xl font-mono tracking-widest uppercase', { 'border-red-500': form.hasErrors }]"
                                 maxlength="5"
                                 @input="form.catch_code = $event.target.value.toUpperCase()"
-                                fluid
                             />
                             <div v-if="form.hasErrors" class="text-red-500 text-sm text-center">
                                 Invalid catch code - please try again!
                             </div>
                         </div>
-                        <Button 
-                            type="submit" 
-                            :loading="form.processing"
-                            class="w-full py-3 text-lg font-bold"
-                            severity="success"
+                        <Button
+                            type="submit"
+                            :disabled="form.processing"
+                            class="w-full h-auto py-3 text-lg font-bold bg-success hover:bg-success/90 text-white"
                         >
-                            <template #icon>
-                                <span class="mr-2">⚡</span>
-                            </template>
+                            <Loader2 v-if="form.processing" class="animate-spin" />
+                            <Zap v-else />
                             Catch!
                         </Button>
                     </form>
-                </template>
+                </div>
             </Card>
 
             <!-- Leaderboards -->
-            <Card class="shadow-lg">
-                <template #header>
+            <Card class="gap-0 py-0 overflow-hidden shadow-lg">
                     <div class="bg-linear-to-r from-gray-700 to-gray-900 text-white p-4 rounded-t-lg">
                         <div class="text-center">
                             <div class="text-3xl mb-2">🏆</div>
                             <h2 class="text-lg font-bold">Leaderboards</h2>
                         </div>
                     </div>
-                </template>
-                <template #content>
+                <div class="p-5">
                     <!-- Event Selection Dropdown -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Show leaderboard for:</label>
-                        <Dropdown 
-                            v-model="selectedEventValue" 
-                            :options="eventOptions" 
-                            optionLabel="label" 
-                            optionValue="value" 
-                            placeholder="Select event or view"
-                            class="w-full"
-                            @change="onEventChange"
-                            fluid
-                        />
+                        <Select :model-value="selectedEventValue" @update:model-value="onEventChange">
+                            <SelectTrigger class="w-full">
+                                <SelectValue placeholder="Select event or view" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="option in eventOptions" :key="option.value" :value="option.value">
+                                    {{ option.label }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                     
-                    <TabView>
-                        <TabPanel header="🕵️ Catchers">
+                    <Tabs default-value="catchers">
+                        <TabsList class="w-full">
+                            <TabsTrigger value="catchers" class="font-semibold">Catchers</TabsTrigger>
+                            <TabsTrigger value="fursuits" class="font-semibold">Most Caught</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="catchers">
                             <div v-if="userRanking.length" class="space-y-2">
                                 <div 
                                     v-for="user in userRanking" 
@@ -279,7 +269,7 @@ const getRankIcon = (rank: number) => {
                                         <div>
                                             <div class="font-medium text-gray-900">
                                                 {{ user.user.name }}
-                                                <Badge v-if="user.id === myUserInfo.id" value="YOU" severity="info" class="ml-2" />
+                                                <Badge v-if="user.id === myUserInfo.id" variant="info" class="ml-2">YOU</Badge>
                                             </div>
                                             <div class="text-sm text-gray-500">Rank {{ user.rank }}</div>
                                         </div>
@@ -294,9 +284,9 @@ const getRankIcon = (rank: number) => {
                                 <div class="text-4xl mb-2">🦊</div>
                                 <div class="text-lg">Be the first to catch a fursuiter!</div>
                             </div>
-                        </TabPanel>
-                        
-                        <TabPanel header="🦊 Most Caught">
+                        </TabsContent>
+
+                        <TabsContent value="fursuits">
                             <div v-if="fursuitRanking.length" class="space-y-2">
                                 <div 
                                     v-for="fursuit in fursuitRanking" 
@@ -326,22 +316,20 @@ const getRankIcon = (rank: number) => {
                                 <div class="text-4xl mb-2">🎭</div>
                                 <div class="text-lg">No fursuiters caught yet!</div>
                             </div>
-                        </TabPanel>
-                    </TabView>
-                </template>
+                        </TabsContent>
+                    </Tabs>
+                </div>
             </Card>
 
             <!-- How It Works -->
-            <Card class="mt-6 shadow-lg">
-                <template #header>
+            <Card class="gap-0 py-0 overflow-hidden mt-6 shadow-lg">
                     <div class="bg-linear-to-r from-teal-500 to-cyan-500 text-white p-4 rounded-t-lg">
                         <div class="text-center">
                             <div class="text-3xl mb-2">❓</div>
                             <h2 class="text-lg font-bold">How It Works</h2>
                         </div>
                     </div>
-                </template>
-                <template #content>
+                <div class="p-5">
                     <div class="space-y-4 text-sm text-gray-700">
                         <div class="flex items-start space-x-3">
                             <div class="text-2xl">🔍</div>
@@ -373,7 +361,7 @@ const getRankIcon = (rank: number) => {
                             </div>
                         </div>
                     </div>
-                </template>
+                </div>
             </Card>
         </div>
     </div>
@@ -399,28 +387,5 @@ const getRankIcon = (rank: number) => {
 
 .animate-bounce-in {
     animation: bounce-in 0.6s ease-out;
-}
-
-/* Custom progress bar styling */
-:deep(.p-progressbar) {
-    height: 12px !important;
-    border-radius: 6px !important;
-    background: #e5e7eb !important;
-}
-
-:deep(.p-progressbar .p-progressbar-value) {
-    background: linear-gradient(90deg, #10b981, #34d399) !important;
-    border-radius: 6px !important;
-}
-
-/* Tab styling */
-:deep(.p-tabview .p-tabview-nav li .p-tabview-nav-link) {
-    font-weight: 600 !important;
-}
-
-/* Input styling */
-:deep(.p-inputtext:focus) {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
 </style>

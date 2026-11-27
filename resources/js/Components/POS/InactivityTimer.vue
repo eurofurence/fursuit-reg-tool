@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
+import { Clock } from '@lucide/vue';
 
 const page = usePage();
 const machine = computed(() => page.props.auth.machine);
@@ -367,7 +368,7 @@ const handleContinue = () => {
     <!-- Warning message -->
     <div v-if="isWarning" :style="warningMessageStyle">
         <div class="flex flex-col items-center gap-3">
-            <i class="pi pi-clock text-5xl text-pos-warn animate-pulse"></i>
+            <Clock class="size-12 text-pos-warn animate-pulse" aria-hidden="true" />
             <h2 class="text-xl font-semibold text-pos-text">Session Timeout Warning</h2>
             <p class="pos-label">Your session expires in</p>
             <div class="pos-num text-5xl font-bold text-pos-bad leading-none">
